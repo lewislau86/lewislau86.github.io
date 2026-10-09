@@ -1,2 +1,2 @@
 User-agent: *
-Sitemap: https://www.lewislau.net/sitemap.xml
+Sitemap: https://lewislau86.github.io/sitemap.xml
