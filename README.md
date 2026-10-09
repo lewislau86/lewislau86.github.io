@@ -1,38 +1,42 @@
-## lewislau 
-[About](https://github.com/lewislau86/lewislau86.github.io/master/AboutMe.md)
+# Lewis 的知识库
 
-You can use the [editor on GitHub](https://github.com/lewislau86/lewislau86.github.io/edit/master/README.md) to maintain and preview the content for your website in Markdown files.
+使用 VitePress 构建的中文文档库，替代原有 Jane 博客。
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
+网站：https://lewislau86.github.io/
 
-### Markdown
+## 本地开发
 
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
+建议使用 Node.js 24。
 
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+```sh
+npm ci
+npm run docs:dev
 ```
 
-For more details see [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/).
+## 构建检查
 
-### Jekyll Themes
+```sh
+npm run docs:build
+npm run docs:preview
+```
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/lewislau86/lewislau86.github.io/settings). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+## 维护内容
 
-### Support or Contact
+- 文档：`docs/**/*.md`
+- 导航、侧栏和搜索：`docs/.vitepress/config.mts`
+- 主题样式：`docs/.vitepress/theme/style.css`
+- 静态资源：`docs/public/`
 
-Having trouble with Pages? Check out our [documentation](https://help.github.com/categories/github-pages-basics/) or [contact support](https://github.com/contact) and we’ll help you sort it out.
+新增文档后，在配置中加入侧栏链接。详细说明见 `docs/guide/writing.md`。
+
+## 部署
+
+GitHub Pages 的部署来源设置为 **GitHub Actions**。推送到 `master` 后，
+`.github/workflows/deploy.yml` 自动安装依赖、构建并部署 `docs/.vitepress/dist`。
+
+原 Jane 示例站点保留在 Git 历史中（迁移前提交：`4d739be`）。
+
+## 依赖说明
+
+VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 6.4.4，
+避开旧版开发服务器的已知漏洞。升级 VitePress 后应重新评估此覆盖配置。
