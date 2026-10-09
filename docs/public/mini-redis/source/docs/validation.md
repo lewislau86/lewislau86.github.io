@@ -18,7 +18,7 @@
 
 默认 stable 工具链缺少 cargo-fmt；没有安装或替换默认工具链，使用已有 `cargo +1.98.1 fmt` 完成实验文件格式化。实验仍由默认 rustc 1.99.0 编译执行。
 
-改动范围为 `docs` 内笔记、实验与独立锁文件，以及根 README 的入口链接；未修改 `src`、原有 `tests`、根 Cargo.toml 或根 Cargo.lock。
+前几批次的改动范围为 `docs` 内笔记、实验与独立锁文件，以及根 README 的入口链接；当时未修改 `src`、原有 `tests`、根 Cargo.toml 或根 Cargo.lock。后续源码注释中文化的范围与检查单独记录在下文。
 
 ## 2026-10-08 已通过的执行
 
@@ -98,6 +98,26 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 | 比较 src、examples、tests、根 Cargo.toml/Cargo.lock | 没有修改 |
 
 本轮只修改 Markdown，没有执行运行时测试。文章中的测试说明区分测试意图、实际断言和此前执行记录；chat 示例仍是 unimplemented 占位，key_value_timeout 的历史未完成状态保持不变。上述数量用于记录本批次检查，不能解释为协议全面兼容或全部运行场景通过。
+
+## 2026-10-09 中文源码注释与 Rust 写法说明
+
+本批次修改原项目 28 个 Rust 文件的注释：翻译已有的 481 组注释，并为原本没有注释的模块入口和 chat 占位文件补上说明；另外在 main、模块导出、trait、错误转换和迭代器处加入学习提示。原有英文说明中与代码不一致的停机通知、清理任务生命周期、示例行为和订阅能力，按当前实现改正。协议字符串、日志字符串、API、依赖及非注释代码保持不变；clap 从文档注释生成的命令说明随之变为中文。
+
+新增 [Rust 源码阅读说明](rust-reading-guide.md)，覆盖模块与 crate、宏、方法接收者、Result/Option、泛型和 trait、任务与 Send、Guard/Drop、生命周期、闭包、Pin/Stream、通道与模式匹配。28 篇文件文章增加结合当前调用的语法解释和跳转。81 处源码节选重新定位并保留中文注释，注记改为 comments included；不再使用旧的去注释行号。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| 对照本批次起点 dc3c13e 的非注释、非空代码行 | src/examples/tests 的 28 个文件全部逐行一致；另检查 9 个 labs Rust 文件未变 |
+| 对照 rustdoc 围栏中的示例代码 | 去掉示例自身注释后保持一致；没有改动示例逻辑 |
+| `cargo test --locked -- --skip key_value_timeout` | 14 个集成测试通过，1 个明确过滤；11 个 no_run 文档示例编译通过 |
+| `cargo +1.98.1 fmt --all -- --check` | 通过 |
+| `cargo doc --locked --no-deps` | 文档生成成功；修正泛型文本的代码标记后无 rustdoc 警告 |
+| `cargo run --locked --bin mini-redis-cli -- --help` | 正常退出，GET/SET/PUBLISH/SUBSCRIBE 的注释生成说明显示为中文 |
+| 81 处带 source 注记的节选 | 含中文注释逐段与当前源码一致 |
+| 46 个学习 Markdown 文件中的本地链接与锚点 | 665 项检查通过，28 个原项目源码文件仍一一对应文章 |
+| 英文注释残留与补丁空白 | 原项目注释及文档 Rust 片段中未发现未翻译的英文说明；保留标识符、示例字面量、协议格式和 URL；git diff --check 通过 |
+
+本批次没有修改命令执行逻辑，没有重跑已知挂起的 key_value_timeout，也未运行注释中的 no_run 网络示例或部署 OpenTelemetry。语法讲解片段明确区分签名/类型示意与完整程序；本次不宣称每个教学片段都能单独编译。旧批次记录中的“未修改 src”仅指当时的文档增补，当前批次的源码修改限定为注释。
 
 ## 内容检查与验证边界
 

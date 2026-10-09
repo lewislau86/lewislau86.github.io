@@ -3,8 +3,7 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
-/// A PING PONG test without message provided.
-/// It should return "PONG".
+/// 无消息 PING，断言返回 PONG。tokio::test 为此异步测试创建 runtime。
 #[tokio::test]
 async fn ping_pong_without_message() {
     let (addr, _) = start_server().await;
@@ -14,8 +13,7 @@ async fn ping_pong_without_message() {
     assert_eq!(b"PONG", &pong[..]);
 }
 
-/// A PING PONG test with message provided.
-/// It should return the message.
+/// 带中文消息 PING，按 UTF-8 字节比较回显。
 #[tokio::test]
 async fn ping_pong_with_message() {
     let (addr, _) = start_server().await;
@@ -25,9 +23,8 @@ async fn ping_pong_with_message() {
     assert_eq!("你好世界".as_bytes(), &pong[..]);
 }
 
-/// A basic "hello world" style test. A server instance is started in a
-/// background task. A client instance is then established and set and get
-/// commands are sent to the server. The response is then evaluated
+/// 临时服务加真实 TCP 往返，断言 SET 后 GET 得到 world。
+/// 两层 unwrap 分别解开 Result 和 Option，仅适合这里的测试失败表达。
 #[tokio::test]
 async fn key_value_get_set() {
     let (addr, _) = start_server().await;
@@ -39,8 +36,7 @@ async fn key_value_get_set() {
     assert_eq!(b"world", &value[..])
 }
 
-/// similar to the "hello world" style test, But this time
-/// a single channel subscription will be tested instead
+/// 完成订阅确认后再启动发布者，检查单频道消息，避免发布早于订阅的竞态。
 #[tokio::test]
 async fn receive_message_subscribed_channel() {
     let (addr, _) = start_server().await;
@@ -58,7 +54,7 @@ async fn receive_message_subscribed_channel() {
     assert_eq!(b"world", &message.content[..])
 }
 
-/// test that a client gets messages from multiple subscribed channels
+/// 订阅两个频道，分别发布并断言各自名称和消息内容。
 #[tokio::test]
 async fn receive_message_multiple_subscribed_channels() {
     let (addr, _) = start_server().await;
@@ -88,8 +84,8 @@ async fn receive_message_multiple_subscribed_channels() {
     assert_eq!(b"howdy?", &message2.content[..])
 }
 
-/// test that a client accurately removes its own subscribed channel list
-/// when unsubscribing to all subscribed channels by submitting an empty vec
+/// 空取消列表表示全部取消，断言本地频道列表归零。
+/// 此断言没有证明服务端恢复普通 GET/SET 模式。
 #[tokio::test]
 async fn unsubscribes_from_channels() {
     let (addr, _) = start_server().await;

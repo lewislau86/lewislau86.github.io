@@ -17,7 +17,7 @@
 
 ## 连接时创建并保留 runtime
 
-<!-- source: src/clients/blocking_client.rs:71-79; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:57-65; comments included -->
 ```rust
 pub fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<BlockingClient> {
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -34,7 +34,7 @@ current_thread 调度器在调用 block_on 的线程上运行；enable_all 启�
 
 ## 薄包装仍有执行上下文约束
 
-<!-- source: src/clients/blocking_client.rs:97-99; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:79-81; comments included -->
 ```rust
 pub fn get(&mut self, key: &str) -> crate::Result<Option<Bytes>> {
     self.rt.block_on(self.inner.get(key))
@@ -45,7 +45,7 @@ set、set_expires、publish 同样把参数交给内部 Client 并 block_on。�
 
 ## 订阅时把 runtime 一起搬走
 
-<!-- source: src/clients/blocking_client.rs:205-211; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:155-161; comments included -->
 ```rust
 pub fn subscribe(self, channels: Vec<String>) -> crate::Result<BlockingSubscriber> {
     let subscriber = self.rt.block_on(self.inner.subscribe(channels))?;
@@ -60,12 +60,13 @@ self 被消费，内部 Subscriber 与原 runtime 组成 BlockingSubscriber。ge
 
 ## Iterator 把网络结束转成迭代结束
 
-<!-- source: src/clients/blocking_client.rs:248-254; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:194-201; comments included -->
 ```rust
 impl Iterator for SubscriberIterator {
     type Item = crate::Result<Message>;
 
     fn next(&mut self) -> Option<crate::Result<Message>> {
+        // Result<Option<T>, E> → Option<Result<T, E>>：EOF 结束迭代，错误成为一个 Err 元素。
         self.rt.block_on(self.inner.next_message()).transpose()
     }
 }
@@ -74,6 +75,12 @@ impl Iterator for SubscriberIterator {
 transpose 将 Result<Option<Message>> 变成 Option<Result<Message>>：有消息是 Some(Ok)，EOF 是 None，读取错误是 Some(Err)。所以 for 循环中的元素仍要处理错误，不能以为同步接口消除了网络失败。
 
 此文件的变更主要影响同步调用者的线程占用和生命周期；协议、订阅确认交错、二进制消息等行为仍继承 client.rs。当前仓库没有对应独立的 blocking_client 集成测试文件，不能从别的客户端测试通过直接推出此适配器已完整验证。
+
+## 这里的 Rust 写法：impl Iterator 与 transpose 的配合
+
+into_iter 消费同步订阅者，返回一个具体但隐藏名称的迭代器。每次 next 通过 block_on 等一条消息，然后 transpose 把 Ok(None) 变为迭代结束，把 Err 变为 Some(Err)。所以同步接口仍需处理网络错误，也会阻塞调用线程等待；它没有把异步工作变成无需 runtime 的普通函数。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../../rust-reading-guide.md#iterators)。
 
 ## 读完后沿哪里继续
 

@@ -61,13 +61,16 @@ HashMap 回答“这个键的值是什么”；BTreeSet 回答“最早什么时
 
 [Db::set](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs) 在插入新记录前计算到期时间及通知条件：
 
-<!-- source: src/db.rs:166-181; comments omitted -->
+<!-- source: src/db.rs:118-132; comments included -->
 ```rust
+// 先判断是否需要重排后台等待；只有新期限比当前最早期限更早时才需要唤醒。
 let mut notify = false;
 
 let expires_at = expire.map(|duration| {
+    // Option::map 只在 Some(duration) 时运行闭包，将相对时长转为绝对时刻。
     let when = Instant::now() + duration;
 
+    // 若没有旧期限，unwrap_or(true) 表示需要唤醒原本只等 Notify 的任务。
     notify = state
         .next_expiration()
         .map(|expiration| expiration > when)
@@ -94,16 +97,21 @@ let expires_at = expire.map(|duration| {
 
 直接看 [purge_expired_tasks](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs) 的源码，它是 Db::new 提交给 Tokio 的任务入口：
 
-<!-- source: src/db.rs:346-369; comments omitted -->
+<!-- source: src/db.rs:258-276; comments included -->
 ```rust
 async fn purge_expired_tasks(shared: Arc<Shared>) {
+    // 每轮重新查状态；被唤醒不一定意味着有键到期，也可能是停机。
     while !shared.is_shutdown() {
+        // 同步清理后取得下一个期限，不能拿着 MutexGuard 跨 await 等待。
         if let Some(when) = shared.purge_expired_keys() {
+            // select 同时轮询定时器与 Notify，任一完成就重读共享状态。
+            // 被取消的是这次等待 Future，不会撤销已经完成的数据库更新。
             tokio::select! {
                 _ = time::sleep_until(when) => {}
                 _ = shared.background_task.notified() => {}
             }
         } else {
+            // 没有期限时只等通知，避免空转；新 TTL 或停机会唤醒这里。
             shared.background_task.notified().await;
         }
     }
@@ -116,24 +124,30 @@ async fn purge_expired_tasks(shared: Arc<Shared>) {
 
 再进入它调用的 [Shared::purge_expired_keys](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs)：
 
-<!-- source: src/db.rs:290-322; comments omitted -->
+<!-- source: src/db.rs:213-240; comments included -->
 ```rust
 fn purge_expired_keys(&self) -> Option<Instant> {
     let mut state = self.state.lock().unwrap();
 
     if state.shutdown {
+        // 停止标记已设置，不再处理索引；外层任务下一轮检查后退出。
         return None;
     }
 
+    // lock 返回的是 Guard；&mut *state 经 DerefMut 得到 &mut State。
+    // 显式借用结构体后，编译器可以区分 entries 与 expirations 两个互不重叠的字段。
     let state = &mut *state;
 
+    // 固定本轮 now，删除所有到期时刻小于或等于 now 的项。
     let now = Instant::now();
 
     while let Some(&(when, ref key)) = state.expirations.iter().next() {
         if when > now {
+            // 遇到未来期限就停止；BTreeSet 保证后续项不会更早到期。
             return Some(when);
         }
 
+        // 同时删除主表和值对应的索引；两步仍处于同一锁保护下。
         state.entries.remove(key);
         state.expirations.remove(&(when, key.clone()));
     }

@@ -28,26 +28,34 @@ Listener 持有 DbDropGuard，每次构造 Handler 只克隆 Db 句柄。一个�
 
 ## Handler 实际怎样驱动请求
 
-<!-- source: src/server.rs:318-369; comments omitted -->
+<!-- source: src/server.rs:195-226; comments included -->
 ```rust
 async fn run(&mut self) -> crate::Result<()> {
+    // 只在未观察到停止时尝试读取下一条请求。
     while !self.shutdown.is_shutdown() {
+        // 同时等待完整帧与停止通知；? 使读取错误直接返回当前 Handler。
         let maybe_frame = tokio::select! {
             res = self.connection.read_frame() => res?,
             _ = self.shutdown.recv() => {
+                // 返回到 spawn 闭包，随后释放 Handler 及其完成 Sender。
                 return Ok(());
             }
         };
 
+        // read_frame 的 None 表示正常 EOF，没有下一条请求；与 GET 空值 Frame::Null 不同。
         let frame = match maybe_frame {
             Some(frame) => frame,
             None => return Ok(()),
         };
 
+        // 已知命令参数非法会 Err；未知命令则被包装为 Unknown，执行时写 Error 帧。
         let cmd = Command::from_frame(frame)?;
 
+        // tracing 的 ?cmd 用 Debug 格式记录名为 cmd 的结构化字段。
         debug!(?cmd);
 
+        // 把 Db 的共享借用、当前 Connection/Shutdown 的可变借用交给命令。
+        // apply 可能更新内存并写回复；Subscribe 会持续推送多帧，而非马上返回外层循环。
         cmd.apply(&self.db, &mut self.connection, &mut self.shutdown)
             .await?;
     }
@@ -69,6 +77,12 @@ accept 使用指数退避，从 1 秒增加到 64 秒，之后再失败则返回
 ## 改动影响与定位
 
 将 Db::new 挪到每次 accept 会使连接间数据不再共享；把 handler.run().await 放回接入循环、不 spawn，会使接入等该连接结束；保留多余完成 Sender 会使停机等待无法完成。验证这些修改时要分别观察跨连接共享、接入并发和退出完成，而不是只测一次 SET 成功。
+
+## 这里的 Rust 写法：async move 捕获的不是一段代码文本
+
+move 使 handler 和 permit 归新 Future 所有，spawn 让它独立于 accept 循环执行；原局部变量不能再继续使用。spawn 的 Send/'static 约束要求任务的跨等待状态可移动且不借用短命外部数据，不是要求任务永远不释放。`_shutdown_complete` 是真实字段，Handler 释放时 Sender 才结束存活；换成不绑定的 `_` 会改变生命周期。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#tasks)。
 
 ## 读完后沿哪里继续
 

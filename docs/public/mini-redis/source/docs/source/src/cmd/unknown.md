@@ -20,7 +20,7 @@ new 保存 String，get_name 借用名字供统一日志等调用。未知命令
 
 ## Error 帧与 Rust Err 的差别
 
-<!-- source: src/cmd/unknown.rs:28-36; comments omitted -->
+<!-- source: src/cmd/unknown.rs:26-34; comments included -->
 ```rust
 #[instrument(skip(self, dst))]
 pub(crate) async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
@@ -40,6 +40,12 @@ pub(crate) async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
 ## 如何验证影响
 
 tests/server.rs 用原始 TcpStream 检查未知命令及订阅模式下 GET/SET/PUBLISH 的 Error 字节。这能验证线上约定，但不等于所有参数错误都采用同样策略；参数错误通常在到达此类型之前就已返回。
+
+## 这里的 Rust 写法：一个 Result 成功可以携带另一端的失败消息
+
+服务端 apply 成功表示 Error 帧写出成功；客户端 read_response 再把这帧解释为 Err。这两个 Result 分属不同进程和函数，不是同一个返回值。format! 创建拥有的 String，into() 或 Frame::Error 保存它，临时命令名借用结束后响应仍能存活。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../../rust-reading-guide.md#results)。
 
 ## 读完后沿哪里继续
 

@@ -2,24 +2,19 @@ use crate::{Connection, Db, Frame, Parse};
 
 use bytes::Bytes;
 
-/// Posts a message to the given channel.
-///
-/// Send a message into a channel without any knowledge of individual consumers.
-/// Consumers may subscribe to channels in order to receive the messages.
-///
-/// Channel names have no relation to the key-value namespace. Publishing on a
-/// channel named "foo" has no relation to setting the "foo" key.
+/// 向频道广播一条消息，发布者不直接持有各订阅者连接。
+/// 频道与键值表是不同命名空间：PUBLISH foo 不会覆盖 SET foo 的值。
 #[derive(Debug)]
 pub struct Publish {
-    /// Name of the channel on which the message should be published.
+    /// 拥有频道名，独立于请求帧的存活时间。
     channel: String,
 
-    /// The message to publish.
+    /// 消息可以是任意字节；具体客户端接收实现仍需检查是否无损。
     message: Bytes,
 }
 
 impl Publish {
-    /// Create a new `Publish` command which sends `message` on `channel`.
+    /// 接收可转字符串的频道名，拥有 message，构造发布命令。
     pub(crate) fn new(channel: impl ToString, message: Bytes) -> Publish {
         Publish {
             channel: channel.to_string(),
@@ -27,69 +22,38 @@ impl Publish {
         }
     }
 
-    /// Parse a `Publish` instance from a received frame.
-    ///
-    /// The `Parse` argument provides a cursor-like API to read fields from the
-    /// `Frame`. At this point, the entire frame has already been received from
-    /// the socket.
-    ///
-    /// The `PUBLISH` string has already been consumed.
-    ///
-    /// # Returns
-    ///
-    /// On success, the `Publish` value is returned. If the frame is malformed,
-    /// `Err` is returned.
-    ///
-    /// # Format
-    ///
-    /// Expects an array frame containing three entries.
+    /// 命令名已消费，从 Parse 读取频道及消息，缺失或类型错误返回 Err。
+    /// 完整格式如下；剩余参数由外层 finish 校验。
     ///
     /// ```text
     /// PUBLISH channel message
     /// ```
     pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Publish> {
-        // The `PUBLISH` string has already been consumed. Extract the `channel`
-        // and `message` values from the frame.
-        //
-        // The `channel` must be a valid string.
+        // 频道要求合法文本，读取失败则不继续发布。
         let channel = parse.next_string()?;
 
-        // The `message` is arbitrary bytes.
+        // 消息用 next_bytes 读取，不强制 UTF-8。
         let message = parse.next_bytes()?;
 
         Ok(Publish { channel, message })
     }
 
-    /// Apply the `Publish` command to the specified `Db` instance.
-    ///
-    /// The response is written to `dst`. This is called by the server in order
-    /// to execute a received command.
+    /// 服务端执行发布，向发布者回复 Integer 数量；订阅消息由其他连接任务自行发送。
     pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
-        // The shared state contains the `tokio::sync::broadcast::Sender` for
-        // all active channels. Calling `db.publish` dispatches the message into
-        // the appropriate channel.
-        //
-        // The number of subscribers currently listening on the channel is
-        // returned. This does not mean that `num_subscriber` channels will
-        // receive the message. Subscribers may drop before receiving the
-        // message. Given this, `num_subscribers` should only be used as a
-        // "hint".
+        // Db 向 broadcast Sender 同步发送，得到当前接收者数量。
+        // 接收者可能随后断开或落后丢消息，因此数量不是投递完成或消费确认。
         let num_subscribers = db.publish(&self.channel, self.message);
 
-        // The number of subscribers is returned as the response to the publish
-        // request.
+        // 把数量转换为协议 Integer，交回发布者。
         let response = Frame::Integer(num_subscribers as u64);
 
-        // Write the frame to the client.
+        // 写发布结果；即使这里失败，之前的广播也不会撤销。
         dst.write_frame(&response).await?;
 
         Ok(())
     }
 
-    /// Converts the command into an equivalent `Frame`.
-    ///
-    /// This is called by the client when encoding a `Publish` command to send
-    /// to the server.
+    /// 客户端编码 [publish, channel, message]，此处不执行广播。
     pub(crate) fn into_frame(self) -> Frame {
         let mut frame = Frame::array();
         frame.push_bulk(Bytes::from("publish".as_bytes()));

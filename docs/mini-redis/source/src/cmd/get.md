@@ -21,9 +21,10 @@ Client::get → Get::new → into_frame → 网络
 
 ## 同一结构的两个入口
 
-<!-- source: src/cmd/get.rs:50-57; comments omitted -->
+<!-- source: src/cmd/get.rs:34-39; comments included -->
 ```rust
 pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Get> {
+    // 读取必需的 UTF-8 键名；? 会把参数读取失败返回到分派器。
     let key = parse.next_string()?;
 
     Ok(Get { key })
@@ -34,17 +35,21 @@ pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Get> {
 
 ## 真正读取发生在 apply
 
-<!-- source: src/cmd/get.rs:64-81; comments omitted -->
+<!-- source: src/cmd/get.rs:44-60; comments included -->
 ```rust
 pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
+    // 取得 Bytes 克隆；Db 的锁在 get 返回时已释放。
     let response = if let Some(value) = db.get(&self.key) {
+        // 存在时生成 Bulk，直接持有 Bytes。
         Frame::Bulk(value)
     } else {
+        // 不存在时生成协议 Null；这不是连接 EOF。
         Frame::Null
     };
 
     debug!(?response);
 
+    // await 发送响应期间不持有数据库 MutexGuard。
     dst.write_frame(&response).await?;
 
     Ok(())
@@ -55,7 +60,7 @@ Db::get 同步取得 Option&lt;Bytes>。这里用 match 将业务结果翻译为
 
 ## 客户端方向是相反的转换
 
-<!-- source: src/cmd/get.rs:87-92; comments omitted -->
+<!-- source: src/cmd/get.rs:64-69; comments included -->
 ```rust
 pub(crate) fn into_frame(self) -> Frame {
     let mut frame = Frame::array();
@@ -70,6 +75,12 @@ into_frame 消费 Get，构造 [get, key] 数组；并没有访问 Db。区分�
 ## 改变这里会影响什么
 
 将缺失键改为 Error 会改变 Client::get 的 Option 语义；加入额外读取参数要同步修改 parse_frames/into_frame 与客户端 API。过期判断当前不在本文件，也不在 Db::get，而依靠后台清理；分析过期准确性必须继续读 db.rs。网络写失败仅终止此连接的操作，不会修改读到的值。
+
+## 这里的 Rust 写法：new、into_frame、apply 的接收者表达角色
+
+new 没有 self，是关联函数；key(&self) 返回借用；into_frame(self) 与 apply(self, ...) 都消费命令。客户端走前者编码，服务端走后者执行，它们操作的不是跨进程共享的同一个对象。`if let Some(value)` 把 Option 中的 Bytes 取出来放进 Bulk；缺失才构造 Null。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#receivers)。
 
 ## 读完后沿哪里继续
 

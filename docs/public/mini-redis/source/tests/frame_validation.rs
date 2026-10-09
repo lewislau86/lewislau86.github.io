@@ -3,11 +3,11 @@ use std::io::Cursor;
 
 #[test]
 fn check_rejects_invalid_negative_bulk_length() {
-    // Valid null bulk string in RESP.
+    // 合法 Null Bulk：$-1\r\n；此处直接测 Frame::check，不建立 TCP 连接。
     let mut ok = Cursor::new(&b"$-1\r\n"[..]);
     assert!(Frame::check(&mut ok).is_ok());
 
-    // Invalid negative bulk length.
+    // 非法负长度必须返回 Other，不能误当 Incomplete 让 Connection 继续等待字节。
     let mut bad = Cursor::new(&b"$-2\r\n"[..]);
     let err = Frame::check(&mut bad).unwrap_err();
 

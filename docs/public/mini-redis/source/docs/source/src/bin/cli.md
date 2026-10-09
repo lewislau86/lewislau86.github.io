@@ -16,7 +16,7 @@ CLI 是使用 Client 的应用程序，不是协议解析器。终端里的 set 
 
 ## CLI 的 SET 分支有两条路径
 
-<!-- source: src/bin/cli.rs:109-124; comments omitted -->
+<!-- source: src/bin/cli.rs:104-119; comments included -->
 ```rust
 Command::Set {
     key,
@@ -49,6 +49,12 @@ SUBSCRIBE 先检查列表非空，再消费 Client 得到 Subscriber，while let
 这里的 Command 是 clap 派生的命令行参数类型；src/cmd/mod.rs 的 Command 是服务端从 Frame 解析出来的业务指令。它们不会通过内存直接互传。新增命令时，若只增加服务端枚举，网络调用可以另外编写，但这个 CLI 不会自动拥有新子命令。
 
 main 使用 current_thread runtime；`duration_from_ms_str` 先 parse u64 再 Duration::from_millis，解析失败由 clap 阻止启动业务调用。连接错误或命令错误经 `?` 返回 main，不会自动重试。
+
+## 这里的 Rust 写法：enum、derive 和 match 怎样接起来
+
+clap 的 derive 宏读取 struct/enum 的声明和辅助属性，生成参数解析实现。`match cli.command` 消费命令枚举，并把 String/Bytes 等字段交给分支。`Some(duration)` 与 None 是 Option 的不同变体，不是两个命令。`&str` 参数临时借用键，value: Bytes 则转移值的所有权。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../../rust-reading-guide.md#macros)。
 
 ## 读完后沿哪里继续
 

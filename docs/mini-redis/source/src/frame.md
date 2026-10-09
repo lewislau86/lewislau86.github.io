@@ -20,7 +20,7 @@ Connection::parse_frame → Frame::check → Frame::parse → 返回 Frame
 
 ## 枚举先限定了本地表达能力
 
-<!-- source: src/frame.rs:12-29; comments omitted -->
+<!-- source: src/frame.rs:14-31; comments included -->
 ```rust
 #[derive(Clone, Debug)]
 pub enum Frame {
@@ -34,8 +34,10 @@ pub enum Frame {
 
 #[derive(Debug)]
 pub enum Error {
+    /// 当前字节不够一帧；Connection 将继续读，不能当成致命格式错误。
     Incomplete,
 
+    /// 格式、数值转换或文本编码等错误。
     Other(crate::Error),
 }
 ```
@@ -50,16 +52,20 @@ Bulk 正文按长度处理，不能用 CRLF 切正文。当前实现跳过尾部
 
 ## get_line 返回的是借用
 
-<!-- source: src/frame.rs:259-276; comments omitted -->
+<!-- source: src/frame.rs:263-280; comments included -->
 ```rust
 fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
+    // 从游标当前位置直接扫描输入切片，不分配新字符串。
     let start = src.position() as usize;
+    // 扫描到倒数第二字节，给后面的 i + 1 留出位置。
     let end = src.get_ref().len() - 1;
 
     for i in start..end {
         if src.get_ref()[i] == b'\r' && src.get_ref()[i + 1] == b'\n' {
+            // 找到 CRLF 后，把游标推进到下一段内容的起点。
             src.set_position((i + 2) as u64);
 
+            // 返回正文切片，排除 CRLF；切片仍引用原输入数据。
             return Ok(&src.get_ref()[start..i]);
         }
     }
@@ -75,6 +81,12 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error> {
 array/push_bulk/push_int 用于构造命令和订阅响应，push 对非 Array 会 panic。PartialEq<&str> 仅对 Simple/Bulk 比较，供客户端检查 OK、subscribe 等标记。Display 把帧转为可读形式，to_error 将意外响应包装成错误。
 
 Display 原本适合日志；Subscriber::next_message 却把 content.to_string 再变回 Bytes，导致非 UTF-8 内容可能改变。修改展示格式前必须查这些调用者，不能假定它只影响日志。From&lt;String/&str/UTF8/整数转换错误> 与 std::error::Error/Display 的实现则决定 `?` 如何把失败传出去。
+
+## 这里的 Rust 写法：类型上的能力由 trait 实现补齐
+
+get_line 的 `a` 关联返回切片与原输入字节，不延长数据寿命。`impl Display for Frame` 让 to_string 可用，`impl PartialEq<&str>` 让帧可与协议标记比较；后者的参数出现 &&str，是因为 trait 方法借用了本来已经为 &str 的右操作数。`try_into()?` 是可失败的长度转换，不是忽略溢出的强制截断。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#lifetimes)。
 
 ## 读完后沿哪里继续
 

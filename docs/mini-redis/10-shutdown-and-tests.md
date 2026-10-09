@@ -46,17 +46,23 @@ Ctrl+C / 自定义 shutdown Future 完成
 
 对照 [server::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 在外层 select 结束后的源码：
 
-<!-- source: src/server.rs:181-197; comments omitted -->
+<!-- source: src/server.rs:94-109; comments included -->
 ```rust
+// 解构并移出两个 Sender，.. 忽略其余字段。
+// 显式释放本地 Sender，避免下面把自己也算作尚未完成的持有者而一直等待。
 let Listener {
     shutdown_complete_tx,
     notify_shutdown,
     ..
 } = server;
 
+// 关闭广播，所有现有 Receiver 的 recv 将完成并触发各连接停止。
 drop(notify_shutdown);
+// 释放接入方的完成 Sender，剩余克隆由 Handler 持有。
 drop(shutdown_complete_tx);
 
+// 等待所有 Handler 释放完成 Sender，随后 recv 返回 None。
+// 这不包含显式 join 过期清理任务，后者由 DbDropGuard 另行通知。
 let _ = shutdown_complete_rx.recv().await;
 ```
 
@@ -64,15 +70,19 @@ let _ = shutdown_complete_rx.recv().await;
 
 接收一侧的 [Shutdown::recv](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/shutdown.rs) 是：
 
-<!-- source: src/shutdown.rs:36-48; comments omitted -->
+<!-- source: src/shutdown.rs:31-43; comments included -->
 ```rust
 pub(crate) async fn recv(&mut self) {
+    // 已观察到停止就直接返回，避免重复等待。
     if self.is_shutdown {
         return;
     }
 
+    // 故意忽略 recv 的 Result：收到值或通道关闭都按停止处理。
+    // 当前服务通过关闭发送端通知，不依赖发送一条 ()。
     let _ = self.notify.recv().await;
 
+    // 记录停止状态，供 Handler 循环的下一次判断使用。
     self.is_shutdown = true;
 }
 ```
@@ -94,10 +104,11 @@ Db 与 DbDropGuard 不一样：Db 会被每个连接 clone；DbDropGuard 由 Lis
 
 把数据库停止路径也追到实际代码。触发方是 [DbDropGuard 的 Drop 实现](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs)：
 
-<!-- source: src/db.rs:113-118; comments omitted -->
+<!-- source: src/db.rs:78-83; comments included -->
 ```rust
 impl Drop for DbDropGuard {
     fn drop(&mut self) {
+        // Drop 只能同步通知；此处不能 await 后台任务完成。
         self.db.shutdown_purge_task();
     }
 }
@@ -105,12 +116,14 @@ impl Drop for DbDropGuard {
 
 被调用的 [Db::shutdown_purge_task](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs) 负责更新状态并唤醒：
 
-<!-- source: src/db.rs:273-284; comments omitted -->
+<!-- source: src/db.rs:200-208; comments included -->
 ```rust
 fn shutdown_purge_task(&self) {
+    // 先在锁内更新真实状态，再发通知；Notify 自身不保存 shutdown 布尔值。
     let mut state = self.shared.state.lock().unwrap();
     state.shutdown = true;
 
+    // 先解锁再通知，降低唤醒后的无谓争锁。
     drop(state);
     self.shared.background_task.notify_one();
 }

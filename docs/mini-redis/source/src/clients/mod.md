@@ -21,7 +21,7 @@ lib.rs → clients/mod.rs
 
 ## 八行代码建立的访问路径
 
-<!-- source: src/clients/mod.rs:1-8; comments omitted -->
+<!-- source: src/clients/mod.rs:4-11; comments included -->
 ```rust
 mod client;
 pub use client::{Client, Message, Subscriber};
@@ -40,6 +40,12 @@ pub use buffered_client::BufferedClient;
 一个同步订阅者的具体类型虽然在 blocking_client.rs 中声明为 pub，但本文件没有把它作为 BlockingSubscriber 重新导出。业务可以使用公开方法返回值并让编译器推断类型；如果需要稳定地写出公开类型路径，应专门设计导出 API。
 
 更改本文件不会改变一条连接如何排队，但会使依赖旧导入路径的程序无法编译。查“Client 的 get 怎么实现”时，立即进入 client.rs；查“多任务共用连接”时，进入 buffered_client.rs。
+
+## 这里的 Rust 写法：文件名与公开路径并不是一回事
+
+`mod client` 在当前模块下定位 client.rs，`pub use client::Client` 将类型重新导出到 clients 层。外部使用 `mini_redis::clients::Client`，并不需要知道私有 client 子模块。这里是库的子模块，`crate::` 仍从 lib.rs 开始；不要把每个目录都当成一个独立 crate。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#modules)。
 
 ## 读完后沿哪里继续
 

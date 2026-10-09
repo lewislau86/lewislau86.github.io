@@ -42,13 +42,16 @@
 
 先看谁创建后台任务。[BufferedClient::buffer](../src/clients/buffered_client.rs) 由业务初始化代码调用，例如 [multiplex 实验](labs/src/bin/multiplex.rs)：
 
-<!-- source: src/clients/buffered_client.rs:67-77; comments omitted -->
+<!-- source: src/clients/buffered_client.rs:46-55; comments included -->
 ```rust
 pub fn buffer(client: Client) -> BufferedClient {
+    // 容量 32 限制待处理消息；满时 send().await 等待，形成背压。
     let (tx, rx) = channel(32);
 
+    // async move 接管 client 和 rx；spawn 要求捕获状态不借用即将失效的调用者局部变量。
     tokio::spawn(async move { run(client, rx).await });
 
+    // 只把 Sender 交给业务调用者，Receiver 和 Client 留在后台。
     BufferedClient { tx }
 }
 ```
@@ -57,15 +60,19 @@ Client 被 move 到 run 任务后，外面的 BufferedClient 只留下发送端�
 
 跟踪一个具体 GET，调用者执行的是 [BufferedClient::get](../src/clients/buffered_client.rs)：
 
-<!-- source: src/clients/buffered_client.rs:83-98; comments omitted -->
+<!-- source: src/clients/buffered_client.rs:58-73; comments included -->
 ```rust
 pub async fn get(&mut self, key: &str) -> Result<Option<Bytes>> {
+    // 把借用 key 转成拥有的 String，消息跨任务后不依赖原切片。
     let get = Command::Get(key.into());
 
+    // 每个请求建立独立 oneshot，以区分不同调用者的返回结果。
     let (tx, rx) = oneshot::channel();
 
+    // 第一处等待：将请求和回复 Sender 入队；队列满时等待可用容量。
     self.tx.send((get, tx)).await?;
 
+    // 第二处等待：取得网络操作结果；外层通道错误与内层业务错误要分别处理。
     match rx.await {
         Ok(res) => res,
         Err(err) => Err(err.into()),
@@ -77,15 +84,19 @@ pub async fn get(&mut self, key: &str) -> Result<Option<Bytes>> {
 
 后台唯一的接收者运行以下 [run](../src/clients/buffered_client.rs)：
 
-<!-- source: src/clients/buffered_client.rs:26-43; comments omitted -->
+<!-- source: src/clients/buffered_client.rs:20-33; comments included -->
 ```rust
 async fn run(mut client: Client, mut rx: Receiver<Message>) {
+    // recv 的 None 表示所有 Sender 都释放且队列已耗尽，不会再有新工作。
     while let Some((cmd, tx)) = rx.recv().await {
+        // 此处串行 await，避免多个调用者竞争读取同一条连接上的响应。
         let response = match cmd {
             Command::Get(key) => client.get(&key).await,
             Command::Set(key, value) => client.set(&key, value).await.map(|_| None),
         };
 
+        // 调用者取消等待会释放接收端，send 失败属于允许的情况。
+        // 忽略回信失败不会撤销已经执行的 SET。
         let _ = tx.send(response);
     }
 }
@@ -126,7 +137,7 @@ BufferedClient clone 的是发送句柄，所有克隆仍共享一个后台 Clie
 
 先看 [BlockingClient::connect](../src/clients/blocking_client.rs) 如何构造对象，再看它的 get 如何复用对象：
 
-<!-- source: src/clients/blocking_client.rs:71-79; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:57-65; comments included -->
 ```rust
 pub fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<BlockingClient> {
     let rt = tokio::runtime::Builder::new_current_thread()
@@ -139,7 +150,7 @@ pub fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<BlockingClient> {
 }
 ```
 
-<!-- source: src/clients/blocking_client.rs:97-99; comments omitted -->
+<!-- source: src/clients/blocking_client.rs:79-81; comments included -->
 ```rust
 pub fn get(&mut self, key: &str) -> crate::Result<Option<Bytes>> {
     self.rt.block_on(self.inner.get(key))

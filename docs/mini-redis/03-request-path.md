@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/02-rust-foundations.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/04-resp-and-connection.md)
 
+Rust 写法辅助阅读：[逐项拆解模块、类型与异步语法](/mini-redis/rust-reading-guide.md#results)。遇到陌生写法时先读对应小节，再回到下面的调用链。
+
 这一章以 `client.set("course", "rust".into()).await?` 为主线。我们关心的不是单独背会 Set 的几个方法，而是跟踪一条请求：谁创建命令，谁把它发送出去，谁修改状态，又是谁最终向业务调用者报告成功或失败。
 
 ## 这一章对应哪些源码和独立文章
@@ -64,9 +66,10 @@ editLink: false
 
 [Client::set](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/client.rs) 由业务代码调用，接收借用的 key 和拥有的 Bytes。它本身只是一个委托入口：
 
-<!-- source: src/clients/client.rs:194-199; comments omitted -->
+<!-- source: src/clients/client.rs:151-154; comments included -->
 ```rust
 pub async fn set(&mut self, key: &str, value: Bytes) -> crate::Result<()> {
+    // 不带 TTL 的 Set 交给公共 set_cmd；最后无分号的 await 表达式直接成为返回值。
     self.set_cmd(Set::new(key, value, None)).await
 }
 ```
@@ -75,15 +78,18 @@ pub async fn set(&mut self, key: &str, value: Bytes) -> crate::Result<()> {
 
 [set_cmd](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/client.rs) 是客户端这一轮请求的控制点：
 
-<!-- source: src/clients/client.rs:255-271; comments omitted -->
+<!-- source: src/clients/client.rs:197-211; comments included -->
 ```rust
 async fn set_cmd(&mut self, cmd: Set) -> crate::Result<()> {
+    // 消费 cmd 并编码；into_frame 的 self 接收者表示所有权转移。
     let frame = cmd.into_frame();
 
     debug!(request = ?frame);
 
+    // 写入完整请求，网络错误提前返回；这里没有自动重试。
     self.connection.write_frame(&frame).await?;
 
+    // 只接受 Simple OK；模式守卫 if response == "OK" 进一步限制匹配内容。
     match self.read_response().await? {
         Frame::Simple(response) if response == "OK" => Ok(()),
         frame => Err(frame.to_error()),
@@ -101,7 +107,7 @@ async fn set_cmd(&mut self, cmd: Set) -> crate::Result<()> {
 
 [Set::into_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/set.rs) 的调用者是上面的 set_cmd：
 
-<!-- source: src/cmd/set.rs:144-160; comments omitted -->
+<!-- source: src/cmd/set.rs:112-124; comments included -->
 ```rust
 pub(crate) fn into_frame(self) -> Frame {
     let mut frame = Frame::array();
@@ -109,6 +115,8 @@ pub(crate) fn into_frame(self) -> Frame {
     frame.push_bulk(Bytes::from(self.key.into_bytes()));
     frame.push_bulk(self.value);
     if let Some(ms) = self.expire {
+        // 协议接受 EX 秒和 PX 毫秒；客户端统一选择 PX。
+        // as_millis 返回整数毫秒，不足一毫秒的部分会被舍去。
         frame.push_bulk(Bytes::from("px".as_bytes()));
         frame.push_bulk(Bytes::from(ms.as_millis().to_string()));
     }
@@ -126,13 +134,16 @@ pub(crate) fn into_frame(self) -> Frame {
 
 [Command::from_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/mod.rs) 的分发代码如下：
 
-<!-- source: src/cmd/mod.rs:44-84; comments omitted -->
+<!-- source: src/cmd/mod.rs:37-63; comments included -->
 ```rust
 pub fn from_frame(frame: Frame) -> crate::Result<Command> {
+    // Parse::new 消费帧并持有数组迭代器；非 Array 立即返回错误。
     let mut parse = Parse::new(frame)?;
 
+    // 先读取命令名并转小写，使 GET/get 等大小写写法走同一分支。
     let command_name = parse.next_string()?.to_lowercase();
 
+    // 借用命令名的 str 切片匹配，再委托具体 parse_frames 读取剩余参数。
     let command = match &command_name[..] {
         "get" => Command::Get(Get::parse_frames(&mut parse)?),
         "publish" => Command::Publish(Publish::parse_frames(&mut parse)?),
@@ -141,12 +152,15 @@ pub fn from_frame(frame: Frame) -> crate::Result<Command> {
         "unsubscribe" => Command::Unsubscribe(Unsubscribe::parse_frames(&mut parse)?),
         "ping" => Command::Ping(Ping::parse_frames(&mut parse)?),
         _ => {
+            // 未知名称提前返回，不检查未消费的参数；Unknown::apply 稍后负责写错误响应。
             return Ok(Command::Unknown(Unknown::new(command_name)));
         }
     };
 
+    // 已知命令必须恰好消费参数；剩余项意味着不支持的格式。
     parse.finish()?;
 
+    // 返回拥有各参数的命令值，交给 Handler 执行。
     Ok(command)
 }
 ```
@@ -157,28 +171,37 @@ pub fn from_frame(frame: Frame) -> crate::Result<Command> {
 
 [Set::parse_frames](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/set.rs) 依次读取键、值和可选 TTL：
 
-<!-- source: src/cmd/set.rs:80-121; comments omitted -->
+<!-- source: src/cmd/set.rs:61-94; comments included -->
 ```rust
 pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Set> {
     use ParseError::EndOfStream;
 
+    // 必需键名；参数缺失和非 UTF-8 都使解析失败。
     let key = parse.next_string()?;
 
+    // 必需值，按原始字节读取。
     let value = parse.next_bytes()?;
 
+    // 缺省无 TTL；类型可从后面的 Some(Duration) 推断出来。
     let mut expire = None;
 
+    // 尝试读取选项名；match 分别处理成功、合法结束和真正错误。
     match parse.next_string() {
         Ok(s) if s.to_uppercase() == "EX" => {
+            // 匹配 EX 后必须再读整数，转换为秒时长。
             let secs = parse.next_int()?;
             expire = Some(Duration::from_secs(secs));
         }
         Ok(s) if s.to_uppercase() == "PX" => {
+            // 匹配 PX 后必须再读整数，转换为毫秒时长。
             let ms = parse.next_int()?;
             expire = Some(Duration::from_millis(ms));
         }
+        // 其他选项尚未实现；Err 经 Handler 传播会结束此连接，其他连接不受影响。
         Ok(_) => return Err("currently `SET` only supports the expiration option".into()),
+        // 仅在可选项起点，EndOfStream 表示没有选项；空块表示正常继续。
         Err(EndOfStream) => {}
+        // 保留真实错误，Into 将 ParseError 转换为库统一错误类型。
         Err(err) => return Err(err.into()),
     }
 
@@ -194,11 +217,13 @@ pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Set> {
 
 [Command::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/mod.rs) 的 `Set(cmd) => cmd.apply(db, dst).await` 将控制权交给 [Set::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/set.rs)：
 
-<!-- source: src/cmd/set.rs:128-138; comments omitted -->
+<!-- source: src/cmd/set.rs:99-109; comments included -->
 ```rust
 pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
+    // self 按值传入，因此可把 key/value 移入 Db；返回时写入已发生。
     db.set(self.key, self.value, self.expire);
 
+    // 构造 Simple OK 后 await 写回；失败不会撤销前面的数据库更新。
     let response = Frame::Simple("OK".to_string());
     debug!(?response);
     dst.write_frame(&response).await?;
@@ -219,17 +244,21 @@ pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<
 
 GET 走同一条通信路径，但 [Get::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/get.rs) 从数据库读出可选值：
 
-<!-- source: src/cmd/get.rs:64-81; comments omitted -->
+<!-- source: src/cmd/get.rs:44-60; comments included -->
 ```rust
 pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
+    // 取得 Bytes 克隆；Db 的锁在 get 返回时已释放。
     let response = if let Some(value) = db.get(&self.key) {
+        // 存在时生成 Bulk，直接持有 Bytes。
         Frame::Bulk(value)
     } else {
+        // 不存在时生成协议 Null；这不是连接 EOF。
         Frame::Null
     };
 
     debug!(?response);
 
+    // await 发送响应期间不持有数据库 MutexGuard。
     dst.write_frame(&response).await?;
 
     Ok(())
@@ -238,15 +267,18 @@ pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<
 
 Db 返回 Some 时，Get 构造 Bulk；返回 None 时构造 Null。两者都是正常响应，都会经同一个 dst 写回。[Client::get](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/client.rs) 再将响应恢复为调用者使用的 Option：
 
-<!-- source: src/clients/client.rs:145-165; comments omitted -->
+<!-- source: src/clients/client.rs:113-129; comments included -->
 ```rust
 pub async fn get(&mut self, key: &str) -> crate::Result<Option<Bytes>> {
+    // Get::new 保存 key，再由 into_frame 生成请求数组；此处没有访问服务端 Db。
     let frame = Get::new(key).into_frame();
 
     debug!(request = ?frame);
 
+    // 完整编码并 flush 请求；&frame 是共享借用，发送期间帧仍归本方法拥有。
     self.connection.write_frame(&frame).await?;
 
+    // 等待一帧并解读业务结果；接受 Simple/Bulk，Null 转为 None，其他帧类型报错。
     match self.read_response().await? {
         Frame::Simple(value) => Ok(Some(value.into())),
         Frame::Bulk(value) => Ok(Some(value)),

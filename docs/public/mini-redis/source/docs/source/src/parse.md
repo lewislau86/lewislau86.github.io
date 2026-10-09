@@ -16,7 +16,7 @@ Command::from_frame → Parse::new → next_string 取命令名
 
 ## new 确认顶层必须是数组
 
-<!-- source: src/parse.rs:36-51; comments omitted -->
+<!-- source: src/parse.rs:31-45; comments included -->
 ```rust
 pub(crate) fn new(frame: Frame) -> Result<Parse, ParseError> {
     let array = match frame {
@@ -29,6 +29,7 @@ pub(crate) fn new(frame: Frame) -> Result<Parse, ParseError> {
     })
 }
 
+/// 消费并返回下一项；ok_or 将 Option::None 转换为 EndOfStream。
 fn next(&mut self) -> Result<Frame, ParseError> {
     self.parts.next().ok_or(ParseError::EndOfStream)
 }
@@ -44,7 +45,7 @@ next_string 接受 Simple 或 Bulk，但 Bulk 必须是 UTF-8，并复制为 Str
 
 ## 结束与错误如何影响连接
 
-<!-- source: src/parse.rs:117-123; comments omitted -->
+<!-- source: src/parse.rs:95-101; comments included -->
 ```rust
 pub(crate) fn finish(&mut self) -> Result<(), ParseError> {
     if self.parts.next().is_none() {
@@ -62,6 +63,12 @@ Set 读取必需 key/value 时 EndOfStream 是失败，读取可选 TTL 开始�
 ## 修改时怎么验证
 
 沿 Command::from_frame 检查迭代器是否已吃掉命令名，再进入具体 parse_frames；不要把命令名重复读取。边界用例至少包含缺必需项、缺可选项、类型不符、多余项，以及非法 UTF-8 键与合法二进制值的区别。
+
+## 这里的 Rust 写法：拥有元素的迭代器与借用迭代不同
+
+`Vec::into_iter` 将元素所有权交给迭代器，每次 next 移出一个 Frame；所以 next_bytes 能直接返回 Bulk 的 Bytes。`ok_or` 把 None 变成错误，`ok_or_else` 只在需要时调用闭包生成错误。`atoi::<u64>` 明确泛型类型，避免把尖括号误读成比较表达式。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#iterators)。
 
 ## 读完后沿哪里继续
 

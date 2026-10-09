@@ -16,7 +16,7 @@
 
 ## SET/GET 用断言补全 hello_world
 
-<!-- source: tests/client.rs:32-40; comments omitted -->
+<!-- source: tests/client.rs:29-37; comments included -->
 ```rust
 async fn key_value_get_set() {
     let (addr, _) = start_server().await;
@@ -46,7 +46,7 @@ async fn key_value_get_set() {
 
 ## 临时服务的生命周期
 
-<!-- source: tests/client.rs:107-114; comments omitted -->
+<!-- source: tests/client.rs:103-110; comments included -->
 ```rust
 async fn start_server() -> (SocketAddr, JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -62,9 +62,15 @@ async fn start_server() -> (SocketAddr, JoinHandle<()>) {
 
 ## 怎么运行与如何解释结果
 
-可在仓库根目录执行 `cargo test --locked --test client`。本轮只补源码文章，未重新执行；此前执行情况见[验证记录](../../validation.md)。
+可在仓库根目录执行 `cargo test --locked --test client`。注释中文化后已按分组复核；执行范围见[验证记录](../../validation.md)。
 
 现有文本消息断言没有覆盖非 UTF-8 Pub/Sub，基本往返也未覆盖断线重连、重复频道、确认与推送交错或多调用者并发。读测试时把断言与缺失场景区分开，才能判断一个改动到底有没有证据支持。
+
+## 这里的 Rust 写法：异步测试宏和两次 unwrap
+
+tokio::test 建立测试 runtime；unwrap 在这里用于把不符合预期的结果变成测试失败。GET 的第一个 unwrap 检查 Result，第二个检查 Option 是否有值。测试可以选择 panic 表示失败，业务 API 通常应返回或处理错误，不能直接照搬所有 unwrap。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#macros)。
 
 ## 读完后沿哪里继续
 

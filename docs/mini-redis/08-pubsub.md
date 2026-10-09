@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/07-expiration.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/09-clients.md)
 
+Rust 写法辅助阅读：[逐项拆解模块、类型与异步语法](/mini-redis/rust-reading-guide.md#streams)。遇到陌生写法时先读对应小节，再回到下面的调用链。
+
 本章对应的独立源码文章：[src/cmd/publish.rs](/mini-redis/source/src/cmd/publish.md)、[src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md)、[src/db.rs](/mini-redis/source/src/db.md)、[src/clients/client.rs](/mini-redis/source/src/clients/client.md)、[examples/pub.rs](/mini-redis/source/examples/pub.md)、[examples/sub.rs](/mini-redis/source/examples/sub.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
 
 GET 是客户端先问、服务器再答。订阅新闻频道后，客户端可能很久不发请求，服务器却需要在别人发布消息时主动推送。这就不再是简单的“一次请求对应一次普通响应”。
@@ -61,22 +63,30 @@ Occupied/Vacant 让“找到已有频道或插入新频道”在一次 entry 操
 
 将上面的三类事件对应到 [Subscribe::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 的实际循环，省略注释如下：
 
-<!-- source: src/cmd/subscribe.rs:115-154; comments omitted -->
+<!-- source: src/cmd/subscribe.rs:71-108; comments included -->
 ```rust
-let mut subscriptions = StreamMap::new();
+// 每个频道有一个 broadcast Receiver；StreamMap 按频道名管理流并合并消息。
+    // 频道名唯一，同名 insert 会替换原流，不创建同名并列条目。
+    let mut subscriptions = StreamMap::new();
 
     loop {
+        // drain(..) 取出并清空待订阅列表，所有 String 移交建立订阅函数。
+        // 后续 SUBSCRIBE 会重新往该 Vec 添加项，下轮循环再处理。
         for channel_name in self.channels.drain(..) {
             subscribe_to_channel(channel_name, &mut subscriptions, db, dst).await?;
         }
 
+        // select 同时等待频道消息、socket 命令和停止；选中分支内的 write_frame 仍需 await。
+        // 因此等待写回时，这个任务不会同时处理另一分支。
         select! {
+            // Some 模式只接收有消息的流结果；空 StreamMap 返回 None 时本轮禁用该分支。
             Some((channel_name, msg)) = subscriptions.next() => {
                 dst.write_frame(&make_message_frame(channel_name, msg)).await?;
             }
             res = dst.read_frame() => {
                 let frame = match res? {
                     Some(frame) => frame,
+                    // 对端 EOF 结束订阅；流被释放，Receiver 也随之释放。
                     None => return Ok(())
                 };
 
@@ -101,22 +111,27 @@ let mut subscriptions = StreamMap::new();
 
 进入 [subscribe_to_channel](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 看资源交接：
 
-<!-- source: src/cmd/subscribe.rs:176-197; comments omitted -->
+<!-- source: src/cmd/subscribe.rs:127-149; comments included -->
 ```rust
 let mut rx = db.subscribe(channel_name.clone());
 
+// stream! 把 recv 循环适配成 Stream；yield 产出一个值后暂停，下一次轮询继续。
+// Box::pin 装箱并固定这个匿名流，Receiver 的所有权随流保存。
 let rx = Box::pin(async_stream::stream! {
     loop {
         match rx.recv().await {
             Ok(msg) => yield msg,
+            // 接收落后时跳过已丢消息继续；当前实现不会把丢失数量通知客户端。
             Err(broadcast::error::RecvError::Lagged(_)) => {}
             Err(_) => break,
         }
     }
 });
 
+// 按频道名存入此连接的 StreamMap；clone 为键保留独立的 String。
 subscriptions.insert(channel_name.clone(), rx);
 
+// 订阅建立后才发确认，携带该连接当前频道数量。
 let response = make_subscribe_frame(channel_name, subscriptions.len());
 dst.write_frame(&response).await?;
 
@@ -136,13 +151,17 @@ Db 创建/复用频道并返回 Receiver；这里将 Receiver 移进流，流放
 
 [Publish::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/publish.rs) 接受的 dst 属于发布连接：
 
-<!-- source: src/cmd/publish.rs:67-87; comments omitted -->
+<!-- source: src/cmd/publish.rs:42-54; comments included -->
 ```rust
 pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
+    // Db 向 broadcast Sender 同步发送，得到当前接收者数量。
+    // 接收者可能随后断开或落后丢消息，因此数量不是投递完成或消费确认。
     let num_subscribers = db.publish(&self.channel, self.message);
 
+    // 把数量转换为协议 Integer，交回发布者。
     let response = Frame::Integer(num_subscribers as u64);
 
+    // 写发布结果；即使这里失败，之前的广播也不会撤销。
     dst.write_frame(&response).await?;
 
     Ok(())
@@ -151,7 +170,7 @@ pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<
 
 它调用的 [Db::publish](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs) 只访问内部频道表：
 
-<!-- source: src/db.rs:256-269; comments omitted -->
+<!-- source: src/db.rs:187-197; comments included -->
 ```rust
 pub(crate) fn publish(&self, key: &str, value: Bytes) -> usize {
     let state = self.shared.state.lock().unwrap();
@@ -159,7 +178,9 @@ pub(crate) fn publish(&self, key: &str, value: Bytes) -> usize {
     state
         .pub_sub
         .get(key)
+        // 有 Sender 时尝试 send；没有活接收者会失败，转成数量 0。
         .map(|tx| tx.send(value).unwrap_or(0))
+        // 频道不存在时 Option 为 None，直接返回 0。
         .unwrap_or(0)
 }
 ```

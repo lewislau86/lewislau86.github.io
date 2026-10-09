@@ -20,7 +20,7 @@ editLink: false
 
 ## 这个测试真正完成的路径
 
-<!-- source: tests/buffered_client.rs:13-24; comments omitted -->
+<!-- source: tests/buffered_client.rs:11-22; comments included -->
 ```rust
 #[tokio::test]
 async fn pool_key_value_get_set() {
@@ -44,7 +44,7 @@ set/get 顺序 await，因此覆盖消息进入 mpsc、后台调用 Client、one
 
 ## 启动和退出的范围
 
-<!-- source: tests/buffered_client.rs:26-33; comments omitted -->
+<!-- source: tests/buffered_client.rs:24-31; comments included -->
 ```rust
 async fn start_server() -> (SocketAddr, JoinHandle<()>) {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -58,7 +58,13 @@ async fn start_server() -> (SocketAddr, JoinHandle<()>) {
 
 本地端口 0 避免固定端口冲突；返回的 JoinHandle 在测试中被忽略，没有显式等待 server 停机。这与 docs/labs 中发送专用停止信号并等待退出的实验不同。
 
-可执行 `cargo test --locked --test buffered_client`。本文没有新增或运行测试，既有结果见[验证记录](/mini-redis/validation.md)。若未来把此实现改成真正的连接池，应新增连接分配与跨连接状态边界的验证，不能只沿用这个测试名作为依据。
+可执行 `cargo test --locked --test buffered_client`。本文没有新增测试；注释中文化后的执行结果见[验证记录](/mini-redis/validation.md)。若未来把此实现改成真正的连接池，应新增连接分配与跨连接状态边界的验证，不能只沿用这个测试名作为依据。
+
+## 这里的 Rust 写法：下划线丢弃 JoinHandle 不等于等待退出
+
+`let (addr, _) = start_server().await` 只保留地址。丢弃 JoinHandle 不会替测试 await 服务结束，也不是发送停止信号；任务生命周期还受测试 runtime 影响。验证优雅停机应使用可控停止信号并明确 join，与本测试的基础读写目标区分开。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#channels)。
 
 ## 读完后沿哪里继续
 

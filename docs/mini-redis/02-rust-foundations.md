@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/01-first-run.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/03-request-path.md)
 
+Rust 写法辅助阅读：[逐项拆解模块、类型与异步语法](/mini-redis/rust-reading-guide.md#receivers)。遇到陌生写法时先读对应小节，再回到下面的调用链。
+
 本章对应的独立源码文章：[src/lib.rs](/mini-redis/source/src/lib.md)、[src/cmd/set.rs](/mini-redis/source/src/cmd/set.md)、[src/parse.rs](/mini-redis/source/src/parse.md)、[src/db.rs](/mini-redis/source/src/db.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
 
 上一章已经运行自己的 hello_tokio 客户端，其中 `let mut client`、`"rust".into()` 和返回的 `Some(...)` 都还只是初见。先从这些代码背后的数据责任开始：服务器需要接收一块数据、保存它、让多个请求读取它，最后释放它。Rust 把这些责任写进类型与函数签名。理解这个过程，比背语法表更容易理解借用检查器；异步执行的细节留到第 05 章。

@@ -6,10 +6,8 @@ use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tokio::task::JoinHandle;
 
-/// A basic "hello world" style test. A server instance is started in a
-/// background task. A client instance is then established and used to initialize
-/// the buffer. Set and get commands are sent to the server. The response is
-/// then evaluated.
+/// 启动临时服务，建立 Client 并包装为 BufferedClient，顺序验证 SET/GET 的精确字节。
+/// 测试名含 pool，但实现是一条连接的队列，不是连接池，也没有覆盖多任务并发。
 #[tokio::test]
 async fn pool_key_value_get_set() {
     let (addr, _) = start_server().await;

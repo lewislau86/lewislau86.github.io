@@ -9,6 +9,10 @@
       {
         "text": "源码阅读索引",
         "link": "/mini-redis/source/"
+      },
+      {
+        "text": "Rust 源码阅读说明",
+        "link": "/mini-redis/rust-reading-guide"
       }
     ]
   },

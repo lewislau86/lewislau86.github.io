@@ -66,9 +66,10 @@ pub(crate) fn get(&self, key: &str) -> Option<Bytes> {
 
 调用者 [Set::apply](../src/cmd/set.rs) 先调用 Db::set，再写 OK。下面取出 [Db::set](../src/db.rs) 中更新两张表的连续代码；进入这段前已取得 state 锁并算好 expires_at、notify：
 
-<!-- source: src/db.rs:184-219; comments omitted -->
+<!-- source: src/db.rs:134-163; comments included -->
 ```rust
-let prev = state.entries.insert(
+// insert 返回被替换的旧 Entry，供下面撤销旧过期索引。
+    let prev = state.entries.insert(
         key.clone(),
         Entry {
             data: value,
@@ -76,19 +77,24 @@ let prev = state.entries.insert(
         },
     );
 
+    // 即使这次不带 TTL，也要撤销被覆盖记录的旧期限。
     if let Some(prev) = prev {
         if let Some(when) = prev.expires_at {
+            // 移除旧 (时刻, 键) 元组，防止未来误删新值。
             state.expirations.remove(&(when, key.clone()));
         }
     }
 
+    // 先删除旧索引，再插入新索引；相同元组若反过来操作，会误删刚插入的记录。
     if let Some(when) = expires_at {
         state.expirations.insert((when, key));
     }
 
+    // 显式 drop MutexGuard 提前解锁，让被唤醒的任务可以立即竞争锁。
     drop(state);
 
     if notify {
+        // Notify 只是提醒重新查看共享索引，不为每次 SET 创建一份清理任务。
         self.shared.background_task.notify_one();
     }
 }

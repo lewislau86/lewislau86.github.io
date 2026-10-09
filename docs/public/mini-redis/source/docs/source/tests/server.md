@@ -16,18 +16,21 @@
 
 ## 基本读写同时检查缺失值与半关闭
 
-<!-- source: tests/server.rs:43-57; comments omitted -->
+<!-- source: tests/server.rs:41-55; comments included -->
 ```rust
 .write_all(b"*2\r\n$3\r\nGET\r\n$5\r\nhello\r\n")
         .await
         .unwrap();
 
+    // 仅关闭写方向，仍允许从同一 socket 读取服务端响应。
     stream.shutdown().await.unwrap();
 
+    // 读取 Bulk world，即使客户端已不再发送新请求。
     let mut response = [0; 11];
     stream.read_exact(&mut response).await.unwrap();
     assert_eq!(b"$5\r\nworld\r\n", &response);
 
+    // AsyncRead 返回 0 表示 EOF；这里直接读 socket，不是 Connection 的 Option 返回值。
     assert_eq!(0, stream.read(&mut response).await.unwrap());
 }
 ```
@@ -59,6 +62,12 @@ key_value_timeout 调 pause，再 SET EX 1，读到值后 advance 一秒，期�
 现有可用分组命令是 `cargo test --locked --test server -- --skip key_value_timeout`；这会明确排除已知未完成场景，不构成全套测试通过。测试启动服务绑定端口 0，spawn 后不保存可等待的服务句柄，因此它也不是优雅停机完成性的专门验证。
 
 修改服务时，可按调用链选择断言：命令格式改动看线上字节，Db 改动看覆盖和跨连接可见性，订阅改动看确认与推送交错，退出改动则需要增加受控停止并等待所有任务的场景。
+
+## 这里的 Rust 写法：虚拟时间与真实 I/O 是两个推进条件
+
+tokio::time::advance 推进 runtime 的时钟，TCP 读写依然需要实际 I/O 就绪与任务调度。read_exact 的完成条件是收齐目标长度，不是时钟已经到点。原有超时场景的失败边界保留在验证记录，不能通过注释翻译宣称已经修复。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#tasks)。
 
 ## 读完后沿哪里继续
 

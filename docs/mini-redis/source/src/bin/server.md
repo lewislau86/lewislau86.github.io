@@ -20,17 +20,25 @@ editLink: false
 
 ## 沿 main 看创建顺序
 
-<!-- source: src/bin/server.rs:31-44; comments omitted -->
+<!-- source: src/bin/server.rs:28-48; comments included -->
 ```rust
+// 属性宏生成同步入口和 Tokio runtime，然后驱动下面的 async 函数体。
 #[tokio::main]
 pub async fn main() -> mini_redis::Result<()> {
+    // ? 解开 Ok；Err 则转换为 main 的错误类型并提前返回。
     set_up_logging()?;
 
+    // Parser 是 trait，derive(Parser) 生成实现；导入 trait 后可调用 parse。
     let cli = Cli::parse();
+    // Option<u16>：Some 使用用户端口，None 使用默认值；这里不是会 panic 的 unwrap。
     let port = cli.port.unwrap_or(DEFAULT_PORT);
 
+    // 绑定本机监听地址；await 等待绑定结果，? 在失败时提前返回 main。
     let listener = TcpListener::bind(&format!("127.0.0.1:{port}")).await?;
 
+    // server 来自顶部 use mini_redis::server，并非指当前这个同名文件。
+    // listener 被移动给库；ctrl_c() 返回等待信号的 Future，此处没有先等待 Ctrl+C。
+    // run 内部并发等待接入与停止；它返回后 main 才继续执行 Ok(())。
     server::run(listener, signal::ctrl_c()).await;
 
     Ok(())
@@ -50,6 +58,12 @@ pub async fn main() -> mini_redis::Result<()> {
 ## 哪些修改会影响外部使用
 
 修改 bind 地址会改变可连接范围；修改默认端口会影响不带 --port 的用户；把 stop Future 换成其他来源会改变退出触发方式。修改命令或协议应去 cmd/connection，而不是往 main 中继续堆业务。当前入口可由 cargo run --bin mini-redis-server 启动，笔记用 --port 16379 与默认实例区分。
+
+## 这里的 Rust 写法：从 use 和属性宏读懂整个入口
+
+`use mini_redis::{server, DEFAULT_PORT}` 引入库公开的模块与常量；server 不是由本文件的名字自动决定的。`#[tokio::main]` 生成 runtime 来驱动异步函数。`Cli::parse` 来自导入的 Parser trait 和 derive(Parser) 生成的实现。`Option<u16>::unwrap_or` 提供默认端口，`.await?` 先等待再传播错误，最后 `Ok(())` 表示成功且无额外返回值。`signal::ctrl_c()` 先产生 Future，真正等待发生在库的 select 中。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#modules)。
 
 ## 读完后沿哪里继续
 

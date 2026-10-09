@@ -16,7 +16,7 @@ binary / examples / tests → mini_redis 公开名字
 
 ## 先区分 mod 和 pub use
 
-<!-- source: src/lib.rs:27-51; comments omitted -->
+<!-- source: src/lib.rs:17-42; comments included -->
 ```rust
 pub mod clients;
 pub use clients::{BlockingClient, BufferedClient, Client};
@@ -25,6 +25,7 @@ pub mod cmd;
 pub use cmd::Command;
 
 mod connection;
+// 重新导出类型，模块本身保持私有；外部仍能使用 mini_redis::Connection。
 pub use connection::Connection;
 
 pub mod frame;
@@ -37,6 +38,8 @@ use db::DbDropGuard;
 mod parse;
 use parse::{Parse, ParseError};
 
+// 声明公开 server 模块；此处按文件规则加载 src/server.rs。
+// 外部完整路径为 mini_redis::server::run，use 只是让调用处能写短名字。
 pub mod server;
 
 mod shutdown;
@@ -54,6 +57,12 @@ use shutdown::Shutdown;
 ## 阅读时的判断
 
 `pub mod clients` 暴露模块，clients 内部又重导出具体类型，根模块再提供简短路径。判断一个名字能不能被外部访问，要沿整条导出链看；看到 struct 前写 pub，并不足以证明它所在模块也公开。修改这里属于 API 兼容性变更，不会直接加快 SET。
+
+## 这里的 Rust 写法：从 pub mod 到 pub use
+
+`mod connection` 先把文件加入库的模块树，`pub use connection::Connection` 再给外部一个可访问的类型路径。前者管理模块，后者管理公开名字。库根里的 `crate::` 指向这里，binary 中的 `crate::` 则指向它自己的入口。错误类型中的 `Box<dyn Error + Send + Sync>` 把不同具体错误放在统一接口后面，Result 别名仍保留成功类型 T。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#modules)。
 
 ## 读完后沿哪里继续
 

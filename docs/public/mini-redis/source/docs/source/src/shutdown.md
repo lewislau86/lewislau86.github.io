@@ -17,9 +17,10 @@ server::run drop Sender → recv 完成 → is_shutdown=true
 
 ## new、查询与等待的关系
 
-<!-- source: src/shutdown.rs:21-49; comments omitted -->
+<!-- source: src/shutdown.rs:16-44; comments included -->
 ```rust
 impl Shutdown {
+    /// 接管 Receiver 的所有权，为一个连接建立停止状态。
     pub(crate) fn new(notify: broadcast::Receiver<()>) -> Shutdown {
         Shutdown {
             is_shutdown: false,
@@ -27,17 +28,23 @@ impl Shutdown {
         }
     }
 
+    /// 同步查询本地标记，不会等待或主动读取通知。
     pub(crate) fn is_shutdown(&self) -> bool {
         self.is_shutdown
     }
 
+    /// 首次调用等待停止；一旦记住停止，后续调用立即返回。
     pub(crate) async fn recv(&mut self) {
+        // 已观察到停止就直接返回，避免重复等待。
         if self.is_shutdown {
             return;
         }
 
+        // 故意忽略 recv 的 Result：收到值或通道关闭都按停止处理。
+        // 当前服务通过关闭发送端通知，不依赖发送一条 ()。
         let _ = self.notify.recv().await;
 
+        // 记录停止状态，供 Handler 循环的下一次判断使用。
         self.is_shutdown = true;
     }
 }
@@ -54,6 +61,12 @@ Handler 的 select 停止分支返回 Ok，回到 spawn 闭包后 Handler 随任
 ## 改动会影响什么
 
 多留一个 broadcast Sender 会延迟所有接收者观察关闭；误把 recv 的通道关闭当作可忽略并继续无限等待，会破坏主流程退出。应在空闲普通连接、订阅连接和已开始写响应三种位置分别检查停机路径。
+
+## 这里的 Rust 写法：忽略结果和保存状态各自负责什么
+
+`let _ = self.notify.recv().await` 丢弃返回结果，但仍等待该 Future 完成。当前服务关闭 Sender 会得到接收错误，这里也把它解释为停止。`bool` 保存已经观察到停止的事实，使以后 recv 立即返回；单独调用 is_shutdown 不会主动轮询通道。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#channels)。
 
 ## 读完后沿哪里继续
 

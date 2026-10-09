@@ -33,9 +33,11 @@ Db::new 每个服务实例创建一次，克隆 Db 不会复制整张表。清�
 
 ## get 先在锁内取得独立可用的值
 
-<!-- source: src/db.rs:145-152; comments omitted -->
+<!-- source: src/db.rs:106-111; comments included -->
 ```rust
 pub(crate) fn get(&self, key: &str) -> Option<Bytes> {
+    // lock 返回 MutexGuard，离开作用域时自动解锁；unwrap 在锁中毒时会 panic。
+    // 返回 Bytes 克隆使后续网络写不必继续持锁。
     let state = self.shared.state.lock().unwrap();
     state.entries.get(key).map(|entry| entry.data.clone())
 }
@@ -45,16 +47,19 @@ pub(crate) fn get(&self, key: &str) -> Option<Bytes> {
 
 ## set 的顺序保证两张结构一致
 
-<!-- source: src/db.rs:158-219; comments omitted -->
+<!-- source: src/db.rs:115-163; comments included -->
 ```rust
 pub(crate) fn set(&self, key: String, value: Bytes, expire: Option<Duration>) {
     let mut state = self.shared.state.lock().unwrap();
 
+    // 先判断是否需要重排后台等待；只有新期限比当前最早期限更早时才需要唤醒。
     let mut notify = false;
 
     let expires_at = expire.map(|duration| {
+        // Option::map 只在 Some(duration) 时运行闭包，将相对时长转为绝对时刻。
         let when = Instant::now() + duration;
 
+        // 若没有旧期限，unwrap_or(true) 表示需要唤醒原本只等 Notify 的任务。
         notify = state
             .next_expiration()
             .map(|expiration| expiration > when)
@@ -63,6 +68,7 @@ pub(crate) fn set(&self, key: String, value: Bytes, expire: Option<Duration>) {
         when
     });
 
+    // insert 返回被替换的旧 Entry，供下面撤销旧过期索引。
     let prev = state.entries.insert(
         key.clone(),
         Entry {
@@ -71,19 +77,24 @@ pub(crate) fn set(&self, key: String, value: Bytes, expire: Option<Duration>) {
         },
     );
 
+    // 即使这次不带 TTL，也要撤销被覆盖记录的旧期限。
     if let Some(prev) = prev {
         if let Some(when) = prev.expires_at {
+            // 移除旧 (时刻, 键) 元组，防止未来误删新值。
             state.expirations.remove(&(when, key.clone()));
         }
     }
 
+    // 先删除旧索引，再插入新索引；相同元组若反过来操作，会误删刚插入的记录。
     if let Some(when) = expires_at {
         state.expirations.insert((when, key));
     }
 
+    // 显式 drop MutexGuard 提前解锁，让被唤醒的任务可以立即竞争锁。
     drop(state);
 
     if notify {
+        // Notify 只是提醒重新查看共享索引，不为每次 SET 创建一份清理任务。
         self.shared.background_task.notify_one();
     }
 }
@@ -108,6 +119,12 @@ shutdown_purge_task 持锁设 shutdown=true，解锁后 notify；DbDropGuard 的
 ## 修改不能只盯一张 HashMap
 
 增加 DEL 或访问时过期判断，都应同时维护主表与索引；分片锁要重新设计跨结构一致性；频道回收要协调新订阅与发布。验证 GET/SET 只是起点，还要验证覆盖 TTL、集中到期、跨连接可见性和停止唤醒。
+
+## 这里的 Rust 写法：为什么 &self 仍然能写数据库
+
+Db 只通过 &self 共享借用句柄，Mutex 在运行时提供对 State 的独占访问，因此修改不用把整个 Db 变成 &mut。Guard 是锁的持有凭据，drop 负责解锁；Arc 只管共享存活，不能替代锁。`let state = &mut *state` 是通过 DerefMut 借到结构体并遮蔽变量，让字段借用可拆分，原锁并没有释放。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](/mini-redis/rust-reading-guide.md#guards)。
 
 ## 读完后沿哪里继续
 

@@ -60,17 +60,21 @@ course\r\n   第 2 个元素内容及尾部 CRLF
 
 [Connection](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/connection.rs) 持有两样东西：`BufWriter<TcpStream>` 和 `BytesMut`。前者批量写，后者缓存读到但还没有处理完的字节。初始 4 KiB 是预分配容量，不是接收上限。
 
-先读 [Connection::read_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/connection.rs) 本身。以下是原函数去除注释后的实现：
+先读 [Connection::read_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/connection.rs) 本身。以下节选保留当前源码中的中文注释：
 
-<!-- source: src/connection.rs:56-81; comments omitted -->
+<!-- source: src/connection.rs:38-56; comments included -->
 ```rust
 pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
     loop {
+        // 优先消费已缓存的数据；? 先处理 Result，if let 再处理 Option。
         if let Some(frame) = self.parse_frame()? {
             return Ok(Some(frame));
         }
 
+        // 当前不足一帧，再异步追加字节；read_buf 返回 0 表示 EOF。
+        // await 等待期间让出任务执行机会，不是创建一个新线程。
         if 0 == self.stream.read_buf(&mut self.buffer).await? {
+            // 对端关闭时缓冲必须为空才算正常 EOF；残留半帧说明请求被截断。
             if self.buffer.is_empty() {
                 return Ok(None);
             } else {
@@ -111,26 +115,36 @@ pub async fn read_frame(&mut self) -> crate::Result<Option<Frame>> {
 
 把 [parse_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/connection.rs) 放回它的调用者 read_frame 看：
 
-<!-- source: src/connection.rs:87-146; comments omitted -->
+<!-- source: src/connection.rs:59-89; comments included -->
 ```rust
 fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
     use frame::Error::Incomplete;
 
+    // Cursor 包装字节切片借用并记录位置；Buf trait 提供 advance、remaining 等方法。
     let mut buf = Cursor::new(&self.buffer[..]);
 
+    // 先 check 确认边界，避免半帧时反复创建完整 Frame 的 String/Vec。
     match Frame::check(&mut buf) {
         Ok(_) => {
+            // check 从零推进到帧尾，所以当前位置就是这帧消费的字节数。
             let len = buf.position() as usize;
 
+            // parse 必须从起点重新读取，不可沿用 check 留下的帧尾位置。
             buf.set_position(0);
 
+            // 解析出拥有数据的 Frame；失败传播到当前连接的调用者，不会自动停止其他连接。
             let frame = Frame::parse(&mut buf)?;
 
+            // 只消费已经解析的 len 字节，保留同次读取的后续帧。
+            // BytesMut 负责底层存储管理，不应在这里把整个缓冲清空。
             self.buffer.advance(len);
 
+            // 将 Frame 交给调用者；返回值不借用 self.buffer。
             Ok(Some(frame))
         }
+        // 半帧是 TCP 正常现象，转为 Ok(None)，让 read_frame 循环继续读取。
         Err(Incomplete) => Ok(None),
+        // 真正格式错误通过 Into 转为统一错误，最终可使当前 Handler 返回。
         Err(e) => Err(e.into()),
     }
 }
@@ -147,7 +161,7 @@ fn parse_frame(&mut self) -> crate::Result<Option<Frame>> {
 
 Connection::parse_frame 在 check 成功后调用 [Frame::parse](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/frame.rs)。读到 `$` 前缀时，进入下面分支：
 
-<!-- source: src/frame.rs:139-164; comments omitted -->
+<!-- source: src/frame.rs:139-164; comments included -->
 ```rust
 b'$' => {
     if b'-' == peek_u8(src)? {
@@ -159,6 +173,7 @@ b'$' => {
 
         Ok(Frame::Null)
     } else {
+        // 解析长度并检查正文及尾部字节是否完整。
         let len = get_decimal(src)?.try_into()?;
         let n = len + 2;
 
@@ -168,6 +183,7 @@ b'$' => {
 
         let data = Bytes::copy_from_slice(&src.chunk()[..len]);
 
+        // 推进正文与尾部两字节；返回的 Bytes 已单独持有复制的数据。
         skip(src, n)?;
 
         Ok(Frame::Bulk(data))
@@ -213,22 +229,28 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error>
 
 从调用者 `Set::into_frame → 客户端发送` 或 `Get::apply → 服务端回包` 都会进入 [write_frame](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/connection.rs)。读取这一段时，把传入的 frame 想成上一层已经构造好的值：
 
-<!-- source: src/connection.rs:156-181; comments omitted -->
+<!-- source: src/connection.rs:95-116; comments included -->
 ```rust
 pub async fn write_frame(&mut self, frame: &Frame) -> io::Result<()> {
+    // 顶层数组先写头，再写每个子值；当前实现不支持编码嵌套数组。
     match frame {
         Frame::Array(val) => {
+            // b'*' 是一个字节字面量，表示 RESP 数组前缀。
             self.stream.write_u8(b'*').await?;
 
+            // 写元素个数而非总字节长度。
             self.write_decimal(val.len() as u64).await?;
 
+            // val 是 &Vec<Frame>；&**val 借用其切片，逐项得到 &Frame，不移动元素。
             for entry in &**val {
                 self.write_value(entry).await?;
             }
         }
+        // 其他变体直接交给单值编码器。
         _ => self.write_value(frame).await?,
     }
 
+    // flush 将尚在写缓冲中的字节送到 socket；省略可能使调用者一直等响应。
     self.stream.flush().await
 }
 ```

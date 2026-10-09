@@ -16,7 +16,7 @@ Command::apply → Ping::apply → Connection::write_frame
 
 ## 参数结束在这里是合法状态
 
-<!-- source: src/cmd/ping.rs:42-48; comments omitted -->
+<!-- source: src/cmd/ping.rs:25-31; comments included -->
 ```rust
 pub(crate) fn parse_frames(parse: &mut Parse) -> crate::Result<Ping> {
     match parse.next_bytes() {
@@ -31,7 +31,7 @@ next_bytes 成功得到 Some，EndOfStream 对应默认值 None，其他解析�
 
 ## 返回帧类型随是否带参数变化
 
-<!-- source: src/cmd/ping.rs:55-67; comments omitted -->
+<!-- source: src/cmd/ping.rs:35-47; comments included -->
 ```rust
 pub(crate) async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
     let response = match self.msg {
@@ -41,6 +41,7 @@ pub(crate) async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
 
     debug!(?response);
 
+    // 写失败经 ? 返回当前 Handler，成功则继续等待下条请求。
     dst.write_frame(&response).await?;
 
     Ok(())
@@ -51,7 +52,7 @@ pub(crate) async fn apply(self, dst: &mut Connection) -> crate::Result<()> {
 
 ## into_frame 和影响边界
 
-<!-- source: src/cmd/ping.rs:73-80; comments omitted -->
+<!-- source: src/cmd/ping.rs:50-57; comments included -->
 ```rust
 pub(crate) fn into_frame(self) -> Frame {
     let mut frame = Frame::array();
@@ -64,6 +65,12 @@ pub(crate) fn into_frame(self) -> Frame {
 ```
 
 数组先放 ping，再根据 Option 加消息。若把所有响应都改成 PONG，带消息回显的 Client 和 tests/client.rs 将不再符合约定。PING 成功只能证明本次连接和命令路径可用，不能证明过期、存储持久性或订阅功能正常。
+
+## 这里的 Rust 写法：默认值与枚举模式一起表达可选消息
+
+derive(Default) 为 Option 字段生成 None。无参数与 Some(空 Bytes) 是不同状态，match 分别生成 PONG 和空回显；不要用字节长度替代是否提供参数的判断。parse_frames 匹配 EndOfStream 时使用默认值，但不会把其他错误也默认为成功。
+
+需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../../rust-reading-guide.md#patterns)。
 
 ## 读完后沿哪里继续
 

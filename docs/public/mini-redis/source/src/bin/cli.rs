@@ -27,65 +27,60 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     Ping {
-        /// Message to ping
+        /// PING 可选回显内容；None 表示请求 PONG，Some 表示回显给定字节。
         msg: Option<Bytes>,
     },
-    /// Get the value of key.
+    /// 读取指定键的值。
     Get {
-        /// Name of key to get
+        /// 要读取的键名。
         key: String,
     },
-    /// Set key to hold the string value.
+    /// 写入键值，可附带过期时间。
     Set {
-        /// Name of key to set
+        /// 要写入的键名。
         key: String,
 
-        /// Value to set.
+        /// 值以 Bytes 保存，允许非 UTF-8 字节。
         value: Bytes,
 
-        /// Expire the value after specified amount of time
+        /// 可选存活时间；命令行按毫秒解析为 Duration。
         #[arg(value_parser = duration_from_ms_str)]
         expires: Option<Duration>,
     },
-    ///  Publisher to send a message to a specific channel.
+    /// 向指定频道发布一条消息。
     Publish {
-        /// Name of channel
+        /// 频道名；频道表与键值表分开管理。
         channel: String,
 
-        /// Message to publish
+        /// 要发布的消息字节。
         message: Bytes,
     },
-    /// Subscribe a client to a specific channel or channels.
+    /// 让当前连接订阅一个或多个频道。
     Subscribe {
-        /// Specific channel or channels
+        /// 频道列表；Vec 拥有每一个 String。
         channels: Vec<String>,
     },
 }
 
-/// Entry point for CLI tool.
+/// CLI 的程序入口。
 ///
-/// The `[tokio::main]` annotation signals that the Tokio runtime should be
-/// started when the function is called. The body of the function is executed
-/// within the newly spawned runtime.
-///
-/// `flavor = "current_thread"` is used here to avoid spawning background
-/// threads. The CLI tool use case benefits more by being lighter instead of
-/// multi-threaded.
+/// #[tokio::main] 是属性宏：生成同步入口并创建 runtime，随后驱动异步函数体。
+/// current_thread 使用当前线程调度异步任务；异步并不等于每个任务各占一个线程。
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> mini_redis::Result<()> {
-    // Enable logging
+    // 初始化日志；? 遇到 Err 时结束 main 并向上返回错误。
     tracing_subscriber::fmt::try_init()?;
 
-    // Parse command line arguments
+    // 调用 clap 的 Parser trait 方法，将命令行参数解析为 Cli。
     let cli = Cli::parse();
 
-    // Get the remote address to connect to
+    // format! 生成拥有内容的 String，拼出服务器地址。
     let addr = format!("{}:{}", cli.host, cli.port);
 
-    // Establish a connection
+    // 等待 TCP 建连；mut 使后续命令可以通过 &mut self 独占这个客户端。
     let mut client = Client::connect(&addr).await?;
 
-    // Process the requested command
+    // match 消费命令枚举，按变体取出参数并选择业务操作。
     match cli.command {
         Command::Ping { msg } => {
             let value = client.ping(msg).await?;
@@ -132,7 +127,7 @@ async fn main() -> mini_redis::Result<()> {
             }
             let mut subscriber = client.subscribe(channels).await?;
 
-            // await messages on channels
+            // while let 持续读取 Some(Message)；EOF 的 None 结束循环，Err 由 ? 返回。
             while let Some(msg) = subscriber.next_message().await? {
                 println!(
                     "got message from the channel: {}; message = {:?}",
@@ -145,6 +140,7 @@ async fn main() -> mini_redis::Result<()> {
     Ok(())
 }
 
+// 先用 parse::<u64> 解析毫秒数；? 把解析错误交给 clap，成功才构造 Duration。
 fn duration_from_ms_str(src: &str) -> Result<Duration, ParseIntError> {
     let ms = src.parse::<u64>()?;
     Ok(Duration::from_millis(ms))

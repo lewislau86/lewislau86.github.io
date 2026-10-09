@@ -93,6 +93,9 @@ with zipfile.ZipFile(public / 'mini-redis-study.zip', 'w', zipfile.ZIP_DEFLATED)
 sidebar = [{'text': 'mini-redis 源码分析', 'items': [
     {'text': '返回知识库', 'link': '/'}, {'text': '教程总览与下载', 'link': '/mini-redis/'},
     {'text': '按源码文件阅读', 'link': '/mini-redis/source/'}]}]
+reading_guide = {'text': 'Rust 源码阅读说明', 'link': '/mini-redis/rust-reading-guide'}
+if source / 'rust-reading-guide.md' in notes:
+    sidebar[0]['items'].append(reading_guide)
 for title, start, end in [('整体架构', 0, 0), ('入门与请求链路', 1, 4), ('并发、存储与生命周期', 5, 10), ('架构与实践', 11, 99)]:
     sidebar.append({'text': title, 'collapsed': False, 'items': [
         {'text': p.read_text().splitlines()[0].removeprefix('# '), 'link': '/mini-redis/' + p.stem}
@@ -106,6 +109,8 @@ source_index = source / 'source/README.md'
 source_sidebar = [{'text': 'mini-redis 逐文件分析', 'items': [
     {'text': '返回教程总览', 'link': '/mini-redis/'},
     {'text': '源码阅读索引', 'link': '/mini-redis/source/'}]}]
+if source / 'rust-reading-guide.md' in notes:
+    source_sidebar[0]['items'].append(reading_guide)
 indexed = []
 for section in re.split(r'^## ', source_index.read_text(), flags=re.M)[1:]:
     title, _, body = section.partition('\n')

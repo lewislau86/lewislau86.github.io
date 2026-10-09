@@ -2,6 +2,8 @@
 
 [上一章](04-resp-and-connection.md) · [目录](README.md) · [下一章](06-shared-storage.md)
 
+Rust 写法辅助阅读：[逐项拆解模块、类型与异步语法](rust-reading-guide.md#tasks)。遇到陌生写法时先读对应小节，再回到下面的调用链。
+
 本章对应的独立源码文章：[src/bin/server.rs](source/src/bin/server.md)、[src/server.rs](source/src/server.md)、[src/shutdown.rs](source/src/shutdown.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
 
 前面已经从客户端走完 SET/GET 的调用链，并看过 Connection 怎样处理字节。现在回到第 01 章留下的问题：代码中的 `.await` 究竟让谁等待，服务器又怎样在等待一个客户端时处理其他连接？先看一个不需要网络的实验，再进入服务端的任务循环。
@@ -117,8 +119,10 @@ fn main() -> mini_redis::Result<()> {
 
 把 spawn 与它前面的资源创建一起读，才能知道任务到底接管了什么。[Listener::run](../src/server.rs) 循环中的源码节选：
 
-<!-- source: src/server.rs:228-267; comments omitted -->
+<!-- source: src/server.rs:122-158; comments included -->
 ```rust
+// acquire_owned 等待一个拥有自身生命周期的许可，适合移入 spawn。
+// 许可 Drop 时归还；这里从不 close 信号量，因此 unwrap 依赖这一约定。
 let permit = self
     .limit_connections
     .clone()
@@ -126,22 +130,32 @@ let permit = self
     .await
     .unwrap();
 
+// accept 内部已退避重试；返回 Err 时退出接入循环。
 let socket = self.accept().await?;
 
+// 为新连接构造独立状态，但数据库仍指向同一份 Arc。
 let mut handler = Handler {
+    // 从守卫克隆共享 Db 句柄。
     db: self.db_holder.db(),
 
+    // 把 socket 移进 Connection，创建此连接专属缓冲。
     connection: Connection::new(socket),
 
+    // 从同一停止 Sender 派生独立 Receiver。
     shutdown: Shutdown::new(self.notify_shutdown.subscribe()),
 
+    // 保留完成 Sender 克隆，作为连接仍未结束的标记。
     _shutdown_complete: self.shutdown_complete_tx.clone(),
 };
 
+// async move 将 handler 与 permit 捕获到 Future 中，spawn 将它交给 runtime。
+// 任务可能在线程间调度，因此持有的跨等待状态须满足 Send；不能借用短命局部变量。
 tokio::spawn(async move {
+    // Handler 返回后只记录本连接错误，其他连接仍可继续。
     if let Err(err) = handler.run().await {
         error!(cause = ?err, "connection error");
     }
+    // 显式释放许可；它必须活到 handler.run 完成，才能准确限制连接数量。
     drop(permit);
 });
 ```
@@ -169,26 +183,34 @@ spawn 的任务在 runtime 得到驱动时就可以推进，不必等调用者 a
 
 [Handler::run](../src/server.rs) 的完整控制骨架如下，只省略源码注释：
 
-<!-- source: src/server.rs:318-369; comments omitted -->
+<!-- source: src/server.rs:195-226; comments included -->
 ```rust
 async fn run(&mut self) -> crate::Result<()> {
+    // 只在未观察到停止时尝试读取下一条请求。
     while !self.shutdown.is_shutdown() {
+        // 同时等待完整帧与停止通知；? 使读取错误直接返回当前 Handler。
         let maybe_frame = tokio::select! {
             res = self.connection.read_frame() => res?,
             _ = self.shutdown.recv() => {
+                // 返回到 spawn 闭包，随后释放 Handler 及其完成 Sender。
                 return Ok(());
             }
         };
 
+        // read_frame 的 None 表示正常 EOF，没有下一条请求；与 GET 空值 Frame::Null 不同。
         let frame = match maybe_frame {
             Some(frame) => frame,
             None => return Ok(()),
         };
 
+        // 已知命令参数非法会 Err；未知命令则被包装为 Unknown，执行时写 Error 帧。
         let cmd = Command::from_frame(frame)?;
 
+        // tracing 的 ?cmd 用 Debug 格式记录名为 cmd 的结构化字段。
         debug!(?cmd);
 
+        // 把 Db 的共享借用、当前 Connection/Shutdown 的可变借用交给命令。
+        // apply 可能更新内存并写回复；Subscribe 会持续推送多帧，而非马上返回外层循环。
         cmd.apply(&self.db, &mut self.connection, &mut self.shutdown)
             .await?;
     }

@@ -1,19 +1,6 @@
-//! Publish to a redis channel example.
-//!
-//! A simple client that connects to a mini-redis server, and
-//! publishes a message on `foo` channel
-//!
-//! You can test this out by running:
-//!
-//!     cargo run --bin mini-redis-server
-//!
-//! Then in another terminal run:
-//!
-//!     cargo run --example sub
-//!
-//! And then in another terminal run:
-//!
-//!     cargo run --example pub
+//! 发布示例：向 foo 频道发送 bar。
+//! 先运行 cargo run --bin mini-redis-server，再运行 cargo run --example sub，
+//! 等订阅建立后运行 cargo run --example pub；先发布的历史消息不会重放给后加入者。
 
 #![warn(rust_2018_idioms)]
 
@@ -21,10 +8,10 @@ use mini_redis::{clients::Client, Result};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    // Open a connection to the mini-redis address.
+    // 发布者使用自己的 TCP 连接，通过服务器的频道表与订阅者通信。
     let mut client = Client::connect("127.0.0.1:6379").await?;
 
-    // publish message `bar` on channel foo
+    // await? 检查调用成败，但本例丢弃成功返回的接收者数量；0 也会正常退出。
     client.publish("foo", "bar".into()).await?;
 
     Ok(())
