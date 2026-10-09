@@ -16,6 +16,12 @@ title: 文档首页
 
 [进入 TinyLLM 教程 →](./tinyllm/index.md)
 
+### [mini-redis · 从源码学习 Rust 与 Redis 架构](./mini-redis/index.md)
+
+沿着一条 SET/GET 请求，学习 Rust 所有权、Tokio 异步任务、共享存储、过期清理、发布订阅与优雅停机。包含 12 章教程、6 个可运行实验、源码学习包及原始验证记录。
+
+[进入 mini-redis 教程 →](./mini-redis/index.md)
+
 ## 从这里开始
 
 更多文档将逐步整理。你可以通过左侧目录浏览文档，通过右侧目录定位当前章节，也可以使用顶部搜索查找内容。

@@ -55,3 +55,17 @@ npm run docs:build
 源内容保留原样，仅适配 README 链接、章节锚点、notebook 下载及 GitBook 导出的强调/行内公式转义。
 源仓库更新后需重新运行导入并提交本站；当前不是跨仓库自动同步。
 TinyLLM 页底的编辑入口指向源仓库，避免下次同步覆盖对本站副本的手动修改。
+
+## 同步 mini-redis 教程
+
+网站 `/mini-redis/` 发布本地 `mini-redis/docs` 的当前版本（12 章正文、总览、实验说明和验证记录）。
+
+```sh
+python3 scripts/import-mini-redis.py /Users/lewislau/MyResearch/mini-redis/docs
+npm run docs:build
+```
+
+导入不修改源仓库。`scripts/mini-redis-source.json` 记录源码基线与发布文件哈希，
+其中教程可能是源仓库尚未提交的本地内容。保留原验证记录的时间和限制，本次发布检查不等于重新执行 Rust 实验。
+源码链接指向本站仓库 `docs/public/mini-redis/source/` 的文件；完整学习包包含源码、锁文件、LICENSE 和 docs/labs，保留实验所需的相对路径依赖。
+修改原始 docs 后，重新导入、构建并提交本站即可更新；当前不跨仓库自动同步。

@@ -1,0 +1,86 @@
+---
+editLink: false
+---
+
+# 本地验证记录
+
+[返回学习目录](/mini-redis/index.md)
+
+首次验证日期：2026-10-08；Hello Tokio 补充验证：2026-10-09。本文按批次记录实际执行结果，不把教学说明、预期结果与实际运行混为一谈。
+
+## 基线与环境
+
+| 项目 | 值 |
+| --- | --- |
+| 主项目 Git 基线 | `3d93b42bc363220f85af4fc9e1bebd35b588a4a3` |
+| 包版本 / edition | `mini-redis 0.4.1` / `2018` |
+| 系统 | macOS，aarch64-apple-darwin |
+| rustc | `1.99.0 (b940084d7 2026-09-28)` |
+| cargo | `1.99.0 (5f94df478 2026-08-27)` |
+| 根锁文件 Tokio / bytes | `1.32.0` / `1.5.0` |
+| 格式化工具 | 本机已有 `1.98.1` 工具链的 rustfmt |
+
+默认 stable 工具链缺少 cargo-fmt；没有安装或替换默认工具链，使用已有 `cargo +1.98.1 fmt` 完成实验文件格式化。实验仍由默认 rustc 1.99.0 编译执行。
+
+改动范围为 `docs` 内笔记、实验与独立锁文件，以及根 README 的入口链接；未修改 `src`、原有 `tests`、根 Cargo.toml 或根 Cargo.lock。
+
+## 2026-10-08 已通过的执行
+
+| 命令/场景 | 实际结果 |
+| --- | --- |
+| `cargo build --locked --manifest-path docs/labs/Cargo.toml --bins` | 四个实验编译成功 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin ownership` | 移动、查询借用、Bytes clone、Arc 计数、锁作用域断言通过 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin frames` | GET 的全部不完整前缀、完整帧、Null、非法负 Bulk 长度、连续帧边界通过 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin roundtrip` | GET/SET、缺失键、PING、二进制值、TTL、覆盖取消 TTL、文本 Pub/Sub、拆开发送、连续请求、停机通过 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin multiplex` | 8 个任务通过一条连接完成 16 次 Get/Set，停机通过 |
+| 第 01 章 server/CLI 命令 | 在 16379 启动独立进程；PING、SET、GET、缺失键、1000ms TTL 的实际输出符合正文 |
+| Ctrl+C 与重启 | 两次服务均以退出码 0 结束；重启后 `course` 不存在 |
+| `cargo test --locked -- --skip key_value_timeout` | 14 个集成测试通过，1 个被过滤；11 个文档测试通过（均为编译检查） |
+| `cargo +1.98.1 fmt --manifest-path docs/labs/Cargo.toml --check` | 通过 |
+| 编译失败练习 | moved_value 确认 E0382；overlapping_borrow 确认 E0502 |
+
+网络实验会先完成订阅确认再发布；TTL 删除用有上界的条件轮询等待。连续请求测试使用原始 socket，在收到 SET 响应前发出 GET，再按顺序读取两个响应。它没有改变基础 Client 的顺序往返实现。
+
+## 2026-10-08 未完成的原有测试
+
+`cargo test --locked` 在 `tests/server.rs::key_value_timeout` 未结束，其余已执行的测试通过；随后终止该轮运行。又单独执行：
+
+```sh
+cargo test --locked --test server key_value_timeout -- --exact --nocapture
+```
+
+使用外部 20 秒等待上限，测试仍未返回，因此按超时终止。没有出现能确定根因的断言错误，本次也没有修改这条原有测试。暂停时间、计时器调度和真实网络 I/O 的交互需要另外诊断。
+
+所以结论是：**本次不能报告原仓库全套测试通过**。配套实验的真实时间 TTL 场景成功，不能替代或消除这个虚拟时间测试的挂起事实。
+
+## 2026-10-09 Hello Tokio 补充验证
+
+阅读 [Hello Tokio](https://tokio.rs/tokio/tutorial/hello-tokio) 后，补齐第 01、03、05 章的客户端入门、连接构造、异步执行与 runtime，并调整相关章节衔接、目录和练习。新增 hello_tokio 与 async_basics，实验总数从四个增加到六个；主项目生产代码与依赖未改动。
+
+环境仍为上述 rustc/cargo 1.99.0，格式检查使用已有 1.98.1 工具链。Tokio 的版本文档网页在本次读取中不可用，runtime、入口宏与 feature 配置改由本机 Cargo 缓存中 `tokio-1.32.0`、`tokio-macros-2.1.0` 的源码文档核对；Hello Tokio 页面与标准库 Future 文档正常读取。
+
+| 检查 | 实际结果 |
+| --- | --- |
+| `cargo build --locked --manifest-path docs/labs/Cargo.toml --bins` | 六个实验编译通过 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin hello_tokio` | 独立服务监听 16379，输出 `course = Some(b"rust")`，值断言通过 |
+| hello_tokio 追加 `-- 127.0.0.1:16379` | 显式地址路径通过，输出一致 |
+| `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin async_basics` | 完整输出逐行匹配正文，先创建两个 Future，再依次执行；丢弃的阶段没有执行 |
+| 第 01 章完整客户端代码块 | 从 Markdown 提取，用本地依赖编译并连接实验服务，输出符合正文 |
+| 第 05 章显式多线程 runtime 代码块 | 从 Markdown 提取，编译并连接实验服务执行，退出码 0 |
+| 实验服务停止 | SIGINT 后退出码 0，无遗留实验服务 |
+| `cargo +1.98.1 fmt --manifest-path docs/labs/Cargo.toml --check` | 通过 |
+
+运行上述网络示例时，外层验证脚本为每个客户端设置等待上界；hello_tokio 程序本身没有 timeout。只编译并运行了两个完整代码块，不把示意片段也计作独立程序验证。
+
+本轮没有重跑原仓库全套测试，也没有修复或重新诊断此前的 key_value_timeout 挂起；前一节保留的是 2026-10-08 的结果。新增示例的成功不改变那项未完成记录。
+
+## 内容检查与验证边界
+
+- 检查章节导航、本地源码/实验链接的目标存在，以及代码围栏成对。
+- `git diff --check` 检查已有跟踪文件的补丁；新增文档与实验另行检查行尾空白。
+- 源码分析以函数与字段实现核对；ASCII 图是逻辑示意，不代表实测性能或线程调度轨迹。
+- 正文的源码节选不是全部独立程序；可运行程序集中在 labs，各批次执行范围见上表。
+- 未运行生产 Redis、持久化、复制、Cluster、Sentinel 或 OpenTelemetry 环境；相关章节是基于官方资料的架构补充。
+- 未执行全部扩展练习，未进行性能、协议全面兼容、极端并发或安全审计。
+
+继续练习时，建议在这里追加自己实际运行的命令、观察和未解决问题，把分析笔记逐步变成可复现的学习记录。

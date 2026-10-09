@@ -1,0 +1,94 @@
+[
+  {
+    "text": "mini-redis 源码分析",
+    "items": [
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "教程总览与下载",
+        "link": "/mini-redis/"
+      }
+    ]
+  },
+  {
+    "text": "入门与请求链路",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "01 跑通第一条请求",
+        "link": "/mini-redis/01-first-run"
+      },
+      {
+        "text": "02 用所有权管理一份数据",
+        "link": "/mini-redis/02-rust-foundations"
+      },
+      {
+        "text": "03 沿着 SET/GET 走一遍",
+        "link": "/mini-redis/03-request-path"
+      },
+      {
+        "text": "04 TCP 字节如何变成帧",
+        "link": "/mini-redis/04-resp-and-connection"
+      }
+    ]
+  },
+  {
+    "text": "并发、存储与生命周期",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "05 为什么服务器能同时服务多人",
+        "link": "/mini-redis/05-tokio-server"
+      },
+      {
+        "text": "06 数据如何安全地共享",
+        "link": "/mini-redis/06-shared-storage"
+      },
+      {
+        "text": "07 到期的数据由谁删除",
+        "link": "/mini-redis/07-expiration"
+      },
+      {
+        "text": "08 发布订阅为什么改变连接状态",
+        "link": "/mini-redis/08-pubsub"
+      },
+      {
+        "text": "09 客户端为什么有三种形态",
+        "link": "/mini-redis/09-clients"
+      },
+      {
+        "text": "10 如何停机与验证行为",
+        "link": "/mini-redis/10-shutdown-and-tests"
+      }
+    ]
+  },
+  {
+    "text": "架构与实践",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "11 从教学服务器走向 Redis",
+        "link": "/mini-redis/11-real-redis"
+      },
+      {
+        "text": "12 动手练习与知识索引",
+        "link": "/mini-redis/12-exercises-and-index"
+      }
+    ]
+  },
+  {
+    "text": "配套资料",
+    "items": [
+      {
+        "text": "配套实验",
+        "link": "/mini-redis/labs/"
+      },
+      {
+        "text": "原始验证记录",
+        "link": "/mini-redis/validation"
+      }
+    ]
+  }
+]

@@ -1,12 +1,14 @@
 import { defineConfig } from 'vitepress'
 import tinyllmSidebar from './tinyllm-sidebar.json'
+import miniRedisSidebar from './mini-redis-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
   title: 'Lewis 的知识库',
   description: '按主题整理技术研究、项目文档与学习笔记。',
   base: '/',
-  markdown: { math: true },
+  srcExclude: ['public/**'],
+  markdown: { math: true, languageAlias: { compile_fail: 'rust' } },
   sitemap: { hostname: 'https://lewislau86.github.io' },
   head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]],
   themeConfig: {
@@ -14,16 +16,19 @@ export default defineConfig({
     nav: [
       { text: '文档', link: '/' },
       { text: 'TinyLLM', link: '/tinyllm/' },
+      { text: 'mini-redis', link: '/mini-redis/' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
       '/tinyllm/': tinyllmSidebar,
+      '/mini-redis/': miniRedisSidebar,
       '/': [
       {
         text: '知识库',
         items: [
           { text: '文档首页', link: '/' },
           { text: 'TinyLLM 教程', link: '/tinyllm/' },
+          { text: 'mini-redis 源码分析', link: '/mini-redis/' },
           { text: '关于', link: '/about' }
         ]
       },
