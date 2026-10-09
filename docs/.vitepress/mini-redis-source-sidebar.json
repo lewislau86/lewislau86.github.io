@@ -1,0 +1,163 @@
+[
+  {
+    "text": "mini-redis 逐文件分析",
+    "items": [
+      {
+        "text": "返回教程总览",
+        "link": "/mini-redis/"
+      },
+      {
+        "text": "源码阅读索引",
+        "link": "/mini-redis/source/"
+      }
+    ]
+  },
+  {
+    "text": "入口与模块边界",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "src/lib.rs",
+        "link": "/mini-redis/source/src/lib"
+      },
+      {
+        "text": "src/bin/server.rs",
+        "link": "/mini-redis/source/src/bin/server"
+      },
+      {
+        "text": "src/bin/cli.rs",
+        "link": "/mini-redis/source/src/bin/cli"
+      },
+      {
+        "text": "src/clients/mod.rs",
+        "link": "/mini-redis/source/src/clients/mod"
+      }
+    ]
+  },
+  {
+    "text": "连接、协议与服务任务",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "src/server.rs",
+        "link": "/mini-redis/source/src/server"
+      },
+      {
+        "text": "src/connection.rs",
+        "link": "/mini-redis/source/src/connection"
+      },
+      {
+        "text": "src/frame.rs",
+        "link": "/mini-redis/source/src/frame"
+      },
+      {
+        "text": "src/parse.rs",
+        "link": "/mini-redis/source/src/parse"
+      },
+      {
+        "text": "src/shutdown.rs",
+        "link": "/mini-redis/source/src/shutdown"
+      }
+    ]
+  },
+  {
+    "text": "命令与共享存储",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "src/cmd/mod.rs",
+        "link": "/mini-redis/source/src/cmd/mod"
+      },
+      {
+        "text": "src/cmd/set.rs",
+        "link": "/mini-redis/source/src/cmd/set"
+      },
+      {
+        "text": "src/cmd/get.rs",
+        "link": "/mini-redis/source/src/cmd/get"
+      },
+      {
+        "text": "src/db.rs",
+        "link": "/mini-redis/source/src/db"
+      },
+      {
+        "text": "src/cmd/ping.rs",
+        "link": "/mini-redis/source/src/cmd/ping"
+      },
+      {
+        "text": "src/cmd/publish.rs",
+        "link": "/mini-redis/source/src/cmd/publish"
+      },
+      {
+        "text": "src/cmd/subscribe.rs",
+        "link": "/mini-redis/source/src/cmd/subscribe"
+      },
+      {
+        "text": "src/cmd/unknown.rs",
+        "link": "/mini-redis/source/src/cmd/unknown"
+      }
+    ]
+  },
+  {
+    "text": "客户端形态",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "src/clients/client.rs",
+        "link": "/mini-redis/source/src/clients/client"
+      },
+      {
+        "text": "src/clients/buffered_client.rs",
+        "link": "/mini-redis/source/src/clients/buffered_client"
+      },
+      {
+        "text": "src/clients/blocking_client.rs",
+        "link": "/mini-redis/source/src/clients/blocking_client"
+      }
+    ]
+  },
+  {
+    "text": "应用示例",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "examples/hello_world.rs",
+        "link": "/mini-redis/source/examples/hello_world"
+      },
+      {
+        "text": "examples/pub.rs",
+        "link": "/mini-redis/source/examples/pub"
+      },
+      {
+        "text": "examples/sub.rs",
+        "link": "/mini-redis/source/examples/sub"
+      },
+      {
+        "text": "examples/chat.rs",
+        "link": "/mini-redis/source/examples/chat"
+      }
+    ]
+  },
+  {
+    "text": "测试如何提供证据",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "tests/client.rs",
+        "link": "/mini-redis/source/tests/client"
+      },
+      {
+        "text": "tests/server.rs",
+        "link": "/mini-redis/source/tests/server"
+      },
+      {
+        "text": "tests/buffered_client.rs",
+        "link": "/mini-redis/source/tests/buffered_client"
+      },
+      {
+        "text": "tests/frame_validation.rs",
+        "link": "/mini-redis/source/tests/frame_validation"
+      }
+    ]
+  }
+]

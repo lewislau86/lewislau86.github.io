@@ -13,6 +13,7 @@ application.
 Rust、Tokio 与 Redis 基础架构，附带 [可运行实验](docs/labs/README.md)
 和 [本地验证记录](docs/validation.md)。
 建议先读 [00 整体架构](docs/00-architecture.md)，了解代码职责、连接通信与后续优化方向。
+需要逐文件深入时，进入 [28 篇独立源码文章](docs/source/README.md)，或从 [SET/GET 的源码对应表](docs/03-request-path.md#这一章对应哪些源码和独立文章) 按调用链跳转。
 
 **Disclaimer** Please don't use mini-redis in production. This project is
 intended to be a learning resource, and omits various parts of the Redis

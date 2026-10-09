@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/06-shared-storage.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/08-pubsub.md)
 
+本章对应的独立源码文章：[src/db.rs](/mini-redis/source/src/db.md)、[src/cmd/set.rs](/mini-redis/source/src/cmd/set.md)、[tests/server.rs](/mini-redis/source/tests/server.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 `SET session token PX 1000` 不只是插入一行数据，还给服务器增加了一项未来工作。一秒后即使没有新的请求，这个键也应该被清理。问题变成：如何安排下一次唤醒，如何在键被覆盖时取消旧安排？
 
 ## 这不是 SET 内部的一次 sleep

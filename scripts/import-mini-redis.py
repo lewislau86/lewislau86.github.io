@@ -66,6 +66,11 @@ for path in notes:
     chunks = re.split(r'(```[^\n]*\n.*?```)', text, flags=re.S)
     for i in range(0, len(chunks), 2):
         chunks[i] = re.sub(r'\]\(([^)]+)\)', lambda m: convert_link(m, path), chunks[i])
+        # Bare Rust generics in prose would otherwise become Vue/HTML tags.
+        prose = re.split(r'(`+[^`]*`+|<!--[\s\S]*?-->)', chunks[i])
+        for j in range(0, len(prose), 2):
+            prose[j] = re.sub(r'(?<=\w)<(?=[A-Za-z])', '&lt;', prose[j])
+        chunks[i] = ''.join(prose)
     text = ''.join(chunks)
     if path == source / 'README.md':
         text = text.replace('## 阅读顺序', '''## 下载源码与实验
@@ -86,7 +91,8 @@ with zipfile.ZipFile(public / 'mini-redis-study.zip', 'w', zipfile.ZIP_DEFLATED)
         info.compress_type = zipfile.ZIP_DEFLATED
         archive.writestr(info, path.read_bytes())
 sidebar = [{'text': 'mini-redis 源码分析', 'items': [
-    {'text': '返回知识库', 'link': '/'}, {'text': '教程总览与下载', 'link': '/mini-redis/'}]}]
+    {'text': '返回知识库', 'link': '/'}, {'text': '教程总览与下载', 'link': '/mini-redis/'},
+    {'text': '按源码文件阅读', 'link': '/mini-redis/source/'}]}]
 for title, start, end in [('整体架构', 0, 0), ('入门与请求链路', 1, 4), ('并发、存储与生命周期', 5, 10), ('架构与实践', 11, 99)]:
     sidebar.append({'text': title, 'collapsed': False, 'items': [
         {'text': p.read_text().splitlines()[0].removeprefix('# '), 'link': '/mini-redis/' + p.stem}
@@ -95,5 +101,24 @@ sidebar.append({'text': '配套资料', 'items': [
     {'text': '配套实验', 'link': '/mini-redis/labs/'},
     {'text': '原始验证记录', 'link': '/mini-redis/validation'}]})
 (repo / 'docs/.vitepress/mini-redis-sidebar.json').write_text(json.dumps(sidebar, ensure_ascii=False, indent=2) + '\n')
+# Keep the per-file navigation in the same order and groups as its source index.
+source_index = source / 'source/README.md'
+source_sidebar = [{'text': 'mini-redis 逐文件分析', 'items': [
+    {'text': '返回教程总览', 'link': '/mini-redis/'},
+    {'text': '源码阅读索引', 'link': '/mini-redis/source/'}]}]
+indexed = []
+for section in re.split(r'^## ', source_index.read_text(), flags=re.M)[1:]:
+    title, _, body = section.partition('\n')
+    items = []
+    for label, article in re.findall(r'^\| \[([^\]]+)\]\([^)]+\) \| \[[^\]]+\]\(([^)]+)\) \|', body, re.M):
+        path = (source_index.parent / article).resolve()
+        assert path in notes, path
+        indexed.append(path)
+        items.append({'text': label, 'link': '/mini-redis/' + published_path(path).with_suffix('').as_posix()})
+    if items:
+        source_sidebar.append({'text': title.strip(), 'collapsed': False, 'items': items})
+assert len(indexed) == len(set(indexed)), 'Duplicate source articles in index'
+assert set(indexed) == {p for p in notes if p.is_relative_to(source_index.parent) and p != source_index}, 'Source index must include every article'
+(repo / 'docs/.vitepress/mini-redis-source-sidebar.json').write_text(json.dumps(source_sidebar, ensure_ascii=False, indent=2) + '\n')
 (repo / 'scripts/mini-redis-source.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
 print(f'Imported {len(notes)} pages and bundled {len(source_files)} files from local mini-redis docs.')

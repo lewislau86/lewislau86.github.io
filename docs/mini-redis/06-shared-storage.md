@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/05-tokio-server.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/07-expiration.md)
 
+本章对应的独立源码文章：[src/db.rs](/mini-redis/source/src/db.md)、[src/cmd/get.rs](/mini-redis/source/src/cmd/get.md)、[src/cmd/set.rs](/mini-redis/source/src/cmd/set.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 两个客户端分别有自己的 Handler，但必须看到同一份键值表。为每个 Handler 深拷贝一个数据库会把它们变成互不相干的数据岛；只共享一个没有同步保护的可变表，又会引入数据竞争。
 
 ## 谁创建这份数据，谁会读写它

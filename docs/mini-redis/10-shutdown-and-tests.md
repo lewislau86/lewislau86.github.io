@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/09-clients.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/11-real-redis.md)
 
+本章对应的独立源码文章：[src/server.rs](/mini-redis/source/src/server.md)、[src/shutdown.rs](/mini-redis/source/src/shutdown.md)、[src/db.rs](/mini-redis/source/src/db.md)、[tests/client.rs](/mini-redis/source/tests/client.md)、[tests/server.rs](/mini-redis/source/tests/server.md)、[tests/buffered_client.rs](/mini-redis/source/tests/buffered_client.md)、[tests/frame_validation.rs](/mini-redis/source/tests/frame_validation.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 结束进程当然可以让一切停止，但一个可理解的服务器应该回答三个问题：什么时候不再接收新工作，现有任务怎么知道要停，主流程又如何确认它们都停了？
 
 ## 从资源的创建点追到释放点

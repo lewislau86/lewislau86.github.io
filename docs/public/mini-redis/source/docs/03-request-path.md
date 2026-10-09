@@ -4,6 +4,29 @@
 
 这一章以 `client.set("course", "rust".into()).await?` 为主线。我们关心的不是单独背会 Set 的几个方法，而是跟踪一条请求：谁创建命令，谁把它发送出去，谁修改状态，又是谁最终向业务调用者报告成功或失败。
 
+## 这一章对应哪些源码和独立文章
+
+本章是一条跨文件主线，不是某一个文件的解释。下面每个文件都有独立文章；先按本章理解顺序，需要看细节时进入文章，再返回当前站点。客户端与服务端共同使用 Connection、Frame 和命令类型，但各自持有对象，通过 TCP 字节通信。
+
+| 在链路中的位置 | 对应源码 | 要追踪的方法 | 独立分析 |
+| --- | --- | --- | --- |
+| 触发业务调用 | [examples/hello_world.rs](../examples/hello_world.rs) | main：先 SET，再 GET | [阅读全文](source/examples/hello_world.md) |
+| 从终端触发（另一入口） | [src/bin/cli.rs](../src/bin/cli.rs) | main：将 clap 子命令交给 Client | [阅读全文](source/src/bin/cli.md) |
+| 建立连接、等待和解释响应 | [src/clients/client.rs](../src/clients/client.rs) | connect / set / set_cmd / get / read_response | [阅读全文](source/src/clients/client.md) |
+| SET 两端的命令表示 | [src/cmd/set.rs](../src/cmd/set.rs) | 客户端 new / into_frame；服务端 parse_frames / apply | [阅读全文](source/src/cmd/set.md) |
+| GET 两端的命令表示 | [src/cmd/get.rs](../src/cmd/get.rs) | 客户端 new / into_frame；服务端 parse_frames / apply | [阅读全文](source/src/cmd/get.md) |
+| 两端的帧读写 | [src/connection.rs](../src/connection.rs) | new / write_frame / read_frame / parse_frame | [阅读全文](source/src/connection.md) |
+| 两端的协议模型及解析 | [src/frame.rs](../src/frame.rs) | Frame 枚举、check / parse、数组构造 | [阅读全文](source/src/frame.md) |
+| 启动服务（请求之前） | [src/bin/server.rs](../src/bin/server.rs) | main：bind 后调用 server::run | [阅读全文](source/src/bin/server.md) |
+| 接入连接、循环处理请求 | [src/server.rs](../src/server.rs) | server::run / Listener::run / Handler::run | [阅读全文](source/src/server.md) |
+| 服务端选择并执行命令 | [src/cmd/mod.rs](../src/cmd/mod.rs) | Command::from_frame / apply | [阅读全文](source/src/cmd/mod.md) |
+| 服务端读取参数 | [src/parse.rs](../src/parse.rs) | new / next_string / next_bytes / next_int / finish | [阅读全文](source/src/parse.md) |
+| 实际保存和读取共享数据 | [src/db.rs](../src/db.rs) | Db::set / get；带 TTL 时还涉及后台清理 | [阅读全文](source/src/db.md) |
+| 核对业务结果 | [tests/client.rs](../tests/client.rs) | key_value_get_set：断言返回值字节 | [阅读全文](source/tests/client.md) |
+| 核对线上响应 | [tests/server.rs](../tests/server.rs) | key_value_get_set：断言 RESP、半关闭和 EOF | [阅读全文](source/tests/server.md) |
+
+编译期的公开入口另见 [src/lib.rs](source/src/lib.md) 与 [src/clients/mod.rs](source/src/clients/mod.md)；它们不是每次请求都会执行的处理步骤。[src/shutdown.rs](source/src/shutdown.md) 解释连接的退出支路；[src/cmd/unknown.rs](source/src/cmd/unknown.md) 解释未知命令支路。成功的普通 SET/GET 不会经过 Unknown::apply。
+
 ## 先固定这一次请求的位置
 
 ```text

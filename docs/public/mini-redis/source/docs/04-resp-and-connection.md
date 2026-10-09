@@ -2,6 +2,8 @@
 
 [上一章](03-request-path.md) · [目录](README.md) · [下一章](05-tokio-server.md)
 
+本章对应的独立源码文章：[src/connection.rs](source/src/connection.md)、[src/frame.rs](source/src/frame.md)、[tests/frame_validation.rs](source/tests/frame_validation.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 TCP 给应用的是有序字节流，不保留“这次 write 对应一次 read”的消息边界。一个 GET 可以分两次读到，两个 GET 也可以一次读到。服务端必须自己确定一条消息在哪里结束。
 
 ## 这段解析代码在谁的调用栈里

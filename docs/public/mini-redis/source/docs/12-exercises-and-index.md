@@ -2,6 +2,8 @@
 
 [上一章](11-real-redis.md) · [目录](README.md)
 
+本章对应的独立源码文章：[examples/chat.rs](source/examples/chat.md)、[tests/client.rs](source/tests/client.md)、[tests/server.rs](source/tests/server.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 读懂笔记是开始，能够预测结果、解释错误、独立改出一个功能才会形成自己的知识。下面按“现象 → 解释 → 修改 → 验证”推进，不要求一次做完。
 
 ## 先做一次跨文件追踪

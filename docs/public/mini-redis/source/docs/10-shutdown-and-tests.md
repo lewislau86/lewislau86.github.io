@@ -2,6 +2,8 @@
 
 [上一章](09-clients.md) · [目录](README.md) · [下一章](11-real-redis.md)
 
+本章对应的独立源码文章：[src/server.rs](source/src/server.md)、[src/shutdown.rs](source/src/shutdown.md)、[src/db.rs](source/src/db.md)、[tests/client.rs](source/tests/client.md)、[tests/server.rs](source/tests/server.md)、[tests/buffered_client.rs](source/tests/buffered_client.md)、[tests/frame_validation.rs](source/tests/frame_validation.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 结束进程当然可以让一切停止，但一个可理解的服务器应该回答三个问题：什么时候不再接收新工作，现有任务怎么知道要停，主流程又如何确认它们都停了？
 
 ## 从资源的创建点追到释放点

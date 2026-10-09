@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/07-expiration.md) · [目录](/mini-redis/index.md) · [下一章](/mini-redis/09-clients.md)
 
+本章对应的独立源码文章：[src/cmd/publish.rs](/mini-redis/source/src/cmd/publish.md)、[src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md)、[src/db.rs](/mini-redis/source/src/db.md)、[src/clients/client.rs](/mini-redis/source/src/clients/client.md)、[examples/pub.rs](/mini-redis/source/examples/pub.md)、[examples/sub.rs](/mini-redis/source/examples/sub.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 GET 是客户端先问、服务器再答。订阅新闻频道后，客户端可能很久不发请求，服务器却需要在别人发布消息时主动推送。这就不再是简单的“一次请求对应一次普通响应”。
 
 ## 先把两条连接与一个内部通道分开

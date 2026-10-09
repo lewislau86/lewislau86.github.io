@@ -6,6 +6,8 @@ editLink: false
 
 [上一章](/mini-redis/11-real-redis.md) · [目录](/mini-redis/index.md)
 
+本章对应的独立源码文章：[examples/chat.rs](/mini-redis/source/examples/chat.md)、[tests/client.rs](/mini-redis/source/tests/client.md)、[tests/server.rs](/mini-redis/source/tests/server.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 读懂笔记是开始，能够预测结果、解释错误、独立改出一个功能才会形成自己的知识。下面按“现象 → 解释 → 修改 → 验证”推进，不要求一次做完。
 
 ## 先做一次跨文件追踪

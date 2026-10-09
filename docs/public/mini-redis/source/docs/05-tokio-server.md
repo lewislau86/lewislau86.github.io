@@ -2,6 +2,8 @@
 
 [上一章](04-resp-and-connection.md) · [目录](README.md) · [下一章](06-shared-storage.md)
 
+本章对应的独立源码文章：[src/bin/server.rs](source/src/bin/server.md)、[src/server.rs](source/src/server.md)、[src/shutdown.rs](source/src/shutdown.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 前面已经从客户端走完 SET/GET 的调用链，并看过 Connection 怎样处理字节。现在回到第 01 章留下的问题：代码中的 `.await` 究竟让谁等待，服务器又怎样在等待一个客户端时处理其他连接？先看一个不需要网络的实验，再进入服务端的任务循环。
 
 ## 先找到三个同名 run 的上下级

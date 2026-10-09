@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitepress'
 import tinyllmSidebar from './tinyllm-sidebar.json'
 import miniRedisSidebar from './mini-redis-sidebar.json'
+import miniRedisSourceSidebar from './mini-redis-source-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
@@ -21,6 +22,7 @@ export default defineConfig({
     ],
     sidebar: {
       '/tinyllm/': tinyllmSidebar,
+      '/mini-redis/source/': miniRedisSourceSidebar,
       '/mini-redis/': miniRedisSidebar,
       '/': [
       {

@@ -2,6 +2,8 @@
 
 [目录](README.md) · [下一章：跑通第一条请求](01-first-run.md)
 
+本章对应的独立源码文章：[src/lib.rs](source/src/lib.md)、[src/bin/server.rs](source/src/bin/server.md)、[src/server.rs](source/src/server.md)、[src/db.rs](source/src/db.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 先把 mini-redis 想象成一个可以通过网络访问的内存字典：客户端发出“保存 course=rust”，服务器把数据留在自己的内存中；之后任何连接到同一个服务实例的客户端，都可以请求读取它。除了读写，这个项目还展示了定时删除、消息订阅以及停止服务时的资源回收。
 
 本章先建立整张地图，不要求你已经读懂 Rust。读完应该能回答三个问题：某项行为应该去哪个文件找，数据怎样从客户端走到数据库，又有哪些地方值得以后改进。后面的章节再逐层展开语法与实现。

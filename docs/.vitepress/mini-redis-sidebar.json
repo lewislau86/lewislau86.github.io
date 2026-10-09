@@ -9,6 +9,10 @@
       {
         "text": "教程总览与下载",
         "link": "/mini-redis/"
+      },
+      {
+        "text": "按源码文件阅读",
+        "link": "/mini-redis/source/"
       }
     ]
   },

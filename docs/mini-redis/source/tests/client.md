@@ -1,0 +1,77 @@
+---
+editLink: false
+---
+
+# tests/client.rs：从公开 API 验证端到端返回值
+
+<!-- analyzes: tests/client.rs -->
+
+[打开对应源码](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/tests/client.rs) · [源码文章索引](/mini-redis/source/index.md) · [总目录](/mini-redis/index.md)
+
+这个集成测试文件同时运行 Client 和 server，通过真实的本地 TCP 验证业务 API。它适合回答“调用者最终拿到什么”，而协议字节的精确断言主要在 tests/server.rs。
+
+## 它和哪些代码交互
+
+```text
+每个 #[tokio::test] → start_server → 绑定端口 0 → spawn server::run
+ → Client::connect(分配地址) → API 调用 → 断言
+订阅测试 → 第二个 Client 发布 → Subscriber 接收
+```
+
+## SET/GET 用断言补全 hello_world
+
+<!-- source: tests/client.rs:32-40; comments omitted -->
+```rust
+async fn key_value_get_set() {
+    let (addr, _) = start_server().await;
+
+    let mut client = Client::connect(addr).await.unwrap();
+    client.set("hello", "world".into()).await.unwrap();
+
+    let value = client.get("hello").await.unwrap().unwrap();
+    assert_eq!(b"world", &value[..])
+}
+```
+
+第一层 unwrap 取 Result，第二层 unwrap 要求 Option 是 Some，最后比较实际字节。与示例只检查 is_some 相比，这里对响应内容有明确约束。断言失败会使测试失败，不能当作生产错误处理方式照搬。
+
+## 六个测试分别覆盖什么
+
+| 测试 | 关键断言 |
+| --- | --- |
+| ping_pong_without_message | 无消息时返回 PONG |
+| ping_pong_with_message | 中文消息按 UTF-8 字节回显 |
+| key_value_get_set | 写 world 后读回同样字节 |
+| receive_message_subscribed_channel | 单频道的名称与消息内容 |
+| receive_message_multiple_subscribed_channels | 两个频道分别收到各自内容 |
+| unsubscribes_from_channels | 空取消列表表示取消全部，本地列表长度归零 |
+
+发布任务在 subscribe 返回后才创建，这个调用顺序保证先等确认再发布。取消全部的测试只检查客户端记录，不验证服务端是否恢复普通 GET/SET 模式。
+
+## 临时服务的生命周期
+
+<!-- source: tests/client.rs:107-114; comments omitted -->
+```rust
+async fn start_server() -> (SocketAddr, JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+
+    let handle = tokio::spawn(async move { server::run(listener, tokio::signal::ctrl_c()).await });
+
+    (addr, handle)
+}
+```
+
+端口 0 由系统分配可用端口，避免多个测试争抢 6379。调用者丢弃 JoinHandle，测试没有发送专用停机信号或 await 服务退出；测试 runtime 结束会影响其任务生命周期，不能拿它证明优雅停机协议正确。
+
+## 怎么运行与如何解释结果
+
+可在仓库根目录执行 `cargo test --locked --test client`。本轮只补源码文章，未重新执行；此前执行情况见[验证记录](/mini-redis/validation.md)。
+
+现有文本消息断言没有覆盖非 UTF-8 Pub/Sub，基本往返也未覆盖断线重连、重复频道、确认与推送交错或多调用者并发。读测试时把断言与缺失场景区分开，才能判断一个改动到底有没有证据支持。
+
+## 读完后沿哪里继续
+
+[src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/server.rs](/mini-redis/source/tests/server.md) → [examples/hello_world.rs](/mini-redis/source/examples/hello_world.md)。
+
+跨文件串读：[第 10 章：测试与生命周期](/mini-redis/10-shutdown-and-tests.md)。

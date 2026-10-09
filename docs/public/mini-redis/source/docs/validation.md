@@ -84,6 +84,21 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 
 本轮只修改 Markdown，检查本地链接、围栏、行尾空白与生产代码未变；没有执行运行时测试或重新测量性能。先前的实验通过及原有过期测试未完成的结论仍按原记录保留。
 
+## 2026-10-09 按源码文件建立独立文章
+
+新增 `docs/source/`：为原项目 `src/` 的 20 个 Rust 文件、`examples/` 的 4 个文件、`tests/` 的 4 个文件各建立一篇独立分析，共 28 篇，并提供索引。文章路径镜像源文件路径，以 `analyzes` 注记记录对应关系。第 03 章增加 SET/GET 的 14 项逐站文件与方法映射，其余相关章节和总目录增加双向阅读入口。
+
+| 本轮检查 | 实际结果 |
+| --- | --- |
+| 枚举 src/examples/tests 的 Rust 文件，与文章 analyzes 注记比较 | 28 个文件全部覆盖，无多余或重复对应 |
+| 逐段重提取 source 注记指向的源码 | 81 处节选全部一致，其中原有 31 处、新增 50 处 |
+| 检查 docs 顶层、source 全部文章与 labs/README 的相对链接 | 583 个本地链接目标存在 |
+| Markdown 围栏与行尾空白 | 检查通过 |
+| git diff --check | 通过 |
+| 比较 src、examples、tests、根 Cargo.toml/Cargo.lock | 没有修改 |
+
+本轮只修改 Markdown，没有执行运行时测试。文章中的测试说明区分测试意图、实际断言和此前执行记录；chat 示例仍是 unimplemented 占位，key_value_timeout 的历史未完成状态保持不变。上述数量用于记录本批次检查，不能解释为协议全面兼容或全部运行场景通过。
+
 ## 内容检查与验证边界
 
 - 检查章节导航、本地源码/实验链接的目标存在，以及代码围栏成对。

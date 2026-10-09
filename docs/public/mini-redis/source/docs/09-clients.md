@@ -2,6 +2,8 @@
 
 [上一章](08-pubsub.md) · [目录](README.md) · [下一章](10-shutdown-and-tests.md)
 
+本章对应的独立源码文章：[src/clients/mod.rs](source/src/clients/mod.md)、[src/clients/client.rs](source/src/clients/client.md)、[src/clients/buffered_client.rs](source/src/clients/buffered_client.md)、[src/clients/blocking_client.rs](source/src/clients/blocking_client.md)、[tests/buffered_client.rs](source/tests/buffered_client.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 服务端承担并发，客户端也有自己的并发问题。如果两个任务共用一个 TCP 连接，各自发请求、各自读响应，谁能保证它们不会读走对方的结果？本项目的三种客户端展示了不同边界上的处理方式。
 
 ## 三种 API 最后都到哪里

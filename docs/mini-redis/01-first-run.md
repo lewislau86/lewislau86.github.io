@@ -6,6 +6,8 @@ editLink: false
 
 [上一章：整体架构](/mini-redis/00-architecture.md) · [目录](/mini-redis/index.md) · [下一章：Rust 基础](/mini-redis/02-rust-foundations.md)
 
+本章对应的独立源码文章：[src/bin/server.rs](/mini-redis/source/src/bin/server.md)、[src/bin/cli.rs](/mini-redis/source/src/bin/cli.md)、[examples/hello_world.rs](/mini-redis/source/examples/hello_world.md)。完整的一一对应关系见 [源码文章索引](/mini-redis/source/index.md)。
+
 数据库在这里首先是一个持续运行的进程。客户端连上它，发送命令；进程修改内存，再返回结果。关闭客户端不会清空服务器的数据，关闭并重启这个服务器则会，因为 mini-redis 没有持久化。
 
 ## 启动两个角色

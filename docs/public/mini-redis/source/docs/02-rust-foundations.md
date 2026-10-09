@@ -2,6 +2,8 @@
 
 [上一章](01-first-run.md) · [目录](README.md) · [下一章](03-request-path.md)
 
+本章对应的独立源码文章：[src/lib.rs](source/src/lib.md)、[src/cmd/set.rs](source/src/cmd/set.md)、[src/parse.rs](source/src/parse.md)、[src/db.rs](source/src/db.md)。完整的一一对应关系见 [源码文章索引](source/README.md)。
+
 上一章已经运行自己的 hello_tokio 客户端，其中 `let mut client`、`"rust".into()` 和返回的 `Some(...)` 都还只是初见。先从这些代码背后的数据责任开始：服务器需要接收一块数据、保存它、让多个请求读取它，最后释放它。Rust 把这些责任写进类型与函数签名。理解这个过程，比背语法表更容易理解借用检查器；异步执行的细节留到第 05 章。
 
 ## 从变量与类型开始
