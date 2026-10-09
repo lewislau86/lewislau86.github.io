@@ -1,0 +1,139 @@
+[
+  {
+    "text": "TinyLLM 教程",
+    "items": [
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "课程总览",
+        "link": "/tinyllm/"
+      }
+    ]
+  },
+  {
+    "text": "基础工具与稳定训练",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Chapter 0 · 归一化",
+        "link": "/tinyllm/chapter0_normalization"
+      },
+      {
+        "text": "Chapter 1 · PyTorch 张量与自动求导",
+        "link": "/tinyllm/chapter1_pytorch_autograd"
+      },
+      {
+        "text": "Chapter 2 · 初始化与残差路径（规划）",
+        "link": "/tinyllm/chapter2_initialization_residuals"
+      },
+      {
+        "text": "Chapter 3 · 激活函数与门控前馈层（规划）",
+        "link": "/tinyllm/chapter3_activations_ffn"
+      }
+    ]
+  },
+  {
+    "text": "构造语言模型",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Chapter 4 · 文本与词元化（规划）",
+        "link": "/tinyllm/chapter4_tokenization"
+      },
+      {
+        "text": "Chapter 5 · 词嵌入与输出层（规划）",
+        "link": "/tinyllm/chapter5_embeddings_output"
+      },
+      {
+        "text": "Chapter 6 · 位置表示（规划）",
+        "link": "/tinyllm/chapter6_position_encoding"
+      },
+      {
+        "text": "Chapter 7 · 自注意力（规划）",
+        "link": "/tinyllm/chapter7_self_attention"
+      },
+      {
+        "text": "Chapter 8 · Transformer Block（规划）",
+        "link": "/tinyllm/chapter8_transformer_block"
+      },
+      {
+        "text": "Chapter 9 · 完整 TinyLLM（规划）",
+        "link": "/tinyllm/chapter9_tinyllm_model"
+      }
+    ]
+  },
+  {
+    "text": "数据与训练",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Chapter 10 · 语料与数据管线（规划）",
+        "link": "/tinyllm/chapter10_data_pipeline"
+      },
+      {
+        "text": "Chapter 11 · 语言模型目标函数（规划）",
+        "link": "/tinyllm/chapter11_language_model_loss"
+      },
+      {
+        "text": "Chapter 12 · 优化器（规划）",
+        "link": "/tinyllm/chapter12_optimizers"
+      },
+      {
+        "text": "Chapter 13 · 学习率策略（规划）",
+        "link": "/tinyllm/chapter13_learning_rate"
+      },
+      {
+        "text": "Chapter 14 · 正则化与泛化（规划）",
+        "link": "/tinyllm/chapter14_regularization"
+      },
+      {
+        "text": "Chapter 15 · 数值精度与混合精度",
+        "link": "/tinyllm/chapter15_precision"
+      },
+      {
+        "text": "Chapter 16 · 梯度稳定与累积（规划）",
+        "link": "/tinyllm/chapter16_gradient_stability"
+      },
+      {
+        "text": "Chapter 17 · 训练循环与检查点（规划）",
+        "link": "/tinyllm/chapter17_training_loop"
+      },
+      {
+        "text": "Chapter 18 · 训练诊断与评估（规划）",
+        "link": "/tinyllm/chapter18_training_evaluation"
+      }
+    ]
+  },
+  {
+    "text": "生成与扩展",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Chapter 19 · 自回归生成（规划）",
+        "link": "/tinyllm/chapter19_autoregressive_generation"
+      },
+      {
+        "text": "Chapter 20 · 推理效率（规划）",
+        "link": "/tinyllm/chapter20_inference_efficiency"
+      },
+      {
+        "text": "Chapter 21 · 指令微调（规划）",
+        "link": "/tinyllm/chapter21_instruction_finetuning"
+      },
+      {
+        "text": "Chapter 22 · 参数高效与稀疏结构（规划）",
+        "link": "/tinyllm/chapter22_peft_sparsity"
+      },
+      {
+        "text": "Chapter 23 · 大规模训练稳定性（规划）",
+        "link": "/tinyllm/chapter23_large_model_stability"
+      },
+      {
+        "text": "Chapter 24 · 扩展专题（规划）",
+        "link": "/tinyllm/chapter24_advanced_topics"
+      }
+    ]
+  }
+]

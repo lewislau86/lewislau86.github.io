@@ -1,23 +1,29 @@
 import { defineConfig } from 'vitepress'
+import tinyllmSidebar from './tinyllm-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
   title: 'Lewis 的知识库',
   description: '按主题整理技术研究、项目文档与学习笔记。',
   base: '/',
+  markdown: { math: true },
   sitemap: { hostname: 'https://lewislau86.github.io' },
   head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' }]],
   themeConfig: {
     logo: '/favicon.svg',
     nav: [
       { text: '文档', link: '/' },
+      { text: 'TinyLLM', link: '/tinyllm/' },
       { text: '关于', link: '/about' }
     ],
-    sidebar: [
+    sidebar: {
+      '/tinyllm/': tinyllmSidebar,
+      '/': [
       {
         text: '知识库',
         items: [
           { text: '文档首页', link: '/' },
+          { text: 'TinyLLM 教程', link: '/tinyllm/' },
           { text: '关于', link: '/about' }
         ]
       },
@@ -29,7 +35,8 @@ export default defineConfig({
           { text: 'Markdown 写作示例', link: '/guide/markdown' }
         ]
       }
-    ],
+      ]
+    },
     notFound: {
       title: '文档未找到',
       quote: '这篇文档可能已移动或尚未创建，请返回首页查找。',
@@ -45,7 +52,9 @@ export default defineConfig({
     darkModeSwitchTitle: '切换为深色模式',
     skipToContentLabel: '跳转到正文',
     editLink: {
-      pattern: 'https://github.com/lewislau86/lewislau86.github.io/edit/master/docs/:path',
+      pattern: ({ relativePath }) => relativePath.startsWith('tinyllm/')
+        ? `https://github.com/lewislau86/tinyllm/edit/main/${relativePath.slice('tinyllm/'.length).replace(/^index\.md$/, 'README.md')}`
+        : `https://github.com/lewislau86/lewislau86.github.io/edit/master/docs/${relativePath}`,
       text: '在 GitHub 上编辑此页'
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/lewislau86/lewislau86.github.io' }],
