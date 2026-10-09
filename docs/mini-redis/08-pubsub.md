@@ -8,6 +8,23 @@ editLink: false
 
 GET 是客户端先问、服务器再答。订阅新闻频道后，客户端可能很久不发请求，服务器却需要在别人发布消息时主动推送。这就不再是简单的“一次请求对应一次普通响应”。
 
+## 先把两条连接与一个内部通道分开
+
+```text
+订阅客户端 Client::subscribe → TCP S → Handler S::run
+    → Command::apply → Subscribe::apply（在这里长期等待）
+        → subscribe_to_channel → Db::subscribe → Receiver
+        → StreamMap.next → 写 message 帧 → TCP S → Subscriber::next_message
+                                            ↑
+发布客户端 Client::publish → TCP P → Handler P::run
+    → Publish::apply → Db::publish → broadcast Sender.send
+    → 写 Integer 接收者数 → TCP P → Client::publish 返回
+```
+
+`Db::publish` 没有直接调用订阅连接的 write_frame。它发的是进程内消息，实际写 TCP S 的仍是 Handler S；返回给发布者的整数则由 Handler P 写到 TCP P。一个订阅者断线，不会因为同一条函数返回链而直接使发布者的 Handler 退出。
+
+这也是后面读代码时的定位规则：`dst` 始终属于正在执行这个 apply 的连接。不同 apply 中叫同一个名字的 dst，不代表它们共享 socket。
+
 ## 两张名字相似、用途不同的表
 
 Db 中 `entries` 保存键值，`pub_sub` 保存频道到 `broadcast::Sender<Bytes>` 的映射。频道名恰好等于某个数据键，也不会使它们成为同一个对象。
@@ -40,11 +57,121 @@ Occupied/Vacant 让“找到已有频道或插入新频道”在一次 entry 操
 收到停机通知   ─→ 返回，释放订阅与连接
 ```
 
+将上面的三类事件对应到 [Subscribe::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 的实际循环，省略注释如下：
+
+<!-- source: src/cmd/subscribe.rs:115-154; comments omitted -->
+```rust
+let mut subscriptions = StreamMap::new();
+
+    loop {
+        for channel_name in self.channels.drain(..) {
+            subscribe_to_channel(channel_name, &mut subscriptions, db, dst).await?;
+        }
+
+        select! {
+            Some((channel_name, msg)) = subscriptions.next() => {
+                dst.write_frame(&make_message_frame(channel_name, msg)).await?;
+            }
+            res = dst.read_frame() => {
+                let frame = match res? {
+                    Some(frame) => frame,
+                    None => return Ok(())
+                };
+
+                handle_command(
+                    frame,
+                    &mut self.channels,
+                    &mut subscriptions,
+                    dst,
+                ).await?;
+            }
+            _ = shutdown.recv() => {
+                return Ok(());
+            }
+        };
+    }
+}
+```
+
+调用它的外层 Handler 正停在 `cmd.apply(...).await`，因此外层 read_frame 暂时不会再执行；客户端发来的后续命令由这里的 dst.read_frame 接手。函数里没有“订阅数为零则 return”的分支，所以不能从退订计数为零推断回到普通请求模式。
+
+`self.channels` 是尚待建立的订阅，`subscriptions` 是已经在监听的集合，二者职责不同。handle_command 收到新 SUBSCRIBE 时只追加待办，下一轮 drain 才调用 subscribe_to_channel；收到 UNSUBSCRIBE 则移除已有流并发送确认。
+
+进入 [subscribe_to_channel](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 看资源交接：
+
+<!-- source: src/cmd/subscribe.rs:176-197; comments omitted -->
+```rust
+let mut rx = db.subscribe(channel_name.clone());
+
+let rx = Box::pin(async_stream::stream! {
+    loop {
+        match rx.recv().await {
+            Ok(msg) => yield msg,
+            Err(broadcast::error::RecvError::Lagged(_)) => {}
+            Err(_) => break,
+        }
+    }
+});
+
+subscriptions.insert(channel_name.clone(), rx);
+
+let response = make_subscribe_frame(channel_name, subscriptions.len());
+dst.write_frame(&response).await?;
+
+Ok(())
+```
+
+Db 创建/复用频道并返回 Receiver；这里将 Receiver 移进流，流放入当前连接自己的 StreamMap，然后写订阅确认。因而确认到达客户端前，服务端已经建立接收关系。移除 StreamMap 中的流会释放对应 Receiver，但不会顺便删除 Db.pub_sub 中的 Sender 表项。
+
+
 最初 SUBSCRIBE 还会逐频道确认 `['subscribe', channel, 当前订阅数]`。UNSUBSCRIBE 回 `['unsubscribe', channel, 剩余订阅数]`。这些是数组帧，末尾计数是 Integer，不是文本数字。
 
 `self.channels.drain(..)` 一边交出待订阅的 String，一边将列表清空，因此下一轮不会把老的待办再做一遍。新增 SUBSCRIBE 会把名字追加到待办列表，下一轮再建立流。
 
 在当前实现里，订阅后的连接只处理 SUBSCRIBE 和 UNSUBSCRIBE；其他命令交给 Unknown 返回错误。即使所有频道都退订了，代码也没有从内部循环跳回普通 Handler 模式。不要把它写成“退订到零自动恢复普通客户端”。真正 Redis 的订阅规则还区分协议版本，见[官方 Pub/Sub 文档](https://redis.io/docs/latest/develop/pubsub/)。
+
+## Publish 的返回值在哪结束，推送又在哪继续
+
+[Publish::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/publish.rs) 接受的 dst 属于发布连接：
+
+<!-- source: src/cmd/publish.rs:67-87; comments omitted -->
+```rust
+pub(crate) async fn apply(self, db: &Db, dst: &mut Connection) -> crate::Result<()> {
+    let num_subscribers = db.publish(&self.channel, self.message);
+
+    let response = Frame::Integer(num_subscribers as u64);
+
+    dst.write_frame(&response).await?;
+
+    Ok(())
+}
+```
+
+它调用的 [Db::publish](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/db.rs) 只访问内部频道表：
+
+<!-- source: src/db.rs:256-269; comments omitted -->
+```rust
+pub(crate) fn publish(&self, key: &str, value: Bytes) -> usize {
+    let state = self.shared.state.lock().unwrap();
+
+    state
+        .pub_sub
+        .get(key)
+        .map(|tx| tx.send(value).unwrap_or(0))
+        .unwrap_or(0)
+}
+```
+
+没有频道或没有活跃接收者，都映射为 0；成功的 send 结果被编码成整数。到这里并没有等待各订阅客户端收到，更没有等待业务消费确认。之后各接收任务分别从 StreamMap 得到消息，构造 `["message", channel, content]` 才写出。
+
+| 事件 | 当场改变的状态/控制流 | 影响范围 |
+| --- | --- | --- |
+| SUBSCRIBE 确认发送成功 | 当前连接保留流并进入 select | 只切换这个连接的处理模式 |
+| 某 Receiver 落后，出现 Lagged | 流忽略此错误并继续 recv | 此接收者缺失旧消息；不会向发布者追溯报错 |
+| 订阅连接写推送失败 | Subscribe::apply 的 `?` 返回到外层 Handler | 结束订阅连接，释放它的各 Receiver |
+| 发布后回整数失败 | Publish::apply 返回 Err | 发布连接失败；已发入内部通道的消息不会回滚 |
+| 退订到零 | StreamMap 清空，循环仍等命令/停止 | 连接保持订阅处理模式，而不是重新获得 GET 能力 |
+
 
 ## 读懂一行看起来很难的类型
 

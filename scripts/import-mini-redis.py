@@ -24,9 +24,11 @@ source_files += [p for p in source.rglob('*') if p.is_file() and
     not set(p.relative_to(source).parts) & {'target', '.git'}]
 source_files = sorted(set(source_files))
 notes = sorted(p for p in source_files if p.suffix == '.md' and p.is_relative_to(source))
-assert len(list(source.glob('[0-9][0-9]-*.md'))) == 12
-manifest = {'upstream': 'https://github.com/tokio-rs/mini-redis', 'base_commit': commit,
-            'content': 'Local docs and working-tree source snapshot; base commit alone does not include the notes.',
+chapters = sorted(source.glob('[0-9][0-9]-*.md'))
+assert chapters, 'No numbered chapters found'
+assert len({p.name[:2] for p in chapters}) == len(chapters), 'Duplicate chapter numbers'
+manifest = {'upstream': 'https://github.com/tokio-rs/mini-redis', 'source_commit': commit,
+            'content': 'Local docs and working-tree source snapshot; file hashes identify the published content.',
             'files': {}}
 public.mkdir(parents=True, exist_ok=True)
 for path in source_files:
@@ -83,13 +85,12 @@ with zipfile.ZipFile(public / 'mini-redis-study.zip', 'w', zipfile.ZIP_DEFLATED)
         info = zipfile.ZipInfo('mini-redis-study/' + path.relative_to(project).as_posix(), (2026, 1, 1, 0, 0, 0))
         info.compress_type = zipfile.ZIP_DEFLATED
         archive.writestr(info, path.read_bytes())
-chapters = sorted(source.glob('[0-9][0-9]-*.md'))
 sidebar = [{'text': 'mini-redis 源码分析', 'items': [
     {'text': '返回知识库', 'link': '/'}, {'text': '教程总览与下载', 'link': '/mini-redis/'}]}]
-for title, start, end in [('入门与请求链路', 0, 4), ('并发、存储与生命周期', 4, 10), ('架构与实践', 10, 12)]:
+for title, start, end in [('整体架构', 0, 0), ('入门与请求链路', 1, 4), ('并发、存储与生命周期', 5, 10), ('架构与实践', 11, 99)]:
     sidebar.append({'text': title, 'collapsed': False, 'items': [
         {'text': p.read_text().splitlines()[0].removeprefix('# '), 'link': '/mini-redis/' + p.stem}
-        for p in chapters[start:end]]})
+        for p in chapters if start <= int(p.name[:2]) <= end]})
 sidebar.append({'text': '配套资料', 'items': [
     {'text': '配套实验', 'link': '/mini-redis/labs/'},
     {'text': '原始验证记录', 'link': '/mini-redis/validation'}]})

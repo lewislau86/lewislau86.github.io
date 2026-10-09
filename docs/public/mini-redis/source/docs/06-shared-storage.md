@@ -4,6 +4,20 @@
 
 两个客户端分别有自己的 Handler，但必须看到同一份键值表。为每个 Handler 深拷贝一个数据库会把它们变成互不相干的数据岛；只共享一个没有同步保护的可变表，又会引入数据竞争。
 
+## 谁创建这份数据，谁会读写它
+
+```text
+server::run → DbDropGuard::new → Db::new → 创建 Shared 并 spawn 清理任务
+Listener::run → DbDropGuard::db → clone Db → 放进各 Handler
+Handler::run → Command::apply
+                 ├→ Set::apply → Db::set → 修改 entries / expirations
+                 ├→ Get::apply → Db::get → 返回 Bytes → 写回连接
+                 └→ Publish / Subscribe → Db 的频道方法（第 08 章）
+后台 purge_expired_tasks → Shared::purge_expired_keys → 删除到期记录
+```
+
+Db::new 的调用次数很重要：当前每个 server::run 实例创建一份，而不是每次 accept 创建一份。假如把 Db::new 放进每个 Handler 的构造，客户端 A 写入、客户端 B 读取的行为就会被改变。反过来，Db::get/set 没有主动接收 socket；只有命令执行层把已经解析的参数交进来。
+
 ## 从外到内拆开 Db
 
 [db.rs](../src/db.rs) 的核心布局是：
@@ -39,6 +53,56 @@ pub(crate) fn get(&self, key: &str) -> Option<Bytes> {
 `HashMap::get` 返回 `Option<&Entry>`。`.map(|entry| ...)` 在 Some 时执行闭包，在 None 时保持 None。竖线中的 `entry` 是闭包参数；闭包可以捕获周围变量，第 07 章中 `expire.map` 就会更新外部的 notify 标记。
 
 这里返回 clone 出来的 Bytes，而不是 `&Entry` 或 `&Bytes`。这样函数离开、锁已释放之后，响应仍独立持有字节资源，不会引用未来可能被其他写操作删除的表项。
+
+## 把 GET 的返回值交回 Get::apply
+
+上面 get 的直接调用者是 [Get::apply](../src/cmd/get.rs)，不是 Client。调用期间只借用 `self.key`；函数返回的 Bytes 由响应 Frame 继续持有，随后交给 Connection::write_frame。沿这条链看，clone 的目的首先是让“数据库锁的生命周期”和“网络响应的生命周期”分开。
+
+如果另一连接随后 SET 覆盖同名键，数据库表项可以换成新值，而已经构造好的 GET 响应仍持有旧字节；它是这次读取获得的结果，不会在发送途中突然换成新值。若改成返回表内引用，上层就不能在不保留相应保护的情况下安全跨网络 await 使用它。
+
+## SET 一次改变哪些共享结构
+
+调用者 [Set::apply](../src/cmd/set.rs) 先调用 Db::set，再写 OK。下面取出 [Db::set](../src/db.rs) 中更新两张表的连续代码；进入这段前已取得 state 锁并算好 expires_at、notify：
+
+<!-- source: src/db.rs:184-219; comments omitted -->
+```rust
+let prev = state.entries.insert(
+        key.clone(),
+        Entry {
+            data: value,
+            expires_at,
+        },
+    );
+
+    if let Some(prev) = prev {
+        if let Some(when) = prev.expires_at {
+            state.expirations.remove(&(when, key.clone()));
+        }
+    }
+
+    if let Some(when) = expires_at {
+        state.expirations.insert((when, key));
+    }
+
+    drop(state);
+
+    if notify {
+        self.shared.background_task.notify_one();
+    }
+}
+```
+
+`entries.insert` 返回旧 Entry，供随后撤销旧索引；即使新值不带 TTL，也必须执行这个撤销步骤。新索引先不插入，是为了避免新旧 `(when, key)` 相同的时候把刚插入的新记录一起删掉。两张结构受同一把锁保护，其他 get/set 与清理任务不会在这个临界区中途看见只改了一半的状态。
+
+这段源码的影响超出了返回值：set 返回 `()`，但已替换共享表项，可能撤销旧 deadline、增加新 deadline，还可能通过 Notify 改变后台任务的下一次唤醒时间。最后一个影响继续追[第 07 章](07-expiration.md)。
+
+| 执行场景 | entries 的变化 | expirations 的变化 | 对调用者及其他任务的影响 |
+| --- | --- | --- | --- |
+| 新键，无 TTL | 插入新值 | 不增加索引 | Set::apply 准备 OK，后续 GET 可读 |
+| 旧键有 TTL，新值永久 | 覆盖 Entry | 删除旧索引，不插入新索引 | 旧 deadline 不能再删除这个新值 |
+| 旧键改为更早 TTL | 覆盖值和时间 | 删旧、加新；按最早时间判断 notify | 清理任务可能提前醒来 |
+| 解锁后响应写失败 | 不回滚已写值 | 不撤销本次索引更新 | 原客户端报错，其他连接仍可能读到新值 |
+
 
 ## 为什么 Bytes 的 clone 合适
 

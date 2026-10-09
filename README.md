@@ -58,7 +58,7 @@ TinyLLM 页底的编辑入口指向源仓库，避免下次同步覆盖对本站
 
 ## 同步 mini-redis 教程
 
-网站 `/mini-redis/` 发布本地 `mini-redis/docs` 的当前版本（12 章正文、总览、实验说明和验证记录）。
+网站 `/mini-redis/` 发布本地 `mini-redis/docs` 的当前版本（整体架构导读、12 章正文、总览、实验说明和验证记录）。
 
 ```sh
 python3 scripts/import-mini-redis.py /Users/lewislau/MyResearch/mini-redis/docs

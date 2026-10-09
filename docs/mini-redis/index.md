@@ -18,6 +18,7 @@ editLink: false
 
 | 章节 | 我们要解决的问题 | 顺路学到的 Rust |
 | --- | --- | --- |
+| [00 整体架构](/mini-redis/00-architecture.md) | 哪个文件做什么，怎样连接通信，后续怎样优化？ | 进程、模块、任务、共享状态的整体关系 |
 | [01 跑通第一条请求](/mini-redis/01-first-run.md) | 从 CLI 到自己写客户端，如何完成一次读写？ | Cargo、路径依赖、模块、函数、宏 |
 | [02 用所有权管理一份数据](/mini-redis/02-rust-foundations.md) | 数据由谁持有，什么时候能借用，什么时候释放？ | 变量、类型、所有权、借用、结构体、枚举 |
 | [03 沿着 SET/GET 走一遍](/mini-redis/03-request-path.md) | 字节、帧、命令和数据库如何接起来？ | 方法接收者、泛型、trait、Result、`?` |
@@ -31,7 +32,24 @@ editLink: false
 | [11 从教学服务器走向 Redis](/mini-redis/11-real-redis.md) | 持久化、复制、集群分别解决什么问题？ | 区分语言实现与数据库架构 |
 | [12 动手练习与知识索引](/mini-redis/12-exercises-and-index.md) | 我是否真的能独立读代码、做修改？ | 编译器诊断、边界测试、知识复盘 |
 
-按顺序完成 01—04，先运行 CLI，再运行自己写的客户端，学会解释语法后进入请求链路；完成 05—07，通过异步小实验理解执行机制，再阅读并发与共享状态；最后读 08—12，把连接生命周期与完整数据库架构连起来。各章安排了思考题与参考答案，最后一章还有综合练习。不要只背名词：能够在源码中找到支持结论的函数，才算真正读懂。
+先读 00 建立代码与通信的整体地图，优化路线可以在读完源码后回看。再按顺序完成 01—04，运行 CLI 和自己写的客户端，学会解释语法后进入请求链路；完成 05—07，通过异步小实验理解执行机制，再阅读并发与共享状态；最后读 08—12，把连接生命周期与完整数据库架构连起来。各章安排了思考题与参考答案，最后一章还有综合练习。不要只背名词：能够在源码中找到支持结论的函数，才算真正读懂。
+
+## 核心章节怎样读成源码分析
+
+第 03—10 章围绕实际调用链展开：先定位调用者和所在任务，再读源码，最后追踪返回值、状态变化以及对连接和其他任务的影响。Rust 概念用于解释这些代码为什么成立；读完一个方法后，要返回调用处看后续执行，不能只停在函数内部。
+
+| 你想追踪的行为 | 依次进入的核心代码 | 阅读位置 |
+| --- | --- | --- |
+| 一次 SET 从发起到确认 | Client::set_cmd → 网络 → Handler → Command → Set::apply → Db::set → 响应 | [03 请求链路](/mini-redis/03-request-path.md) |
+| 半条请求还没读完 | read_frame → parse_frame → Frame::check；返回后决定继续等还是交付 | [04 帧与连接](/mini-redis/04-resp-and-connection.md) |
+| 新连接接入及失败范围 | server::run → Listener::run → spawn → Handler::run | [05 任务与服务](/mini-redis/05-tokio-server.md) |
+| 写入、覆盖与查询可见性 | Set/Get::apply → Db::set/get → 共享状态 → 命令响应 | [06 共享存储](/mini-redis/06-shared-storage.md) |
+| SET TTL 之后自动删除 | Db::set → Notify → purge_expired_tasks → purge_expired_keys | [07 过期任务](/mini-redis/07-expiration.md) |
+| 一个连接发布，另一连接收消息 | Publish::apply → Db::publish → broadcast → Subscribe::apply | [08 发布订阅](/mini-redis/08-pubsub.md) |
+| 多调用者共用一个连接 | BufferedClient::get → mpsc → run → Client → oneshot | [09 客户端协作](/mini-redis/09-clients.md) |
+| 停止通知怎样变成退出完成 | server::run drop → Shutdown::recv → Handler 释放 → 完成通道关闭 | [10 停机生命周期](/mini-redis/10-shutdown-and-tests.md) |
+
+每条链都需要区分普通函数调用、跨任务消息和 TCP 通信。例如 `Set::apply → Db::set` 是同一任务的直接调用，`Db::set → Notify → 清理任务` 是唤醒关系，客户端到服务端则必须经过字节编码。三种箭头不能解释成同一种调用栈。
 
 ## 本书针对哪一份代码
 
@@ -40,6 +58,7 @@ editLink: false
 - 初稿及首次核验：2026-10-08；Hello Tokio 补充及相关实验核验：2026-10-09。
 - 文中的源码链接指向随教程发布的代码快照；函数名作为定位依据，避免代码增删后行号失效。
 - 正文标为“源码节选”的代码保留关键实现；标为“教学示例”的代码用于说明概念。可完整运行的程序集中在 [labs](/mini-redis/labs/index.md)。
+- 核心章新增节选带有 Markdown 源码中的 `source` 注记，记录原文件与行范围；已按当前基线核对，阅读时以相邻源码链接及函数名定位。去除原注释的节选不等于新的实现。
 
 实现事实以当前源码为准。比如本版本的 API 是 `Client::connect(...)`；不要把旧教程中的自由函数调用直接复制过来。依赖的具体解析版本看根目录 `Cargo.lock`，并使用 `--locked` 保持一致。
 
@@ -62,6 +81,8 @@ server::Listener：接收连接、限制连接数、创建 Handler
 ```
 
 图中的箭头是逻辑调用/数据流，不代表每个方框都运行在独立线程。第 05 章会专门解释任务与线程的区别。
+
+完整的进程边界、代码职责表、连接过程、请求与订阅通信，以及分阶段优化路线，见 [00 整体架构](/mini-redis/00-architecture.md)。
 
 ## 配套实验与验证
 
@@ -101,4 +122,4 @@ Rust 语义以 [The Rust Programming Language](https://doc.rust-lang.org/book/) 
 
 这里按本地 API 调整示例，并把“初次接触时看懂顺序”和“读源码时理解机制”分开安排。官方页面、版本锁定的 API 文档与本地源码相互补充。
 
-开始阅读：[01 跑通第一条请求](/mini-redis/01-first-run.md)。
+开始阅读：[00 整体架构](/mini-redis/00-architecture.md)，然后进入 [01 跑通第一条请求](/mini-redis/01-first-run.md)。

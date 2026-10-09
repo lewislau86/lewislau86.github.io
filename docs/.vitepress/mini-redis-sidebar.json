@@ -13,6 +13,16 @@
     ]
   },
   {
+    "text": "整体架构",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "00 整体架构：代码职责、连接通信与后续优化",
+        "link": "/mini-redis/00-architecture"
+      }
+    ]
+  },
+  {
     "text": "入门与请求链路",
     "collapsed": false,
     "items": [

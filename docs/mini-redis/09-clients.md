@@ -8,6 +8,20 @@ editLink: false
 
 服务端承担并发，客户端也有自己的并发问题。如果两个任务共用一个 TCP 连接，各自发请求、各自读响应，谁能保证它们不会读走对方的结果？本项目的三种客户端展示了不同边界上的处理方式。
 
+## 三种 API 最后都到哪里
+
+```text
+异步业务 → Client::get ──────────────────┐
+多任务业务 → BufferedClient::get         │
+              → mpsc → 后台 run         ├→ Client → Connection → TCP → 服务端
+                         → Client::get ─┤
+同步业务 → BlockingClient::get          │
+              → runtime.block_on        │
+                         → Client::get ─┘
+```
+
+三种接口改变的是客户端进程内的调用组织方式，不是三种服务端协议。BufferedClient 的内部 Command 只有 Get/Set，它是队列消息类型；不是 `src/cmd/mod.rs` 中负责 RESP 命令分发的 Command。混淆这两个类型，就会误以为队列消息能直接发给服务端。
+
 ## 基础 Client：独占完成一次往返
 
 [Client](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/client.rs) 持有一个 Connection。`get`、`set` 等方法需要 `&mut self`，一次调用从发出帧持续到读取对应响应。
@@ -27,6 +41,68 @@ editLink: false
            ▲                                        │ 顺序执行请求
            └──────── 各自的 oneshot 回复 ────────────┘
 ```
+
+先看谁创建后台任务。[BufferedClient::buffer](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/buffered_client.rs) 由业务初始化代码调用，例如 [multiplex 实验](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/docs/labs/src/bin/multiplex.rs)：
+
+<!-- source: src/clients/buffered_client.rs:67-77; comments omitted -->
+```rust
+pub fn buffer(client: Client) -> BufferedClient {
+    let (tx, rx) = channel(32);
+
+    tokio::spawn(async move { run(client, rx).await });
+
+    BufferedClient { tx }
+}
+```
+
+Client 被 move 到 run 任务后，外面的 BufferedClient 只留下发送端。调用者 clone BufferedClient 只会得到另一个队列入口，并没有增加 TcpStream。
+
+跟踪一个具体 GET，调用者执行的是 [BufferedClient::get](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/buffered_client.rs)：
+
+<!-- source: src/clients/buffered_client.rs:83-98; comments omitted -->
+```rust
+pub async fn get(&mut self, key: &str) -> Result<Option<Bytes>> {
+    let get = Command::Get(key.into());
+
+    let (tx, rx) = oneshot::channel();
+
+    self.tx.send((get, tx)).await?;
+
+    match rx.await {
+        Ok(res) => res,
+        Err(err) => Err(err.into()),
+    }
+}
+```
+
+两次等待对应两位交互对象：`self.tx.send(...).await` 等请求进入共享队列；`rx.await` 等本次私有 oneshot 的回复。入队成功只说明后台有机会处理，还不意味着服务端已经执行 GET。
+
+后台唯一的接收者运行以下 [run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/buffered_client.rs)：
+
+<!-- source: src/clients/buffered_client.rs:26-43; comments omitted -->
+```rust
+async fn run(mut client: Client, mut rx: Receiver<Message>) {
+    while let Some((cmd, tx)) = rx.recv().await {
+        let response = match cmd {
+            Command::Get(key) => client.get(&key).await,
+            Command::Set(key, value) => client.set(&key, value).await.map(|_| None),
+        };
+
+        let _ = tx.send(response);
+    }
+}
+```
+
+这三段连起来才是一个完整请求：业务调用 → 入队 → 后台取出 → 真正 Client 网络往返 → oneshot 回信 → 业务得到结果。run 在一个命令 await 完后才取下一个，所以一条连接上仍是顺序处理。
+
+| 失败/等待位置 | 谁看到它 | 后续影响 |
+| --- | --- | --- |
+| mpsc 队列满 | 当前 BufferedClient 调用等待 | 不自动扩容为更多 TCP 连接；其他已入队请求仍处理 |
+| mpsc 接收端已关闭 | send 返回 Err，`?` 交给调用者 | 这次命令未通过这个入口成功入队 |
+| Client::get/set 返回 Err | run 将这个 Result 发回 oneshot | 后台代码仍继续下一轮；没有自动修复/重连 Client |
+| 调用者取消等待回复 | 后台 tx.send 可能失败并被忽略 | 已入队/已执行的写操作不会被撤销 |
+| 所有 BufferedClient Sender 释放 | run 排空已有队列后 recv 返回 None | 后台函数结束，Client/socket 随之释放 |
+
 
 mpsc 是多生产者、单消费者：许多 Sender 可以发消息，唯一 Receiver 顺序处理。这里容量为 32，队列满时 `send(...).await` 等待空间，形成背压。若队列无界，调用者快于服务端就可能不断积累内存。
 
@@ -49,6 +125,31 @@ BufferedClient clone 的是发送句柄，所有克隆仍共享一个后台 Clie
 [blocking_client.rs](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/blocking_client.rs) 内部保存异步 Client 与一个 current-thread runtime，通过 `rt.block_on(...)` 驱动对应异步操作，直到得到结果。
 
 这正是第 05 章显式 Builder 实验中的同步/异步边界：普通函数创建或持有 runtime，由 block_on 驱动 Future。区别在于这里把 runtime 存入客户端结构体，多个方法复用它，而不是每调用一次 get 就重新创建运行环境。
+
+先看 [BlockingClient::connect](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/clients/blocking_client.rs) 如何构造对象，再看它的 get 如何复用对象：
+
+<!-- source: src/clients/blocking_client.rs:71-79; comments omitted -->
+```rust
+pub fn connect<T: ToSocketAddrs>(addr: T) -> crate::Result<BlockingClient> {
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()?;
+
+    let inner = rt.block_on(crate::clients::Client::connect(addr))?;
+
+    Ok(BlockingClient { inner, rt })
+}
+```
+
+<!-- source: src/clients/blocking_client.rs:97-99; comments omitted -->
+```rust
+pub fn get(&mut self, key: &str) -> crate::Result<Option<Bytes>> {
+    self.rt.block_on(self.inner.get(key))
+}
+```
+
+普通函数的调用者被 block_on 阻塞到结果返回；网络语义仍由 inner.get 决定。因此给 Client::get 增加响应检查，会同时影响 BlockingClient 和 BufferedClient 经它读取的结果；单改 BufferedClient 的队列容量则不会改变另外两种接口。
+
 
 同步业务代码可以调用阻塞式 `get`，代价是当前调用线程等待完成。这一层并没有把网络重新实现一遍。current-thread runtime 在 block_on 期间被驱动，不能假设它离开 block_on 后仍有工作线程替你执行任务。
 

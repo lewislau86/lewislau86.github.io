@@ -8,6 +8,23 @@ editLink: false
 
 前面已经从客户端走完 SET/GET 的调用链，并看过 Connection 怎样处理字节。现在回到第 01 章留下的问题：代码中的 `.await` 究竟让谁等待，服务器又怎样在等待一个客户端时处理其他连接？先看一个不需要网络的实验，再进入服务端的任务循环。
 
+## 先找到三个同名 run 的上下级
+
+| 函数 | 谁调用它 | 运行范围 | 返回的影响 |
+| --- | --- | --- | --- |
+| `server::run` | server binary main、测试/实验启动函数 | 整个服务实例 | 完成停机协调，main 才能退出 |
+| `Listener::run` | server::run 外层 select | 接入循环 | accept 持续失败可使外层进入停机；未完成时持续接入 |
+| `Handler::run` | Listener 创建的 spawn 闭包 | 一个连接的请求循环 | 结束这个连接，不直接终止 Listener |
+
+```text
+main → server::run → select 等待 Listener::run 或关闭信号
+                            └→ 每次 accept 后 spawn
+                                  ├→ Handler A::run → Command::apply
+                                  └→ Handler B::run → Command::apply
+```
+
+先认识运行边界，再理解下面的 async 语法：新任务边界只在 spawn 处出现，普通 await 不会把一个方法自动变成独立后台任务。
+
 ## 先创建操作，再观察它何时开始
 
 运行 [async_basics.rs](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/docs/labs/src/bin/async_basics.rs)：
@@ -100,9 +117,29 @@ fn main() -> mini_redis::Result<()> {
 
 在 [Listener::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 中，每轮做四件事：取得连接配额，accept 一个 socket，构造 Handler，spawn 任务运行它。
 
-源码关键结构：
+把 spawn 与它前面的资源创建一起读，才能知道任务到底接管了什么。[Listener::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 循环中的源码节选：
 
+<!-- source: src/server.rs:228-267; comments omitted -->
 ```rust
+let permit = self
+    .limit_connections
+    .clone()
+    .acquire_owned()
+    .await
+    .unwrap();
+
+let socket = self.accept().await?;
+
+let mut handler = Handler {
+    db: self.db_holder.db(),
+
+    connection: Connection::new(socket),
+
+    shutdown: Shutdown::new(self.notify_shutdown.subscribe()),
+
+    _shutdown_complete: self.shutdown_complete_tx.clone(),
+};
+
 tokio::spawn(async move {
     if let Err(err) = handler.run().await {
         error!(cause = ?err, "connection error");
@@ -110,6 +147,10 @@ tokio::spawn(async move {
     drop(permit);
 });
 ```
+
+`db_holder.db()` 克隆共享 Db 句柄；`Connection::new(socket)` 创建这个连接独有的缓冲；`subscribe()` 创建停止通知的接收端；`_shutdown_complete` 的发送端克隆会一直随 Handler 存活。它们来自不同资源，却被同一个 Handler 的生命周期连起来。
+
+`self.accept().await?` 如果返回错误，会退出 Listener::run，再由 server::run 进入停止路径；`handler.run().await` 的 Err 则被闭包中的 if let 接住，只记当前连接错误。这是两种错误影响范围不同的源码原因。permit 随该连接任务释放后，等待配额的接入循环才有机会继续。
 
 `async move` 把捕获到的 Handler 和 permit 移入 Future。这样 accept 循环可以继续走，任务也不需要借用这一轮循环里的局部变量。任务结束后，其持有的 socket、permit、停机发送端等资源都会被释放。
 
@@ -125,6 +166,53 @@ spawn 的任务在 runtime 得到驱动时就可以推进，不必等调用者 a
 服务器入口用默认 `#[tokio::main]`，本地启用的 Tokio features 支持多线程 runtime；CLI 则显式用 `flavor = "current_thread"`。不要因 CLI 单线程就认为服务器也在使用同一种配置。
 
 一个 Handler 内部按“读一帧 → 解析 → 执行 → 再读”的顺序工作。同一连接上的命令不会在这里被分别 spawn；不同连接之间则可能交错执行。客户端一次发来多个请求，服务端可以按序处理，但本地基础 Client 没有实现流水线的多请求管理。
+
+## Handler::run 把网络输入接到命令执行
+
+[Handler::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 的完整控制骨架如下，只省略源码注释：
+
+<!-- source: src/server.rs:318-369; comments omitted -->
+```rust
+async fn run(&mut self) -> crate::Result<()> {
+    while !self.shutdown.is_shutdown() {
+        let maybe_frame = tokio::select! {
+            res = self.connection.read_frame() => res?,
+            _ = self.shutdown.recv() => {
+                return Ok(());
+            }
+        };
+
+        let frame = match maybe_frame {
+            Some(frame) => frame,
+            None => return Ok(()),
+        };
+
+        let cmd = Command::from_frame(frame)?;
+
+        debug!(?cmd);
+
+        cmd.apply(&self.db, &mut self.connection, &mut self.shutdown)
+            .await?;
+    }
+
+    Ok(())
+}
+```
+
+逐个看影响控制流的位置：
+
+| 位置 | 为什么在这里等待/返回 | 后续影响 |
+| --- | --- | --- |
+| read_frame 与 shutdown 的 select | 空闲连接必须既能等请求又能响应停机 | 停机分支直接返回，当前 Handler 结束 |
+| `Some(frame)` / `None` | 只把完整帧送入命令层 | EOF 不会被误当成一条空命令 |
+| `Command::from_frame(frame)?` | 验证命令参数，再进入执行 | 解析 Err 直接离开 Handler，没有自动写 Error 帧 |
+| `cmd.apply(...).await?` | 当前命令持有数据库句柄和原连接 | 完成后才读下一帧；订阅命令可能长期停留在内部循环 |
+| spawn 闭包接住 Err | 将连接失败收敛到此任务 | 释放 socket/完成句柄/许可，其他 Handler 继续 |
+
+这里没有持有整个数据库的锁。Handler 只把 Db 引用传下去，锁在 Db 的同步方法内部取得、释放。因此一个 Handler 等待网络响应写入时，其他 Handler 仍可进入 Db。
+
+继续读代码时，从这处 apply 跳到[第 03 章](/mini-redis/03-request-path.md)的命令分发，再进入[第 06 章](/mini-redis/06-shared-storage.md)的 Db；从 shutdown.recv 跳到[第 10 章](/mini-redis/10-shutdown-and-tests.md)。读完被调用者后，要回到这里确认下一步究竟是继续循环还是结束连接。
+
 
 ## Send、Sync 与 'static
 

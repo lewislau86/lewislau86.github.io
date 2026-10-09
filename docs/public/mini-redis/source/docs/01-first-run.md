@@ -1,6 +1,6 @@
 # 01 跑通第一条请求
 
-[目录](README.md) · [下一章：Rust 基础](02-rust-foundations.md)
+[上一章：整体架构](00-architecture.md) · [目录](README.md) · [下一章：Rust 基础](02-rust-foundations.md)
 
 数据库在这里首先是一个持续运行的进程。客户端连上它，发送命令；进程修改内存，再返回结果。关闭客户端不会清空服务器的数据，关闭并重启这个服务器则会，因为 mini-redis 没有持久化。
 
