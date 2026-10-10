@@ -167,21 +167,15 @@ fn shutdown_purge_task(&self) {
 cargo test --locked
 ```
 
-本机本次验证中，这条命令在 `server::key_value_timeout` 长时间未完成；单独运行该测试 20 秒也超时。这里的测试名称是集成测试函数，命令中应使用 `--test server key_value_timeout`；不是 Rust 模块的完整路径。其余测试与文档测试可用下面的过滤方式验证：
+2026-10-10 已修复原 `key_value_timeout` 挂起；现在运行完整测试，不需要 `--skip`。具体结果见 [验证记录](/mini-redis/validation.md)，复现证据、根因与修改过程见 [第 13 章：TTL 测试排查](/mini-redis/13-ttl-test-debugging.md)。
 
-```sh
-cargo test --locked -- --skip key_value_timeout
-```
+## 暂停时间为何会在显式 advance 之前到期
 
-详细结果见 [验证记录](/mini-redis/validation.md)。跳过后通过并不意味着原始全套测试通过，也没有证明挂起原因已定位。
+旧测试在真实 TCP 上等待第一次 GET 时，Tokio 的暂停时钟自动前进到 1.001 秒，服务器返回合法 Null。测试却按 world 的 11 字节长度 read_exact，只收到 5 字节后一直等待，未执行到后面的 advance 和断言。这是本次捕获的挂起路径。
 
-## 虚拟时间为何仍需要任务调度
+暂停时钟会在 runtime 没有可推进工作时自动前进到待处理计时器，不等于只有手动 advance 才能前进。另一方面，advance 完成也不承诺清理任务已经执行完毕；定时器到期和共享状态改变需要分别验证。
 
-`key_value_timeout` 使用 `tokio::time::pause()` 暂停时间，然后 `advance(Duration::from_secs(1)).await` 推进计时。这样通常能避免真实等待一秒，让测试更快。
-
-但“计时器已经到点”与“处理计时器的任务已经执行完删除”不是同一件事。还需让清理任务被调度，并在测试中定义可观察的完成条件；同时真实 socket I/O 并不会因暂停 Tokio 时间而变成完全受控的虚拟事件。这些是诊断方向，不能在没有证据时据此认定本次挂起的根因。
-
-设计自己的过期测试时，可以把纯时间逻辑放进受控单元测试，网络测试则验证端到端结果并设总超时。避免把固定 sleep 当成所有环境下都可靠的同步方式，也避免在没有上界的循环中一直等待。
+当前在 db 模块内用无网络的虚拟时间测试验证 999ms/1000ms 边界，以及后台任务实际删除。TCP 集成测试改用真实时间、完整帧解析和有总上限的条件轮询；第一次 GET 已是 Null 也能正常识别，不再等待错误的长度。新增 Rust 写法 `#[cfg(test)] mod tests` 与 `#[tokio::test(start_paused = true)]` 的解释见第 13 章。
 
 ## 让日志解释一次请求
 

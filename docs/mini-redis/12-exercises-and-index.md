@@ -144,3 +144,5 @@ Client::del → Del::into_frame → TCP → Command::from_frame
 之后再深入本项目没有充分训练的主题：自定义错误枚举与库 API 设计、trait 的高级用法、手写 Future/Pin、unsafe 的安全边界、性能分析、宏开发和 FFI。完成这些需要更多程序与调试经验，不能把读完一本项目笔记等同于掌握 Rust 的全部能力。
 
 一个合适的下一步是从空目录实现“只支持 PING、GET、SET 的服务器”，然后用这里的帧实验和独立客户端验证它。你能解释每份数据的拥有者、每个 await 的等待对象、每个共享状态的不变量，就已经掌握了继续扩展的基础。
+
+下一篇实战：[13 TTL 测试排查](/mini-redis/13-ttl-test-debugging.md)，从收到的字节和虚拟时钟记录定位一次真实挂起。

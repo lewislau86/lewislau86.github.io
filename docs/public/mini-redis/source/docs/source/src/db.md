@@ -122,6 +122,10 @@ Db 只通过 &self 共享借用句柄，Mutex 在运行时提供对 State 的独
 
 需要拆开语法时，接着读 [Rust 阅读说明的对应小节](../../rust-reading-guide.md#guards)。
 
+## 测试模块怎样验证过期而不引入网络时序
+
+文件末尾新增 `#[cfg(test)] mod tests`，仅在测试构建启用。expiration_boundary 在暂停时钟下检查 999ms 仍存在、1000ms 清理后缺失；background_expiration 不主动调用清理，等待后台删除并确认无 TTL 的键仍保留。这两项分别验证算法边界和任务是否工作，避免 TCP 等待触发虚拟时间自动前进的干扰。完整过程见 [TTL 测试排查](../../13-ttl-test-debugging.md)。
+
 ## 读完后沿哪里继续
 
 [src/cmd/get.rs](cmd/get.md) → [src/cmd/set.rs](cmd/set.md) → [src/cmd/subscribe.rs](cmd/subscribe.md) → [src/cmd/publish.rs](cmd/publish.md) → [src/server.rs](server.md)。

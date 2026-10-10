@@ -274,3 +274,53 @@ async fn purge_expired_tasks(shared: Arc<Shared>) {
 
     debug!("Purge background task shut down")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// 不使用真实 I/O：显式检查 999ms 仍存在、1000ms 可以清理的时间边界。
+    #[tokio::test(start_paused = true)]
+    async fn expiration_boundary() {
+        let guard = DbDropGuard::new();
+        let db = guard.db();
+        let started = Instant::now();
+        db.set("hello".into(), "world".into(), Some(Duration::from_secs(1)));
+        assert_eq!(db.get("hello"), Some(Bytes::from("world")));
+
+        time::advance(Duration::from_millis(999)).await;
+        assert_eq!(Instant::now() - started, Duration::from_millis(999));
+        assert_eq!(
+            db.shared.purge_expired_keys(),
+            Some(started + Duration::from_secs(1))
+        );
+        assert_eq!(db.get("hello"), Some(Bytes::from("world")));
+
+        time::advance(Duration::from_millis(1)).await;
+        assert_eq!(Instant::now() - started, Duration::from_secs(1));
+        // 直接执行清理函数以检查边界，不假设 advance 已等待后台任务执行完毕。
+        assert_eq!(db.shared.purge_expired_keys(), None);
+        assert_eq!(db.get("hello"), None);
+    }
+
+    /// 单独验证后台任务确实会删除键；不让上面的直接调用掩盖任务没有运行的问题。
+    #[tokio::test(start_paused = true)]
+    async fn background_expiration() {
+        let guard = DbDropGuard::new();
+        let db = guard.db();
+        db.set("hello".into(), "world".into(), Some(Duration::from_secs(1)));
+        // 无 TTL 的键应继续存在，清理不应误删其他记录。
+        db.set("persistent".into(), "value".into(), None);
+
+        time::advance(Duration::from_secs(1)).await;
+        // 只在无真实 I/O 的单元测试里使用虚拟时间等待；检查后置条件，而非 yield 次数。
+        time::timeout(Duration::from_millis(100), async {
+            while db.get("hello").is_some() {
+                time::sleep(Duration::from_millis(1)).await;
+            }
+        })
+        .await
+        .expect("到期后后台任务未在虚拟时间上限内删除 hello");
+        assert_eq!(db.get("persistent"), Some(Bytes::from("value")));
+    }
+}

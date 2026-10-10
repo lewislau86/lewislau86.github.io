@@ -1,4 +1,4 @@
-use mini_redis::server;
+use mini_redis::{server, Connection, Frame};
 
 use std::net::SocketAddr;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -54,62 +54,60 @@ async fn key_value_get_set() {
     assert_eq!(0, stream.read(&mut response).await.unwrap());
 }
 
-/// 使用 test-util 提供的 pause/advance 控制 Tokio 时钟，验证 TTL。
-/// 真实 TCP 与虚拟时间仍存在调度交互，推进时间不等于清理任务已经执行。
-/// 此前本地执行此测试曾超时未结束，见 docs/validation.md；本次注释修改不修复该问题。
+/// 用真实时间验证 SET EX 的端到端过期行为；精确时间边界由 db 模块单元测试覆盖。
+/// 按完整帧读取，Null 即使早于预期到达也不会卡在固定长度 read_exact 上。
 #[tokio::test]
 async fn key_value_timeout() {
-    tokio::time::pause();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    let (stop_tx, stop_rx) = tokio::sync::oneshot::channel::<()>();
+    let server_task = tokio::spawn(server::run(listener, async {
+        let _ = stop_rx.await;
+    }));
 
-    let addr = start_server().await;
-
-    // 建立临时服务连接。
-    let mut stream = TcpStream::connect(addr).await.unwrap();
-
-    // 写入值并附带 EX 1，预期一秒后到期。
-    stream
-        .write_all(
-            b"*5\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n\
+    // 当前 runtime 的时钟不暂停；总上限同时覆盖建连、写入、读取和条件轮询。
+    let result = time::timeout(Duration::from_secs(5), async {
+        let mut stream = TcpStream::connect(addr).await.expect("TTL 测试建连失败");
+        // 保留原测试的 EX 秒选项及原始 RESP 输入，不借助客户端编码掩盖协议差异。
+        stream
+            .write_all(
+                b"*5\r\n$3\r\nSET\r\n$5\r\nhello\r\n$5\r\nworld\r\n\
                      +EX\r\n:1\r\n",
-        )
+            )
+            .await
+            .expect("SET EX 写入失败");
+
+        let mut connection = Connection::new(stream);
+        let response = connection.read_frame().await.expect("SET 响应读取失败");
+        assert!(
+            matches!(&response, Some(Frame::Simple(value)) if value == "OK"),
+            "SET 应返回 OK，实际为 {:?}",
+            response
+        );
+
+        let get = Frame::Array(vec![Frame::Bulk("GET".into()), Frame::Bulk("hello".into())]);
+        loop {
+            connection.write_frame(&get).await.expect("GET 写入失败");
+            let response = connection.read_frame().await.expect("GET 响应读取失败");
+            match response {
+                // 即使测试被长时间抢占、第一次 GET 已到期，也能正常识别完整 Null。
+                Some(Frame::Null) => break,
+                Some(Frame::Bulk(value)) => assert_eq!(value.as_ref(), b"world"),
+                other => panic!("GET 应返回 world 或 Null，实际为 {:?}", other),
+            }
+            // 等待的是可观察的删除结果，sleep 仅限制轮询频率，不作为完成证明。
+            time::sleep(Duration::from_millis(10)).await;
+        }
+    })
+    .await;
+
+    // 正常完成或总超时后都请求停止，并确认服务器任务已退出。
+    stop_tx.send(()).expect("服务端提前退出");
+    time::timeout(Duration::from_secs(1), server_task)
         .await
-        .unwrap();
-
-    let mut response = [0; 5];
-
-    // 先确认 SET 的 OK，再开始验证读取。
-    stream.read_exact(&mut response).await.unwrap();
-
-    assert_eq!(b"+OK\r\n", &response);
-
-    // 到期前读取 hello。
-    stream
-        .write_all(b"*2\r\n$3\r\nGET\r\n$5\r\nhello\r\n")
-        .await
-        .unwrap();
-
-    // 断言仍能读到 world。
-    let mut response = [0; 11];
-
-    stream.read_exact(&mut response).await.unwrap();
-
-    assert_eq!(b"$5\r\nworld\r\n", &response);
-
-    // 推进虚拟时钟一秒；后台任务还需获得调度才能删除记录。
-    time::advance(Duration::from_secs(1)).await;
-
-    // 再次请求 hello，测试意图是此时已经被清理。
-    stream
-        .write_all(b"*2\r\n$3\r\nGET\r\n$5\r\nhello\r\n")
-        .await
-        .unwrap();
-
-    // 期待 Null；若后台未推进或协议未返回，read_exact 可能一直等待。
-    let mut response = [0; 5];
-
-    stream.read_exact(&mut response).await.unwrap();
-
-    assert_eq!(b"$-1\r\n", &response);
+        .expect("TTL 测试服务停机超时")
+        .expect("TTL 测试服务任务 panic");
+    result.expect("TTL 场景超过 5 秒：检查网络响应及后台过期清理");
 }
 
 #[tokio::test]

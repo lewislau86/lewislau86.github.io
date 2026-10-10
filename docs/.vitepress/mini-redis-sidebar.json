@@ -93,6 +93,10 @@
       {
         "text": "12 动手练习与知识索引",
         "link": "/mini-redis/12-exercises-and-index"
+      },
+      {
+        "text": "13 一条 TTL 测试为什么会一直等待",
+        "link": "/mini-redis/13-ttl-test-debugging"
       }
     ]
   },
