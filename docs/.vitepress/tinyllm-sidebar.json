@@ -133,6 +133,10 @@
       {
         "text": "Chapter 24 · 扩展专题（规划）",
         "link": "/tinyllm/chapter24_advanced_topics"
+      },
+      {
+        "text": "Chapter 25 · Agent 记忆与检索（规划）",
+        "link": "/tinyllm/chapter25_agent_memory"
       }
     ]
   }

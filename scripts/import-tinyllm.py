@@ -13,12 +13,13 @@ repo = Path(__file__).resolve().parents[1]
 target = repo / 'docs/tinyllm'
 summary = (source / 'SUMMARY.md').read_text()
 entries = re.findall(r'^\* \[(.+?)\]\(([^)]+\.md)\)', summary, re.M)
-assert len(entries) == 26, 'Expected overview and Chapters 0–24 in SUMMARY.md'
-assert [int(re.search(r'chapter(\d+)_', name)[1]) for _, name in entries[1:]] == list(range(25))
+assert len(entries) > 1 and entries[0][1] == 'README.md', 'Expected overview followed by chapters in SUMMARY.md'
+chapter_count = len(entries) - 1
+assert [int(re.search(r'chapter(\d+)_', name)[1]) for _, name in entries[1:]] == list(range(chapter_count)), 'Chapter numbers must be consecutive from 0'
 target.mkdir(parents=True, exist_ok=True)
 manifest = {'source': 'https://github.com/lewislau86/tinyllm',
             'commit': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
-            'files': {}}
+            'files': {'SUMMARY.md': hashlib.sha256((source / 'SUMMARY.md').read_bytes()).hexdigest()}}
 notebooks = set()
 for title, filename in entries:
     raw = (source / filename).read_bytes()
@@ -66,7 +67,7 @@ stages = [
     ('基础工具与稳定训练', 0, 4),
     ('构造语言模型', 4, 10),
     ('数据与训练', 10, 19),
-    ('生成与扩展', 19, 25),
+    ('生成与扩展', 19, chapter_count),
 ]
 sidebar = [{'text': 'TinyLLM 教程', 'items': [
     {'text': '返回知识库', 'link': '/'},

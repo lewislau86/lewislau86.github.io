@@ -2,7 +2,7 @@
 
 从零实现一个能够训练、生成文本并接受基本评估的 TinyLLM。本项目既讲模型结构，也讲让模型<strong>可训练、稳定训练和正确评估</strong>所需的数据、初始化、优化、精度与工程方法。每章计划包含 Markdown 教案及对应的 PyTorch notebook。
 
-<strong>如果你刚学完大学基础数学与 Python：</strong>先看“从哪里开始”和 Chapter 0 中的“小词典”，再运行 notebook 的前几个实验。下方 25 章是整门课的地图，不要求现在认识每个名词；遇到 MoE、μP 等先知道它们是后续专题即可。
+<strong>如果你刚学完大学基础数学与 Python：</strong>先看“从哪里开始”和 Chapter 0 中的“小词典”，再运行 notebook 的前几个实验。下方 26 章是整门课的地图，不要求现在认识每个名词；遇到 MoE、μP 等先知道它们是后续专题即可。
 
 ## 图表规范
 
@@ -52,11 +52,25 @@
 ### 第四阶段：生成、效率和进阶结构
 
 * [<strong>Chapter 19 · 自回归生成</strong>](chapter19_autoregressive_generation.md)：逐 token 解码、温度、top-k、top-p、停止条件与重复问题。
-* [<strong>Chapter 20 · 推理效率</strong>](chapter20_inference_efficiency.md)：Prefill/decode、KV cache、注意力时间与显存开销、批量生成。
+* [<strong>Chapter 20 · 推理效率</strong>](chapter20_inference_efficiency.md)：Prefill/decode、KV cache、前缀复用、注意力时间与显存开销、批量生成。
 * [<strong>Chapter 21 · 指令微调</strong>](chapter21_instruction_finetuning.md)：预训练与监督微调、对话模板、只对答案计算 loss、基础评估。
 * [<strong>Chapter 22 · 参数高效与稀疏结构</strong>](chapter22_peft_sparsity.md)：LoRA、MoE、结构化/非结构化稀疏、剪枝；分别说明节省的是训练参数、推理计算还是存储。
 * [<strong>Chapter 23 · 大规模训练稳定性</strong>](chapter23_large_model_stability.md)：μP、DeepNorm/残差缩放、深度与宽度扩展；在 Chapter 0 的公式基础上比较完整训练配置。
-* [<strong>Chapter 24 · 扩展专题</strong>](chapter24_advanced_topics.md)：GQA、FlashAttention、量化、分布式训练、RAG 与对齐方法；根据课程进展拆为独立章节。
+* [<strong>Chapter 24 · 扩展专题</strong>](chapter24_advanced_topics.md)：GQA、FlashAttention、量化、分布式训练与对齐方法；根据课程进展拆为独立章节。
+* [<strong>Chapter 25 · Agent 记忆与检索</strong>](chapter25_agent_memory.md)：历史如何写入、更新、检索并送回上下文；与模型参数、上下文和 KV cache 的边界。
+
+## 四种常被叫作“记忆”的东西
+
+问“模型记得什么”之前，先问<strong>信息保存在哪里、何时失效、能否跨会话复用</strong>：
+
+| 保存位置 | 保存什么 | 生命周期 | 在推理中做什么 |
+| --- | --- | --- | --- |
+| 模型参数（含词嵌入） | 训练形成的权重 | 持续到换权重或训练更新 | 决定模型如何处理输入；通常不保存某次对话的原文 |
+| 当前上下文 | 本次送入模型的 token | 随请求或上下文管理改变 | 提供当前可见的指令、问题与证据 |
+| KV cache | 当前前缀在各注意力层算出的 K/V 张量 | 通常随生成请求结束；服务系统可在条件满足时复用前缀 | 避免每生成一个 token 就重算相同前缀的 K/V，占用推理内存 |
+| Agent 外部记忆 | 历史文本、提取的事实及来源等 | 可跨请求保存，直到更新或删除 | 检索相关内容，并把可读文本放回当前上下文 |
+
+一轮对话可能经过 <strong>外部记忆检索 → 组装上下文 → tokenizer → 模型前向计算与 KV cache → 逐 token 生成</strong>。KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使保存在向量库里，也要先检索并进入上下文，模型才能在这一轮使用。详见 [Chapter 20](chapter20_inference_efficiency.md) 和 [Chapter 25](chapter25_agent_memory.md)。
 
 ## 从哪里开始
 
