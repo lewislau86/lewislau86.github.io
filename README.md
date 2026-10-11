@@ -44,7 +44,7 @@ VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 
 ## 同步 TinyLLM 文档集
 
 TinyLLM 位于网站 `/tinyllm/`，按照原仓库 `SUMMARY.md` 导入 27 个页面
-（课程总览 + 26 章）和文档中引用的 5 个 notebook。导入按目录识别连续的章节编号，新增章节会进入侧栏，不修改源仓库。
+（课程总览 + 26 章）和文档中引用的 6 个 notebook。导入按目录识别连续的章节编号，新增章节会进入侧栏，不修改源仓库。
 
 ```sh
 python3 scripts/import-tinyllm.py /Users/lewislau/MyResearch/TinyLLM
