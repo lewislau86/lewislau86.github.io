@@ -10,11 +10,12 @@
 | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | [Chapter 0：Normalization](chapter0_normalization.md) | LayerNorm、RMSNorm、ScaleNorm、QK Norm、DeepNorm；BF16/FP16 数值实验 | 教案与 <a href="/tinyllm/chapter0_Normalization/ch0.ipynb" download>ch0.ipynb</a> 已完成 |
 | [Chapter 1：PyTorch 张量与自动求导](chapter1_pytorch_autograd.md) | 张量形状、广播、矩阵乘法、计算图、梯度与设备 | 教案与 <a href="/tinyllm/chapter1_PyTorch_Autograd/ch1.ipynb" download>ch1.ipynb</a> 已完成 |
+| [Chapter 12：优化器](chapter12_optimizers.md) | SGD、Momentum、AdaGrad、RMSProp、Adam/AdamW、Adafactor；参数组与优化器状态 | 教案与 <a href="/tinyllm/chapter12_Optimizers/ch12.ipynb" download>ch12.ipynb</a> 已完成 |
 | [Chapter 15：数值精度与混合精度](chapter15_precision.md)           | FP32/FP16/BF16、数值稳定、PyTorch CPU/CUDA/MPS 与可选 MLX 实验         | 教案与 <a href="/tinyllm/chapter15_Precision/ch15.ipynb" download>ch15.ipynb</a> 已完成  |
 
 ## 课程路线（规划） {#课程路线规划}
 
-下面是<strong>教学目录</strong>，未在上表列出的章节只是规划。现有 Chapter 0、Chapter 1、Chapter 15 保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
+下面是<strong>教学目录</strong>，未在上表列出的章节只是规划。现有 Chapter 0、Chapter 1、Chapter 12、Chapter 15 保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
 
 ### 第一阶段：张量与稳定训练基础
 

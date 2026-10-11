@@ -24,6 +24,16 @@ for title, filename in entries:
     raw = (source / filename).read_bytes()
     manifest['files'][filename] = hashlib.sha256(raw).hexdigest()
     text = raw.decode()
+    # The optimizer lesson is complete before the source overview is updated.
+    # Keep the published overview consistent without changing the source checkout.
+    if filename == 'README.md' and '尚在规划中' not in (source / 'chapter12_optimizers.md').read_text():
+        completed, heading, remainder = text.partition('## 课程路线（规划）')
+        if '](chapter12_optimizers.md)' not in completed:
+            completed = completed.replace('| [Chapter 15',
+                '| [Chapter 12：优化器](chapter12_optimizers.md) | SGD、Momentum、AdaGrad、RMSProp、Adam/AdamW、Adafactor；参数组与优化器状态 | 教案与 [ch12.ipynb](chapter12_Optimizers/ch12.ipynb) 已完成 |\n| [Chapter 15')
+        text = (completed + heading + remainder).replace(
+            '现有 Chapter 0、Chapter 1、Chapter 15 保留原编号。',
+            '现有 Chapter 0、Chapter 1、Chapter 12、Chapter 15 保留原编号。')
     notebooks.update(re.findall(r'\]\(([^)]+\.ipynb)\)', text))
     # GitBook-exported inline math has Markdown escapes; remove only those
     # escapes inside inline equations, keeping fenced code and display math intact.
