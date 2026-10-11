@@ -1,8 +1,8 @@
 {
   "source": "https://github.com/lewislau86/tinyllm",
-  "commit": "7d21f8a053bb00d290b8576439bc211a02936bb0",
+  "commit": "0d86e8c803c60185e1c5895efa5c7328ee0e4fd3",
   "files": {
-    "README.md": "3ced76c23afd5986e7d2a199c1dbfeb1d52daecc3a051d5a91d89855240ad72c",
+    "README.md": "4d25e11262e7fcd0138f689dd4a912d3e6e7e8682d2fb4287860d26de3686cef",
     "chapter0_normalization.md": "d9f5680a3379ac23297899bdaa0caa9e274aa36ae47e9b94a40dc1111348bfe0",
     "chapter1_pytorch_autograd.md": "e62eaedab7341c2b84007a9105195aafe71c41a18ae730a7fb4170533acae9fd",
     "chapter2_initialization_residuals.md": "e5b1d579e0bbdbe601400962bf067e96de3e76cf42bd3fa6c4f5831268f19ad4",
@@ -15,7 +15,7 @@
     "chapter9_tinyllm_model.md": "eed6402f6576d20ce8db2563dba6e5b8d1d158bbc333868f4864725b028b91eb",
     "chapter10_data_pipeline.md": "115e0193e8f1bbdd22b232b599b930632ea9e2955393dbe3f2f74174b8bdc0a6",
     "chapter11_language_model_loss.md": "b2c6f534f4095ed4524c9d3351c9f7fc899d17d1506d11b9bd426eacde94a99e",
-    "chapter12_optimizers.md": "1989e6872c6311e4847ebe6f2726c5fe5457c7a8cd90dd10ad11236c158c053e",
+    "chapter12_optimizers.md": "9a840eb95c3d60ab72d1a04425225af66fa2f9ff46c30752a83910f2b2beb7da",
     "chapter13_learning_rate.md": "a07b704bf1de7b53b46630dfdbbf2ece18798b62e0127c0598e87e3e08452917",
     "chapter14_regularization.md": "1103a0df7e9cd2801df17d61d49d925959152df0fc911acf1396a2867c73ac45",
     "chapter15_precision.md": "eab6ea574a308dfd98e6a1f3a205f5460f8cb02a85a93a2b0edf79aa075aa93a",
@@ -29,7 +29,7 @@
     "chapter23_large_model_stability.md": "fa6eb052aeba4f140f10c1761497d542ab277417483a5313ff3124ce878b8dbb",
     "chapter24_advanced_topics.md": "d08db5836d61ff8e80d3cb2a99192350c2b3f5f55ebf149baa388a45993c9940",
     "chapter0_Normalization/ch0.ipynb": "8c303e27f3c9d0b54a3da3641099cc2b15fd22898a27e374182159cbd0a315ce",
-    "chapter12_Optimizers/ch12.ipynb": "c378112e518ee52dcbd76d91999cfc09641039b479cd07c66dfab96d04d92652",
+    "chapter12_Optimizers/ch12.ipynb": "8e25dce0857166344d6256f9f7d67d4f93e8bfe4efbac5f291068a5e6b7df7f5",
     "chapter15_Precision/ch15.ipynb": "1e45fca103b2dbbf4b2ece412f31dbf53f64a23392ddf29f10b8baefcd456693",
     "chapter1_PyTorch_Autograd/ch1.ipynb": "bcda503e65ce91b0593564672a1077cb68b47383f40bb7cf4d4fb6b048631fbb"
   }

@@ -4,6 +4,10 @@
 
 <strong>如果你刚学完大学基础数学与 Python：</strong>先看“从哪里开始”和 Chapter 0 中的“小词典”，再运行 notebook 的前几个实验。下方 25 章是整门课的地图，不要求现在认识每个名词；遇到 MoE、μP 等先知道它们是后续专题即可。
 
+## 图表规范
+
+本项目文档和配套 notebook 的交互式图表统一使用 <strong>Plotly</strong>。新增或修改章节时，优先使用 `plotly.graph_objects` 或 `plotly.express`，保留坐标轴标题、图例和必要的单位；不再引入 Matplotlib。
+
 ## 已完成章节
 
 | 章节                                                                                                          | 内容                                                          | 状态                                                    |

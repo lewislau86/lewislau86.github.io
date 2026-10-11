@@ -262,17 +262,20 @@ for name, make_optimizer in optimizers.items():
     print(name, round(history[0], 4), "->", round(history[-1], 6))
 ```
 
-如果环境中有 `matplotlib`，可以画出曲线：
+如果环境中有 `plotly`，可以画出交互式曲线：
 
 ```python
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
+figure = go.Figure()
 for name, history in results.items():
-    plt.plot(history, label=name)
-plt.yscale("log")
-plt.xlabel("step")
-plt.ylabel("mean squared error")
-plt.legend()
-plt.show()
+    figure.add_trace(go.Scatter(y=history, mode="lines", name=name))
+figure.update_layout(
+    title="四种优化器的训练损失",
+    xaxis_title="step",
+    yaxis_title="mean squared error",
+    yaxis_type="log",
+)
+figure.show()
 ```
 
 这个实验不是为了宣布某个优化器永远最好。它只让你看到：优化器改变的是参数走法；公平比较必须固定数据、初始参数和训练预算。把 `Adam` 的学习率改成 `0.1`，或者把 SGD 的学习率改成 `0.001`，曲线会明显变化。
