@@ -35,6 +35,54 @@ assert torch.allclose(one_hot @ embedding.weight, vectors)
 
 ID 的数值和语义距离无关。`我` 的 ID 为 2、`在` 为 3，不意味着它们比 ID 为 5 的 `数学` 更相似；向量之间的关系由训练数据、目标函数和参数更新形成。初始化时的随机向量不应被解释为已经学会了词义。
 
+## 词嵌入怎样进入 Q、K、V
+
+查表只是入口。以一个注意力头为例，先给每个位置的输入加入位置信息，得到 $X$；当前层再用三组<strong>不同的可训练投影</strong>形成查询、键和值：
+
+$$
+Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V,\qquad
+A=\operatorname{softmax}\!\left(\frac{QK^\top}{\sqrt{d_k}}+M\right),\qquad Y=AV.
+$$
+
+$M$ 是因果掩码，让位置 $t$ 只能看见自己与之前的位置。对一个 token，Q 可以理解为“这一位置需要查什么”，K 是“这一位置供别人匹配的特征”，V 是“被选中后提供的内容”。<strong>Q、K、V 不是三套词嵌入表</strong>：它们由当前层的隐藏状态投影而来；深层的输入已经包含此前层处理过的上下文。实际模型的 RoPE 等位置方法可能作用在 Q/K 上，而不是简单把位置向量加到 $X$；这里用加法位置向量，只为了看清数据流。[Hugging Face 对注意力与缓存的说明](https://huggingface.co/docs/transformers/main/cache_explanation)
+
+下面的一头、小维度实验同时检查掩码和形状。权重随机，注意力数值不表示真实语义：
+
+```python
+import math
+
+position = nn.Embedding(3, 4)
+x = vectors[0] + position(torch.arange(3))  # [seq, d]，教学用绝对位置向量
+q_proj, k_proj, v_proj = (nn.Linear(4, 4, bias=False) for _ in range(3))
+q, k, v = q_proj(x), k_proj(x), v_proj(x)
+scores = q @ k.T / math.sqrt(4)
+future = torch.triu(torch.ones(3, 3, dtype=torch.bool), diagonal=1)
+weights = scores.masked_fill(future, float("-inf")).softmax(dim=-1)
+context = weights @ v
+assert context.shape == (3, 4)
+assert torch.allclose(weights[0, 1:], torch.zeros(2))
+```
+
+注意力确实用 Q/K 的点积做匹配，但这种匹配<strong>只在本次前向的 token 位置之间</strong>进行。K 的形状随位置数增长，V 还要参与加权求和；把某一层的 K 当成“整篇文档的语义向量”，既缺少明确的文本级聚合，也没有经过检索任务训练。[Chapter 7](chapter7_self_attention.md) 会继续展开多头、缩放和掩码。
+
+### KV cache 保存的是什么
+
+生成时先处理整段提示词（prefill），得到每一层、每个注意力头对已有 token 的 K/V。随后每生成一个 token，只为<strong>新位置</strong>计算 Q/K/V，把新 K/V 接到缓存；新 Q 仍要与所有可见 K 做点积，经 softmax 得到权重，再加权读取 V。缓存避免反复计算旧位置的 K/V，<strong>不缓存“哪些旧位置最相似”这一结果</strong>，因为新 Q 不同，注意力权重也要重算。
+
+```python
+cached_k, cached_v, incremental = [], [], []
+for t in range(len(x)):
+    q_t = q_proj(x[t:t+1])
+    cached_k.append(k_proj(x[t:t+1]))
+    cached_v.append(v_proj(x[t:t+1]))
+    all_k, all_v = torch.cat(cached_k), torch.cat(cached_v)
+    attention_t = (q_t @ all_k.T / math.sqrt(4)).softmax(dim=-1)
+    incremental.append(attention_t @ all_v)
+assert torch.allclose(torch.cat(incremental), context, atol=1e-6)
+```
+
+这个等式成立，是因为因果模型中旧位置不能看未来，新 token 到来时旧位置的 K/V 无须因未来内容而改变。实际缓存还要处理多层、多头、批量、位置编码、padding 和服务端的内存管理；训练时通常不这样逐 token 缓存。缓存是本次推理的<strong>计算复用</strong>，一般不跨会话保存用户事实；前缀复用也要求输入与模型状态满足匹配条件。[Hugging Face KV cache 文档](https://huggingface.co/docs/transformers/kv_cache)和 [Chapter 20](chapter20_inference_efficiency.md)分别介绍实现策略与显存成本。
+
 ## 向量怎样变回词表上的分数
 
 Transformer 接收嵌入向量，输出每个位置的隐藏状态 $H$，形状仍为 `[batch, seq, d]`。Chapter 8 才会构造 Transformer Block；现在用 `vectors` 暂代 $H$，只检查输出端的形状。输出层把每个 $d$ 维向量映射成 $V$ 个分数：
@@ -132,6 +180,37 @@ assert len({id(p) for p in list(tied_embedding.parameters()) +
 
 向量相近不等于记忆仍有效。“去年住上海”和“现在住北京”都可能被找到；还要保存来源、时间和更新关系，并评价最终回答能否使用正确证据。完整的 Agent 记忆设计和开源评测放在 [Chapter 25](chapter25_agent_memory.md)，本章只保留这条接口边界。
 
+### 为什么通常使用单独的文本编码模型
+
+若 Agent 有十万条历史，它需要<strong>提前</strong>把每条记忆编码、存入索引；新问题到来时，只编码问题，再从索引中找候选。常见的双塔检索模型把问题与文档分别编码为固定维度向量 $e_q$、$e_m$，用余弦相似度或内积排序：
+
+$$
+\operatorname{cos}(e_q,e_m)=\frac{e_q\cdot e_m}{\|e_q\|\,\|e_m\|}.
+$$
+
+同一个记忆向量要能与许多未来的问题比较。这要求模型学习<strong>跨文本、可复用的向量空间</strong>，通常还要把整段文本的多个 token 表示汇成一个向量，并用相关/不相关的文本对训练。检索模型内部也可能使用 Transformer 和 Q/K/V 注意力；不同之处主要是<strong>最终取出的表示和训练目标</strong>。生成模型的 Q/K/V 服务于每层、每头、当前上下文内的下一 token 计算；其形状、位置依赖、生命周期和训练目标都不同。仅把生成模型某层的 K 或词嵌入行拿出来求余弦，没有理由保证它能找回相关记忆。这是<strong>目标与接口不匹配</strong>，并非注意力点积本身不能表达相似性。
+
+[Hugging Face 上的多语言 MiniLM](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)展示了一个具体实现：Transformer 先生成每个 token 的上下文化表示，再按 attention mask 做平均池化，得到一个 384 维句子向量。[multilingual-e5-small 的模型卡](https://huggingface.co/intfloat/multilingual-e5-small?library=sentence-transformers)把查询与材料分别加上 `query:`、`passage:` 前缀；[BGE-M3](https://huggingface.co/BAAI/bge-m3)同时支持稠密向量、稀疏检索和多向量检索。较新的 [Qwen3-Embedding-0.6B](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B) 则展示了另一种做法：在其示例中读取最后一个有效位置的隐藏状态，查询还可使用任务指令。<strong>文本级向量不一定都靠平均池化</strong>；要遵守对应模型卡的取向量与输入格式约定。这些是有不同训练与输出接口的检索模型例子，不是 TinyLLM 当前使用的依赖，也不能只按维度或模型大小选“最好”的一个。
+
+真实系统也并非绝对不能复用生成模型：可以对它的隐藏状态做池化、指定提示格式，再用检索数据微调或蒸馏成文本 embedding 模型。但这已经增加了文本级表示和检索训练目标，而不是直接复用现成 Q/K/V 的一行缓存。选择独立模型的实际好处是记忆可离线建索引、问题可快速检索；代价是多一套模型、存储与版本管理。替换编码器或改变池化/前缀规则后，旧索引向量往往要重算。检索返回的仍是<strong>原始记忆文本</strong>，随后它作为新提示词进入语言模型并产生新的 token 嵌入、Q/K/V 和 KV cache。
+
+可以在 Hugging Face 模型卡所列的环境里用下面的流程试验；首次运行会下载模型，本章 notebook 默认不执行这一段：
+
+```python
+from sentence_transformers import SentenceTransformer
+
+retriever = SentenceTransformer("intfloat/multilingual-e5-small")
+query_vec = retriever.encode(["query: 这个项目的图表库是什么？"], normalize_embeddings=True)
+memory_vecs = retriever.encode(
+    ["passage: 本项目统一使用 Plotly 画图。", "passage: 模型使用 PyTorch。"],
+    normalize_embeddings=True,
+)
+scores = query_vec @ memory_vecs.T
+print(scores)  # 两段材料各一个检索分数；仍须检查来源和事实是否有效
+```
+
+实验时要固定模型版本、查询/材料前缀、池化方式和归一化规则。还要在中文、多项目同名事实、事实更新与无答案问题上测检索命中和最终回答；单次余弦分数不能证明记忆系统可靠。[Chapter 25](chapter25_agent_memory.md) 给出完整评测路线。
+
 ## 动手检查
 
 运行 notebook 后，试着不用看输出回答以下问题：
@@ -141,7 +220,9 @@ assert len({id(p) for p in list(tied_embedding.parameters()) +
 3. `argmax(logits)` 得到的是当前 token，还是本例训练目标中的下一个 token？
 4. 未共享时，输入嵌入表与输出权重各有多少参数？共享后哪部分梯度会合在一起？
 5. 对同一段文本，只改变 tokenizer 的 ID 映射，为什么不能沿用旧嵌入表？
+6. KV cache 里有没有上一步的注意力概率？新 Q 到来时哪些量重用、哪些量重算？
+7. 把一条历史消息存在向量索引，与把它的 K/V 留在缓存里，分别能回答什么问题？
 
-本章的实验验证查表、形状、logits、梯度与共享参数，不训练完整语言模型。下一章加入位置表示后，模型才能开始区分同一个 token 出现在不同位置的情况。
+本章的实验验证查表、单头注意力与 KV 复用、logits、梯度和共享参数；没有训练完整语言模型，也没有用真实记忆数据评测检索模型。下一章会系统讲位置表示，随后再构造完整的注意力层。
 
 返回 [课程总目录](index.md#课程路线规划)，或继续 [Chapter 6：位置表示](chapter6_position_encoding.md)。
