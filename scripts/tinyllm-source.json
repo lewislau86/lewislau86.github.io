@@ -1,14 +1,14 @@
 {
   "source": "https://github.com/lewislau86/tinyllm",
-  "commit": "efd6cd31e7491bb79c41de2f0c7411be7208dcee",
+  "commit": "529f9004d7014b2f92dbd13fb304d42e989112a9",
   "files": {
     "SUMMARY.md": "a531d9f1a0fe2ee527a390551c3028d18f2f181b620d10aa0e0550f874e9ee8f",
-    "README.md": "e913b309f10dbab71b1d0e62ad6784ce904d12060d2995935ef6d0db2d925738",
+    "README.md": "23f56f19c8235a572ae5c38f22961216c2c3563afd07114d74dc10eb37b793b7",
     "chapter0_normalization.md": "d9f5680a3379ac23297899bdaa0caa9e274aa36ae47e9b94a40dc1111348bfe0",
     "chapter1_pytorch_autograd.md": "e62eaedab7341c2b84007a9105195aafe71c41a18ae730a7fb4170533acae9fd",
     "chapter2_initialization_residuals.md": "e5b1d579e0bbdbe601400962bf067e96de3e76cf42bd3fa6c4f5831268f19ad4",
     "chapter3_activations_ffn.md": "548ab2074c5de2d80c026bd6d0f6d0630b2824ea6416840b2179307097fbaea4",
-    "chapter4_tokenization.md": "61f973be2319c97e019df02f0c726db070dc9fb749c292933a830e9eb8624db2",
+    "chapter4_tokenization.md": "62002b279dfdde617940d6d95a75dad19944767a5e39186daac6e1556582daaf",
     "chapter5_embeddings_output.md": "656ab1d7c1b0778d96485d492b7bfabad1a68cf9871cfbfdc46498940172bd56",
     "chapter6_position_encoding.md": "aff0a8fe3e739158564947df57209ac8cca0ea3928bfacfd3781d8b20c3e7b61",
     "chapter7_self_attention.md": "f260bf60ef698fc5a538aaa07adc9dc7bb6d745416eadd8972b0ff085e252d51",
@@ -33,6 +33,7 @@
     "chapter0_Normalization/ch0.ipynb": "8c303e27f3c9d0b54a3da3641099cc2b15fd22898a27e374182159cbd0a315ce",
     "chapter12_Optimizers/ch12.ipynb": "8e25dce0857166344d6256f9f7d67d4f93e8bfe4efbac5f291068a5e6b7df7f5",
     "chapter15_Precision/ch15.ipynb": "1e45fca103b2dbbf4b2ece412f31dbf53f64a23392ddf29f10b8baefcd456693",
-    "chapter1_PyTorch_Autograd/ch1.ipynb": "bcda503e65ce91b0593564672a1077cb68b47383f40bb7cf4d4fb6b048631fbb"
+    "chapter1_PyTorch_Autograd/ch1.ipynb": "bcda503e65ce91b0593564672a1077cb68b47383f40bb7cf4d4fb6b048631fbb",
+    "chapter4_Tokenization/ch4.ipynb": "0d44d215906a000ecbdfdf1260e71a7b4ac9d213a148e0c74fdcd67d403e734a"
   }
 }

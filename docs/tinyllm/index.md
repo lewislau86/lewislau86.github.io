@@ -14,12 +14,13 @@
 | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | [Chapter 0：Normalization](chapter0_normalization.md) | LayerNorm、RMSNorm、ScaleNorm、QK Norm、DeepNorm；BF16/FP16 数值实验 | 教案与 <a href="/tinyllm/chapter0_Normalization/ch0.ipynb" download>ch0.ipynb</a> 已完成 |
 | [Chapter 1：PyTorch 张量与自动求导](chapter1_pytorch_autograd.md) | 张量形状、广播、矩阵乘法、计算图、梯度与设备 | 教案与 <a href="/tinyllm/chapter1_PyTorch_Autograd/ch1.ipynb" download>ch1.ipynb</a> 已完成 |
+| [Chapter 4：文本与词元化](chapter4_tokenization.md) | Unicode/字节、BPE、特殊 token、训练标签、词表实验与近期研究 | 教案与 <a href="/tinyllm/chapter4_Tokenization/ch4.ipynb" download>ch4.ipynb</a> 已完成 |
 | [Chapter 12：优化器](chapter12_optimizers.md) | SGD、Momentum、AdaGrad、RMSProp、Adam/AdamW、Adafactor；参数组与优化器状态 | 教案与 <a href="/tinyllm/chapter12_Optimizers/ch12.ipynb" download>ch12.ipynb</a> 已完成 |
 | [Chapter 15：数值精度与混合精度](chapter15_precision.md)           | FP32/FP16/BF16、数值稳定、PyTorch CPU/CUDA/MPS 与可选 MLX 实验         | 教案与 <a href="/tinyllm/chapter15_Precision/ch15.ipynb" download>ch15.ipynb</a> 已完成  |
 
 ## 课程路线（规划） {#课程路线规划}
 
-下面是<strong>教学目录</strong>，未在上表列出的章节只是规划。现有 Chapter 0、Chapter 1、Chapter 12、Chapter 15 保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
+下面是<strong>教学目录</strong>，第 0、1、4、12、15 章已有完整教案与 notebook；其余章节以规划或专题导读为主。现有章节保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
 
 ### 第一阶段：张量与稳定训练基础
 
@@ -30,7 +31,7 @@
 
 ### 第二阶段：构造 Decoder-only 语言模型
 
-* [<strong>Chapter 4 · 文本与词元化</strong>](chapter4_tokenization.md)：Unicode/字节、词表、BPE、特殊 token、编码和解码。
+* [<strong>Chapter 4 · 文本与词元化</strong>](chapter4_tokenization.md)：Unicode/字节、BPE 训练与编码、特殊 token、标签与掩码、词表实验；SuperBPE、TokSuite、CNF-MCE 研究导读。
 * [<strong>Chapter 5 · 词嵌入与输出层</strong>](chapter5_embeddings_output.md)：token ID 到向量、logits、输出投影、Weight Tying（输入输出权重共享）。
 * [<strong>Chapter 6 · 位置表示</strong>](chapter6_position_encoding.md)：绝对位置编码、RoPE，位置作用于注意力的哪个环节。
 * [<strong>Chapter 7 · 自注意力</strong>](chapter7_self_attention.md)：Q/K/V、缩放点积、因果 mask、多头注意力、张量转置与形状核对。
