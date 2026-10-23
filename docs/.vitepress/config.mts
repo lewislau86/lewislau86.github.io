@@ -2,6 +2,7 @@ import { defineConfig } from 'vitepress'
 import tinyllmSidebar from './tinyllm-sidebar.json'
 import miniRedisSidebar from './mini-redis-sidebar.json'
 import miniRedisSourceSidebar from './mini-redis-source-sidebar.json'
+import burnSidebar from './burn-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
@@ -18,9 +19,11 @@ export default defineConfig({
       { text: '文档', link: '/' },
       { text: 'TinyLLM', link: '/tinyllm/' },
       { text: 'mini-redis', link: '/mini-redis/' },
+      { text: 'Burn', link: '/burn/' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
+      '/burn/': burnSidebar,
       '/tinyllm/': tinyllmSidebar,
       '/mini-redis/source/': miniRedisSourceSidebar,
       '/mini-redis/': miniRedisSidebar,
@@ -31,6 +34,7 @@ export default defineConfig({
           { text: '文档首页', link: '/' },
           { text: 'TinyLLM 教程', link: '/tinyllm/' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
+          { text: '深入理解 Burn', link: '/burn/' },
           { text: '关于', link: '/about' }
         ]
       },

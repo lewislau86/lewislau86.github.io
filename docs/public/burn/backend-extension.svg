@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="700" viewBox="0 0 960 700" role="img" aria-labelledby="title desc">
+  <title id="title">后端扩展的四部分与两条已验证路径</title>
+  <desc id="desc">公共 Tensor 函数进入 Dispatch。宏生成分派；Flex 与 Autodiff 的具体实现分别复用普通乘加和记录梯度的乘加。二者返回相同的公共 Tensor 类型。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#44675b"/></marker>
+  </defs>
+  <rect width="960" height="700" rx="18" fill="#f7faf8"/>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" text-anchor="middle" fill="#183c30">
+    <text x="480" y="42" font-size="26" font-weight="700">给 Burn 增加 y = x² + x</text>
+    <text x="480" y="71" font-size="16" fill="#476557">Burn 0.22.1 · 本例复用已有运算，已在 Flex CPU 验证</text>
+    <g stroke="#8cb4a0" stroke-width="1.5" fill="#ffffff">
+      <rect x="170" y="98" width="620" height="76" rx="10"/>
+      <rect x="170" y="205" width="620" height="86" rx="10"/>
+      <rect x="40" y="355" width="410" height="126" rx="10"/>
+      <rect x="510" y="355" width="410" height="126" rx="10"/>
+      <rect x="170" y="547" width="620" height="76" rx="10"/>
+    </g>
+    <g font-size="21" font-weight="600">
+      <text x="480" y="128">① 公共函数：Tensor&lt;D&gt; → Tensor&lt;D&gt;</text>
+      <text x="480" y="236">② 扩展 trait 定义接口，宏生成 Dispatch 路由</text>
+      <text x="245" y="389">③ Flex 的具体实现</text>
+      <text x="715" y="389">③ Autodiff&lt;Flex, C&gt; 的实现</text>
+      <text x="480" y="577">④ 包装回公共 Tensor&lt;D&gt;</text>
+    </g>
+    <g font-size="17" fill="#476557">
+      <text x="480" y="156">square_plus_input(input)</text>
+      <text x="480" y="264">按输入已有的后端与自动微分上下文选择实现</text>
+      <text x="245" y="421">默认体调用普通 float_mul / float_add</text>
+      <text x="245" y="452">计算前向数值</text>
+      <text x="715" y="421">默认体调用自动微分层的乘法 / 加法</text>
+      <text x="715" y="452">计算前向，并按需要记录反向关系</text>
+      <text x="480" y="605">读取数据检查前向；启用求导时再调用 backward</text>
+      <text x="480" y="657">宏负责接通路由；具体实现负责计算；专用 kernel 的反向需要另行接入</text>
+      <text x="480" y="683">图中箭头表示调用，不表示复制整块数据，也不表示一次内核启动</text>
+    </g>
+    <g stroke="#44675b" stroke-width="2.5" fill="none" marker-end="url(#arrow)">
+      <path d="M480 175V198"/>
+      <path d="M480 292V321H245V347"/>
+      <path d="M480 321H715V347"/>
+      <path d="M245 482V513H480V539"/>
+      <path d="M715 482V513H480" marker-end="none"/>
+    </g>
+  </g>
+</svg>

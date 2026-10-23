@@ -41,6 +41,16 @@ GitHub Pages 的部署来源设置为 **GitHub Actions**。推送到 `master` �
 VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 6.4.4，
 避开旧版开发服务器的已知漏洞。升级 VitePress 后应重新评估此覆盖配置。
 
+## 编写 Burn 教程
+
+《深入理解 Burn 深度学习框架》位于 `docs/burn/`，由本站直接维护，学习总览和 15 章通过 `/burn/` 访问。
+`docs/.vitepress/burn-sidebar.json` 管理专用侧栏；`docs/public/burn/first-inference/` 提供固定 Burn 0.22.1 的 CPU 学习包。
+实验验证范围和后续计划记录在第 13 章，资料基线记录在 `references.md`。
+第 14 章提供 PyTorch 对照学习，学习包包含 `comparison.rs` 与 `pytorch_compare.py`；Python 环境与 Cargo 依赖分别管理。
+
+修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。
+运行包内代码时应在解压目录构建，或为 Cargo 指定站点目录之外的 `CARGO_TARGET_DIR`，避免把编译产物作为静态资源发布。
+
 ## 同步 TinyLLM 文档集
 
 TinyLLM 位于网站 `/tinyllm/`，按照原仓库 `SUMMARY.md` 导入 27 个页面

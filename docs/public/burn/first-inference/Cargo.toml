@@ -1,0 +1,8 @@
+[package]
+name = "burn-first-inference"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+burn = { version = "=0.22.1", default-features = false, features = ["std", "flex", "autodiff", "extension"] }

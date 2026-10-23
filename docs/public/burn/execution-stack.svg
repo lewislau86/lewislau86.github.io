@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">Burn 0.22.1：模型直接调用张量操作的执行路径</title>
+  <desc id="desc">图以模型直接调用 Tensor 运算为例，经 Bridge 与 Dispatch 到达后端。Linear 模块还可以整体分派 linear，详见源码阅读章。Flex 使用 CPU；CubeCL 路径通过运行时交给设备。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0L10 5L0 10z" fill="#44675b"/></marker>
+  </defs>
+  <rect width="960" height="620" rx="18" fill="#f7faf8"/>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" text-anchor="middle" fill="#183c30">
+    <text x="480" y="42" font-size="26" font-weight="700">直接调用 Tensor 运算，怎样到达计算设备</text>
+    <text x="480" y="70" font-size="16" fill="#476557">Burn 0.22.1 · 箭头表示调用与职责，不表示复制数据</text>
+    <g stroke="#8cb4a0" stroke-width="1.5" fill="#ffffff">
+      <rect x="220" y="94" width="520" height="62" rx="10"/>
+      <rect x="220" y="182" width="520" height="62" rx="10"/>
+      <rect x="220" y="270" width="520" height="62" rx="10"/>
+      <rect x="220" y="358" width="520" height="62" rx="10"/>
+      <rect x="75" y="474" width="350" height="82" rx="10"/>
+      <rect x="535" y="474" width="350" height="82" rx="10"/>
+    </g>
+    <g font-size="20" font-weight="600">
+      <text x="480" y="120">模型中的直接张量运算</text>
+      <text x="480" y="208">Tensor&lt;D, K&gt; 公共接口</text>
+      <text x="480" y="296">Bridge → Dispatch</text>
+      <text x="480" y="384">Backend 与可组合的装饰器</text>
+      <text x="250" y="506">Flex → CPU</text>
+      <text x="710" y="506">CubeCL → 对应运行时与设备</text>
+    </g>
+    <g font-size="16" fill="#476557">
+      <text x="480" y="144">参数 + 前向：matmul → add → relu</text>
+      <text x="480" y="232">阶数与种类约束、形状检查</text>
+      <text x="480" y="320">隐藏底层表示，按设备及上下文分派</text>
+      <text x="480" y="408">数值运算；按支持加入自动微分、融合等能力</text>
+      <text x="250" y="535">本书首先验证的执行路径</text>
+      <text x="710" y="535">如 WGPU、CUDA、ROCm、CPU</text>
+      <text x="480" y="592">调用返回时可能尚未完成计算；需要按运行时约定等待或读回</text>
+    </g>
+    <g stroke="#44675b" stroke-width="2.5" fill="none" marker-end="url(#arrow)">
+      <path d="M480 157V176"/><path d="M480 245V264"/><path d="M480 333V352"/>
+      <path d="M480 421V446H250V466"/><path d="M480 446H710V466"/>
+    </g>
+  </g>
+</svg>
