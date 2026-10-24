@@ -5,4 +5,4 @@ edition = "2024"
 publish = false
 
 [dependencies]
-burn = { version = "=0.22.1", default-features = false, features = ["std", "flex", "autodiff", "extension"] }
+burn = { version = "=0.22.1", default-features = false, features = ["std", "flex", "autodiff", "optim", "extension"] }

@@ -6,9 +6,9 @@
 
 ## 当前已验证的内容
 
-验证日期为 **2026-10-23**，环境是 **Windows、Rust 1.98.1、Cargo 1.98.1、Burn 0.22.1、Flex CPU**。程序在开发构建模式执行，目的是核对基础正确性，不是性能测试。学习包使用锁文件；Burn 本体声明最低 Rust 1.95，较旧工具链未在本次验证。
+A–F 的验证日期为 **2026-10-23**，环境是 **Windows、Rust 1.98.1、Cargo 1.98.1、Burn 0.22.1、Flex CPU**。G/H 于 **2026-10-24** 在 **macOS aarch64、Rust 1.99.0、Cargo 1.99.0、Burn 0.22.1、Flex CPU** 上复跑。程序在开发构建模式执行，目的是核对基础正确性，不是性能测试。学习包使用锁文件；Burn 本体声明最低 Rust 1.95，较旧工具链未在本次验证。
 
-下载[完整 CPU 学习包](/burn/first-inference.zip)，解压后在项目目录运行下面四项。每项都包含断言，错误时会报错退出。
+下载[完整 CPU 学习包](/burn/first-inference.zip)，解压后在项目目录运行下面这些程序。每项都包含断言，错误时会报错退出。
 
 | 实验 | 命令 | 检查与结果 | 状态 |
 | --- | --- | --- | --- |
@@ -25,10 +25,12 @@
 | --- | --- | --- | --- |
 | E：Burn 对照基准 | `cargo run --locked --bin comparison` | 主线前向、X/W/b 梯度、加权梯度，以及手动 SGD 单步 `w=1.6`、新损失约 `0.64` | 本次通过 |
 | F：PyTorch 同公式 | `python pytorch_compare.py` | 同一组手算结果；另验证转置权重后 `nn.Linear` 与 Burn 主线一致 | 本次通过 |
+| G：训练与保存 | `cargo run --locked --bin regression_train -- artifacts/regression` | 400 步后 `weights=[2.0000002]`、`bias=[0.9999994]`；8 个预测与 `2x+1` 一致；写出 `model_config.json`、`model.bpk`、`baseline.txt` | 本次通过 |
+| H：新进程加载 | `cargo run --locked --bin regression_verify -- artifacts/regression` | 加载后与保存前的最大差为 `0.000000`；与 `2x+1` 的最大差为 `0.000001`；输出 `OK` | 本次通过 |
 
-这些实验覆盖一次推理、参数组织、源张量求导、后端扩展和跨框架对照。D 使用已有乘加原语，没有创建专用 kernel；E/F 只做手动 SGD 数学更新，没有验证框架优化器 API 或完整训练收敛。GPU、Fusion、权重导入、浏览器与后端速度排名也尚未验证。
+这些实验覆盖一次推理、参数组织、源张量求导、后端扩展、跨框架对照，以及训练 → 保存 → 新进程加载的完整往返。D 使用已有乘加原语，没有创建专用 kernel；E/F 只做手动 SGD 数学更新；G 使用 Burn 的 `SgdConfig` 验证优化器 API 与小模型收敛，但不保存优化器状态，因此不能精确恢复中断的训练。GPU、Fusion、外部权重导入、浏览器与后端速度排名也尚未验证。
 
-代码可单独下载：<a href="/burn/first-inference/src/main.rs" download>主程序</a>、<a href="/burn/first-inference/src/bin/module.rs" download>Module 例子</a>、<a href="/burn/first-inference/src/bin/autodiff.rs" download>求导例子</a>、<a href="/burn/first-inference/src/bin/backend_extension.rs" download>后端扩展例子</a>、<a href="/burn/first-inference/Cargo.toml" download>项目配置</a>、<a href="/burn/first-inference/Cargo.lock" download>锁文件</a>。学习时优先下载完整包，保持目录结构。
+代码可单独下载：<a href="/burn/first-inference/src/main.rs" download>主程序</a>、<a href="/burn/first-inference/src/bin/module.rs" download>Module 例子</a>、<a href="/burn/first-inference/src/bin/autodiff.rs" download>求导例子</a>、<a href="/burn/first-inference/src/bin/backend_extension.rs" download>后端扩展例子</a>、<a href="/burn/first-inference/src/bin/regression_train.rs" download>回归训练</a>、<a href="/burn/first-inference/src/bin/regression_verify.rs" download>回归加载</a>、<a href="/burn/first-inference/Cargo.toml" download>项目配置</a>、<a href="/burn/first-inference/Cargo.lock" download>锁文件</a>。学习时优先下载完整包，保持目录结构。
 
 对照程序：<a href="/burn/first-inference/src/bin/comparison.rs" download>Burn comparison.rs</a>、<a href="/burn/first-inference/pytorch_compare.py" download>PyTorch pytorch_compare.py</a>。解释与环境检查步骤见[第 14 章](./14-pytorch-comparison.md)。
 
@@ -55,16 +57,18 @@
 
 ## 第三阶段：完成一个训练与保存闭环
 
-这是后续优先补充的完整实验，当前第 7 章先给流程。
+这条闭环已经由 G/H 两个程序验证，不再是待办计划。训练数据是 `x = -2, -1, 0, 1, 2, 3, 4, 5` 八个样本，目标是 `y = 2x + 1`；每次用全部样本计算平均 MSE，SGD 学习率 `0.05`，训练 400 步。训练程序在固定输入上保存基线预测，验证程序在另一个进程中只读文件重建模型。
 
-| 步骤 | 要做什么 | 验收标准 |
+| 步骤 | 实现 | 结果与验收 |
 | --- | --- | --- |
-| 构造数据 | 选择可控的小型回归数据与目标 | 输入、目标形状和数值范围可解释 |
-| 训练 | 自定义循环完成前向、损失、反向、更新 | 梯度有限，固定小批次 loss 明显降低 |
-| 验证 | 使用 `valid()`，在独立数据上评估 | 能区分拟合训练集和泛化 |
-| 保存 | 保存模型结构配置与参数 | 能说明文件分别保存什么 |
-| 恢复 | 在新模型实例中加载参数 | 固定输入的输出在容差内保持一致 |
-| 训练恢复 | 增加优化器等状态 | 恢复步骤和状态可检查，不只“程序能跑” |
+| 构造数据 | 8 个一维样本，目标 `2x+1` | 输入、目标形状都是 `[8, 1]` |
+| 训练 | 全批量前向、MSE、`backward`、`SgdConfig` 更新 | 400 步后 loss 小于 `1e-4`，`weights=[2.0000002]`、`bias=[0.9999994]` |
+| 验证 | 切到 `valid()` 后在固定输入上预测 | 8 个预测与 `2x+1` 的误差小于 `1e-3` |
+| 保存 | `model_config.json`、`model.bpk`、`baseline.txt` | 能说明结构、参数、基线各自的职责 |
+| 恢复 | 新进程读取配置、创建模型、加载参数 | 加载后与保存前的最大差为 `0.000000` |
+| 训练恢复 | **未实现**：没有保存优化器、调度器、随机状态和数据位置 | 不声称能精确接续中断的训练 |
+
+这个实验只验证**推理恢复**，不验证跨 Burn 版本、跨后端或跨精度的误差一致性。要精确恢复训练，还需要保存优化器状态、学习率调度器、随机数状态和数据迭代位置；这也是第 7 章“继续训练需要更多状态”一节的内容。
 
 应先完成原生 Burn 模型的保存加载，再加入外部模型格式。这样更容易把“文件往返”与“框架之间语义转换”分开排错。
 
@@ -109,7 +113,7 @@
 
 ## 后续内容的补充顺序
 
-先将训练、保存加载和梯度检查做成独立可运行实验；再补 CPU/GPU 对照和融合测量；随后完成一个小模型导入与一个自定义 kernel；最后扩展到 Transformer 推理、量化、内存规划和服务调度。
+训练与保存加载已由 G/H 完成；下一步补梯度检查（有限差分），再补 CPU/GPU 对照和融合测量；随后完成一个小模型导入与一个自定义 kernel；最后扩展到 Transformer 推理、量化、内存规划和服务调度。
 
 这些扩展会沿用本书的方法：先定义数学和输入输出，再检查实现与误差，最后讨论性能。遇到不懂的源码名词，回到它为哪一个具体计算问题服务，就更容易找到阅读方向。
 

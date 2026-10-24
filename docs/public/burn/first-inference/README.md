@@ -1,7 +1,8 @@
 # Burn 首次推理学习包
 
-对应网站《深入理解 Burn 深度学习框架》第 3、4、6、11、14 章，固定 Burn 0.22.1。
-本次验证使用 Rust/Cargo 1.98.1；Burn 本体声明最低 Rust 1.95，较旧工具链未在本次验证。
+对应网站《深入理解 Burn 深度学习框架》第 3、4、6、7、10、11、14 章，固定 Burn 0.22.1。
+A–F 使用 Rust/Cargo 1.98.1 验证；G/H 在 macOS aarch64、Rust/Cargo 1.99.0 上复跑。
+Burn 本体声明最低 Rust 1.95，较旧工具链未在本次验证。
 CPU Flex 后端，无需 GPU；首次构建需要联网下载依赖。
 
 在本目录运行：
@@ -12,7 +13,11 @@ cargo run --locked --bin module
 cargo run --locked --bin autodiff
 cargo run --locked --bin backend_extension
 cargo run --locked --bin comparison
+cargo run --locked --bin regression_train -- artifacts/regression
+cargo run --locked --bin regression_verify -- artifacts/regression
 ```
+
+前五个程序打印一次推理、Module、求导、后端扩展与对照结果。最后两个程序验证训练 → 保存 → 新进程加载：第一个训练 `Linear(1,1)` 拟合 `y=2x+1`，写出 `model_config.json`、`model.bpk`、`baseline.txt`；第二个只读文件重建模型并核对。回归示例把权重和偏置初始化为 `0.5`，让输出可以复现；这不是深层网络的通用初始化方式。
 
 预期分别包含：
 
@@ -28,6 +33,13 @@ H = [5.0, 2.0]; shape = [1, 2]
 dX = [0.0, 3.0]; dW = [1.0, 1.0, 2.0, 2.0]; db = [1.0, 1.0]
 weighted dX = [-6.0, -1.0, 3.5]
 SGD w = [1.6]; loss after = [0.6399999]
+step   1  loss = 16.296368
+weights = [2.0000002]
+bias    = [0.9999994]
+predictions = [-3.000001, -1.0000008, 0.9999994, 2.9999995, 5.0, 7.0000005, 9.0, 11.0]
+max |loaded - saved|  = 0.000000
+max |loaded - target| = 0.000001
+OK: reloaded model reproduces the baseline and the target function
 ```
 
 程序内的断言检查形状、设备、前向结果、参数量与梯度。
@@ -44,6 +56,5 @@ python pytorch_compare.py
 本次使用 Python 3.13.5、PyTorch 2.12.1+cpu。Python 环境与 Cargo 依赖分开管理。
 若未安装 PyTorch，按 https://pytorch.org/get-started/locally/ 选择适合本机的 CPU 安装方式。
 两个程序验证相同的手算值；Python 另验证 nn.Linear 的权重需要从主线 W 转置写入。
-单步更新只是公式验证，不是优化器 API、完整训练收敛或文件保存加载测试。
-这些小例子仅验证 CPU 基础执行，不代表 GPU、训练收敛、导入或性能已经验证。
+comparison 的单步更新只是公式验证。regression_train/regression_verify 另外验证 Burn 的 `SgdConfig` 优化器 API、小模型训练收敛与推理恢复；它们不保存优化器状态，因此不验证精确的训练恢复，也不代表 GPU、外部模型导入或性能已经验证。
 验证环境与状态请查看网站第 13 章。

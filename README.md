@@ -47,6 +47,7 @@ VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 
 `docs/.vitepress/burn-sidebar.json` 管理专用侧栏；`docs/public/burn/first-inference/` 提供固定 Burn 0.22.1 的 CPU 学习包。
 实验验证范围和后续计划记录在第 13 章，资料基线记录在 `references.md`。
 第 14 章提供 PyTorch 对照学习，学习包包含 `comparison.rs` 与 `pytorch_compare.py`；Python 环境与 Cargo 依赖分别管理。
+第 7、10 章另有 `regression_train.rs` / `regression_verify.rs`，用 SGD 训练 `Linear(1,1)` 并验证“保存 → 新进程加载”；运行目录会写出 `model_config.json`、`model.bpk`、`baseline.txt`。
 
 修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。
 运行包内代码时应在解压目录构建，或为 Cargo 指定站点目录之外的 `CARGO_TARGET_DIR`，避免把编译产物作为静态资源发布。
