@@ -54,6 +54,11 @@ for title, filename in entries:
     text = text.replace('#_10-bf16fp16-', '#_10-bf16-fp16-')
     # Keep the GitBook anchor used by the existing chapter backlinks.
     text = text.replace('## 课程路线（规划）', '## 课程路线（规划） {#课程路线规划}')
+    # Keep published cross-references accurate until the source checkout catches up.
+    if filename == 'README.md':
+        text = text.replace('Chapter 0 中的“小词典”', 'Chapter 0 的“统一符号与总览”')
+    if filename == 'chapter12_optimizers.md':
+        text = text.replace('上一章我们已经知道：', '第 1、5 章已经讲过：')
     destination = 'index.md' if filename == 'README.md' else filename
     (target / destination).write_text(text)
 for filename in sorted(notebooks):
