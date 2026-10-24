@@ -6,6 +6,8 @@ editLink: false
 
 [返回笔记目录](/mini-redis/index.md)
 
+> 如果你是从网站阅读：先下载[完整学习包（ZIP）](/mini-redis/mini-redis-study.zip)，解压后进入 `mini-redis-study/`，下面的命令都在该目录执行。
+
 所有命令从仓库根目录执行。此目录是独立 Cargo package，通过路径依赖使用当前仓库源码；不修改主项目的依赖、生产代码或原有测试。实验使用独立 Cargo.lock，直接依赖的 Tokio 1.32.0、bytes 1.5.0 与本次根锁文件对应版本一致。
 
 先按[第 01 章](/mini-redis/01-first-run.md)启动 16379 上的服务，再运行最小客户端：

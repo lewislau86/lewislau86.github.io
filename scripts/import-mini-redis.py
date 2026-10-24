@@ -73,14 +73,18 @@ for path in notes:
         chunks[i] = ''.join(prose)
     text = ''.join(chunks)
     if path == source / 'README.md':
-        text = text.replace('## 阅读顺序', '''## 下载源码与实验
+        text = text.replace('## 跨文件章节的阅读顺序', '''## 下载源码与实验
 
 <a href="/mini-redis/mini-redis-study.zip" download>下载完整学习包（ZIP）</a>，解压后进入 `mini-redis-study/`，即可按正文的相对路径查阅源码和运行命令。学习包包含本教程、对应源码、Cargo 锁文件与配套实验。
 
 网页中的源码链接指向本次发布的代码快照。实验需要在本地 Rust 环境运行，浏览器提供阅读和下载。
 
-## 阅读顺序''')
+## 跨文件章节的阅读顺序''')
         text = text.replace('文中的相对源码链接指向本仓库；', '文中的源码链接指向随教程发布的代码快照；')
+    if path == source / 'labs' / 'README.md':
+        text = text.replace('所有命令从仓库根目录执行。', '''> 如果你是从网站阅读：先下载[完整学习包（ZIP）](/mini-redis/mini-redis-study.zip)，解压后进入 `mini-redis-study/`，下面的命令都在该目录执行。
+
+所有命令从仓库根目录执行。''')
     dest = target / published_path(path)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text('---\neditLink: false\n---\n\n' + text)
