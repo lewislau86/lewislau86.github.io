@@ -185,7 +185,7 @@ spawn 的任务在 runtime 得到驱动时就可以推进，不必等调用者 a
 
 ## Handler::run 把网络输入接到命令执行
 
-[Handler::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 的完整控制骨架如下，只省略源码注释：
+[Handler::run](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/server.rs) 的完整控制骨架如下，保留当前源码中的中文注释：
 
 <!-- source: src/server.rs:195-226; comments included -->
 ```rust

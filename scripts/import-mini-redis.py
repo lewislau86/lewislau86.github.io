@@ -81,6 +81,21 @@ for path in notes:
 
 ## 跨文件章节的阅读顺序''')
         text = text.replace('文中的相对源码链接指向本仓库；', '文中的源码链接指向随教程发布的代码快照；')
+        text = text.replace(
+            '- 运行逻辑分析基线：Git commit `3d93b42bc363220f85af4fc9e1bebd35b588a4a3`；当前源码注释已中文化，函数逻辑未变，行号按当前文件同步。',
+            '- 运行逻辑分析基线：Git commit `3d93b42bc363220f85af4fc9e1bebd35b588a4a3`；当前源码注释已中文化，函数逻辑未变，行号按当前文件同步。\n'
+            '- 发布快照：Git commit `e82795bdd6eba12f6a148683cc94b28ccef41ad3`，包含中文注释与 TTL 测试修复；`scripts/mini-redis-source.json` 记录的是这一快照。分析基线说明改动从哪一版逻辑开始，二者不是同一个提交。')
+    if path == source / 'validation.md':
+        text = text.replace(
+            '| 主项目 Git 基线 | `3d93b42bc363220f85af4fc9e1bebd35b588a4a3` |',
+            '| 分析基线 | `3d93b42bc363220f85af4fc9e1bebd35b588a4a3` |\n'
+            '| 发布快照 | `e82795bdd6eba12f6a148683cc94b28ccef41ad3`（含注释中文化与 TTL 测试修复） |')
+    text = text.replace('只去掉注释及不影响阅读的空行', '保留当前源码中的中文注释，只压缩不影响阅读的空行')
+    text = text.replace('只省略源码注释', '保留当前源码中的中文注释')
+    text = text.replace('省略注释如下', '保留当前源码中的中文注释如下')
+    text = text.replace(
+        '去除整行注释、统一片段缩进',
+        '去除整行注释（当时批次；后续批次改为保留中文注释）、统一片段缩进')
     if path == source / 'labs' / 'README.md':
         text = text.replace('所有命令从仓库根目录执行。', '''> 如果你是从网站阅读：先下载[完整学习包（ZIP）](/mini-redis/mini-redis-study.zip)，解压后进入 `mini-redis-study/`，下面的命令都在该目录执行。
 

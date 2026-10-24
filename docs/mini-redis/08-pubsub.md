@@ -61,7 +61,7 @@ Occupied/Vacant 让“找到已有频道或插入新频道”在一次 entry 操
 收到停机通知   ─→ 返回，释放订阅与连接
 ```
 
-将上面的三类事件对应到 [Subscribe::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 的实际循环，省略注释如下：
+将上面的三类事件对应到 [Subscribe::apply](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/mini-redis/source/src/cmd/subscribe.rs) 的实际循环，保留当前源码中的中文注释如下：
 
 <!-- source: src/cmd/subscribe.rs:71-108; comments included -->
 ```rust
