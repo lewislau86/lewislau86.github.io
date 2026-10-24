@@ -72,6 +72,34 @@ export default defineConfig({
     search: {
       provider: 'local',
       options: {
+        miniSearch: {
+          options: {
+            // 默认分词按空白/标点切分，整段中文会成为一个 token，只有前缀能命中。
+            // 汉字切成相邻二字组（单字词保留单字），让“隐藏向量”这类词可以被子串检索到。
+            // 不为所有汉字建单字索引，避免“的/一/是”等高频字把结果冲散。
+            // 该函数会被序列化到浏览器执行，必须自包含，不能引用外部变量。
+            tokenize: (text: string) => {
+              const tokens: string[] = []
+              if (typeof text !== 'string' || text.length === 0) return tokens
+              const parts = text.toLowerCase().match(/[\p{Script=Han}]+|\d+(?:\.\d+)+|[a-z0-9_]+/gu) ?? []
+              for (const part of parts) {
+                if (!/^\p{Script=Han}/u.test(part)) {
+                  tokens.push(part)
+                  continue
+                }
+                const chars = Array.from(part)
+                if (chars.length === 1) {
+                  tokens.push(chars[0])
+                  continue
+                }
+                for (let i = 0; i < chars.length - 1; i++) {
+                  tokens.push(chars[i] + chars[i + 1])
+                }
+              }
+              return tokens
+            }
+          }
+        },
         locales: {
           root: {
             translations: {
