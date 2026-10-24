@@ -2,13 +2,13 @@
 
 [返回目录](./index.md) · [上一章](./01-tensors-and-memory.md) · [下一章：第一次推理](./03-first-inference.md)
 
-> 本章是首版导读，实验状态见[第 13 章](./13-learning-labs.md)；本书固定版本见[资料与版本](./references.md)。代码以阅读片段为主，完整运行步骤放在第 03 章。
+> 本章是首版导读，实验状态见[第 14 章](./14-learning-labs.md)；本书固定版本见[资料与版本](./references.md)。代码以阅读片段为主，完整运行步骤放在第 3 章。
 
 本章不准备把 Rust 语法全部讲完。目标是看见一段 Burn 代码时，能分清“这是数学计算”“这是类型约束”以及“这是资源使用规则”。
 
 特别注意版本：本书基线的公共张量写法是 `Tensor<2>`。旧教程里的 `Tensor<B, 2>` 把后端类型 `B` 放进公共泛型参数；不要把那套写法直接混进本书代码。[固定版本张量定义](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-tensor/src/tensor/api/base.rs)
 
-如果只想尽快跑通第 3 章，先掌握 `let`、函数、`use`、移动与 `clone`、Cargo 即可。本章后半的 trait、关联类型和宏是阅读第 5、11 章的准备，可以在第一次遇到源码签名时回来重读。
+如果只想尽快跑通第 3 章，先掌握 `let`、函数、`use`、移动与 `clone`、Cargo 即可。本章后半的 trait、关联类型和宏是阅读第 5、12 章的准备，可以在第一次遇到源码签名时回来重读。
 
 ## 先读懂一段最小函数
 
@@ -177,7 +177,7 @@ struct Label {
 
 feature 是 Cargo 的条件编译与可选依赖机制。它不是训练时从数据中学习到的“特征”。开启某个后端 feature，表示把相应能力编进程序；创建 `Device` 才表达代码选择的执行上下文。[Cargo features](https://doc.rust-lang.org/cargo/reference/features.html)
 
-在本书版本中，默认 feature 不会自动提供执行后端；要明确选择所需后端。即使公共张量类型能被编译出来，也不能据此判断程序已经具有可用计算设备。具体依赖配置放在第 03 章，避免在这里引入第二套配置。[固定版本设备选择说明](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-tensor/src/device.rs)
+在本书版本中，默认 feature 不会自动提供执行后端；要明确选择所需后端。即使公共张量类型能被编译出来，也不能据此判断程序已经具有可用计算设备。具体依赖配置放在第 3 章，避免在这里引入第二套配置。[固定版本设备选择说明](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-tensor/src/device.rs)
 
 同样，自动微分需要相应 feature，并通过设备的 `.autodiff()` 等接口配置。能创建普通推理张量，与为训练建立梯度计算环境，是不同步骤。
 
@@ -200,6 +200,32 @@ Cargo.toml 声明直接依赖与 features
 `unwrap()` 会取出成功值，遇到没有值或错误时使程序 panic。小实验里它能让失败立刻显现，生产代码则常用 `match` 或 `?` 把错误交给上层处理。第 3 章的 `try_to_vec::<f32>().unwrap()` 就是“尝试读取为 f32 数组，失败就终止这个教学程序”，不是保证任何 dtype 都能无条件转换。
 
 这里的 `::<f32>` 是显式指定泛型参数的写法，常被叫作 turbofish。它告诉编译器“我要读取为哪种元素类型”；不会自行改变模型执行时的计算精度。[Rust 错误处理](https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html)
+
+## 读到什么程度可以继续
+
+第一遍读 Burn 不需要掌握全部 Rust。下面这些“看到时不慌”即可；遇到不认识的语法，先回到这张表定位，再查 [The Rust Programming Language](https://doc.rust-lang.org/book/)。
+
+| 你会看到 | 先这样读 | 主要出现在 |
+| --- | --- | --- |
+| `fn f<const D: usize>(...)` | 常量泛型，`D` 是编译期确定的阶数 | 第 1、2、3 章 |
+| `B: Backend`、`impl Trait`、`where` | 对类型能力的约束，不是运行时对象 | 第 5、12 章 |
+| `type FloatTensorPrimitive;` | 关联类型，由具体实现填写 | 第 5、12 章 |
+| `#[derive(Module)]`、`#[derive(Config)]` | 编译期生成实现，不是每次前向都解析 | 第 4、11 章 |
+| `&device`、`clone()` | 借用与句柄复制；不等于搬运整份设备数据 | 第 3、6 章 |
+| `Option`、`Result`、`?` | 可能缺失、可能失败，以及向上传递错误 | 第 3、14 章 |
+| `#[backend_extension(...)]` 等宏 | 生成 trait 实现与注册代码；先看它生成了什么职责 | 第 12 章 |
+
+本章没有展开生命周期标注、`async`/`await`、宏展开细节和 `unsafe`。第 5、12 章遇到时可以先跳读，先回答“这段代码解决什么问题”，再回来补语法；不必在第一遍背下所有类型签名。
+
+## 本章实验
+
+`rust_basics` 是一个不依赖 Burn 的最小 Rust 程序，覆盖移动、`clone`、trait、`Option` 和 `Result`：
+
+```sh
+cargo run --locked --bin rust_basics
+```
+
+预期输出 `rect area = 6`、`String length = 4` 等。故意把 `let y = x;` 之后再次使用 `x`，再编译一次，观察借用检查器的报错；这比只读语法解释更能建立所有权直觉。
 
 ## 常见误解与自测
 

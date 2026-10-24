@@ -4,7 +4,7 @@
 
 上一章会求导了，但求出一个梯度还不等于训练完成。本章把数据、损失、优化器、模型状态和保存文件串起来，再说明推理为什么通常只需要其中一部分。
 
-本章以 **Burn v0.22.1** 为基线。先用手算解释更新，再用 CPU 小型回归实验串起真实优化器、训练、保存和新进程加载。完整命令与验证记录见[第 13 章](./13-learning-labs.md)。
+本章以 **Burn v0.22.1** 为基线。先用手算解释更新，再用 CPU 小型回归实验串起真实优化器、训练、保存和新进程加载。完整命令与验证记录见[第 14 章](./14-learning-labs.md)。
 
 先读“误差 → 梯度 → 一次更新”的完整手算，再看框架怎样管理这三步。读完应能分别回答：什么被学习、什么只是输入、什么需要在推理时保留。
 
@@ -91,7 +91,96 @@ model = optimizer.step(learning_rate, model, grads);
 
 **梯度累积**表示多个小批次分别前向、反向，累加参数梯度之后再统一更新。它不是对同一份已消耗的中间图反向多次。要同时明确 loss 的求和/平均方式与累积权重，否则小批次大小变化可能无意改变更新尺度；首次实现先用“一次批次，一次更新”。
 
-## 实验：让模型学会 y = 2x + 1
+## 优化器原理：从 SGD 到 AdamW
+
+梯度只回答“当前位置往哪边走”。优化器决定“每一步走多远、要不要保留过去的方向、不同参数是否用不同步长”。下面用同一个标量目标 $L(w)=(w-3)^2$ 说明几种规则；它们都可以推广到多维参数，只是每个参数各有一份状态。
+
+### 朴素 SGD
+
+$$
+w_{t+1}=w_t-\eta\,g_t,\qquad g_t=\nabla_w L(w_t)
+$$
+
+优点是状态少、实现简单；缺点是所有参数共用学习率，遇到尺度差异或噪声大的梯度时容易震荡。
+
+### Momentum
+
+$$
+v_t=\beta v_{t-1}+g_t,\qquad w_{t+1}=w_t-\eta\,v_t
+$$
+
+动量把历史梯度累积成速度，减小来回摆动并加速一致方向。代价是多一份与参数同形状的状态 $v$。
+
+### AdaGrad 与 RMSProp
+
+AdaGrad 累积历史平方梯度：
+
+$$
+s_t=s_{t-1}+g_t^2,\qquad w_{t+1}=w_t-\eta\frac{g_t}{\sqrt{s_t}+\epsilon}
+$$
+
+累积量只增不减，后期步长会过小。RMSProp 改成指数滑动平均：
+
+$$
+s_t=\beta s_{t-1}+(1-\beta)g_t^2
+$$
+
+这样只记住最近一段时间的梯度尺度。
+
+### Adam 与 AdamW
+
+Adam 同时估计一阶矩和二阶矩，并做偏差修正：
+
+$$
+m_t=\beta_1 m_{t-1}+(1-\beta_1)g_t,\qquad
+v_t=\beta_2 v_{t-1}+(1-\beta_2)g_t^2
+$$
+
+$$
+\hat m_t=\frac{m_t}{1-\beta_1^t},\qquad
+\hat v_t=\frac{v_t}{1-\beta_2^t},\qquad
+w_{t+1}=w_t-\eta\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}
+$$
+
+AdamW 把权重衰减从梯度里拆出来：
+
+$$
+w_{t+1}=w_t-\eta\lambda w_t-\eta\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}
+$$
+
+因此它和“在损失里加 L2 惩罚再交给 Adam”不是同一个更新。Transformer 训练常对矩阵权重做衰减，对偏置和归一化缩放不做衰减，这通常通过参数组实现。
+
+| 优化器 | 额外状态 | 主要取舍 |
+| --- | --- | --- |
+| SGD | 无 | 简单；对学习率和参数尺度敏感 |
+| Momentum | 一份速度 | 更稳、更快；多一份内存 |
+| AdaGrad | 一份平方累积 | 自适应；累积过多会过早减小步长 |
+| RMSProp | 一份平方滑动平均 | 适合非平稳目标；仍需调学习率 |
+| Adam | 一阶矩 + 二阶矩 | 适应性强；状态约为参数的两倍 |
+| AdamW | 同 Adam | 解耦衰减；衰减与自适应步长分开 |
+
+### 配套实验：四条更新轨迹
+
+学习包中的 `optimizers` 用纯 Rust 在同一个标量目标上执行 SGD、Momentum、Adam、AdamW，并打印最终参数与损失。它不依赖 Burn 优化器 API，目的是把公式和状态变化对应起来；真正接入模型时，`SgdConfig` 等接口会替你管理参数组和状态。
+
+```sh
+cargo run --locked --bin optimizers
+```
+
+一次运行的参考输出：
+
+```text
+objective: L(w) = (w - 3)^2, steps = 120, lr = 0.1
+SGD       final w =  3.00000  loss =   0.000000  first =     5.7600
+Momentum  final w =  2.99809  loss =   0.000004  first =     5.7600
+Adam      final w =  3.00298  loss =   0.000009  first =     8.4100
+AdamW     final w =  2.73895  loss =   0.068149  first =     8.4100
+note: AdamW's decoupled weight decay intentionally pulls the parameter toward zero.
+```
+
+AdamW 的最终参数偏离 3，是衰减项把它往 0 拉的结果，不是训练失败。把 `weight_decay` 改成 0，它就会回到接近 Adam 的轨迹；这也是阅读真实训练配置时要区分“正则化目标”和“优化器行为”的原因。
+
+## 本章实验：让模型学会 y = 2x + 1
 
 为了把训练和文件恢复做成能检查的完整过程，这里另用一个 `Linear(1, 1)`：
 
@@ -132,7 +221,7 @@ cargo run --locked --bin regression_verify -- artifacts/regression
 | 训练后预测接近 `2x+1` | 训练管线能拟合这个已知的简单关系 | 不能证明复杂任务的泛化能力 |
 | 加载后预测接近保存前预测 | 配置、参数和推理行为在文件往返后保持一致 | 不能单独证明模型学对了目标 |
 
-只检查第二项有一个漏洞：没有训练好的模型，也可以被原样保存和加载。因此，实验同时检查拟合误差和往返误差。数据、步数、阈值和一次实际输出统一记录在[第 13 章的第三阶段](./13-learning-labs.md#第三阶段-完成一个训练与保存闭环)，文件含义见[第 10 章](./10-import-and-deploy.md#_10-3-burn-原生保存-把参数装进-burnpack)。
+只检查第二项有一个漏洞：没有训练好的模型，也可以被原样保存和加载。因此，实验同时检查拟合误差和往返误差。数据、步数、阈值和一次实际输出统一记录在[第 14 章的第三阶段](./14-learning-labs.md#第三阶段-完成一个训练与保存闭环)，文件含义见[第 11 章](./11-import-and-deploy.md#_11-3-burn-原生保存-把参数装进-burnpack)。
 
 本次实际输出：
 
@@ -201,7 +290,7 @@ with torch.no_grad():
 | 把梯度与模型参数对应 | 优化器持有参数，读取参数 `.grad` | `GradientsParams::from_grads(grads, &model)` |
 | 更新 | `optimizer.step()` | `model = optimizer.step(lr, model, grads)` |
 
-表格比较数据怎样流转，不能据此照搬完整 API。PyTorch 流程参见[官方优化教程](https://docs.pytorch.org/tutorials/beginner/basics/optimization_tutorial.html)，完整对照学习路线见[第 14 章](./14-pytorch-comparison.md)。
+表格比较数据怎样流转，不能据此照搬完整 API。PyTorch 流程参见[官方优化教程](https://docs.pytorch.org/tutorials/beginner/basics/optimization_tutorial.html)，完整对照学习路线见[第 15 章](./15-pytorch-comparison.md)。
 
 ## 权重文件为什么还不够
 
@@ -209,7 +298,7 @@ with torch.no_grad():
 
 本书的小模型有 6 个参数，即使把它们保存下来，还需要知道哪个是 W、哪个是 b、形状怎样、是否应用 ReLU。不要把所有状态展平成一串数后期待框架自行猜回结构。
 
-Burn 的模块记录用于保存参数状态；配置描述创建模型的结构。当前存储流程可见[Saving & Loading](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/saving-and-loading.md)。导入格式和部署路径会在第 10 章拆开说明。
+Burn 的模块记录用于保存参数状态；配置描述创建模型的结构。当前存储流程可见[Saving & Loading](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/saving-and-loading.md)。导入格式和部署路径会在第 11 章拆开说明。
 
 ## 继续训练需要更多状态
 

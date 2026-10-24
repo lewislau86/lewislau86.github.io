@@ -8,7 +8,7 @@
 
 Rust 的 module 组织代码命名空间，深度学习的 Module 组织模型状态与计算部件。同一个英文词在两个层次使用：`use burn::module::Module` 的小写 `module` 是代码路径，大写 `Module` 是我们要使用的模型管理 trait。
 
-本章是首版导读，配套 CPU 例子见[第 13 章](./13-learning-labs.md)。所有代码使用[固定版本](./references.md)，模型的公开类型不再需要后端泛型。
+本章是首版导读，配套 CPU 例子见[第 14 章](./14-learning-labs.md)。所有代码使用[固定版本](./references.md)，模型的公开类型不再需要后端泛型。
 
 前置知识是第 3 章那条固定参数的计算，以及第 2 章的 `struct`、`impl`、`&self`。本章读完应能把“模型结构”“参数值”“模块管理”和“前向方法”分别指出来。自动微分的具体计算留到第 6 章；这里先理解状态如何被组织。
 
@@ -141,7 +141,7 @@ PyTorch 的 `nn.Module` 同样用于组织子模块和参数，模型作者定�
 
 PyTorch 的方向约定见[官方 Linear 文档](https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html)。回到本书的 2→2 例子，两边的权重形状恰好都是 `[2, 2]`，但元素仍要转置；只检查形状发现不了这类错误。
 
-下面的 PyTorch 片段与 Burn 固定权重对应，已在 PyTorch 2.12.1+cpu 上独立核对输出；第 14 章也把同样的权重转换放进了完整对照程序：
+下面的 PyTorch 片段与 Burn 固定权重对应，已在 PyTorch 2.12.1+cpu 上独立核对输出；第 15 章也把同样的权重转换放进了完整对照程序：
 
 ```python
 import torch
@@ -162,6 +162,16 @@ assert h.tolist() == [[5.0, 2.0]]
 若误把 Burn 的 W 原样写入 `layer.weight`，这里算的是 `XWᵀ+b`，ReLU 后会得到 `[0, 5]`，并不是我们的 `[5, 2]`。这也是迁移时应该保留小型确定性算例的原因。
 
 还要区分模式：PyTorch `eval()` 调整受模式影响的层，[`no_grad()`](https://docs.pytorch.org/docs/stable/generated/torch.no_grad.html) 暂停相应区域的梯度记录；前者并不自动完成后者。Burn 本版的 `valid()` 同时处理模块训练标志和参数自动微分配置，不能把两端调用按名字一对一替换。完整训练/推理对照放在[第 7 章](./07-training-to-inference.md)。
+
+## 本章实验
+
+`module` 把固定参数的线性层包成 `Module`，并检查参数量：
+
+```sh
+cargo run --locked --bin module
+```
+
+预期包含 `Module H = [5.0, 2.0]; parameters = 6`。把 `LinearConfig` 的输入/输出维度改掉，先预测参数总数，再运行核对。
 
 ## 自测
 

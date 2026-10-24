@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 300" role="img" aria-labelledby="title desc">
+  <title id="title">计算图与反向梯度</title>
+  <desc id="desc">x 经过平方与自身相加得到 y，再得到损失；反向传播按链式法则把上游梯度乘回每个节点。</desc>
+  <rect width="820" height="300" fill="#ffffff"/>
+  <text x="24" y="30" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="16" font-weight="700" fill="#1f2933">前向计算图与反向梯度</text>
+  <text x="24" y="52" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">前向（实线）保存中间值；反向（虚线）从损失出发，把上游梯度逐层乘回。</text>
+
+  <defs>
+    <marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#52606d"/>
+    </marker>
+    <marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c98a3c"/>
+    </marker>
+  </defs>
+
+  <!-- nodes -->
+  <g font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" text-anchor="middle">
+    <rect x="40" y="110" width="90" height="40" rx="6" fill="#e3f0eb" stroke="#519a80"/><text x="85" y="135">x = 3</text>
+    <rect x="200" y="70" width="110" height="40" rx="6" fill="#e8eefc" stroke="#5b7fbd"/><text x="255" y="95">x²</text>
+    <rect x="200" y="150" width="110" height="40" rx="6" fill="#e8eefc" stroke="#5b7fbd"/><text x="255" y="175">x</text>
+    <rect x="380" y="110" width="100" height="40" rx="6" fill="#e8eefc" stroke="#5b7fbd"/><text x="430" y="135">+</text>
+    <rect x="540" y="110" width="100" height="40" rx="6" fill="#fdf0e3" stroke="#c98a3c"/><text x="590" y="135">y = 12</text>
+    <rect x="700" y="110" width="90" height="40" rx="6" fill="#fdf0e3" stroke="#c98a3c"/><text x="745" y="135">L</text>
+  </g>
+
+  <!-- forward -->
+  <line x1="130" y1="126" x2="196" y2="94" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+  <line x1="130" y1="136" x2="196" y2="166" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+  <line x1="310" y1="92" x2="376" y2="120" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+  <line x1="310" y1="168" x2="376" y2="140" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+  <line x1="480" y1="130" x2="536" y2="130" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+  <line x1="640" y1="130" x2="696" y2="130" stroke="#52606d" stroke-width="1.5" marker-end="url(#f)"/>
+
+  <!-- backward -->
+  <path d="M 700 160 C 650 210, 560 210, 500 160" fill="none" stroke="#c98a3c" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#b)"/>
+  <path d="M 380 160 C 350 210, 320 210, 290 190" fill="none" stroke="#c98a3c" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#b)"/>
+  <path d="M 200 180 C 160 220, 130 220, 100 154" fill="none" stroke="#c98a3c" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#b)"/>
+
+  <text x="560" y="232" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#c98a3c">∂L/∂y</text>
+  <text x="330" y="232" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#c98a3c">∂L/∂x = ∂L/∂y · (2x + 1)</text>
+  <text x="70" y="270" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">同一个 x 被使用两次，反向时两份梯度相加；这就是“多路复用”要累加的原因。</text>
+</svg>

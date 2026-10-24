@@ -6,7 +6,7 @@
 
 这一章只做一件事：让 CPU 算出前两章已经手算过的 `H = [[5, 2]]`。先把结果做对，后面才能判断更复杂的模型和加速路径是否正确。
 
-完整学习包固定 Burn **0.22.1**，使用 **Flex CPU 后端**，不需要配置 GPU。程序中的断言会检查形状和数值，实际验证记录见[第 13 章](./13-learning-labs.md)。
+完整学习包固定 Burn **0.22.1**，使用 **Flex CPU 后端**，不需要配置 GPU。程序中的断言会检查形状和数值，实际验证记录见[第 14 章](./14-learning-labs.md)。
 
 前置知识是第 1 章的二维形状与广播，以及第 2 章的 `use`、函数和按值传参。读完后，你应能把“创建数据 → 调用算子 → 取回数据 → 与手算核对”走通，并说清编译成功、程序跑完和结果正确各验证了什么。
 
@@ -21,7 +21,7 @@ cargo --version
 
 第一次构建需要联网获取依赖，耗时也会比后续运行长。不要把依赖下载和 Rust 编译的时间当作模型推理耗时。
 
-你可以下载[完整学习包](/burn/first-inference.zip)，解压后进入包含 `Cargo.toml` 的目录。包内还有第 4、6、11、14 章的例子和锁文件。
+你可以下载[完整学习包](/burn/first-inference.zip)，解压后进入包含 `Cargo.toml` 的目录。包内还有第 1–12、15 章的配套实验和锁文件。
 
 ```sh
 cargo run --locked --bin burn-first-inference
@@ -54,7 +54,7 @@ edition = "2024"
 burn = { version = "=0.22.1", default-features = false, features = ["std", "flex", "autodiff", "extension"] }
 ```
 
-`std` 表示使用标准库，`flex` 启用这次要用的 CPU 实现。`autodiff` 是为了后面的求导例子，`extension` 用于第 11 章的后端扩展。本章不启用设备的自动微分上下文，所以不会因为编译了该能力就自动求梯度。
+`std` 表示使用标准库，`flex` 启用这次要用的 CPU 实现。`autodiff` 是为了后面的求导例子，`extension` 用于第 12 章的后端扩展。本章不启用设备的自动微分上下文，所以不会因为编译了该能力就自动求梯度。
 
 接着把下面完整程序写到 `src/main.rs`。这是学习包主程序的同一计算：
 
@@ -126,7 +126,7 @@ assert h.tolist() == [[5.0, 2.0]]
 
 共同主线是构造张量、矩乘、相加、ReLU，再核对形状与数据。PyTorch 使用 `@` 表达矩乘，Burn 用 `matmul`；Python 片段没有遇到 Rust 的移动规则。这些写法差异没有改变公式。[PyTorch 官方张量教程](https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html)
 
-本节片段已在 PyTorch 2.12.1+cpu 上独立核对形状与输出；第 14 章及学习包还提供了完整的[对照实验](./14-pytorch-comparison.md)。下一章换成两端各自的 Linear 层时，需要专门处理权重方向，不能把这里的 w 原样复制到 `nn.Linear.weight`。
+本节片段已在 PyTorch 2.12.1+cpu 上独立核对形状与输出；第 15 章及学习包还提供了完整的[对照实验](./15-pytorch-comparison.md)。下一章换成两端各自的 Linear 层时，需要专门处理权重方向，不能把这里的 w 原样复制到 `nn.Linear.weight`。
 
 ## 做两个能解释现象的小改动
 
@@ -147,6 +147,16 @@ assert h.tolist() == [[5.0, 2.0]]
 | 断言失败 | 是否改了输入，却还在使用旧的预期输出 |
 
 本章学习的是固定参数的一次前向，不需要数据集、优化器或训练界面。随机初始化模型能够执行，也不代表它已经具备预测能力。
+
+## 本章实验
+
+`burn-first-inference` 把本文件的手算写成完整程序：
+
+```sh
+cargo run --locked --bin burn-first-inference
+```
+
+预期 `H = [5.0, 2.0]`，形状 `[1, 2]`。程序内的断言会检查数值与形状；如果失败，先检查 `W` 的书写顺序和 `b` 的广播，而不是怀疑整个框架。
 
 ## 自测
 

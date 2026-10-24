@@ -4,12 +4,12 @@
 
 第 3 章的一行 `x.matmul(w)` 可以在 CPU 执行，也可以在启用相应支持后交给 GPU。模型代码怎样找到不同实现？为什么扩展算子要定义 `Backend` trait，而调用模型时只写 `Tensor<2>`？本章从一组加法开始，把这些接口连起来。
 
-本章依据 **Burn v0.22.1**，固定提交 `907ab111a02c2dea47bc41633754f095c6b2220e`。正文同时参考[官方 Backend 架构页](https://burn.dev/books/contributor/project-architecture/backend.html)与[Backend Extension 指南](https://burn.dev/books/burn/advanced/backend-extension/index.html)，并以固定版本源码核对接口。在线文档会继续更新；以后若与本章不同，请分别阅读对应版本，避免拼接 API。实验进展见[第 13 章](./13-learning-labs.md)。
+本章依据 **Burn v0.22.1**，固定提交 `907ab111a02c2dea47bc41633754f095c6b2220e`。正文同时参考[官方 Backend 架构页](https://burn.dev/books/contributor/project-architecture/backend.html)与[Backend Extension 指南](https://burn.dev/books/burn/advanced/backend-extension/index.html)，并以固定版本源码核对接口。在线文档会继续更新；以后若与本章不同，请分别阅读对应版本，避免拼接 API。实验进展见[第 14 章](./14-learning-labs.md)。
 
 ::: tip 本章分两遍读
 第一遍跟住一条主线：**公式相同 → 实现可以不同 → Device 给张量指定资源 → Dispatch 把操作交给具体实现**。先读 5.1、5.2 开头、5.3 的路径图、5.5 前三段和 5.7，再进入第 6 章。
 
-第二遍在阅读源码或第 11 章扩展时回来：理解关联类型、函数签名、默认 dtype、Cube 别名与装饰器细节。`GraphPrimitive`、checkpoint、NodeGuard 是实现背景，初读不需要记住所有名字。
+第二遍在阅读源码或第 12 章扩展时回来：理解关联类型、函数签名、默认 dtype、Cube 别名与装饰器细节。`GraphPrimitive`、checkpoint、NodeGuard 是实现背景，初读不需要记住所有名字。
 :::
 
 ## 5.1 先区分公式、实现和设备
@@ -92,7 +92,7 @@ pub type FloatTensor<B> = <B as BackendTypes>::FloatTensorPrimitive;
 
 ![从模型到硬件的执行路径，区分公共 API、分派、后端与运行时](/burn/execution-stack.svg)
 
-图中以模型直接调用 `Tensor::matmul` 等操作为例。Linear 模块的普通浮点路径可以整体分派 `linear`，再由后端默认体组合矩乘与加法，不必先回到公共 `Tensor::matmul`；[第 12 章](./12-source-reading.md)会把这两条路线分开追踪。
+图中以模型直接调用 `Tensor::matmul` 等操作为例。Linear 模块的普通浮点路径会在 `Dispatch` 上执行 `ModuleOps::linear` 的默认体，组合矩乘与加法，不必先回到公共 `Tensor::matmul`；具体分派发生在 `float_matmul` / `float_add`。[第 13 章](./13-source-reading.md)会把这两条路线分开追踪。
 
 ```text
 模型 / Module：决定先加法，再做什么
@@ -147,7 +147,7 @@ fn float_add(lhs: FloatTensor<B>, rhs: FloatTensor<B>) -> FloatTensor<B>;
 
 ## 5.5 Cargo 选择可用能力，Device 选择执行资源
 
-下面是第 3 章使用的 API 阅读片段；完整工程配置与验证状态见[实验路线](./13-learning-labs.md)：
+下面是第 3 章使用的 API 阅读片段；完整工程配置与验证状态见[实验路线](./14-learning-labs.md)：
 
 ```rust
 let device = Device::flex();
@@ -175,7 +175,7 @@ Cuda / Wgpu 等运行时门面名  对应上述共同的 Cube 类型结构
 
 对应源码是 [`burn-cubecl/src/lib.rs`](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-cubecl/src/lib.rs)、[`burn-cuda/src/lib.rs`](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-cuda/src/lib.rs)和 [`burn-wgpu/src/lib.rs`](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-wgpu/src/lib.rs)。门面 crate 负责引入或配置相应运行时，但没有给扩展创造一套全新的后端选择器。
 
-所以扩展宏写 `#[backend_extension(Cube)]`，而不是 `#[backend_extension(Cuda)]` 或 `#[backend_extension(Wgpu)]`。但**选择 Cube 不等于你的内核天然支持所有运行时**：CubeCL 可移植内核和只适用于兼容 WGPU 编译路径的 WGSL 内核，适用范围不同。[第 11 章](./11-custom-operators.md)会把注册与真实实现一起展开。
+所以扩展宏写 `#[backend_extension(Cube)]`，而不是 `#[backend_extension(Cuda)]` 或 `#[backend_extension(Wgpu)]`。但**选择 Cube 不等于你的内核天然支持所有运行时**：CubeCL 可移植内核和只适用于兼容 WGPU 编译路径的 WGSL 内核，适用范围不同。[第 12 章](./12-custom-operators.md)会把注册与真实实现一起展开。
 
 ## 5.6 装饰器怎样增加自动微分与融合能力
 
@@ -224,7 +224,7 @@ Cuda / Wgpu 等运行时门面名  对应上述共同的 Cube 类型结构
 
 这与内存复用是两个维度：一个关乎“何时执行”，另一个关乎“是否需要新的存储”。接口按值接收张量，可以让实现检查存储是否独占；独占时可能复用，共享时则必须维护正确语义。`clone()` 常用于复制句柄，不能把它简单换算成复制多少显存。
 
-因此不能只用 CPU 包住 `a + b` 的调用就断言“GPU 加法耗时”。测性能要处理同步、预热与读回边界；详见[第 9 章：融合与性能](./09-fusion-and-performance.md)。模型运行正确与计时方法正确，需要分别验证。
+因此不能只用 CPU 包住 `a + b` 的调用就断言“GPU 加法耗时”。测性能要处理同步、预热与读回边界；详见[第 10 章：融合与性能](./10-fusion-and-performance.md)。模型运行正确与计时方法正确，需要分别验证。
 
 ## 5.8 扩展一个算子，不等于注册一个新后端
 
@@ -246,7 +246,17 @@ Cuda / Wgpu 等运行时门面名  对应上述共同的 Cube 类型结构
 
 宏既不替具体后端编写 kernel，也不从任意 kernel 自动求导。组合已有可微运算的默认实现，可以复用它们的微分路径；手写专门内核则必须明确处理反向。shape、dtype、设备检查也仍由包装或具体实现负责。
 
-等读完自动微分和 GPU 基础后，再到[第 11 章：后端扩展与自定义算子](./11-custom-operators.md)，用可手算的函数学习 trait、宏、公共包装、具体实现、Fusion 与 Autodiff 怎样配合。这里先记住分工，后面才能判断“这一段到底补上了哪层能力”。
+等读完自动微分和 GPU 基础后，再到[第 12 章：后端扩展与自定义算子](./12-custom-operators.md)，用可手算的函数学习 trait、宏、公共包装、具体实现、Fusion 与 Autodiff 怎样配合。这里先记住分工，后面才能判断“这一段到底补上了哪层能力”。
+
+## 本章实验
+
+`dispatch_path` 在 Flex CPU 上创建张量，打印 shape、dtype 和 device，说明公共类型与运行时资源是两层信息：
+
+```sh
+cargo run --locked --bin dispatch_path
+```
+
+预期看到 `dtype = F32` 与 `Device<Flex(Cpu)>`。它不证明 GPU 路径，只帮助区分“类型相同”和“实际使用哪块设备”。
 
 ## 5.9 自测与答案
 

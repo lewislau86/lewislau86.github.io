@@ -2,54 +2,116 @@
   {
     "text": "深入理解 Burn",
     "items": [
-      { "text": "返回知识库", "link": "/" },
-      { "text": "学习总览", "link": "/burn/" },
-      { "text": "资料、版本与术语", "link": "/burn/references" }
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "序言 · 环境与工具链",
+        "link": "/burn/preface"
+      },
+      {
+        "text": "学习总览",
+        "link": "/burn/"
+      },
+      {
+        "text": "资料、版本与术语",
+        "link": "/burn/references"
+      }
     ]
   },
   {
     "text": "从基础到第一次推理",
     "collapsed": false,
     "items": [
-      { "text": "第 0 章 · 从模型到框架", "link": "/burn/00-model-to-framework" },
-      { "text": "第 1 章 · 张量、形状与内存", "link": "/burn/01-tensors-and-memory" },
-      { "text": "第 2 章 · 阅读 Burn 所需的 Rust", "link": "/burn/02-rust-for-burn" },
-      { "text": "第 3 章 · 第一次推理", "link": "/burn/03-first-inference" },
-      { "text": "第 4 章 · 模型、参数与 Module", "link": "/burn/04-models-and-modules" }
+      {
+        "text": "第 0 章 · 从模型到框架",
+        "link": "/burn/00-model-to-framework"
+      },
+      {
+        "text": "第 1 章 · 张量、形状与内存",
+        "link": "/burn/01-tensors-and-memory"
+      },
+      {
+        "text": "第 2 章 · 阅读 Burn 所需的 Rust",
+        "link": "/burn/02-rust-for-burn"
+      },
+      {
+        "text": "第 3 章 · 第一次推理",
+        "link": "/burn/03-first-inference"
+      },
+      {
+        "text": "第 4 章 · 模型、参数与 Module",
+        "link": "/burn/04-models-and-modules"
+      }
     ]
   },
   {
     "text": "框架怎样执行与训练",
     "collapsed": false,
     "items": [
-      { "text": "第 5 章 · Backend 与执行路径", "link": "/burn/05-backends-and-dispatch" },
-      { "text": "第 6 章 · 自动微分", "link": "/burn/06-autodiff" },
-      { "text": "第 7 章 · 从训练到推理", "link": "/burn/07-training-to-inference" }
+      {
+        "text": "第 5 章 · Backend 与执行路径",
+        "link": "/burn/05-backends-and-dispatch"
+      },
+      {
+        "text": "第 6 章 · 自动微分",
+        "link": "/burn/06-autodiff"
+      },
+      {
+        "text": "第 7 章 · 从训练到推理",
+        "link": "/burn/07-training-to-inference"
+      }
     ]
   },
   {
-    "text": "硬件与性能",
+    "text": "执行、硬件与性能",
     "collapsed": false,
     "items": [
-      { "text": "第 8 章 · GPU 与 Kernel", "link": "/burn/08-gpu-and-kernels" },
-      { "text": "第 9 章 · 融合、内存与性能", "link": "/burn/09-fusion-and-performance" }
+      {
+        "text": "第 8 章 · GPU 与 Kernel",
+        "link": "/burn/08-gpu-and-kernels"
+      },
+      {
+        "text": "第 9 章 · 框架怎样执行",
+        "link": "/burn/09-how-execution-works"
+      },
+      {
+        "text": "第 10 章 · 融合、内存与性能",
+        "link": "/burn/10-fusion-and-performance"
+      }
     ]
   },
   {
     "text": "部署、扩展与源码",
     "collapsed": false,
     "items": [
-      { "text": "第 10 章 · 权重导入与部署", "link": "/burn/10-import-and-deploy" },
-      { "text": "第 11 章 · 后端扩展与自定义算子", "link": "/burn/11-custom-operators" },
-      { "text": "第 12 章 · 源码阅读地图", "link": "/burn/12-source-reading" },
-      { "text": "第 13 章 · 实验路线与后续计划", "link": "/burn/13-learning-labs" }
+      {
+        "text": "第 11 章 · 权重导入与部署",
+        "link": "/burn/11-import-and-deploy"
+      },
+      {
+        "text": "第 12 章 · 后端扩展与自定义算子",
+        "link": "/burn/12-custom-operators"
+      },
+      {
+        "text": "第 13 章 · 源码阅读地图",
+        "link": "/burn/13-source-reading"
+      },
+      {
+        "text": "第 14 章 · 实验路线与后续计划",
+        "link": "/burn/14-learning-labs"
+      }
     ]
   },
   {
     "text": "用 PyTorch 对照复习",
     "collapsed": false,
     "items": [
-      { "text": "第 14 章 · PyTorch 与 Burn 对照", "link": "/burn/14-pytorch-comparison" }
+      {
+        "text": "第 15 章 · PyTorch 与 Burn 对照",
+        "link": "/burn/15-pytorch-comparison"
+      }
     ]
   }
 ]

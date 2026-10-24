@@ -43,11 +43,11 @@ VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 
 
 ## 编写 Burn 教程
 
-《深入理解 Burn 深度学习框架》位于 `docs/burn/`，由本站直接维护，学习总览和 15 章通过 `/burn/` 访问。
+《深入理解 Burn 深度学习框架》位于 `docs/burn/`，由本站直接维护，学习总览和 16 章通过 `/burn/` 访问，序言单独放在 `/burn/preface`。
 `docs/.vitepress/burn-sidebar.json` 管理专用侧栏；`docs/public/burn/first-inference/` 提供固定 Burn 0.22.1 的 CPU 学习包。
-实验验证范围和后续计划记录在第 13 章，资料基线记录在 `references.md`。
-第 14 章提供 PyTorch 对照学习，学习包包含 `comparison.rs` 与 `pytorch_compare.py`；Python 环境与 Cargo 依赖分别管理。
-第 7、10 章另有 `regression_train.rs` / `regression_verify.rs`，用 SGD 训练 `Linear(1,1)` 并验证“保存 → 新进程加载”；运行目录会写出 `model_config.json`、`model.bpk`、`baseline.txt`。
+实验验证范围和后续计划记录在第 14 章，资料基线记录在 `references.md`。
+第 15 章提供 PyTorch 对照学习，学习包包含 `comparison.rs` 与 `pytorch_compare.py`；Python 环境与 Cargo 依赖分别管理。
+第 7、11 章另有 `regression_train.rs` / `regression_verify.rs`，用 SGD 训练 `Linear(1,1)` 并验证“保存 → 新进程加载”；运行目录会写出 `model_config.json`、`model.bpk`、`baseline.txt`。
 
 修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。
 运行包内代码时应在解压目录构建，或为 Cargo 指定站点目录之外的 `CARGO_TARGET_DIR`，避免把编译产物作为静态资源发布。
@@ -64,7 +64,7 @@ npm run docs:build
 
 导入会更新章节、侧栏与下载文件；`scripts/tinyllm-source.json` 记录源提交和文件哈希。
 源内容保留原样，仅适配 README 链接、章节锚点、notebook 下载及 GitBook 导出的强调/行内公式转义。
-源总览尚未登记已完成的第 12 章时，导入会为网站总览补上优化器教案及 notebook 入口。
+源总览尚未登记已完成的第 13 章时，导入会为网站总览补上优化器教案及 notebook 入口。
 源仓库更新后需重新运行导入并提交本站；当前不是跨仓库自动同步。
 TinyLLM 页底的编辑入口指向源仓库，避免下次同步覆盖对本站副本的手动修改。
 
