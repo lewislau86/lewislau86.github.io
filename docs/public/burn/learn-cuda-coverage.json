@@ -1,0 +1,311 @@
+{
+  "schema_version": 2,
+  "upstream": "https://github.com/gau-nernst/learn-cuda",
+  "commit": "afcb20b1bd89065c31a1575c276aba686fc4dfce",
+  "checked_on": "2026-10-25",
+  "scope": "Topic explanations, implementation progression, source entry points and acceptance criteria; not line-by-line translation.",
+  "cpu_reference": {
+    "path": "/burn/learn-cuda-reference.rs",
+    "status": "passed",
+    "groups": 8,
+    "scope": "Rust standard-library f64 math; no GPU execution or hardware precision emulation.",
+    "language": "Rust",
+    "compiler": "rustc 1.99.0",
+    "environment": "macOS arm64"
+  },
+  "topics": [
+    {
+      "id": "C01",
+      "directory": "01_vector_addition",
+      "title": "向量加法",
+      "source_paths": [
+        "01_vector_addition/main.py",
+        "01_vector_addition/add.cu"
+      ],
+      "article": "/burn/gpu-programming.html#二、沿着向量加法读一条完整调用链",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": [
+        "R01",
+        "R02"
+      ]
+    },
+    {
+      "id": "C02",
+      "directory": "02_matmul_simt",
+      "title": "SIMT 矩乘",
+      "source_paths": [
+        "02_matmul_simt/main.py",
+        "02_matmul_simt/matmul.cpp",
+        "02_matmul_simt/matmul.cu",
+        "02_matmul_simt/matmul_triton.py"
+      ],
+      "article": "/burn/gpu-programming.html#simt-matmul",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": [
+        "R04"
+      ]
+    },
+    {
+      "id": "C03",
+      "directory": "02_matmul_sm80",
+      "title": "SM80 矩乘",
+      "source_paths": [
+        "02_matmul_sm80/main.py",
+        "02_matmul_sm80/matmul.cpp",
+        "02_matmul_sm80/matmul_v1.cu",
+        "02_matmul_sm80/matmul_v5.cu",
+        "02_matmul_sm80/matmul_v6.cu",
+        "02_matmul_sm80/common.h"
+      ],
+      "article": "/burn/fusion-and-performance.html#sm80",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C04",
+      "directory": "02_matmul_sm100",
+      "title": "SM100 矩乘",
+      "source_paths": [
+        "02_matmul_sm100/main.py",
+        "02_matmul_sm100/matmul_v1.cu",
+        "02_matmul_sm100/matmul_v7.cu",
+        "02_matmul_sm100/common.h"
+      ],
+      "article": "/burn/fusion-and-performance.html#sm100",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C05",
+      "directory": "02_matmul_sm120",
+      "title": "SM120 矩乘",
+      "source_paths": [
+        "02_matmul_sm120/main.py",
+        "02_matmul_sm120/matmul_v0.cu",
+        "02_matmul_sm120/matmul_v1.cu",
+        "02_matmul_sm120/matmul_v2.cu",
+        "02_matmul_sm120/matmul_v3.cu",
+        "02_matmul_sm120/common.h"
+      ],
+      "article": "/burn/fusion-and-performance.html#sm120",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C06",
+      "directory": "02_matmul_cdna3",
+      "title": "CDNA3 矩乘",
+      "source_paths": [
+        "02_matmul_cdna3/main.py",
+        "02_matmul_cdna3/matmul_v1.cu",
+        "02_matmul_cdna3/matmul_v2.cu",
+        "02_matmul_cdna3/matmul_v3.cu",
+        "02_matmul_cdna3/common.h"
+      ],
+      "article": "/burn/fusion-and-performance.html#cdna3",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C07",
+      "directory": "03_sum",
+      "title": "归约",
+      "source_paths": [
+        "03_sum/main.py",
+        "03_sum/sum.cpp",
+        "03_sum/sum.cu"
+      ],
+      "article": "/burn/gpu-programming.html#求和-从互不干扰到必须协作",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C08",
+      "directory": "04_softmax",
+      "title": "Softmax",
+      "source_paths": [
+        "04_softmax/main.py",
+        "04_softmax/softmax.cpp",
+        "04_softmax/softmax.cu"
+      ],
+      "article": "/burn/gpu-programming.html#softmax-正确性条件也属于算子设计",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": [
+        "R03"
+      ]
+    },
+    {
+      "id": "C09",
+      "directory": "05_fp6",
+      "title": "FP6 编码",
+      "source_paths": [
+        "05_fp6/fp6.cu"
+      ],
+      "article": "/burn/gpu-programming.html#fp6",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C10",
+      "directory": "06_box_blur",
+      "title": "Box Blur",
+      "source_paths": [
+        "06_box_blur/main.py",
+        "06_box_blur/box_blur.cu"
+      ],
+      "article": "/burn/gpu-programming.html#box-blur",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C11",
+      "directory": "07_attention",
+      "title": "Attention",
+      "source_paths": [
+        "07_attention/main.py",
+        "07_attention/attention.cpp",
+        "07_attention/attention_v1.cu",
+        "07_attention/attention_v5.cu",
+        "07_attention/attention_v6.py"
+      ],
+      "article": "/burn/gpu-programming.html#attention",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": [
+        "R05"
+      ]
+    },
+    {
+      "id": "C12",
+      "directory": "08_row_scaled_mm",
+      "title": "缩放矩乘",
+      "source_paths": [
+        "08_row_scaled_mm/main.py",
+        "08_row_scaled_mm/ext.cpp",
+        "08_row_scaled_mm/row_scaled_mm_v1.cu"
+      ],
+      "article": "/burn/custom-operators.html#row-scaled-mm",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C13",
+      "directory": "10_p2p",
+      "title": "P2P",
+      "source_paths": [
+        "10_p2p/main.py",
+        "10_p2p/p2p.cu"
+      ],
+      "article": "/burn/execution.html#p2p",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C14",
+      "directory": "11_gemv",
+      "title": "GEMV",
+      "source_paths": [
+        "11_gemv/main.py",
+        "11_gemv/gemv.cpp",
+        "11_gemv/cuda_v1.cu",
+        "11_gemv/cuda_persistent_v1.cu"
+      ],
+      "article": "/burn/gpu-programming.html#gemv",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    },
+    {
+      "id": "C15",
+      "directory": "12_megakernel",
+      "title": "Megakernel",
+      "source_paths": [
+        "12_megakernel/reference.py",
+        "12_megakernel/mlp_main.py",
+        "12_megakernel/attn_main.py",
+        "12_megakernel/model_triton.py",
+        "12_megakernel/triton_utils.py"
+      ],
+      "article": "/burn/fusion-and-performance.html#megakernel",
+      "coverage": "explained_with_acceptance_criteria",
+      "gpu_execution": "not_run",
+      "rust_gpu_port": "not_implemented",
+      "related_rust_labs": []
+    }
+  ],
+  "rust_gpu_learning": {
+    "upstream": "https://github.com/NVIDIA/cuda-rust",
+    "commit": "fc747196f2d46dce41bd844e3f5b1c5882751f2b",
+    "article": "/burn/rust-gpu.html#nvidia-simt",
+    "labs": "/burn/learning-labs.html#rust-cuda-labs",
+    "package": "/burn/nvidia-gpu-labs.zip",
+    "toolchains": {
+      "cuda-oxide": "1.99.1",
+      "cutile-rs-workspace": "1.98.0"
+    },
+    "source_paths": [
+      "README.md",
+      "cuda-oxide/rust-toolchain.toml",
+      "cutile-rs/rust-toolchain.toml",
+      "cuda-oxide/cuda-oxide-book/getting-started/installation.md",
+      "cuda-oxide/cuda-oxide-book/getting-started/hello-gpu.md",
+      "cuda-oxide/crates/rustc-codegen-cuda/examples/vecadd/src/main.rs",
+      "cuda-oxide/crates/cargo-oxide/src/main.rs",
+      "cutile-rs/cutile-book/reference/compatibility.md",
+      "cutile-rs/cutile-examples/Cargo.toml",
+      "cutile-rs/cutile-examples/examples/hello_world.rs",
+      "cutile-rs/cutile-examples/examples/async_add.rs",
+      "cutile-rs/cutile-examples/examples/softmax.rs",
+      "cutile-rs/cutile-examples/examples/gemm.rs",
+      "cutile-rs/cutile-examples/examples/flash_attention.rs",
+      "cutile-rs/cutile-examples/examples/persistent_gemm.rs",
+      "cuda-core/src/simt/device_buffer.rs",
+      "cuda-core/src/simt/launch.rs",
+      "cuda-async/src/device_operation.rs",
+      "cutile-rs/cutile/src/tile_kernel.rs",
+      "cuda-oxide/cute-rs-preview/examples/sm100_fmha_prefill_cute",
+      "cuda-oxide/cute-rs-preview/examples/fmha_decode_sm120a_cute",
+      "cuda-oxide/cute-rs-preview/examples/nvfp4_gemv_cute",
+      "cuda-oxide/cute-rs-preview/examples/ffn_cute"
+    ],
+    "package_programs": [
+      "tile_add",
+      "tile_softmax",
+      "tile_matmul"
+    ],
+    "checks": {
+      "rustfmt": "passed",
+      "dependency_resolution": "passed",
+      "cuda_compilation": "not_run",
+      "gpu_execution": "not_run",
+      "burn_integration": "not_implemented"
+    },
+    "scope": "Small Rust Tile learning examples, not a complete port of learn-cuda or a GPU validation claim."
+  }
+}

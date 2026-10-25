@@ -45,7 +45,9 @@ VitePress 固定使用稳定版 1.6.4；通过 npm overrides 将 Vite 固定为 
 
 《深入理解 Burn 深度学习框架》位于 `docs/burn/`，由本站直接维护，通过 `/burn/` 访问。全书分七部分、18 章，从环境与数学、张量与 Rust、GPU/CUDA，逐步进入 Burn 模型、后端、训练、执行性能、部署扩展和源码实验。
 `docs/.vitepress/burn-sidebar.json` 管理统一目录。正文路由使用主题名称，章节顺序由目录组织；旧地址直接跳转到对应正文。文章统一使用章节标题、学习目标、实践方式、描述性小标题与章间导航。
-第 5 章将 GPU 基础与 learn-cuda 阅读练习合并，第 6 章介绍 Rust GPU 与 CubeCL。第 18 章记录实验验证范围和后续计划，资料基线集中在 `references.md`。
+learn-cuda 固定版本的 15 个主题已分别在第 5、12、13、15 章讲解；GPU 实践主线使用 NVIDIA/cuda-rust，第 6 章展开 SIMT、Tile、三个小型 Rust GPU 程序与 CubeCL 的关系，第 17～18 章记录调用链与验收步骤。源码基线集中在 `references.md`，讲解覆盖不等于设备验证。
+
+`docs/public/burn/learn-cuda-reference.rs` 提供 Rust 标准库数学参考，八组检查已通过。`docs/public/burn/nvidia-gpu-labs/` 提供固定 NVIDIA 提交与 Cargo.lock 的 Tile 加法、Softmax、小矩阵乘法；本机未编译或运行 CUDA。`learn-cuda-coverage.json` 记录源码、正文与验证状态，15 个主题的完整 Rust GPU 移植和硬件性能复现仍未完成。
 `docs/public/burn/first-inference/` 提供固定 Burn 0.22.1 的 CPU 学习包。第 16 章用 `comparison.rs` 与 `pytorch_compare.py` 对照两套框架；第 11、14 章用 `regression_train.rs` / `regression_verify.rs` 验证训练、保存与新进程加载。Python 环境与 Cargo 依赖分别管理。
 
 修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。

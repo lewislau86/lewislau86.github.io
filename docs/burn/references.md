@@ -19,11 +19,25 @@ GPU 资料核对日期：**2026-10-25**。相关内容编入[第 5 章：GPU 编
 
 | 资料 | 本书怎样使用 | 核对基线与边界 |
 | --- | --- | --- |
-| [gau-nernst/learn-cuda](https://github.com/gau-nernst/learn-cuda) | 以向量加法、归约、普通矩乘和 Softmax 建立 GPU 执行直觉 | 固定提交 [`afcb20b`](https://github.com/gau-nernst/learn-cuda/tree/afcb20b1bd89065c31a1575c276aba686fc4dfce)；源码阅读，未复跑 CUDA 与性能表 |
-| [NVIDIA/cuda-rust](https://github.com/NVIDIA/cuda-rust) | 区分 SIMT 的 cuda-oxide、Tile 的 cutile-rs 和主机运行时 | 核对 [`fc74719` 的 README](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/README.md)及官方手册；工具链按项目版本选择，未本地编译 |
+| [gau-nernst/learn-cuda](https://github.com/gau-nernst/learn-cuda) | 15 个主题在第 5、12、13、15 章展开，第 6 章映射 Rust，第 17～18 章追踪源码与验收 | 固定提交 [`afcb20b`](https://github.com/gau-nernst/learn-cuda/tree/afcb20b1bd89065c31a1575c276aba686fc4dfce)；CPU 数学参考已运行，CUDA/HIP 与性能表未复跑 |
+| [NVIDIA/cuda-rust](https://github.com/NVIDIA/cuda-rust) | GPU 实践主线：SIMT 加法、Tile 加法/Softmax/矩乘、共享主机运行时及进阶 Rust 源码 | 固定 [`fc74719`](https://github.com/NVIDIA/cuda-rust/tree/fc747196f2d46dce41bd844e3f5b1c5882751f2b)，核对真实示例、Cargo 配置、工具链与兼容表；本站三个 GPU 程序未本地编译 |
 | [社区 Rust-CUDA](https://github.com/Rust-GPU/rust-cuda) | 说明它与 NVIDIA CUDA Rust 是独立项目 | 名称、编译器与安装步骤分别核对；本书不提供已验证的移植包 |
 | [cudarc](https://github.com/chelsea0x3b/cudarc) | 辅助区分 Rust 主机端 CUDA 调用与设备端 Rust kernel | 不将主机 API 封装等同于另一套 Rust kernel 编程模型 |
 | [CubeCL](https://github.com/tracel-ai/cubecl) | 把 GPU 基础衔接到 Burn 的内核与运行时 | Burn 侧以 [v0.22.1 的 Cube 后端](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-cubecl/src/lib.rs)为准；独立工具的可用性不代表已完成 Burn 集成 |
+
+### learn-cuda 的覆盖和证据
+
+按[第 5 章的 15 项地图](./gpu-programming.md#三、按问题阅读-而不是一次读完所有目录)定位正文。根 README 没有列全后来目录，个别 TODO 也落后于源码，因此本轮同时核对了目录、实现和运行入口。
+
+关键区别包括：Box Blur 已有滑动窗口版本；SM120 已有 v3；FP6 没有独立主程序与完整 schema；CDNA3 的逐元素断言被注释；Attention v6 在主程序中没有单独数值断言。文章据此给出验收步骤，不把上游能打印性能当作本书的验证结果。
+
+原理参考包括 [Online Softmax](https://arxiv.org/abs/1805.02867)、[FlashAttention](https://arxiv.org/abs/2205.14135)、[NVIDIA PTX ISA](https://docs.nvidia.com/cuda/parallel-thread-execution/index.html)、[CUDA Best Practices](https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html)和 [AMD GPU 规格](https://rocm.docs.amd.com/en/latest/reference/gpu-specs.html)。硬件与工具规范应匹配安装版本。
+
+本站提供独立编写的 Rust 标准库数学参考，八组检查已运行；[NVIDIA Rust GPU 学习包](/burn/nvidia-gpu-labs.zip)基于固定提交的 Tile 示例改写，附来源、修改说明、许可证与锁文件，未编译或在 GPU 运行。结果分别记录在[第 18 章](./learning-labs.md#cuda-labs)，精确路径见[覆盖清单](/burn/learn-cuda-coverage.json)。
+
+### Rust 主线与 Python 的位置
+
+第 5～6 章及第 13 章的 GPU 执行、查错和性能采集使用 Rust 程序。learn-cuda 原仓库的 Python / Triton / CuTe DSL 文件保留真实名称与来源，用于解释实现差异；第 7、8、10、14、16 章的少量 PyTorch 代码明确用于跨框架对照。这些对照不作为 Rust GPU 实验的前置运行条件。
 
 ## 三份 Burn 引用资料各有什么作用
 

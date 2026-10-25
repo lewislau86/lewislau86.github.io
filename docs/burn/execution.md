@@ -113,6 +113,53 @@ $$
 
 它们都不会改变数学公式，但会改变时间花在哪里。阅读性能数字时，要同时记录是否启用融合、是否捕获图、是否包含首次编译，以及同步点在哪里。
 
+## P2P：两张 GPU、两个进程怎样共享数据 {#p2p}
+
+单设备的“提交、等待、读回”还不足以解释 [10_p2p](https://github.com/gau-nernst/learn-cuda/tree/afcb20b1bd89065c31a1575c276aba686fc4dfce/10_p2p)。该例有两个 Python 子进程，各自选择一张 GPU，用 gloo 交换 IPC handle，再由 kernel 直接访问对端显存。
+
+### 指针、句柄和通信通道
+
+| 对象 | 所属范围 | 职责 |
+| --- | --- | --- |
+| 本地设备指针 | 当前进程的地址空间 | 定位当前进程可访问的设备内存 |
+| CUDA IPC handle | 可通过进程通信传递的句柄 | 让另一个进程打开同一设备分配 |
+| 打开的 remote pointer | 接收进程的映射 | 在该进程的 kernel 中访问对端 |
+| gloo process group | 进程间通信 | 交换 handle、协调实验阶段，不代替 GPU 内存协议 |
+| arena / heap | 每张 GPU 的大块分配 | 子对象用基址加偏移定位，减少重复交换 |
+
+原始指针的数值不能直接跨进程使用。上游 main.py 用 spawn 创建进程，先设置设备，再由 p2p.cu 调用 cudaIpcGetMemHandle / cudaIpcOpenMemHandle。所有设备各分配一块相同用途的 heap；子对象使用同样偏移，远程地址按下式翻译：
+
+```text
+offset = local_object_pointer - local_heap_base
+remote_object_pointer = remote_heap_base + offset
+```
+
+这就是示例中 symmetric heap 的核心约定。它依赖对端对象确实位于同一偏移，不是共享了一次基址就能随意在两边独立分配。
+
+### P2P 能访问，不代表已经同步
+
+先用 cudaDeviceCanAccessPeer 检查“当前设备能否访问 peer”，再在当前设备启用该访问方向；反向也要单独处理。并非任意两张 GPU 都支持，也不因支持 P2P 就推断存在 NVLink。API 语义见 [CUDA Peer Device Memory Access](https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__PEER.html)。
+
+示例 enable_p2p 直接尝试启用，未先调用 can-access 查询。复现前应补能力检查，失败时明确结束，不把单卡、不可达拓扑或权限问题当成 kernel 错误。
+
+主程序的两个阶段分别为：
+
+1. 每张卡把本地数组填成 -1，等待本地写入完成，再做进程 barrier。远端写入测试后再次等待与 barrier，期望各进程读到 `[0,1]`。
+2. 每张卡填入自身 rank，完成初始化并协调后，读取各 peer 的数据到本地数组，期望仍为 `[0,1]`。
+
+这里**先完成设备工作，再协调进程阶段**。单独调用 dist.barrier 并不自动使任意 CUDA 流中的先前写入全部完成；内存 ordering/coherence 需要实际同步协议。上游靠阶段性同步展示读写，没有实现并发生产消费或通用集合通信。
+
+### 资源怎样结束
+
+正确生命周期是：分配 heap → 导出/交换 handle → 打开映射 → 执行并等待所有访问 → 关闭打开的 IPC 映射 → 最后释放原分配。示例没有显式提供 close_ipc_handle 包装，进程退出会结束这次演示；长期运行程序应补 cudaIpcCloseMemHandle、异常清理与明确所有者。
+
+还要检查每个子进程的退出码。上游父进程只 join，没有把失败子进程状态汇总为严格验收，因此“父进程正常退出”不等于两个 rank 都成功。该例每卡申请约 1 GiB heap，容量也应预先记录。
+
+### 与 Burn 的关系
+
+Burn Tensor 知道自己所属的设备，但两个 Device 句柄不会自动建立 IPC、对称堆或跨卡同步。接入此类机制需要额外设计内存所有权、设备与进程拓扑、流和事件、异常路径及后端接口。这里的 P2P 内容用于理解执行边界，不声称 Burn 主线已具备这份示例的多进程能力。
+
+
 ## 本章实验：观察提交与读回 {#_9-6-本章实验-观察提交与读回}
 
 学习包中的 `execution_trace` 用 CPU Flex 后端做一次可复现的对照：先预热，再分别计时“只提交矩阵乘法”和“提交后读回结果”。CPU 后端可能同步执行，所以两组数字接近是正常的；这个实验的目的是让你分清 API 边界，而不是制造 CPU/GPU 排名。

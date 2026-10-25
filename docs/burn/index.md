@@ -29,9 +29,15 @@ pageClass: burn-course
 
 | 章节 | 本章学习目标 |
 | --- | --- |
-| [第 5 章：GPU 编程：从向量加法到矩阵乘法](./gpu-programming.md) | 沿 learn-cuda 的调用链理解索引、协作、内存与数据复用。 |
-| [第 6 章：Rust GPU 编程与 CubeCL](./rust-gpu.md) | 区分 Rust 主机接口、SIMT、Tile 与 Burn 的 CubeCL 路径。 |
+| [第 5 章：GPU 编程：从向量加法到矩阵乘法](./gpu-programming.md) | 沿 learn-cuda 理解索引、协作、矩乘、归约、Softmax、滤波、FP6、Attention 与 GEMV。 |
+| [第 6 章：Rust GPU 编程与 CubeCL](./rust-gpu.md) | 用 NVIDIA Rust SIMT / Tile 表达加法、Softmax、矩乘，再接到 Burn 的 CubeCL 路径。 |
 
+
+### learn-cuda 在课程中的位置
+
+上游固定版本的 **15 个主题目录均有正文讲解与验收入口**，保持本书 18 章结构：第 5 章讲算子数学与基本实现，第 6 章映射 Rust，第 12 章讲 P2P，第 13 章讲硬件优化、Megakernel 与性能工具，第 15 章讲低精度缩放矩乘的接入。
+
+先用[完整主题地图](./gpu-programming.md#三、按问题阅读-而不是一次读完所有目录)定位，再到[实验清单](./learning-labs.md#cuda-labs)检查运行条件。实践使用 Rust：<a href="/burn/learn-cuda-reference.rs" download>CPU 数学参考</a>已执行八组检查，[NVIDIA GPU 学习包](/burn/nvidia-gpu-labs.zip)提供三个 Tile 程序。CUDA/HIP 设备执行、完整 Rust GPU 移植与硬件性能仍分别待验证。
 
 ## 第三部分：Burn 模型与后端
 
@@ -118,7 +124,7 @@ H = ReLU(Z) = [[5, 2]]
 | --- | --- |
 | Burn 主线 | 固定 **v0.22.1**，示例直接依赖与 Cargo 锁文件随学习包提供。 |
 | 已有 CPU 实验 | 前向、张量、Module、求导、组合扩展、优化器观察、计时观察、训练与推理恢复；历史记录见第 18 章。 |
-| GPU 阅读材料 | learn-cuda 与 Rust CUDA 的源码基线见[资料页](./references.md)；本次重排未运行 GPU 实验。 |
+| GPU 阅读材料 | learn-cuda 与 Rust CUDA 的源码基线见[资料页](./references.md)；15 项主题讲解已补齐，CPU 数学参考已运行，GPU 实验未运行。 |
 | 继续研究 | 完整训练恢复、GPU/Fusion、外部模型导入和部署仍按实验章逐步验证。 |
 
 从[第 1 章：环境与工具链](./environment.md)开始。需要查术语、官方文档与版本差异时，使用[资料、版本与术语](./references.md)。

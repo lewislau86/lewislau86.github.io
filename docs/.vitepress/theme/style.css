@@ -12,3 +12,15 @@
 }
 .vp-doc { line-height: 1.85; }
 .vp-doc h1 { letter-spacing: -0.025em; }
+
+@media (max-width: 640px) {
+  /* Keep comparison columns readable inside VitePress's scrolling tables. */
+  .burn-course .vp-doc th,
+  .burn-course .vp-doc td {
+    min-width: 9rem;
+  }
+  .burn-course .vp-doc th:first-child,
+  .burn-course .vp-doc td:first-child {
+    min-width: 5rem;
+  }
+}

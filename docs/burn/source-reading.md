@@ -192,6 +192,37 @@ rg -n 'Dispatch|routing|fusion' crates/burn-backend-extension/src/extension.rs
 
 一份可交付的小练习是：画出直接 Tensor 矩乘的四层路径，在每层写一条实际函数名和一个文件位置，再解释哪些地方只换表示、哪些地方可能登记工作、哪里真正计算。能完成这张图，就比读完许多优化代码但说不清输入去向更接近本章目标。
 
+## 先追 NVIDIA Rust 的主机与设备边界 {#nvidia-rust-source-map}
+
+固定 NVIDIA 提交 `fc74719`，先沿[第 6 章](./rust-gpu.md#nvidia-simt)的两个例子追调用：
+
+| 路径 | 实际调用方向 | 必须记录的状态 |
+| --- | --- | --- |
+| SIMT | Rust main → DeviceBuffer / load → 生成的 module.vecadd → Rust kernel → readback | context、stream、嵌入 PTX、缓冲区借用、launch 契约 |
+| Tile | Rust main → api::arange / zeros → 生成的 Tile launcher → DeviceOperation → 编译 / 缓存 → CUDA 提交 | 输出 partition、输入共享引用、特化参数、完成状态 |
+| 读回与释放 | to_host_vec → 对应 stream 完成条件 → host Vec → 输出断言 → 资源结束 | 不把 launcher 构造或提交完成当成设备完成 |
+
+可逐层查看 [SIMT device_buffer.rs](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/cuda-core/src/simt/device_buffer.rs)、[SIMT launch.rs](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/cuda-core/src/simt/launch.rs)、[Tile tile_kernel.rs](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/cutile-rs/cutile/src/tile_kernel.rs)和 [DeviceOperation](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/cuda-async/src/device_operation.rs)。SIMT 同步接口与异步运行时的同名概念要按模块核对，不能只搜索短类型名。
+
+这些普通例子的主机与 kernel 位于同一个应用进程的 CUDA 执行上下文内，不需要每个 kernel 新建进程。设备缓冲区、流、事件与 future 才是主要生命周期；多进程 IPC 是另一个问题。NVIDIA 两种模型可共享主机运行时资源，但接到 Burn 仍需单独验证布局、流依赖、dtype 与所有权。
+
+## 从 learn-cuda 追踪到框架职责 {#learn-cuda-source-map}
+
+按“入口 → 包装 → kernel → 状态 → 验收”记录，不把文件列表当成调用链。
+
+| 问题 | 调用或数据路径 | 主要状态与边界 | 本书解释 |
+| --- | --- | --- | --- |
+| 加法如何开始？ | 01 的 main.py → 扩展 add → add_kernel | host/device 分界，缓冲区所有权 | [第 5 章](./gpu-programming.md) |
+| 归约怎样完成？ | 03 的 sum.cpp → sum_v* → 局部合并/跨块原子 | 输出清零、共享值、累加顺序 | [归约](./gpu-programming.md#求和-从互不干扰到必须协作) |
+| tensor map 谁创建？ | SM120 的 host 包装 → common.h → TMA/MMA | descriptor、stage、屏障与 phase | [SM120](./fusion-and-performance.md#sm120) |
+| 缩放在哪发生？ | 08 的 main.py → ext.cpp → MMA → epilogue | 累加器、行列 scale、BF16 写回 | [缩放矩乘](./custom-operators.md#row-scaled-mm) |
+| 指针怎样跨进程？ | 10 的 spawn → handle 交换 → 映射 → translate → kernel | rank、映射、heap 偏移、同步 | [P2P](./execution.md#p2p) |
+| token 怎样推进？ | 12 的 chat/reference → model_triton → 各层 → token | KV cache、position、_FLAG、临时存储 | [Megakernel](./fusion-and-performance.md#megakernel) |
+
+普通 kernel 调用不需要每次新建操作系统进程；P2P 的 rank、部分基准的子进程则是真实进程边界。进程隔离、kernel 启动、warp 协作要分别记录。
+
+每条链至少留下：谁调用下一层、共享数据由谁写读、资源何时可释放或复用。带回 Burn 后，再问框架已经管理哪些责任，扩展作者还要实现哪些。
+
 ## 本章实验（阅读实验） {#本章实验-阅读实验}
 
 这一章不新增运行时程序，而是用两条跨平台命令建立源码地图：

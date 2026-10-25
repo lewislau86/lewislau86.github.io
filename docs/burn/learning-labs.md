@@ -11,7 +11,7 @@ pageClass: burn-course
 ::: tip 本章学习目标
 按检查点回顾学习结果，区分已验证实验和后续计划。
 
-**实践方式：** A–O 实验索引与验收记录。历史验证范围统一见[实验索引](./learning-labs.md)。
+**实践方式：** A–O Burn 实验、R01–R06 NVIDIA Rust GPU 路线、C01–C15 上游主题与 Rust CPU 数学参考。
 :::
 
 原理要靠小实验建立联系。这份路线先让每个结果都能手算，再逐步增加训练、设备迁移和性能分析。不要从“大模型能不能跑”开始，否则一旦出错，很难判断是数据、模型、依赖还是后端的问题。
@@ -56,6 +56,99 @@ A–F 的验证日期为 **2026-10-23**，环境是 **Windows、Rust 1.98.1、Ca
 代码可单独下载：<a href="/burn/first-inference/src/main.rs" download>主程序</a>、<a href="/burn/first-inference/src/bin/module.rs" download>Module 例子</a>、<a href="/burn/first-inference/src/bin/autodiff.rs" download>求导例子</a>、<a href="/burn/first-inference/src/bin/backend_extension.rs" download>后端扩展例子</a>、<a href="/burn/first-inference/src/bin/tensors.rs" download>张量例子</a>、<a href="/burn/first-inference/src/bin/rust_basics.rs" download>Rust 基础</a>、<a href="/burn/first-inference/src/bin/dispatch_path.rs" download>设备路径</a>、<a href="/burn/first-inference/src/bin/optimizers.rs" download>优化器</a>、<a href="/burn/first-inference/src/bin/execution_trace.rs" download>执行时间线</a>、<a href="/burn/first-inference/src/bin/gpu_probe.rs" download>并行工作项</a>、<a href="/burn/first-inference/src/bin/fusion_measure.rs" download>融合对照</a>、<a href="/burn/first-inference/src/bin/regression_train.rs" download>回归训练</a>、<a href="/burn/first-inference/src/bin/regression_verify.rs" download>回归加载</a>、<a href="/burn/first-inference/Cargo.toml" download>项目配置</a>、<a href="/burn/first-inference/Cargo.lock" download>锁文件</a>。学习时优先下载完整包，保持目录结构。
 
 对照程序：<a href="/burn/first-inference/src/bin/comparison.rs" download>Burn comparison.rs</a>、<a href="/burn/first-inference/pytorch_compare.py" download>PyTorch pytorch_compare.py</a>。解释与环境检查步骤见[第 16 章](./pytorch-comparison.md)。
+
+## learn-cuda 实验：从数学参考到设备验收 {#cuda-labs}
+
+这里补齐固定提交的 15 个主题；已有 CPU/Burn 实验 A–O 保留原编号。下面另用 C01–C15 表示 learn-cuda 主题，**其 CUDA/HIP 运行状态均为未验证**，不会用文档构建或 CPU 参考代替设备验收。
+
+### 不依赖 GPU 的完整数学参考
+
+下载 <a href="/burn/learn-cuda-reference.rs" download>learn-cuda-reference.rs</a>，仅使用 Rust 标准库，不需要 Cargo 依赖或 Python：
+
+```sh
+rustc --edition=2021 -D warnings learn-cuda-reference.rs -o learn-cuda-reference
+./learn-cuda-reference
+```
+
+本轮在 **macOS arm64、Rust 1.99.0** 上编译执行，八组检查全部通过。Windows 下把输出文件名改为 `learn-cuda-reference.exe`，然后运行该文件。程序使用普通 `assert!` / `assert_eq!`，发布优化也保留这些检查。
+
+| 检查组 | 实际检查的内容 |
+| --- | --- |
+| 向量加法 | 固定结果、空输入、长度不匹配拒绝 |
+| 矩乘 | 手算结果、非方阵、多种 tile 和尾块 |
+| 归约 | 空和、奇数长度、树形归约与 f64 顺序求和比较 |
+| Softmax | 大值稳定性、平移不变性、分块状态合并 |
+| Attention | dense 与分块 m/l/u、不同序列长度、causal 数学参考 |
+| Box Blur | 零填充边角、二维直接计算与可分离滑动窗口 |
+| FP6 | 全部 64 编码、正负零、中点取偶、固定字节布局与非法值 |
+| 缩放矩乘 / GEMV | 缩放轴、广播与固定数值 |
+
+程序使用 Rust f64 做独立数学参考，没有模拟 BF16/FP8 舍入、Tensor Core 指令、GPU 屏障、原子操作或真实缓存。它额外演示 causal 数学与更宽的滤波输入范围，不表示上游 kernel 支持这些扩展。
+
+### NVIDIA Rust GPU 实验入口 {#rust-cuda-labs}
+
+GPU 实践使用 [NVIDIA/cuda-rust 固定提交](https://github.com/NVIDIA/cuda-rust/tree/fc747196f2d46dce41bd844e3f5b1c5882751f2b)，先按[第 6 章](./rust-gpu.md#工具链跟随项目版本)配置 Linux、Rust、Toolkit、驱动与设备。以下项目没有 Python 运行依赖；**本次仅核对源码和接口，未完成 GPU 编译或运行**。
+
+下载 [三个小型 Tile 程序](/burn/nvidia-gpu-labs.zip)，在解压目录运行 R02～R04。R01 与 R05～R06 在 NVIDIA 克隆仓库各自工作区运行，切勿把两套 Cargo 命令混在同一个目录。
+
+| 编号 | 工作目录与命令 | 验收条件 |
+| --- | --- | --- |
+| R01 · SIMT 加法 | NVIDIA `cuda-oxide`：`cargo oxide doctor`，然后 `cargo oxide run vecadd` | 全部 1024 项通过；修改例子后另检尾块与空输入 host 路径 |
+| R02 · Tile 加法 | 本站 `nvidia-gpu-labs`：`cargo +1.98.0 run --locked --bin tile_add` | 全部 1024 项，与 arange + 1 一致 |
+| R03 · Tile Softmax | 同上：`cargo +1.98.0 run --locked --bin tile_softmax` | 4×8 输出逐值比较、有限值、每行和 |
+| R04 · Tile 矩乘 | 同上：`cargo +1.98.0 run --locked --bin tile_matmul` | 32×16 乘 16×32，全输出与 f64 点积参考比较 |
+| R05 · Attention | NVIDIA `cutile-rs`：`cargo run -p cutile-examples --features reference-cpu --example flash_attention` | GPU 路径确实执行、与 Rust Candle 参考比较；不接受 SKIP 作为通过 |
+| R06 · 错误检查 | NVIDIA `cuda-oxide`：`cargo oxide sanitize vecadd --tool memcheck` | 保留数值检查，阅读 sanitizer 报告；再分别运行 racecheck / synccheck / initcheck |
+
+本站三个 GPU 程序的直接依赖固定同一 git 提交，Cargo.lock 固定其余解析；附带来源与修改说明。Rustfmt 与依赖解析通过不等于 CUDA 编译通过，程序中写有断言也不表示本机已执行这些设备检查。性能采集见[第 13 章](./fusion-and-performance.md#cuda-profiling)。
+
+### C01–C15 的上游源码对照与验收
+
+这一表保留 learn-cuda 的真实源文件名，便于逐项对照 `afcb20b1bd89065c31a1575c276aba686fc4dfce`；它们是原仓库的 C++ / Python 入口。本站实践主线使用上面的 Rust 程序，不要求先安装这些 Python 依赖。若额外复现原仓库，需单独记录 PyTorch、Triton、CuTe DSL 等版本；其 pyproject.toml 只有 Ruff 配置，没有统一锁定的运行环境。CDNA3 另需 ROCm/HIP 与 gfx942。
+
+| 编号 / 目录 | 源码核对的入口 | 应验收什么 |
+| --- | --- | --- |
+| C01 · 01_vector_addition | `main.py` → `add.cu` | 扩展加载与 assert_close；另补空输入 host 处理和尾块；Rust 先做 R01/R02 |
+| C02 · 02_matmul_simt | `main.py` → `matmul.cu` | v1～v6b、Triton 与参考；快速路径的布局/整除条件；Rust tile 起点 R04 |
+| C03 · 02_matmul_sm80 | `main.py` / `matmul_v*.cu` | 当前默认列表并非包含所有历史版本；按 get_kernel/列表选择并逐版比较 |
+| C04 · 02_matmul_sm100 | `main.py` 的 Modal benchmark 分支 | 配套 Modal/B200 环境、各版数值与耗时；云端执行条件按上游配置 |
+| C05 · 02_matmul_sm120 | `main.py` / `matmul_v*.cu` | BF16/INT8、v0～v3；不能只复现 README 到 v2 的表 |
+| C06 · 02_matmul_cdna3 | `main.py` / HIP kernel | gfx942/ROCm；补回被注释的逐元素正确性比较 |
+| C07 · 03_sum | `main.py` → `sum.cpp` / `sum.cu` | 所有版本、输出初始化、误差与不整倍数 N；Rust GPU 独立归约待补 |
+| C08 · 04_softmax | `main.py` / `softmax.cu` | 四种路径；分母、行和、workspace 与形状变化；Rust 先做 R03 |
+| C09 · 05_fp6 | fp6.cu；无独立 main.py | 先补 schema/加载包装，再核对编码、舍入、packed shape 与非法值策略 |
+| C10 · 06_box_blur | `main.py` / `box_blur.cu` | v1/v2 对照、固定分母、边角与窗口条件；Rust GPU 待补 |
+| C11 · 07_attention | `main.py` / `attention_v*` | v1～v6 与 SDPA；为 v6 补数值比较；Rust 从 R05 继续 |
+| C12 · 08_row_scaled_mm | `main.py` 的 int8 / fp8 分支 | 相同量化输入/scales 的数值；另测量化损失 |
+| C13 · 10_p2p | `main.py` / `p2p.cu` | 两卡可达性、每 rank 的 [0,1]、子进程状态与 IPC 清理；Rust GPU 待补 |
+| C14 · 11_gemv | `main.py` 的 shape 参数 / `cuda_v1.cu` | 支持的 K、M=1、权重布局和输入轮换条件 |
+| C15 · 12_megakernel | `mlp_main.py` / `attn_main.py` | 子模块输出和 KV cache；模型级另读 chat.py/model_triton.py |
+
+每行入口不等于完整能力证明。例如 profile 分支可能只启动不比较，benchmark 也可能只选部分版本；阅读入口后应核对实际执行路径。P2P 父进程正常结束还不足以证明每个子进程成功。C15 的交互聊天会下载模型，不必作为第一个检查点，先验证独立子模块。
+
+### 所有设备实验保留同一份记录
+
+```text
+主题 / 源码提交 / kernel 版本：
+设备 / 驱动 / Toolkit 或 ROCm / Rust 工具链 / Cargo.lock：
+若额外运行原仓库：Python / PyTorch / 其他依赖：
+shape / dtype / stride / scale 或 mask：
+参考实现 / atol / rtol / 最大误差 / 有限值检查：
+支持、拒绝或回退的边界输入：
+内存与同步工具的结果：
+冷启动 / 预热 / 重复次数 / 同步与计时范围：
+中位耗时 / 波动 / 缓存与输入轮换条件：
+尚未覆盖的条件：
+```
+
+先数值、再检查内存和同步、最后性能。对 Attention 还记录 causal/dropout/head_dim；对 FP6 记录格式约定与 packed layout；对 P2P 记录拓扑、每个 rank 的状态和资源结束顺序。
+
+### 当前完整度怎样理解
+
+**15/15 个主题已有对应正文、源码入口、主要演进与验收条件**；Rust CPU 数学参考八组已通过，三个 Rust Tile 学习程序已提供。硬件 kernel 逐版运行、CUDA/HIP 性能复现、15 个主题的完整 Rust GPU 移植、Burn 专用接入仍待完成；数学参考与入门程序不代替这些工作。
+
+机器可读的 <a href="/burn/learn-cuda-coverage.json" download>覆盖清单</a>记录所有主题、固定源码路径、正文位置和运行状态，便于后续逐项更新；主题讲解覆盖与设备验证分开计数。
+
 
 ## 第一阶段：每一步都能手算 {#第一阶段-每一步都能手算}
 
