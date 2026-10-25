@@ -7,11 +7,7 @@
         "link": "/"
       },
       {
-        "text": "序言 · 环境与工具链",
-        "link": "/burn/preface"
-      },
-      {
-        "text": "学习总览",
+        "text": "课程总览",
         "link": "/burn/"
       },
       {
@@ -21,96 +17,116 @@
     ]
   },
   {
-    "text": "从基础到第一次推理",
+    "text": "第一部分 · 环境与基础",
     "collapsed": false,
     "items": [
       {
-        "text": "第 0 章 · 从模型到框架",
-        "link": "/burn/00-model-to-framework"
+        "text": "第 1 章 · 环境与工具链",
+        "link": "/burn/environment"
       },
       {
-        "text": "第 1 章 · 张量、形状与内存",
-        "link": "/burn/01-tensors-and-memory"
+        "text": "第 2 章 · 从模型到框架",
+        "link": "/burn/model-and-framework"
       },
       {
-        "text": "第 2 章 · 阅读 Burn 所需的 Rust",
-        "link": "/burn/02-rust-for-burn"
+        "text": "第 3 章 · 张量、形状与内存",
+        "link": "/burn/tensors-and-memory"
       },
       {
-        "text": "第 3 章 · 第一次推理",
-        "link": "/burn/03-first-inference"
-      },
-      {
-        "text": "第 4 章 · 模型、参数与 Module",
-        "link": "/burn/04-models-and-modules"
+        "text": "第 4 章 · 阅读计算代码所需的 Rust",
+        "link": "/burn/rust-basics"
       }
     ]
   },
   {
-    "text": "框架怎样执行与训练",
+    "text": "第二部分 · GPU 与 Rust 计算",
     "collapsed": false,
     "items": [
       {
-        "text": "第 5 章 · Backend 与执行路径",
-        "link": "/burn/05-backends-and-dispatch"
+        "text": "第 5 章 · GPU 编程：从向量加法到矩阵乘法",
+        "link": "/burn/gpu-programming"
       },
       {
-        "text": "第 6 章 · 自动微分",
-        "link": "/burn/06-autodiff"
-      },
-      {
-        "text": "第 7 章 · 从训练到推理",
-        "link": "/burn/07-training-to-inference"
+        "text": "第 6 章 · Rust GPU 编程与 CubeCL",
+        "link": "/burn/rust-gpu"
       }
     ]
   },
   {
-    "text": "执行、硬件与性能",
+    "text": "第三部分 · Burn 模型与后端",
     "collapsed": false,
     "items": [
       {
-        "text": "第 8 章 · GPU 与 Kernel",
-        "link": "/burn/08-gpu-and-kernels"
+        "text": "第 7 章 · 把第一次 Burn 推理跑起来",
+        "link": "/burn/first-burn-inference"
       },
       {
-        "text": "第 9 章 · 框架怎样执行",
-        "link": "/burn/09-how-execution-works"
+        "text": "第 8 章 · 模型、参数与 Module",
+        "link": "/burn/models-and-modules"
       },
       {
-        "text": "第 10 章 · 融合、内存与性能",
-        "link": "/burn/10-fusion-and-performance"
+        "text": "第 9 章 · Backend 与执行路径",
+        "link": "/burn/backends-and-dispatch"
       }
     ]
   },
   {
-    "text": "部署、扩展与源码",
+    "text": "第四部分 · 自动微分与训练",
     "collapsed": false,
     "items": [
       {
-        "text": "第 11 章 · 权重导入与部署",
-        "link": "/burn/11-import-and-deploy"
+        "text": "第 10 章 · 自动微分与梯度",
+        "link": "/burn/autodiff"
       },
       {
-        "text": "第 12 章 · 后端扩展与自定义算子",
-        "link": "/burn/12-custom-operators"
-      },
-      {
-        "text": "第 13 章 · 源码阅读地图",
-        "link": "/burn/13-source-reading"
-      },
-      {
-        "text": "第 14 章 · 实验路线与后续计划",
-        "link": "/burn/14-learning-labs"
+        "text": "第 11 章 · 优化器、训练与推理",
+        "link": "/burn/training-to-inference"
       }
     ]
   },
   {
-    "text": "用 PyTorch 对照复习",
+    "text": "第五部分 · 执行与性能",
     "collapsed": false,
     "items": [
       {
-        "text": "第 15 章 · PyTorch 与 Burn 对照",
-        "link": "/burn/15-pytorch-comparison"
+        "text": "第 12 章 · 一次计算怎样执行",
+        "link": "/burn/execution"
+      },
+      {
+        "text": "第 13 章 · 融合、内存与性能",
+        "link": "/burn/fusion-and-performance"
+      }
+    ]
+  },
+  {
+    "text": "第六部分 · 部署与扩展",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 14 章 · 权重导入与部署",
+        "link": "/burn/import-and-deploy"
+      },
+      {
+        "text": "第 15 章 · 后端扩展与自定义算子",
+        "link": "/burn/custom-operators"
+      }
+    ]
+  },
+  {
+    "text": "第七部分 · 对照、源码与实验",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 16 章 · 用 PyTorch 对照学习 Burn",
+        "link": "/burn/pytorch-comparison"
+      },
+      {
+        "text": "第 17 章 · 源码阅读地图",
+        "link": "/burn/source-reading"
+      },
+      {
+        "text": "第 18 章 · 实验索引与后续路线",
+        "link": "/burn/learning-labs"
       }
     ]
   }

@@ -1,6 +1,6 @@
 # Burn 首次推理学习包
 
-对应网站《深入理解 Burn 深度学习框架》第 0–12、15 章的配套实验（第 13 章为源码阅读，第 14 章为实验索引），固定 Burn 0.22.1。
+对应网站《深入理解 Burn 深度学习框架》第 2～5、7～16 章的配套实验（第 17 章为源码阅读，第 18 章为实验索引），固定 Burn 0.22.1。
 A–F 使用 Rust/Cargo 1.98.1 验证；G–O 在 macOS aarch64、Rust/Cargo 1.99.0 上运行或复跑。
 Burn 本体声明最低 Rust 1.95，较旧工具链未在本次验证。
 CPU Flex 后端，无需 GPU；首次构建需要联网下载依赖。
@@ -26,7 +26,7 @@ cargo run --locked --bin fusion_measure
 
 前五个程序打印一次推理、Module、求导、后端扩展与对照结果。`regression_*` 验证训练 → 保存 → 新进程加载：第一个训练 `Linear(1,1)` 拟合 `y=2x+1`，写出 `model_config.json`、`model.bpk`、`baseline.txt`；第二个只读文件重建模型并核对。回归示例把权重和偏置初始化为 `0.5`，让输出可以复现；这不是深层网络的通用初始化方式。
 
-`tensors`、`rust_basics`、`dispatch_path`、`optimizers`、`execution_trace`、`gpu_probe`、`fusion_measure` 分别对应第 1、2、5、7、9、8、10 章。它们都只使用 CPU，命令在 macOS、Linux 和 Windows PowerShell 中相同；计时数字随机器变化，不构成性能基准。
+`tensors`、`rust_basics`、`dispatch_path`、`optimizers`、`execution_trace`、`gpu_probe`、`fusion_measure` 分别对应第 3、4、9、11、12、5、13 章。它们都只使用 CPU，命令在 macOS、Linux 和 Windows PowerShell 中相同；计时数字随机器变化，不构成性能基准。
 
 预期分别包含：
 
@@ -55,10 +55,10 @@ x device = Device<Flex(Cpu)>
 SGD       final w =  3.00000  loss =   0.000000
 ```
 
-程序内的断言检查形状、设备、前向结果、参数量与梯度。`tensors`、`rust_basics`、`dispatch_path`、`optimizers`、`execution_trace`、`gpu_probe`、`fusion_measure` 还会打印各自的形状、参数或耗时；耗时数字随机器变化，断言通过即可。
-第 12 章通过 backend_extension 宏注册接口，复用 Flex / Autodiff 的乘加操作计算 y=x²+x。
+数值示例用断言检查形状、设备、前向结果、参数量与梯度。`optimizers` 打印优化轨迹；`execution_trace`、`gpu_probe` 与 `fusion_measure` 打印计时观察，需要人工核对输出，不设置固定加速比或性能阈值。计时程序正常退出不能单独证明数值正确或优化有效。
+第 15 章通过 backend_extension 宏注册接口，复用 Flex / Autodiff 的乘加操作计算 y=x²+x。
 它验证后端扩展的连接，没有编写专用 kernel，也未启用 Fusion。
-第 15 章的 comparison 验证主线前向、输入与参数梯度，并手动做一次 SGD 数学更新。
+第 16 章的 comparison 验证主线前向、输入与参数梯度，并手动做一次 SGD 数学更新。
 PyTorch 对照程序单独运行：
 
 ```sh
@@ -70,4 +70,4 @@ python pytorch_compare.py
 若未安装 PyTorch，按 https://pytorch.org/get-started/locally/ 选择适合本机的 CPU 安装方式。
 两个程序验证相同的手算值；Python 另验证 nn.Linear 的权重需要从主线 W 转置写入。
 comparison 的单步更新只是公式验证。regression_train/regression_verify 另外验证 Burn 的 `SgdConfig` 优化器 API、小模型训练收敛与推理恢复；它们不保存优化器状态，因此不验证精确的训练恢复，也不代表 GPU、外部模型导入或性能已经验证。
-验证环境与状态请查看网站第 14 章。
+验证环境与状态请查看网站第 18 章。

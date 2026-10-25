@@ -1,14 +1,31 @@
+---
+title: 资料、版本与术语
+pageClass: burn-course
+---
+
 # 资料、版本与术语
 
 ## 本书使用的版本
 
 首版核对日期：**2026-10-23**。示例与源码阅读统一固定在 **Burn v0.22.1**，对应提交 [`907ab111a02c2dea47bc41633754f095c6b2220e`](https://github.com/tracel-ai/burn/commit/907ab111a02c2dea47bc41633754f095c6b2220e)。这是本次核对时 GitHub 标为 Latest 的稳定发布；以[发布页面](https://github.com/tracel-ai/burn/releases/tag/v0.22.1)和[该标签的 Cargo.toml](https://github.com/tracel-ai/burn/blob/v0.22.1/Cargo.toml)为准。
 
-学习包使用 `version = "=0.22.1"` 固定直接依赖，并随包提供 `Cargo.lock` 固定依赖解析。Burn 包声明的最低 Rust 版本为 **1.95**，见[包配置](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn/Cargo.toml)。网站构建与 Rust 实验是两类检查，验证范围分别记录在[第 14 章](./14-learning-labs.md)。
+学习包使用 `version = "=0.22.1"` 固定直接依赖，并随包提供 `Cargo.lock` 固定依赖解析。Burn 包声明的最低 Rust 版本为 **1.95**，见[包配置](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn/Cargo.toml)。网站构建与 Rust 实验是两类检查，验证范围分别记录在[第 18 章](./learning-labs.md)。
 
-PyTorch 用作对照学习。第 15 章完整程序实测环境为 **Python 3.13.5、PyTorch 2.12.1+cpu**；主要 API 语义链接固定到 2.12 文档。核对时官方在线 `stable` 指向 2.14，其他章节的官方教程链接可能随网站更新。PyTorch 版本号与 Burn 版本号没有对应关系，不能用数字大小判断功能或速度。
+PyTorch 用作对照学习。第 16 章完整程序实测环境为 **Python 3.13.5、PyTorch 2.12.1+cpu**；主要 API 语义链接固定到 2.12 文档。核对时官方在线 `stable` 指向 2.14，其他章节的官方教程链接可能随网站更新。PyTorch 版本号与 Burn 版本号没有对应关系，不能用数字大小判断功能或速度。
 
-## 三份引用资料各有什么作用
+## GPU 与 Rust CUDA 资料
+
+GPU 资料核对日期：**2026-10-25**。相关内容编入[第 5 章：GPU 编程](./gpu-programming.md)与[第 6 章：Rust GPU](./rust-gpu.md)，与其余章节连续编排。
+
+| 资料 | 本书怎样使用 | 核对基线与边界 |
+| --- | --- | --- |
+| [gau-nernst/learn-cuda](https://github.com/gau-nernst/learn-cuda) | 以向量加法、归约、普通矩乘和 Softmax 建立 GPU 执行直觉 | 固定提交 [`afcb20b`](https://github.com/gau-nernst/learn-cuda/tree/afcb20b1bd89065c31a1575c276aba686fc4dfce)；源码阅读，未复跑 CUDA 与性能表 |
+| [NVIDIA/cuda-rust](https://github.com/NVIDIA/cuda-rust) | 区分 SIMT 的 cuda-oxide、Tile 的 cutile-rs 和主机运行时 | 核对 [`fc74719` 的 README](https://github.com/NVIDIA/cuda-rust/blob/fc747196f2d46dce41bd844e3f5b1c5882751f2b/README.md)及官方手册；工具链按项目版本选择，未本地编译 |
+| [社区 Rust-CUDA](https://github.com/Rust-GPU/rust-cuda) | 说明它与 NVIDIA CUDA Rust 是独立项目 | 名称、编译器与安装步骤分别核对；本书不提供已验证的移植包 |
+| [cudarc](https://github.com/chelsea0x3b/cudarc) | 辅助区分 Rust 主机端 CUDA 调用与设备端 Rust kernel | 不将主机 API 封装等同于另一套 Rust kernel 编程模型 |
+| [CubeCL](https://github.com/tracel-ai/cubecl) | 把 GPU 基础衔接到 Burn 的内核与运行时 | Burn 侧以 [v0.22.1 的 Cube 后端](https://github.com/tracel-ai/burn/blob/v0.22.1/crates/burn-cubecl/src/lib.rs)为准；独立工具的可用性不代表已完成 Burn 集成 |
+
+## 三份 Burn 引用资料各有什么作用
 
 | 资料 | 适合用来做什么 | 阅读时需要留意什么 |
 | --- | --- | --- |
@@ -24,8 +41,8 @@ PyTorch 用作对照学习。第 15 章完整程序实测环境为 **Python 3.13
 
 | 核心资料 | 在本书中怎样展开 | 固定版本依据 |
 | --- | --- | --- |
-| [Backend 架构](https://burn.dev/books/contributor/project-architecture/backend.html) | 第 5 章从小算例解释后端类型、运算接口、dtype、分派与自动微分装饰器，区分调用和实际完成 | [架构书稿](https://github.com/tracel-ai/burn/blob/v0.22.1/contributor-book/src/project-architecture/backend.md)、[后端源码](https://github.com/tracel-ai/burn/tree/v0.22.1/crates/burn-backend/src) |
-| [Backend Extension](https://burn.dev/books/burn/advanced/backend-extension/index.html) | 第 12 章从可运行的 CPU 扩展讲到注册、求导、融合元数据、结构化输入输出，再读专用内核 | [扩展指南](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/advanced/backend-extension/README.md)、[扩展宏源码](https://github.com/tracel-ai/burn/tree/v0.22.1/crates/burn-backend-extension/src) |
+| [Backend 架构](https://burn.dev/books/contributor/project-architecture/backend.html) | 第 9 章从小算例解释后端类型、运算接口、dtype、分派与自动微分装饰器，区分调用和实际完成 | [架构书稿](https://github.com/tracel-ai/burn/blob/v0.22.1/contributor-book/src/project-architecture/backend.md)、[后端源码](https://github.com/tracel-ai/burn/tree/v0.22.1/crates/burn-backend/src) |
+| [Backend Extension](https://burn.dev/books/burn/advanced/backend-extension/index.html) | 第 15 章从可运行的 CPU 扩展讲到注册、求导、融合元数据、结构化输入输出，再读专用内核 | [扩展指南](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/advanced/backend-extension/README.md)、[扩展宏源码](https://github.com/tracel-ai/burn/tree/v0.22.1/crates/burn-backend-extension/src) |
 
 ## 先避开几处版本混淆
 
@@ -43,7 +60,7 @@ PyTorch 用作对照学习。第 15 章完整程序实测环境为 **Python 3.13
 
 ## 原理、阅读片段与实验的标记
 
-**手算/示意**用于解释机制，未声称是 Burn 内部逐行实现。**阅读片段**省略完整项目环境，只帮助识别类型和调用。**CPU 学习包**包含第 0–12、15 章对应的完整 Cargo 项目，以及独立的 PyTorch 对照程序，实际执行状态见第 14 章。后端扩展的 CPU 组合实现、跨框架小算例，以及训练 → 保存 → 新进程加载的小模型闭环已运行；Fusion、专用 GPU kernel 和外部模型导入目前是导读与实验计划。
+**手算/示意**用于解释机制，未声称是 Burn 内部逐行实现。**阅读片段**省略完整项目环境，只帮助识别类型和调用。**CPU 学习包**包含第 2～5、7～16 章对应的完整 Cargo 项目，以及独立的 PyTorch 对照程序，实际执行状态见第 18 章。后端扩展的 CPU 组合实现、跨框架小算例，以及训练 → 保存 → 新进程加载的小模型闭环已运行；Fusion、专用 GPU kernel 和外部模型导入目前是导读与实验计划。
 
 同样，图中的箭头表示职责或调用方向，不承诺每次 API 调用都立即启动 kernel。自动微分图用于求梯度，融合记录用于组合计算；两者目的不同，不应把所有“图”当作一个固定的全模型静态图。
 
@@ -80,6 +97,6 @@ PyTorch 用作对照学习。第 15 章完整程序实测环境为 **Python 3.13
 - 参数与状态：[Module](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/building-blocks/module.md)、[Autodiff](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/building-blocks/autodiff.md)。
 - 执行效率：[Performance](https://github.com/tracel-ai/burn/tree/v0.22.1/burn-book/src/performance)。
 - 复用模型：[Saving & Loading](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/saving-and-loading.md)、[ONNX Import](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/onnx-import.md)。
-- PyTorch 对照：[张量](https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html)、[自动微分](https://docs.pytorch.org/docs/2.12/notes/autograd.html)、[Linear](https://docs.pytorch.org/docs/2.12/generated/torch.nn.Linear.html)、[backward](https://docs.pytorch.org/docs/2.12/generated/torch.Tensor.backward.html)；按[第 15 章](./15-pytorch-comparison.md)的问题映射回 Burn。
+- PyTorch 对照：[张量](https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html)、[自动微分](https://docs.pytorch.org/docs/2.12/notes/autograd.html)、[Linear](https://docs.pytorch.org/docs/2.12/generated/torch.nn.Linear.html)、[backward](https://docs.pytorch.org/docs/2.12/generated/torch.Tensor.backward.html)；按[第 16 章](./pytorch-comparison.md)的问题映射回 Burn。
 
 不需要把这些资料一次读完。先读本书的一章，带着该章的问题去查对应入口，更容易判断自己正在看哪一层。
