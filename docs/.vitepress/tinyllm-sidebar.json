@@ -25,11 +25,11 @@
         "link": "/tinyllm/chapter1_pytorch_autograd"
       },
       {
-        "text": "Chapter 2 · 初始化与残差路径（规划）",
+        "text": "Chapter 2 · 初始化与残差路径",
         "link": "/tinyllm/chapter2_initialization_residuals"
       },
       {
-        "text": "Chapter 3 · 激活函数与门控前馈层（规划）",
+        "text": "Chapter 3 · 激活函数与门控前馈层",
         "link": "/tinyllm/chapter3_activations_ffn"
       }
     ]

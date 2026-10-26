@@ -11,7 +11,14 @@ from pathlib import Path
 source = Path(sys.argv[1]).expanduser().resolve()
 repo = Path(__file__).resolve().parents[1]
 target = repo / 'docs/tinyllm'
-summary = (source / 'SUMMARY.md').read_text()
+
+
+def source_hash(path: Path) -> str:
+    # Git checks out CRLF on some Windows machines; manifest hashes use Git's LF bytes.
+    return hashlib.sha256(path.read_bytes().replace(b'\r\n', b'\n')).hexdigest()
+
+
+summary = (source / 'SUMMARY.md').read_text(encoding='utf-8')
 entries = re.findall(r'^\* \[(.+?)\]\(([^)]+\.md)\)', summary, re.M)
 assert len(entries) > 1 and entries[0][1] == 'README.md', 'Expected overview followed by chapters in SUMMARY.md'
 chapter_count = len(entries) - 1
@@ -19,15 +26,15 @@ assert [int(re.search(r'chapter(\d+)_', name)[1]) for _, name in entries[1:]] ==
 target.mkdir(parents=True, exist_ok=True)
 manifest = {'source': 'https://github.com/lewislau86/tinyllm',
             'commit': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
-            'files': {'SUMMARY.md': hashlib.sha256((source / 'SUMMARY.md').read_bytes()).hexdigest()}}
+            'files': {'SUMMARY.md': source_hash(source / 'SUMMARY.md')}}
 notebooks = set()
 for title, filename in entries:
     raw = (source / filename).read_bytes()
-    manifest['files'][filename] = hashlib.sha256(raw).hexdigest()
-    text = raw.decode()
+    manifest['files'][filename] = source_hash(source / filename)
+    text = raw.decode('utf-8').replace('\r\n', '\n')
     # The optimizer lesson is complete before the source overview is updated.
     # Keep the published overview consistent without changing the source checkout.
-    if filename == 'README.md' and '尚在规划中' not in (source / 'chapter12_optimizers.md').read_text():
+    if filename == 'README.md' and '尚在规划中' not in (source / 'chapter12_optimizers.md').read_text(encoding='utf-8'):
         completed, heading, remainder = text.partition('## 课程路线（规划）')
         if '](chapter12_optimizers.md)' not in completed:
             completed = completed.replace('| [Chapter 15',
@@ -60,13 +67,13 @@ for title, filename in entries:
     if filename == 'chapter12_optimizers.md':
         text = text.replace('上一章我们已经知道：', '第 1、5 章已经讲过：')
     destination = 'index.md' if filename == 'README.md' else filename
-    (target / destination).write_text(text)
+    (target / destination).write_text(text, encoding='utf-8', newline='\n')
 for filename in sorted(notebooks):
     src = source / filename
     dest = repo / 'docs/public/tinyllm' / filename
     dest.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, dest)
-    manifest['files'][filename] = hashlib.sha256(src.read_bytes()).hexdigest()
+    manifest['files'][filename] = source_hash(src)
 
 stages = [
     ('基础工具与稳定训练', 0, 4),
@@ -80,9 +87,9 @@ sidebar = [{'text': 'TinyLLM 教程', 'items': [
 for title, start, end in stages:
     items = []
     for label, filename in entries[start + 1:end + 1]:
-        status = '（规划）' if '尚在规划中' in (source / filename).read_text() else ''
+        status = '（规划）' if '尚在规划中' in (source / filename).read_text(encoding='utf-8') else ''
         items.append({'text': label + status, 'link': '/tinyllm/' + filename.removesuffix('.md')})
     sidebar.append({'text': title, 'collapsed': False, 'items': items})
-(repo / 'docs/.vitepress/tinyllm-sidebar.json').write_text(json.dumps(sidebar, ensure_ascii=False, indent=2) + '\n')
-(repo / 'scripts/tinyllm-source.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+(repo / 'docs/.vitepress/tinyllm-sidebar.json').write_text(json.dumps(sidebar, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
+(repo / 'scripts/tinyllm-source.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
 print(f'Imported {len(entries)} pages and {len(notebooks)} notebooks from {manifest["commit"][:7]}.')

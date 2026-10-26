@@ -14,6 +14,8 @@
 | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------- | ----------------------------------------------------- |
 | [Chapter 0：Normalization](chapter0_normalization.md) | LayerNorm、RMSNorm、ScaleNorm、QK Norm、DeepNorm；BF16/FP16 数值实验 | 教案与 <a href="/tinyllm/chapter0_Normalization/ch0.ipynb" download>ch0.ipynb</a> 已完成 |
 | [Chapter 1：PyTorch 张量与自动求导](chapter1_pytorch_autograd.md) | 张量形状、广播、矩阵乘法、计算图、梯度与设备 | 教案与 <a href="/tinyllm/chapter1_PyTorch_Autograd/ch1.ipynb" download>ch1.ipynb</a> 已完成 |
+| [Chapter 2：初始化与残差路径](chapter2_initialization_residuals.md) | 正态/截断正态、Xavier/He、Pre/Post-LN、残差缩放与梯度诊断 | 教案与 <a href="/tinyllm/chapter2_Initialization_Residuals/ch2.ipynb" download>ch2.ipynb</a> 已完成 |
+| [Chapter 3：激活函数与门控前馈层](chapter3_activations_ffn.md) | ReLU/GELU/SiLU、SwiGLU、形状、参数量与合成拟合 | 教案与 <a href="/tinyllm/chapter3_Activations_FFN/ch3.ipynb" download>ch3.ipynb</a> 已完成 |
 | [Chapter 4：文本与词元化](chapter4_tokenization.md) | Unicode/字节、BPE、特殊 token、训练标签、词表实验与近期研究 | 教案与 <a href="/tinyllm/chapter4_Tokenization/ch4.ipynb" download>ch4.ipynb</a> 已完成 |
 | [Chapter 5：词嵌入与输出层](chapter5_embeddings_output.md) | token ID 查表、Q/K/V 与 KV cache、logits、权重共享及检索模型边界 | 教案与 <a href="/tinyllm/chapter5_Embeddings_Output/ch5.ipynb" download>ch5.ipynb</a> 已完成 |
 | [Chapter 12：优化器](chapter12_optimizers.md) | SGD、Momentum、AdaGrad、RMSProp、Adam/AdamW、Adafactor；参数组与优化器状态 | 教案与 <a href="/tinyllm/chapter12_Optimizers/ch12.ipynb" download>ch12.ipynb</a> 已完成 |
@@ -21,14 +23,14 @@
 
 ## 课程路线（规划） {#课程路线规划}
 
-下面是<strong>教学目录</strong>，第 0、1、4、5、12、15 章已有完整教案与 notebook；其余章节以规划或专题导读为主。现有章节保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
+下面是<strong>教学目录</strong>，第 0、1、2、3、4、5、12、15 章已有完整教案与 notebook；其余章节以规划或专题导读为主。现有章节保留原编号。课程按“基础工具 → 构造模型 → 训练模型 → 使用与扩展”推进；实践中可以先完成最小语言模型，再回头深入各类训练策略。
 
 ### 第一阶段：张量与稳定训练基础
 
 * [<strong>Chapter 0 · 归一化</strong>](chapter0_normalization.md)：已有 LayerNorm、RMSNorm、ScaleNorm、QK Norm、DeepNorm、Pre/Post-Norm 与 FP16/BF16 实验；后续补充 BatchNorm、GroupNorm 的对照。
 * [<strong>Chapter 1 · PyTorch 张量与自动求导</strong>](chapter1_pytorch_autograd.md)：维度、广播、矩阵乘法、参数、计算图、反向传播、梯度检查。已有 PyTorch 基础可跳读。
-* [<strong>Chapter 2 · 初始化与残差路径</strong>](chapter2_initialization_residuals.md)：正态/截断正态、Xavier、He 初始化；Residual Connection、Pre/Post-Norm、残差缩放、深度增加时的激活和梯度。
-* [<strong>Chapter 3 · 激活函数与门控前馈层</strong>](chapter3_activations_ffn.md)：ReLU、GELU、SiLU/Swish、SwiGLU；函数曲线、梯度、参数量与 MLP 结构。
+* [<strong>Chapter 2 · 初始化与残差路径</strong>](chapter2_initialization_residuals.md)：已完成正态/截断正态、Xavier、He、残差、Pre/Post-LN、残差缩放及深度诊断实验。
+* [<strong>Chapter 3 · 激活函数与门控前馈层</strong>](chapter3_activations_ffn.md)：已完成 ReLU、GELU、SiLU/Swish、SwiGLU 的曲线、梯度、参数量和小型拟合实验。
 
 ### 第二阶段：构造 Decoder-only 语言模型
 
@@ -76,7 +78,7 @@
 
 ## 从哪里开始
 
-<strong>最小闭环</strong>：准备文本 → 词元化（把文字变成整数编号）→ 构建 Decoder-only 模型（只能看当前及之前的词）→ 训练它预测下一个词元 → 用没训练过的数据验证 → 逐词生成文本。第一阶段和第三阶段中的许多方法会让这个闭环更稳、更可解释，但不要求在第一个小模型里一次用完所有技术。Chapter 0 已提供归一化理论与固定数据实验；后续章节会沿用“公式/参数解释 → PyTorch 调用 → 可复现实验 → 如何读结果”的教案格式。
+<strong>最小闭环</strong>：准备文本 → 词元化（把文字变成整数编号）→ 构建 Decoder-only 模型（只能看当前及之前的词）→ 训练它预测下一个词元 → 用没训练过的数据验证 → 逐词生成文本。第一阶段和第三阶段中的许多方法会让这个闭环更稳、更可解释，但不要求在第一个小模型里一次用完所有技术。第一阶段第 0 至 3 章已有归一化、自动求导、初始化/残差和门控前馈层实验；后续章节会沿用“公式/参数解释 → PyTorch 调用 → 可复现实验 → 如何读结果”的教案格式。
 
 ## 其他
 
