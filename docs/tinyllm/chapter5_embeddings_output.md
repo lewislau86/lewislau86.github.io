@@ -4,6 +4,10 @@
 
 配套 <a href="/tinyllm/chapter5_Embeddings_Output/ch5.ipynb" download>ch5.ipynb</a> 使用固定的六项教学词表和 PyTorch；CPU 即可运行，不下载模型或语料。先猜形状和结果，再运行每一格核对。这里的数字只为看清机制，不代表训练好的语言能力。
 
+## TinyLLM 主线怎么选
+
+输入使用可训练的 token embedding；小模型先让输出 logits 投影<strong>共享同一张权重表</strong>，减少大词表带来的参数量。输出前仍保留 [最终 RMSNorm](chapter0_normalization.md#tinyllm-主线怎么选)。共享是教学预算选择，不是所有 LLM 的统一规则；若词表输出能力或模型配置需要独立头，再比较解耦后的验证损失。若共享权重，第 2 章的初始化只能对这张张量执行一次。
+
 ## 一个 ID 怎样变成一个向量
 
 设词表大小为 $V$，隐藏维数为 $d$。输入嵌入表 $E$ 是形状为 $[V,d]$ 的<strong>可训练参数</strong>。一个 ID $i$ 对应第 $i$ 行 $E_i$；一批输入 ID 的形状若为 `[batch, seq]`，查表结果就是 `[batch, seq, d]`。[PyTorch `nn.Embedding`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html) 做的正是这种按索引取行的操作。

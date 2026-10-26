@@ -4,6 +4,10 @@
 
 学完后，你应能区分“范围太窄导致溢出/下溢”和“刻度太粗导致舍入”，说明为何输入、计算中间值和输出可能使用不同精度，并能读懂 `torch.autocast` 的基本用法。这里聚焦前向数值和混合精度；梯度裁剪、FP16 Loss Scaling 与训练循环放在规划中的 Chapter 16–17。
 
+## TinyLLM 主线怎么选
+
+硬件和 PyTorch 算子支持时，训练优先试 <strong>BF16 autocast</strong>，因为它与 FP32 有相近的指数范围，可减少 FP16 常见的溢出/下溢风险；归一化、softmax 和损失等归约仍交给稳定实现处理，并监测有限值。CPU 教学或硬件不支持时用 FP32；只支持 FP16 加速时用 FP16 autocast 并在反向传播中配 `GradScaler`。BF16 的尾数更短，不能因此说它处处比 FP16 准确。[PyTorch AMP 文档](https://docs.pytorch.org/docs/stable/amp.html)给出设备与 dtype 的用法。
+
 ## What：浮点数是什么？
 
 ### 1. 科学计数法，但可用位数有限
@@ -99,15 +103,13 @@ FP16 训练中的 `torch.amp.GradScaler` 用来降低小梯度下溢风险；它
 
 | 实验                 | 主要 PyTorch 调用                                      | 该看什么                                                  |
 | ------------------ | -------------------------------------------------- | ----------------------------------------------------- |
-| 1. 范围与刻度          | `torch.finfo`、`Tensor.to(dtype)`                   | `eps/tiny/max`；这些值分别表示什么                             |
-| 2. 舍入             | `Tensor.to(dtype)`                                  | 1000 附近的相邻整数转换到低精度后是否还分得开                          |
-| 3. 下溢与溢出          | `Tensor.square`、`torch.isfinite`                   | 输入有限时，中间值是否仍有限                                        |
-| 4. 运算顺序与稳定 softmax | `torch.exp`、`torch.softmax`                        | 同一数学目标的不同计算路径                                         |
-| 5. 矩阵乘法误差         | `@`、`.double()`、`.float()`                         | 用 FP64 参考，比较绝对误差；不把一次结果推广到所有硬件                        |
-| 6. autocast        | `torch.autocast`、`nn.Linear`、`nn.LayerNorm`        | 记录各阶段输出 dtype；区分参数存储与算子输出                             |
-| 7. CUDA/MPS 性能（可选） | `torch.cuda.synchronize` / `torch.mps.synchronize` | 同一 PyTorch 模型的耗时；CUDA 记录峰值已分配显存，MPS 记录驱动当前分配量；CPU 会跳过 |
-| 8. MLX（可选）        | `mx.array`、`mx.finfo`、`mlx.nn.LayerNorm`、`mx.eval` | Apple silicon 上原生验证舍入、归一化及矩阵运算；未安装时提示并跳过              |
-| 9. 思考练习          | 修改 logits 与矩阵输入                                  | 先预测再运行，解释数值现象                                         |
+| 1. 刻度与范围           | `torch.finfo`、`Tensor.to(dtype)`                   | `eps/tiny/max`；1000 附近的舍入                             |
+| 2. 下溢与溢出           | `Tensor.square`、`torch.isfinite`                   | 输入有限时，中间值是否仍有限                                        |
+| 3. 稳定 softmax      | `torch.exp`、`torch.softmax`                        | 同一数学目标的不同计算路径                                         |
+| 4. 矩阵乘法误差          | `@`、`.double()`、`.float()`                         | 用 FP64 参考，比较绝对误差；不把一次结果推广到所有硬件                        |
+| 5. autocast        | `torch.autocast`、`nn.Linear`、`nn.LayerNorm`        | 记录各阶段输出 dtype；区分参数存储与算子输出                             |
+| 6. CUDA/MPS 性能（可选） | `torch.cuda.synchronize` / `torch.mps.synchronize` | 同一 PyTorch 模型的耗时；CUDA 记录峰值已分配显存，MPS 记录驱动当前分配量；CPU 会跳过 |
+| 7. MLX（可选）         | `mx.array`、`mx.finfo`、`mlx.nn.LayerNorm`、`mx.eval` | Apple silicon 上原生验证舍入、归一化及矩阵运算；未安装时提示并跳过              |
 
 <strong>如何看误差：</strong>绝对误差是 `abs(结果 - 参考)`；当参考值接近零时，相对误差会被分母放大，不能单看百分比。本章同时观察最大/平均绝对误差和有限值。FP64 也不是“真实数学值”，只是这里更高精度的数值参照。CUDA 显存峰值与 MPS 驱动分配量口径不同，MLX 计时又是单个矩阵乘法；这些数字只供各自环境内观察，不能直接横向排名。
 

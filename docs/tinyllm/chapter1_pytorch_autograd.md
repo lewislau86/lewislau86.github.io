@@ -4,6 +4,10 @@
 
 可以边读边运行 <a href="/tinyllm/chapter1_PyTorch_Autograd/ch1.ipynb" download>ch1.ipynb</a>。先用 CPU 即可；每遇到一个形状或结果，先自己猜，再运行代码核对。本文中的“token”暂时理解为文本中的一个编号；词元化的细节留到 Chapter 4。
 
+## TinyLLM 主线怎么选
+
+训练时用 <strong>PyTorch autograd</strong> 管理计算图，手算和有限差分只用于核验小例子。这样可以在更换归一化、注意力或门控结构时保留正确的链式求导；若出现梯度异常，先检查张量形状、原地操作和图是否被意外断开。后续章节的架构选择见 [课程总览](index.md#贯穿全书的主线选择)。
+
 ## 从一批 token 到隐藏向量
 
 假设有两句话，每句话都取三个 token。用整数给它们编号：

@@ -4,6 +4,12 @@
 
 本章包含理论、PyTorch API 调用示例，以及可逐格运行的 <a href="/tinyllm/chapter0_Normalization/ch0.ipynb" download>ch0.ipynb</a>。notebook 既有固定数据实验，也有五种方法的教学版实现；每段代码后都解释如何阅读结果。
 
+## TinyLLM 主线怎么选
+
+<strong>默认在每个注意力和前馈子层的输入处使用 RMSNorm，最后的 logits 投影前再用一次 RMSNorm；残差连接采用 Pre-Norm 放置。</strong>这是一个明确的教学基线，不表示 LayerNorm 已经失效。RMSNorm 在每个 token 的隐藏维度上控制均方根，不计算和减去均值，公式更简单；[RMSNorm 论文](https://arxiv.org/abs/1910.07467)分析了省去居中操作的效果，[LLaMA](https://arxiv.org/abs/2302.13971)采用 Pre-Norm 与 RMSNorm。真正的速度差异仍取决于内核和硬件，不能只凭公式判断。
+
+<strong>何时改选？</strong>需要复现使用 LayerNorm 的模型，或实验显示居中有帮助时，就保留 LayerNorm。QK Norm 作用于注意力的 query/key，可以与隐藏状态的 RMSNorm 同时存在；先观察注意力 logits、熵和训练稳定性，再决定是否加它。ScaleNorm 是另一种尺度控制方法，可作为对照实验；DeepNorm 把残差系数、归一化位置和初始化绑在一起，针对极深网络，不是把 `RMSNorm` 一行替换掉就能获得的收益。BatchNorm 依赖 batch 统计，不适合作为本课程逐 token 自回归 Block 的默认归一化。Chapter 2 将说明为何同时选择 Pre-Norm 和残差路径。
+
 ## 学习目标
 
 1. 对形状为 `[batch, seq_len, hidden_size]` 的隐藏状态，说清楚归一化沿哪个维度进行。

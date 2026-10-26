@@ -6,6 +6,12 @@
 
 设输入 $x$ 的形状是 `[batch, seq, d]`，`d` 是模型隐藏宽度，`m` 是前馈层中间宽度。学完后应能解释非线性为什么必要，能计算普通 MLP 与 SwiGLU 的参数量，并能在一个 Pre-LN Block 中指出前馈层、残差和归一化各自的位置。本章实验只需 CPU，不训练完整语言模型。
 
+## TinyLLM 主线怎么选
+
+<strong>默认用无偏置 SwiGLU：</strong>`SiLU(gate(x)) * value(x)` 再经 `down` 写回残差流。普通两投影 FFN 若用中间宽度 `4d`，门控版先取约 `8d/3`，使权重数同为约 `8d²`；第 4 节会推导。这样选既能学习由输入决定的门控，又避免在同一 `4d` 宽度下多用约一半权重却误以为收益全来自激活函数。[GLU 变体论文](https://arxiv.org/abs/2002.05202)报告了相对于 ReLU/GELU 的改进，[LLaMA](https://arxiv.org/abs/2302.13971)也采用 SwiGLU；这不是每个数据规模上的胜负保证。
+
+<strong>何时改选？</strong>复现 GPT 风格模型时可用 GELU 普通 FFN；需要最简单的算子和教学对照时可用 ReLU 普通 FFN。SiLU 是 SwiGLU 中门控支的激活，不能只把普通 FFN 的 `GELU` 改成 `SiLU` 就称为 SwiGLU。模型是否稳定还取决于 [初始化与残差](chapter2_initialization_residuals.md)、[归一化](chapter0_normalization.md)、优化器和学习率。以下演示会保留普通 FFN 作参数匹配的对照。
+
 ## 1. 两个线性层之间为什么要有激活函数
 
 若没有非线性，连续两层线性变换可以合并：$xW_1W_2=xW$。即使增加中间宽度，整体仍是一个线性映射；加上偏置也只是仿射映射。激活函数把中间结果逐元素变换，模型才可以表示更复杂的关系。
@@ -39,13 +45,33 @@ print(ffn(x).shape)  # torch.Size([2, 3, 8])
 
 图中横轴是输入 $x$，纵轴是函数输出。蓝色实线为 ReLU，橙色虚线为 GELU，紫色点线为 SiLU；三者在正半轴逐渐接近，但负半轴的形状不同。配套 notebook 可以改变区间并重画曲线。
 
-ReLU 的导数在正半轴为 1，在负半轴为 0。若一个单元对当前批次长期落在负半轴，它通过 ReLU 的局部梯度便是 0；这不等于整个网络所有梯度都为 0。GELU 和 SiLU 在负半轴有非零且可随输入变化的导数，<strong>导数不保证处处为正，也不保证比 ReLU 更容易训练</strong>。用 `autograd` 对函数曲线求梯度，比凭肉眼把“平滑”误读成“梯度永远大”更可靠。
+### 旧选择解决了什么，又留下什么问题
+
+早期网络常用 Sigmoid 或 Tanh 把数值压进固定区间。它们处处可导，但当 $|x|$ 很大时输出接近区间边界，曲线变平，导数趋近 0：
+
+$$
+\sigma'(x)=\sigma(x)(1-\sigma(x))\leq\tfrac14,\qquad
+\tanh'(x)=1-\tanh^2(x).
+$$
+
+例如 $x=4$ 时，Sigmoid 的导数约为 $0.018$，Tanh 的导数约为 $0.0013$。反向传播要把多层的局部导数相乘；若路径上反复出现很小的因子，前面层收到的梯度可能变得很小。这叫<strong>梯度消失</strong>，不是“函数不能求导”。它们在输出概率、门控等位置仍有用途；这里讨论的是把它们作为深层前馈网络的主要隐藏层激活。[Glorot 与 Bengio 的分析](https://proceedings.mlr.press/v9/glorot10a.html)展示了 Sigmoid 饱和对深层训练的影响。
+
+ReLU 在正半轴的导数恒为 1，缓解了活跃路径上由 Sigmoid/Tanh 饱和造成的梯度缩小，而且计算简单。但它把负输入直接变为 0，负半轴导数也为 0；如果某个单元在相关输入上长期为负，它通过这条激活路径就难以得到更新，常称为“死亡 ReLU”。<strong>ReLU 在 $x=0$ 数学上不可导，不等于模型无法反向传播。</strong>PyTorch 在这个点选用梯度 0，其他位置照常求导；实际更值得检查的是大量输入是否落入负半轴。[PyTorch 自动求导规则](https://docs.pytorch.org/docs/stable/notes/autograd.html#gradients-for-non-differentiable-functions)说明了不可导点的处理，[整流网络论文](https://proceedings.mlr.press/v15/glorot11a.html)也讨论了其训练性质。
+
+### 为什么尝试 GELU、SiLU
+
+GELU 用 $\Phi(x)$、SiLU 用 $\sigma(x)$ 对输入做平滑的、随数值变化的加权。它们让中等大小的负输入不必像 ReLU 那样立刻归零，并消除了 ReLU 在 0 处的尖角。这给前馈层另一种控制信息通过的方式，相关研究在各自实验设置中观察到收益：[GELU 论文](https://arxiv.org/abs/1606.08415)、[Swish/SiLU 论文](https://arxiv.org/abs/1710.05941)。
+
+![Sigmoid、Tanh、ReLU、GELU 与 SiLU 在输入 -4 到 4 时的导数曲线](/tinyllm/chapter3_Activations_FFN/activation-derivatives.svg)
+
+导数图让代价和收益同时可见：Sigmoid/Tanh 在区间两端接近 0；ReLU 的负半轴为 0；GELU/SiLU 在部分负输入上仍有梯度，但<strong>很负时也趋近 0，局部导数甚至可以为负</strong>。它们计算更复杂，也不能单靠“平滑”防止深层网络的梯度消失、爆炸或数值溢出。那些问题还受 [初始化与残差路径](chapter2_initialization_residuals.md)、[归一化](chapter0_normalization.md)和学习率等因素影响。
 
 ```python
 import torch.nn.functional as F
 
 values = torch.tensor([-2.0, -1.0, 0.0, 1.0, 2.0], requires_grad=True)
-for name, fn in [('ReLU', F.relu), ('GELU', F.gelu), ('SiLU', F.silu)]:
+for name, fn in [('Sigmoid', torch.sigmoid), ('Tanh', torch.tanh),
+                 ('ReLU', F.relu), ('GELU', F.gelu), ('SiLU', F.silu)]:
     probe = values.detach().clone().requires_grad_()
     output = fn(probe)
     gradient = torch.autograd.grad(output.sum(), probe)[0]
@@ -56,7 +82,7 @@ for name, fn in [('ReLU', F.relu), ('GELU', F.gelu), ('SiLU', F.silu)]:
 
 ## 3. 门控前馈层：两条投影相乘
 
-SwiGLU 让同一个输入经过两条投影，其中一条先过 SiLU，再与另一条<strong>逐元素相乘</strong>：
+平滑激活只是对一条投影的结果逐元素变换。SwiGLU 再增加一条由输入决定的门控路径：它让同一个输入经过两条投影，其中一条先过 SiLU，再与另一条<strong>逐元素相乘</strong>：
 
 $$
 g=\operatorname{SiLU}(W_gx+b_g),\qquad
@@ -64,7 +90,7 @@ v=W_vx+b_v,\qquad
 \operatorname{SwiGLU}(x)=W_d(g\odot v)+b_d.
 $$
 
-$g$ 与 $v$ 的形状都为 `[batch, seq, m]`，$\odot$ 表示同一位置、同一特征的乘法；`W_d` 再把宽度 $m$ 投回 $d$。这里“门”由输入计算得到，控制另一支特征通过的幅度，<strong>不是注意力的 Q/K/V，也不是 MoE 的专家路由</strong>。这类门控前馈变体在 [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202) 中作过系统比较；该论文的效果来自特定实验配置，不能只凭函数名保证本课程的小模型一定更好。
+$g$ 与 $v$ 的形状都为 `[batch, seq, m]`，$\odot$ 表示同一位置、同一特征的乘法；`W_d` 再把宽度 $m$ 投回 $d$。这里“门”由输入计算得到，控制另一支特征通过的幅度，<strong>不是注意力的 Q/K/V，也不是 MoE 的专家路由</strong>。从普通 FFN 换到 SwiGLU，不仅是把 ReLU 换成 SiLU，还把两投影结构换成三投影结构；它并非针对 ReLU 在 0 处不可导的修补。这类门控前馈变体在 [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202) 中作过系统比较；该论文的效果来自特定实验配置，不能只凭函数名保证本课程的小模型一定更好。
 
 ```python
 import torch.nn.functional as F
@@ -107,7 +133,7 @@ $$
 class PreNormFFN(nn.Module):
     def __init__(self, d: int, m: int):
         super().__init__()
-        self.norm = nn.LayerNorm(d)
+        self.norm = nn.RMSNorm(d)
         self.ffn = SwiGLUFFN(d, m)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -118,13 +144,13 @@ out = block(x)
 print(out.shape)  # torch.Size([2, 3, 8])
 ```
 
-若把 `x + ...` 删掉，它仍有非线性，但不再是这里定义的残差子层。若把 `norm` 移到加法之后，则变成 Post-LN 位置。只换 ReLU/GELU/SiLU 不会改变 Pre-LN 与 Post-LN 的定义。
+若把 `x + ...` 删掉，它仍有非线性，但不再是这里定义的残差子层。若把 `norm` 移到加法之后，则变成 Post-Norm 位置。只换 ReLU/GELU/SiLU 不会改变 Pre-Norm 与 Post-Norm 的定义。这里用 `nn.RMSNorm` 与 Chapter 0 的主线一致；LayerNorm 也能按同一位置放置。
 
 ## 6. 动手实验：曲线、梯度、参数与简单拟合
 
 <a href="/tinyllm/chapter3_Activations_FFN/ch3.ipynb" download>ch3.ipynb</a> 包含四组检查：
 
-1. 用 Plotly 同时画 ReLU、GELU、SiLU 的函数和 `autograd` 导数曲线；注意负半轴和零点附近。
+1. 用 Plotly 同时画 Sigmoid、Tanh、ReLU、GELU、SiLU 的函数和 `autograd` 导数曲线；对照饱和区、ReLU 负半轴和零点附近。
 2. 在 `[2, 3, d]` 输入上运行普通 FFN 与 SwiGLU，打印每一步形状，并用 `sum(p.numel() for p in model.parameters())` 核对公式。
 3. 对同一个输入与标量损失运行 `backward()`，确认三条 SwiGLU 投影都有梯度，也看残差前馈半块能把梯度传回输入。
 4. 用一个固定的合成回归任务比较普通 FFN 与门控 FFN 的短程拟合曲线。只用一个种子和很小的数据集，<strong>这是代码连通性演示，不是架构优劣基准</strong>。
@@ -134,6 +160,8 @@ print(out.shape)  # torch.Size([2, 3, 8])
 ## 检查理解
 
 * 为什么两个没有激活函数的线性层可以合成一个？
+* Sigmoid 在 $x=4$ 的导数很小，ReLU 在 $x=-1$ 的导数为零：这两种小梯度来自同一种机制吗？
+* ReLU 在 0 处不可导，为什么 PyTorch 仍能训练含 ReLU 的模型？GELU/SiLU 又为什么不能保证梯度稳定？
 * `[2, 3, 8]` 的输入经过 `8→24→8` 普通 FFN 后，形状是什么？24 对应哪一轴？
 * `d=12`、`m_plain=48` 时，匹配权重参数量的 SwiGLU 中间宽度是多少？
 * 在 `x + FFN(Norm(x))` 中，哪一部分让梯度有直接路径，哪一部分提供非线性？
@@ -141,7 +169,11 @@ print(out.shape)  # torch.Size([2, 3, 8])
 ## 参考资料与下一步
 
 * [PyTorch ReLU](https://docs.pytorch.org/docs/stable/generated/torch.nn.ReLU.html) · [GELU](https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html) · [SiLU](https://docs.pytorch.org/docs/stable/generated/torch.nn.SiLU.html)
+* [PyTorch：不可导点的自动求导规则](https://docs.pytorch.org/docs/stable/notes/autograd.html#gradients-for-non-differentiable-functions)
+* [Glorot 与 Bengio：深层网络与 Sigmoid 饱和](https://proceedings.mlr.press/v9/glorot10a.html)
+* [Glorot 等：整流网络](https://proceedings.mlr.press/v15/glorot11a.html)
 * [Hendrycks 与 Gimpel：GELU](https://arxiv.org/abs/1606.08415)
+* [Ramachandran 等：Swish](https://arxiv.org/abs/1710.05941)
 * [Shazeer：GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)
 * [Vaswani 等：Transformer 前馈层](https://arxiv.org/abs/1706.03762)
 

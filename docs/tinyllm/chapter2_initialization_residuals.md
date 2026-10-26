@@ -6,6 +6,14 @@
 
 读完后应能区分参数分布与模型结构，能根据权重形状找出 `fan_in`、`fan_out`，能写出 Pre-LN、Post-LN 的数据流，并能检查多层网络中激活与梯度是否异常。这里令 $x\in\mathbb R^d$ 表示一个 token 的隐藏向量，$F$ 表示注意力或前馈子层。对 `[batch, seq, hidden]` 张量，下面的线性变换逐 token 作用在最后一轴。归一化公式已在 [Chapter 0](chapter0_normalization.md) 介绍。
 
+## TinyLLM 主线怎么选
+
+<strong>先用宽度感知的随机初始化：</strong>普通 `nn.Linear` 的权重用 Xavier normal，token embedding 用零均值、标准差 $1/\sqrt d$ 的正态分布，偏置（若有）设为 0，RMSNorm 的缩放权重设为 1。每个 Block 有注意力和 FFN 两次残差写回；对注意力输出投影和 SwiGLU 的 `down` 投影，在 Xavier 抽样后再乘 $1/\sqrt{2L}$，其中 $L$ 是 Block 数。输出头若与 embedding 共享权重，只初始化共享张量一次。这是本课程的<strong>可测量起点</strong>，不是声称 Xavier 专门为 SwiGLU 推导，也不是任何宽度、深度都最优。
+
+为什么这样选？全零会让隐藏单元保持对称；所有层都用同一个固定 `std` 又忽略宽度。Xavier 提供一个考虑输入/输出宽度的起始尺度；Pre-RMSNorm 让每个子层看到受控的输入尺度；残差直通支保留梯度路径。若粗略假设各层两次更新相互独立，写回分支随 $L$ 缩小可减轻初始残差方差累积。[Pre-LN 分析](https://arxiv.org/abs/2002.04745)解释了初始化附近的梯度差异，[nanoGPT](https://github.com/karpathy/nanoGPT/blob/master/model.py)展示了按 $2L$ 缩小残差投影的另一种具体配方：它先用 `std=0.02`，本课程则先用 Xavier，不能把两套公式写成完全相同的实现。
+
+<strong>何时改选？</strong>复现某个模型时以该模型的初始化和归一化配方为准。若初始激活 RMS、logits、各层梯度随深度明显漂移，先检查权重是否被重复初始化、头/残差投影是否设对、学习率是否过大，再比较固定标准差、截断正态、零初始化的残差输出或更专门的深层方案。He 初始化针对 ReLU 方差推导；本章的 SwiGLU 不应机械套用。第 5 节的显式前向残差系数与这里<strong>仅在初始化时缩小输出投影</strong>是两种不同操作。
+
 ## 1. 为什么不能把所有权重设为相同的数
 
 设一个线性层有 $n_{\mathrm{in}}$ 个输入，某个输出为 $y=\sum_{i=1}^{n_{\mathrm{in}}}w_i x_i$。若 $w_i$ 独立、零均值，且与输入独立，在输入方差大致相同的简化条件下，

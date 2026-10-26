@@ -2,6 +2,10 @@
 
 本章教案与实验尚在规划中。预计覆盖：Prefill/decode、KV cache、注意力时间与显存开销、批量生成。先建立最重要的边界：这里的 cache 是<strong>推理过程中的计算状态</strong>，不是替 Agent 保存用户事实的长期记忆。
 
+## 本章主线选择（待实验验证）
+
+逐 token decode 默认复用 <strong>KV cache</strong>，分别测量 prefill 延迟、每步 decode 延迟和缓存字节数。它避免旧前缀反复投影成 K/V，但上下文和并发增加时会占用显存；若 KV 压力成为瓶颈，再结合 [Chapter 7 的 GQA](chapter7_self_attention.md) 或分页缓存管理。缓存绝不替代跨会话事实存储。
+
 ## 为什么生成时要缓存 K 和 V
 
 读入提示词时，模型进行 prefill：每层注意力都会为输入 token 计算查询 Q、键 K、值 V。随后进入 decode，每一步生成一个新 token。因果注意力下，旧 token 的 K/V 可以继续使用；如果每一步都从头计算整段前缀，会反复做相同工作。KV cache 保存旧 token 在各层的 K/V，新一步只算新 token 的 K/V，再用它们和已有缓存完成注意力。[vLLM 的前缀缓存说明](https://docs.vllm.ai/en/stable/design/prefix_caching/)展示了服务系统如何复用满足条件的前缀。
