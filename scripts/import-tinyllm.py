@@ -28,6 +28,7 @@ manifest = {'source': 'https://github.com/lewislau86/tinyllm',
             'commit': subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip(),
             'files': {'SUMMARY.md': source_hash(source / 'SUMMARY.md')}}
 notebooks = set()
+images = set()
 for title, filename in entries:
     raw = (source / filename).read_bytes()
     manifest['files'][filename] = source_hash(source / filename)
@@ -43,6 +44,7 @@ for title, filename in entries:
             '现有 Chapter 0、Chapter 1、Chapter 15 保留原编号。',
             '现有 Chapter 0、Chapter 1、Chapter 12、Chapter 15 保留原编号。')
     notebooks.update(re.findall(r'\]\(([^)]+\.ipynb)\)', text))
+    images.update(re.findall(r'!\[[^]]*\]\((chapter[^)]+\.(?:svg|png|jpe?g))\)', text))
     # GitBook-exported inline math has Markdown escapes; remove only those
     # escapes inside inline equations, keeping fenced code and display math intact.
     parts = re.split(r'(```[^\n]*\n.*?```|\$\$.*?\$\$|`[^`\n]+`)', text, flags=re.S)
@@ -57,6 +59,8 @@ for title, filename in entries:
     text = re.sub(r'\[([^\[\]]+)\]\(([^)]+\.ipynb)\)',
         lambda m: '<a href="/tinyllm/' + html.escape(m[2], quote=True) + '" download>'
             + html.escape(m[1].replace('`', '')) + '</a>', text)
+    for image in images:
+        text = text.replace('](' + image + ')', '](/tinyllm/' + image + ')')
     text = re.sub(r'(\]\([^)]*\.md#)([0-9])', r'\1_\2', text)
     text = text.replace('#_10-bf16fp16-', '#_10-bf16-fp16-')
     # Keep the GitBook anchor used by the existing chapter backlinks.
@@ -68,7 +72,7 @@ for title, filename in entries:
         text = text.replace('上一章我们已经知道：', '第 1、5 章已经讲过：')
     destination = 'index.md' if filename == 'README.md' else filename
     (target / destination).write_text(text, encoding='utf-8', newline='\n')
-for filename in sorted(notebooks):
+for filename in sorted(notebooks | images):
     src = source / filename
     dest = repo / 'docs/public/tinyllm' / filename
     dest.parent.mkdir(parents=True, exist_ok=True)

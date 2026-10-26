@@ -35,6 +35,10 @@ print(ffn(x).shape)  # torch.Size([2, 3, 8])
 | GELU | $x\Phi(x)$，$\Phi$ 是标准正态分布累积分布函数 | 平滑地压低负值，部分负输入仍给出非零输出；`approximate='tanh'` 是近似实现 |
 | SiLU/Swish | $x\sigma(x)$，$\sigma(x)=1/(1+e^{-x})$ | 平滑门控，负输入一般也不是直接截为 0 |
 
+![ReLU、GELU、SiLU 在输入 -4 到 4 时的函数曲线：ReLU 将负值置零，GELU 和 SiLU 在负半轴平滑变化](/tinyllm/chapter3_Activations_FFN/activation-functions.svg)
+
+图中横轴是输入 $x$，纵轴是函数输出。蓝色实线为 ReLU，橙色虚线为 GELU，紫色点线为 SiLU；三者在正半轴逐渐接近，但负半轴的形状不同。配套 notebook 可以改变区间并重画曲线。
+
 ReLU 的导数在正半轴为 1，在负半轴为 0。若一个单元对当前批次长期落在负半轴，它通过 ReLU 的局部梯度便是 0；这不等于整个网络所有梯度都为 0。GELU 和 SiLU 在负半轴有非零且可随输入变化的导数，<strong>导数不保证处处为正，也不保证比 ReLU 更容易训练</strong>。用 `autograd` 对函数曲线求梯度，比凭肉眼把“平滑”误读成“梯度永远大”更可靠。
 
 ```python
