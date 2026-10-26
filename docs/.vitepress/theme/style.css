@@ -13,6 +13,23 @@
 .vp-doc { line-height: 1.85; }
 .vp-doc h1 { letter-spacing: -0.025em; }
 
+.visit-counter {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--vp-c-divider);
+  color: var(--vp-c-text-2);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.visit-counter strong {
+  color: var(--vp-c-text-1);
+  font-weight: 600;
+}
+
 @media (max-width: 640px) {
   /* Keep comparison columns readable inside VitePress's scrolling tables. */
   .burn-course .vp-doc th,
