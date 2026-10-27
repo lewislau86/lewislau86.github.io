@@ -774,6 +774,69 @@ def autocast_flow():
         "参数保存为 FP32；在 autocast 区域内，矩阵乘法等算子转为 FP16 或 BF16 计算，softmax、layer_norm 和损失等按 FP32 计算，其余跟随输入；反向传播的梯度累加回 FP32 参数，使用 FP16 时还需要 GradScaler。", 420, body)
 
 
+# ---------- 第 1 章：模型知道的 vs 上下文给的 ----------
+
+def knowledge_sources():
+    body = text(480, 40, "模型的“知识”在训练时就定格了；Agent 让它每次回答前先去查", 22, weight="bold")
+    # 左：训练
+    body += cbox(30, 70, 360, 380, GRAY, dash=True)
+    body += text(210, 98, "训练（只做一次，代价很大）", 17, INK, "bold")
+    body += cbox(70, 120, 280, 60, ORANGE) + text(210, 148, "海量语料", 17, INK, "bold") + text(210, 170, "截止到某一天", 13.5, ORANGE)
+    body += arrow(210, 180, 210, 210, ORANGE)
+    body += cbox(70, 214, 280, 60, BLUE) + text(210, 242, "反复练习：预测下一个 token", 16, INK, "bold") + text(210, 264, "第 1 章那个训练循环", 13.5, BLUE)
+    body += arrow(210, 274, 210, 304, BLUE)
+    body += cbox(70, 308, 280, 70, PURPLE) + text(210, 338, "参数（权重）", 17, INK, "bold") + text(210, 362, "语料里的规律被压缩进来，随后冻结", 13.5, PURPLE)
+    body += text(210, 425, "之后发生的事、你的私人资料，它都没见过", 14, GRAY)
+    # 右：使用
+    body += cbox(430, 70, 500, 380, TEAL, dash=True)
+    body += text(680, 98, "使用（每次提问都重新来一遍）", 17, INK, "bold")
+    body += cbox(455, 120, 140, 60, BLUE) + text(525, 155, "你的问题", 16, INK, "bold")
+    body += cbox(615, 120, 290, 60, TEAL) + text(760, 146, "Agent 去查", 16, INK, "bold") + text(760, 168, "搜索 · 读文件 · 调工具 · 翻记忆", 13.5, TEAL)
+    body += path("M525 180 V214", BLUE) + path("M760 180 C760 200 720 200 700 212", TEAL)
+    body += cbox(455, 216, 450, 60, ORANGE) + text(680, 244, "上下文：问题 + 查到的资料", 16, INK, "bold") + text(680, 266, "模型这一次能“看到”的全部文字", 13.5, ORANGE)
+    body += arrow(680, 276, 680, 304, ORANGE)
+    body += cbox(455, 308, 450, 70, PURPLE) + text(680, 338, "同一个模型，参数不变", 16, INK, "bold") + text(680, 362, "照旧一个 token 一个 token 往下接", 13.5, PURPLE)
+    body += path("M350 343 H451", PURPLE)
+    body += text(400, 335, "拿来用", 12.5, PURPLE)
+    body += text(680, 425, "资料越准、越相关，接出来的回答越可靠", 14, GRAY)
+    body += text(480, 485, "让模型更“懂”有两条路：改参数（重新训练、微调），或改上下文（检索、工具、记忆）。后者立刻生效，代价也小得多。", 15, GRAY)
+    svg("knowledge-sources.svg", "模型参数里的知识与上下文中的资料",
+        "左：训练时模型在截止某天的语料上反复练习预测下一个 token，规律被压缩进参数后冻结。右：使用时 Agent 先根据问题去搜索、读文件、调用工具或翻记忆，把资料和问题一起放进上下文，同一个参数不变的模型再逐个 token 生成回答。", 510, body)
+
+
+def agent_loop():
+    body = text(480, 40, "Agent 循环：模型写下“下一步做什么”，Agent 去做，再把结果写回上下文", 21, weight="bold")
+    body += cbox(330, 80, 300, 100, ORANGE)
+    body += text(480, 110, "上下文", 18, INK, "bold")
+    body += text(480, 136, "问题 + 之前每一轮的", 14, ORANGE)
+    body += text(480, 158, "动作和结果，越积越多", 14, ORANGE)
+    body += cbox(660, 230, 270, 90, PURPLE)
+    body += text(795, 262, "模型：预测下一个 token", 16, INK, "bold")
+    body += text(795, 286, "写出一段文字，例如", 13.5, PURPLE)
+    body += mtext(795, 306, "read_file(\"test.log\")", 13, PURPLE)
+    body += cbox(330, 370, 300, 90, TEAL)
+    body += text(480, 402, "Agent：真的去执行", 16, INK, "bold")
+    body += text(480, 426, "读文件 · 搜索 · 运行代码 · 查数据库", 13.5, TEAL)
+    body += cbox(30, 230, 270, 90, BLUE)
+    body += text(165, 262, "执行结果", 16, INK, "bold")
+    body += text(165, 286, "文件内容、搜索结果、报错信息", 13.5, BLUE)
+    body += text(165, 306, "原样追加进上下文", 13.5, BLUE)
+    body += path("M632 140 C760 140 795 170 795 226", ORANGE)
+    body += path("M795 322 C795 400 700 415 634 415", PURPLE)
+    body += path("M328 415 C200 415 165 380 165 324", TEAL)
+    body += path("M165 228 C165 170 220 140 326 140", BLUE)
+    body += text(728, 128, "①", 18, ORANGE, "bold") + text(818, 405, "②", 18, PURPLE, "bold")
+    body += text(232, 438, "③", 18, TEAL, "bold") + text(142, 178, "④", 18, BLUE, "bold")
+    body += cbox(390, 205, 180, 130, GRAY, dash=True)
+    body += text(480, 240, "模型判断", 15, INK, "bold")
+    body += text(480, 262, "资料够了吗？", 14, GRAY)
+    body += text(480, 292, "够了 → 写最终回答", 14, TEAL)
+    body += text(480, 314, "不够 → 再转一圈", 14, ORANGE)
+    body += text(480, 495, "模型自始至终只会预测下一个 token；“会查资料、会一步步做事”的能力，来自 Agent 把这个循环跑起来。", 15, GRAY)
+    svg("agent-loop.svg", "Agent 循环",
+        "上下文交给模型，模型预测出一段描述下一步动作的文字，例如读取某个文件；Agent 真的执行这个动作，把文件内容、搜索结果或报错信息追加进上下文；模型读到新资料后判断是否足够，够了就写最终回答，不够就再转一圈。", 520, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -819,7 +882,7 @@ def main():
     # 第 3、5、6、7、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
-               float_formats, float_spacing, autocast_flow):
+               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop):
         fn()
     print("figures written to", OUT)
 
