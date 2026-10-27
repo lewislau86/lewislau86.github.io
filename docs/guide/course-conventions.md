@@ -69,7 +69,11 @@ pageClass: tinyllm-course        # Burn 用 burn-course，mini-redis 用 mini-re
 
 1. 问题
 
-   <details><summary>参考答案</summary>答案</details>
+   <details><summary>参考答案</summary>
+
+   答案
+
+   </details>
 
 ## 参考资料
 
@@ -80,7 +84,7 @@ pageClass: tinyllm-course        # Burn 用 burn-course，mini-redis 用 mini-re
 
 - **先例子，后结论。** “本章结论 / 主线选择”放在章末，等读者理解了概念再给结论，不在开头抛出尚未解释的术语。
 - **每章只引入当前需要的概念。** 用到后面章节的内容时，给一句直觉解释并链接过去，不在本章展开。需要后续知识才能理解的方法，挪到那一章去讲。
-- **检查理解要带答案**，用 `<details>` 折叠。
+- **检查理解要带答案**，用 `<details>` 折叠。`<summary>` 之后和 `</details>` 之前各留一个空行，答案里的公式、行内代码和 `<eos>` 这类尖括号文本才会按 Markdown 处理；写在同一行会被当成原始 HTML，尖括号还会让构建报错。
 
 ### 规划中的章节
 

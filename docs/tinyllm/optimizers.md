@@ -9,28 +9,38 @@ pageClass: tinyllm-course
 [课程总览](./index.md) · [上一章](./language-model-loss.md) · [下一章](./learning-rate.md)
 
 ::: tip 本章学习目标
-能手写 SGD、Momentum、Adam 的一步更新；解释 AdamW 与 L2 正则的区别；为 TinyLLM 正确划分需要和不需要 weight decay 的参数组。
+能手写 SGD、Momentum、Adam 的一步更新；用一张图解释 AdamW 与“Adam + L2 正则”的区别；为 TinyLLM 划分需要和不需要 weight decay 的参数组，并正确保存优化器状态。
 
-**前置：** [第 2 章](./tensors-and-autograd.md)的梯度与 `backward()`。
+**前置：** [第 2 章](./tensors-and-autograd.md)的梯度与 `backward()`；[第 1 章](./first-run.md)的训练循环。
 
 **实践方式：** <a href="/tinyllm/notebooks/optimizers.ipynb" download>optimizers.ipynb</a>，固定数据，CPU 即可。
 :::
 
-第 2、7 章已经讲过：模型先做前向计算得到损失，`backward()` 再把梯度写入参数的 `.grad`。但梯度只回答“当前位置往哪边走”，没有回答“每一步走多远、过去的方向要不要保留、不同参数是否应该使用不同步长”。<strong>优化器就是把梯度变成参数更新的一套规则。</strong>
-
-本章用一个很小的回归模型，把这件事从头走一遍，再把结论接回 TinyLLM。你不需要先记住公式；先观察参数怎样变化，再回头看公式会更容易。配套实验见 <a href="/tinyllm/notebooks/optimizers.ipynb" download>optimizers.ipynb</a>，只用固定数据，CPU 即可运行。
-
 <TinyLLMMap active="optimizers" />
 
-## 先看一次普通的梯度下降
+## 问题：一个学习率管不住所有方向
 
-假设模型只有一个参数 $w$，输入为 $x$，目标为 $t$，损失为 $L(w)$。上一章的手动更新是：
+[第 1 章](./first-run.md)的训练循环最后一行是 `optimizer.step()`，那个 `optimizer` 是 `torch.optim.AdamW`。[第 2 章](./tensors-and-autograd.md)我们亲手走过一步：梯度是 30，学习率取 0.01，于是 $w \leftarrow 2-0.01\times30=1.7$，损失从 25 降到 16.81。既然一步更新这么简单，为什么不对每个参数都这样做，而要用一个名字复杂的 AdamW？
+
+先看一个只有两个参数的损失 $f(a,b)=0.5\,(a^2+25\,b^2)$。它的谷底在原点，但 $b$ 方向比 $a$ 方向陡 25 倍。从 $(-4.5,\ 1.6)$ 出发，用四种规则各走 40 步：
+
+![同一个狭长损失谷上的 40 步轨迹：SGD 在陡峭的 b 方向来回折返、沿 a 方向缓慢爬行；Momentum 沿 a 方向越走越快并冲过谷底；RMSProp 按方向分别缩放步长，几乎直达原点；Adam 也冲过了谷底](/tinyllm/figures/optimizer-paths.svg)
+
+先看 SGD（学习率 0.075）：它在陡的 $b$ 方向上左右折返，在平缓的 $a$ 方向上却走得很慢，40 步后停在 $(-0.20,\ 0.01)$。学习率再大，$b$ 方向会发散；再小，$a$ 方向更慢。**一个统一的步长同时对付两个尺度不同的方向，这就是普通梯度下降的难处。**
+
+另外三条线代表两种改进思路。Momentum（学习率 0.01，$\beta=0.9$）记住过去的方向，在 $a$ 方向上越走越快，甚至冲过谷底，停在 $(0.62,\ -0.08)$；RMSProp（学习率 0.1）给每个方向单独定步长，停在 $(-0.009,\ 0.0)$；Adam（学习率 0.2）两者兼有，这次也冲过了头，停在 $(0.48,\ 0.08)$。这张图只说明它们**怎么走**，各条线的终点取决于这里选的学习率和步数，算不上排名。
+
+本章从 SGD 出发，依次加上“惯性”和“按参数调步长”，得到 Adam；再处理权重衰减放在哪里的问题，得到 AdamW；最后把它接回 TinyLLM 的训练循环。<strong>优化器就是把梯度变成参数更新的一套规则。</strong>
+
+## 1. 从手动更新到 `optimizer.step()`
+
+设模型只有一个参数 $w$，损失为 $L(w)$。第 2 章的手动更新写成公式是：
 
 $$
 w_{t+1}=w_t-\eta\,g_t,\qquad g_t=\frac{\partial L}{\partial w_t}
 $$
 
-$\eta$ 是学习率，决定步子大小；$g_t$ 是当前梯度。梯度为正，就把参数减小；梯度为负，就把参数增大。学习率太大，可能在最低点两边来回跳甚至发散；太小，虽然稳，却要走很多步。
+$\eta$ 是学习率，决定步子大小；$g_t$ 是当前梯度。梯度为正就把参数减小，为负就增大。下面让 $w$ 学会把 $x=2$ 映射到 $t=6$，理想值是 $w=3$。运行之前先猜：学习率 0.1 时，$w$ 会单调逼近 3，还是在 3 两边跳？
 
 ```python
 import torch
@@ -49,7 +59,9 @@ for step in range(8):
     print(step, round(w.item(), 4), round(loss.item(), 4))
 ```
 
-这里每次都重新计算损失和梯度。真实训练还会有数百万个参数、随机小批量和复杂的计算图，所以我们通常把这部分交给 `torch.optim`。优化器的基本用法只有三步：
+答案是单调逼近。把梯度 $8w-24$ 代进去，更新变成 $w \leftarrow 0.2\,w+2.4$：每一步离 3 的距离缩小到原来的 0.2 倍。学习率改成 0.2，系数变成 $-0.6$，$w$ 会在 3 两边跳着收敛；改成 0.3，系数是 $-1.4$，越跳越远。
+
+真实训练有数百万个参数、随机小批量和复杂的计算图，这部分交给 `torch.optim`。基本用法只有三步：
 
 ```python
 model = torch.nn.Linear(1, 1)
@@ -62,31 +74,27 @@ loss.backward()        # 计算本步梯度
 optimizer.step()       # 按 SGD 规则更新参数
 ```
 
-顺序不能颠倒：没有 `backward()`，优化器看不到新梯度；不清零，旧梯度会和新梯度相加；不调用 `step()`，参数不会改变。
+三步的顺序是固定的：`backward()` 写入新梯度，`step()` 读取它来改参数，`zero_grad()` 在下一步开始前清掉旧梯度，否则新旧梯度会相加。
 
-## 为什么需要比 SGD 更聪明的更新
+## 2. SGD 在语言模型里遇到的三件事
 
-### 小批量带来的噪声
+开头那张图里的狭长谷只是其中一件。训练语言模型时，三种情况同时存在：
 
-语言模型不会每次把整个语料库都送进网络，而是取一个小批量。小批量梯度是总体梯度的估计，因此不同批次的方向会有抖动。抖动不一定是坏事，它让训练可行且有时能离开不好的区域，但也会让曲线不平滑。
+- **小批量带来噪声。** 每步只取一个小批量，算出的梯度是总体梯度的估计，相邻两步的方向会抖动。抖动让训练可行，有时还能帮助离开不好的区域，但也让曲线不平滑。
+- **不同参数的尺度不同。** 嵌入表、线性层、归一化参数的梯度大小可能差很多，统一的学习率对一些参数偏大，对另一些偏小。
+- **地形不平。** 在狭长的谷里 SGD 左右摆动；在梯度突然变大的位置，步子又可能失控。
 
-### 不同参数的尺度不同
+Momentum、AdaGrad、RMSProp 和 Adam 分别针对其中一部分问题，每一种都带着自己的假设和需要保存的状态。下面逐个加上去。
 
-嵌入表、线性层、归一化参数的梯度大小可能差很多。一个统一的学习率对某些参数太大，对另一些参数又太小。于是优化器会保存一些历史信息，给每个参数安排更合适的更新。
+## 3. Momentum：给梯度装上惯性
 
-### 深度模型的地形并不平
-
-在狭长的损失谷里，普通 SGD 可能左右摆动；在梯度突然变大的位置，步子又可能失控。Momentum、AdaGrad、RMSProp 和 Adam 都是在解决这些具体问题。它们不是“永远更好”的替代品，而是带有不同假设和状态的更新规则。
-
-## Momentum：给梯度装上惯性
-
-Momentum 保存一个速度 $v_t$，让最近几步的方向累积起来：
+Momentum 保存一个速度 $v_t$，把最近几步的方向累积起来：
 
 $$
 v_t=\beta v_{t-1}+g_t,\qquad w_{t+1}=w_t-\eta v_t
 $$
 
-$β$ 越接近 1，记忆越长。连续朝同一方向的梯度会叠加，来回变化的噪声则部分抵消。PyTorch 中最常见的写法是：
+$\beta$ 越接近 1，记忆越长。连续朝同一方向的梯度会叠加，来回变化的分量则部分抵消。回到开头的图：$a$ 方向的梯度一直指向原点，速度越积越大；$b$ 方向的梯度来回变号，互相抵消。代价是惯性也会把参数带过谷底。
 
 ```python
 optimizer = torch.optim.SGD(
@@ -96,7 +104,7 @@ optimizer = torch.optim.SGD(
 )
 ```
 
-注意：Momentum 的速度是<strong>优化器状态</strong>，不在 `model.parameters()` 里。保存检查点时只保存模型参数而丢掉优化器状态，恢复训练后的前几步会和原来不同。
+速度 $v_t$ 是<strong>优化器状态</strong>，保存在优化器里，`model.parameters()` 里没有它：
 
 ```python
 state = optimizer.state_dict()
@@ -104,7 +112,11 @@ print(state.keys())  # state 和 param_groups
 # state 中会出现 momentum_buffer
 ```
 
-## 自适应步长：AdaGrad、RMSProp 与 Adam
+第 7 节讲检查点时会用到这一点。
+
+## 4. 自适应步长：AdaGrad、RMSProp 与 Adam
+
+Momentum 解决的是“方向”，下面三种方法解决“步长”：给每个参数按它自己的梯度大小分配步长。
 
 ### AdaGrad：给走过很多路的方向降速
 
@@ -115,7 +127,7 @@ G_t=G_{t-1}+g_t^2,\qquad
 w_{t+1}=w_t-\eta\frac{g_t}{\sqrt{G_t}+\epsilon}
 $$
 
-某个方向如果一直有较大梯度，分母会变大，后续步子变小；稀疏特征得到的方向则能保留较大的步子。它的缺点也很明显：$G_t$ 只增不减，训练很久后学习率可能小到几乎不动。
+某个方向一直有较大梯度，分母就变大，后续步子变小；很少得到梯度的稀疏特征则保留较大的步子。缺点是 $G_t$ 只增不减，训练很久后步长会小到几乎不动。
 
 ### RMSProp：只记住最近的梯度尺度
 
@@ -126,11 +138,11 @@ S_t=\rho S_{t-1}+(1-\rho)g_t^2,\qquad
 w_{t+1}=w_t-\eta\frac{g_t}{\sqrt{S_t}+\epsilon}
 $$
 
-旧梯度会逐渐淡出，因此不容易像 AdaGrad 那样永久降速。PyTorch 接口是 `torch.optim.RMSprop`。
+旧梯度逐渐淡出，步长随最近的梯度尺度上下调整。开头图里 RMSProp 几乎直达原点，正是因为陡的 $b$ 方向被除以一个大数，缓的 $a$ 方向被除以一个小数，两个方向的实际步长被拉到相近的量级。PyTorch 接口是 `torch.optim.RMSprop`。
 
 ### Adam：方向和尺度一起估计
 
-Adam 同时保存梯度的一阶移动平均 $m_t$ 和平方的二阶移动平均 $v_t$：
+Adam 把 Momentum 和 RMSProp 合在一起：同时保存梯度的一阶移动平均 $m_t$ 和平方的二阶移动平均 $v_t$：
 
 $$
 m_t=\beta_1m_{t-1}+(1-\beta_1)g_t
@@ -139,7 +151,7 @@ $$
 v_t=\beta_2v_{t-1}+(1-\beta_2)g_t^2
 $$
 
-由于初始状态是 0，前几步的移动平均会偏小，所以做偏差修正：
+两者初值都是 0，前几步的平均会偏小，所以做偏差修正：
 
 $$
 \hat m_t=\frac{m_t}{1-\beta_1^t},\qquad
@@ -152,7 +164,7 @@ $$
 w_{t+1}=w_t-\eta\frac{\hat m_t}{\sqrt{\hat v_t}+\epsilon}
 $$
 
-默认的 `betas=(0.9, 0.999)` 就是这两个指数平均的记忆系数。Adam 通常在训练初期比较省心，但它仍然需要调学习率，不能替代观察损失和梯度。
+默认的 `betas=(0.9, 0.999)` 就是这两个指数平均的记忆系数。Adam 在训练初期通常比较省心，学习率仍然要调，损失和梯度仍然要看。
 
 ```python
 optimizer = torch.optim.Adam(
@@ -163,21 +175,23 @@ optimizer = torch.optim.Adam(
 )
 ```
 
-## Adam 和 AdamW：权重衰减放在哪里
+## 5. AdamW：权重衰减放在哪里
 
-“让权重不要无限变大”可以有两种写法。第一种把 L2 惩罚加到损失：
+“让权重别无限变大”有两种写法。第一种把 L2 惩罚加到损失上：
 
 $$
 L'=L+\frac{\lambda}{2}\|w\|^2
 $$
 
-这样反向传播得到的梯度变成 $g+\lambda w$，再交给 Adam。第二种是<strong>解耦权重衰减</strong>：先按 Adam 的梯度更新，再直接把参数乘一个衰减因子：
+反向传播得到的梯度变成 $g+\lambda w$，再交给 Adam。第二种是<strong>解耦权重衰减</strong>：梯度只来自原损失，Adam 更新之后，再单独把参数往 0 拉一点：
 
 $$
 w_{t+1}=w_t-\eta\,\mathrm{AdamStep}(g_t)-\eta\lambda w_t
 $$
 
-在普通 SGD 中，这两种写法很接近；在 Adam 中，L2 项也会被 Adam 的自适应缩放，效果不再相同。AdamW 采用解耦方式，所以通常是语言模型的默认选择：
+![左：Adam + L2 先把 λw 加进梯度，再一起更新 m、v，衰减项也被除以根号 v；右：AdamW 只用原损失的梯度更新 m、v，衰减项 ηλw 绕过自适应缩放，直接作用在参数上](/tinyllm/figures/adamw-vs-l2.svg)
+
+读图时跟着 $\lambda w$ 这一项走。左边（Adam + L2）它先混进梯度 $g=\nabla L+\lambda w$，然后和梯度一起进入 $m$、$v$，最后被除以 $\sqrt{v}$：梯度一直很大的参数，衰减反而被压小。右边（AdamW）梯度只有 $\nabla L$，衰减 $\eta\lambda w$ 绕过 $m$、$v$，对每个参数按同样的比例生效。在普通 SGD 中两种写法很接近；在 Adam 中它们的效果不同。AdamW 采用右边的方式，是语言模型常用的默认选择：
 
 ```python
 optimizer = torch.optim.AdamW(
@@ -187,17 +201,11 @@ optimizer = torch.optim.AdamW(
 )
 ```
 
-`weight_decay` 不是“再调用一次正则化层”，而是优化器更新的一部分。不要同时把同一组参数手动加 L2 惩罚，又设置 `weight_decay`，否则相当于衰减两次。PyTorch 的 `AdamW` 文档给出了算法定义；本章 notebook 会在一个标量参数上把 Adam 加 L2 与 AdamW 的单步结果直接打印出来。
+`weight_decay` 是优化器更新的一部分。[PyTorch AdamW 文档](https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html)给出了完整算法；本章 notebook 会在一个标量参数上把 Adam + L2 与 AdamW 的单步结果直接打印出来。
 
-## Adafactor：在超大模型上节省状态内存
+## 6. 参数组：不同参数用不同的衰减
 
-Adam/AdamW 为每个参数保存两份与参数同形状的移动平均。模型很大时，优化器状态可能比参数本身还占内存。Adafactor 用分解的行、列统计量近似平方梯度，在部分矩阵参数上减少状态存储；代价是实现和超参数更复杂，更新行为也与 AdamW 不同。它不是 TinyLLM 小模型的默认选择，但读大模型训练配置时会遇到。
-
-PyTorch 核心优化器中并不总是提供 `Adafactor`；实际项目常使用 Transformers 等库的实现。使用时要核对版本、学习率规则和是否自带相对步长，不要只把类名替换成 `AdamW`。本章先把 SGD、Momentum、Adam 和 AdamW 的状态与更新关系弄清楚，再把 Adafactor 当作内存优化方案理解。
-
-## 参数组：不一定所有参数用同一个规则
-
-Transformer 常见的做法是：矩阵权重使用 weight decay，偏置和归一化的缩放参数不衰减。做法是把参数拆成多个 parameter group：
+Transformer 常见的做法是：矩阵权重使用 weight decay，偏置和归一化的缩放参数不衰减。实现方式是把参数拆成多个 parameter group：
 
 ```python
 weight_decay, no_decay = [], []
@@ -215,7 +223,7 @@ optimizer = torch.optim.AdamW([
 ], lr=3e-4)
 ```
 
-这里的 `parameter.ndim == 1` 是常见的工程规则，用来覆盖 LayerNorm/RMSNorm 的缩放参数；具体项目也可能采用不同约定。检查分组数量和名称，避免参数漏掉或重复：
+`parameter.ndim == 1` 是常见的工程规则，用来覆盖 LayerNorm/RMSNorm 的缩放参数（[第 4 章](./normalization.md)的 $\gamma$）；具体项目也可能采用别的约定。建好之后检查一遍，确认参数没有漏掉或重复：
 
 ```python
 all_ids = [id(p) for group in optimizer.param_groups for p in group["params"]]
@@ -223,9 +231,9 @@ assert len(all_ids) == len(set(all_ids))
 print([group["weight_decay"] for group in optimizer.param_groups])
 ```
 
-## 优化器状态与检查点
+## 7. 优化器状态与检查点
 
-模型参数描述“模型现在是什么样”，优化器状态描述“优化器记得什么”。SGD 可能只有动量缓冲区；Adam/AdamW 至少会为每个参数保存 `exp_avg`、`exp_avg_sq` 和步数。训练中断后，要恢复原来的学习轨迹，应同时保存：
+模型参数描述“模型现在是什么样”，优化器状态描述“优化器记得什么”。SGD 带 Momentum 时有动量缓冲区；Adam/AdamW 为每个参数保存 `exp_avg`（即 $m$）、`exp_avg_sq`（即 $v$）和步数。训练中断后要沿原来的轨迹继续，就把两者一起保存：
 
 ```python
 checkpoint = {
@@ -236,11 +244,17 @@ checkpoint = {
 torch.save(checkpoint, "tinyllm_step1200.pt")
 ```
 
-恢复时先建立<strong>相同结构和参数组</strong>的模型与优化器，再加载两份状态。只加载模型而不加载优化器，模型可以继续前向，但 Adam 的历史尺度和动量会丢失，不能称为严格续训。
+恢复时先建立<strong>相同结构和参数组</strong>的模型与优化器，再加载两份状态。只加载模型时，模型照样能前向，但 Adam 的动量和历史尺度都从 0 重新开始，前几步的更新会和中断前不同。
 
-## 动手：在同一条曲线上比较四个优化器
+## 8. Adafactor：在超大模型上节省状态内存
 
-下面的实验让一个两层小网络拟合固定的正弦数据。每个优化器从同一份初始参数开始，训练步数、批量和学习率都写在代码里。先看损失曲线，再问：谁下降得快？谁的后期更平稳？改变学习率后结论是否还成立？
+Adam/AdamW 为每个参数保存两份同形状的移动平均，优化器状态是参数本身的两倍。模型很大时，这部分内存可能成为瓶颈。Adafactor 用分解的行、列统计量近似矩阵参数的平方梯度，减少状态存储；代价是实现和超参数更复杂，更新行为也与 AdamW 不同。读大模型训练配置时会遇到它。
+
+实际项目常使用 Transformers 等库的 Adafactor 实现。换用时要核对版本、学习率规则以及是否自带相对步长，整套配置一起调整。
+
+## 9. 动手：在同一条曲线上比较四个优化器
+
+下面让一个两层 tanh 小网络拟合固定的正弦数据。四个优化器从同一份初始参数开始，训练步数、批量和学习率都写在代码里。运行之前先猜：谁下降得最快？AdamW 和 Adam 的曲线会差多少？
 
 ```python
 import copy
@@ -280,6 +294,10 @@ for name, make_optimizer in optimizers.items():
     print(name, round(history[0], 4), "->", round(history[-1], 6))
 ```
 
+![同一初始化下 300 步的训练损失（对数坐标）：四条曲线都从 0.735 开始，SGD 降到 0.0256，Momentum 降到 0.0017，Adam 与 AdamW 都降到 0.0070，两条曲线几乎重合](/tinyllm/figures/optimizer-curves.svg)
+
+四条曲线都从 0.735 出发。这一次运行里，SGD 300 步后到 0.0256；Momentum 最低，到 0.0017；Adam 和 AdamW 都到 0.0070，曲线几乎重合，因为 `weight_decay=1e-3` 在 300 步里对参数的影响很小。这组数字只属于这组学习率和步数：把 Adam 的学习率改成 `0.1`，或把 SGD 的学习率改成 `0.001`，曲线会明显变化。<strong>公平比较优化器，要固定数据、初始参数和训练预算，并为每个优化器分别调学习率。</strong>
+
 如果环境中有 `plotly`，可以画出交互式曲线：
 
 ```python
@@ -296,9 +314,7 @@ figure.update_layout(
 figure.show()
 ```
 
-这个实验不是为了宣布某个优化器永远最好。它只让你看到：优化器改变的是参数走法；公平比较必须固定数据、初始参数和训练预算。把 `Adam` 的学习率改成 `0.1`，或者把 SGD 的学习率改成 `0.001`，曲线会明显变化。
-
-## 把小实验接回 TinyLLM
+## 10. 把小实验接回 TinyLLM
 
 语言模型训练的一次更新通常是：
 
@@ -309,11 +325,11 @@ figure.show()
 5. 必要时做梯度裁剪，再调用 `optimizer.step()`。
 6. 由学习率调度器更新下一步的学习率；这部分在 [第 15 章](learning-rate.md) 展开。
 
-优化器不负责数据、不负责自动求导，也不负责决定模型结构。它只读取参数的 `.grad`、读取和更新自己的状态，然后修改参数。混合精度下还要注意 loss scaling 和梯度裁剪的顺序，见 [第 17 章](precision.md) 与 [第 18 章](gradient-stability.md)。
+优化器在这个流程里的职责很窄：读取参数的 `.grad`，读取并更新自己的状态，然后修改参数。数据、自动求导和模型结构都由别的部分负责。混合精度下还要注意 loss scaling 和梯度裁剪的顺序，见 [第 17 章](precision.md) 与 [第 18 章](gradient-stability.md)。
 
-### 一份实际可用的 TinyLLM 配置起点
+### 一份 TinyLLM 配置起点
 
-小模型可以从 AdamW 开始：学习率先用 `3e-4` 到 `1e-3` 的量级试验，`weight_decay` 从 `0.01` 或 `0.1` 比较；但这不是通用答案。真正选择要看 batch size、模型宽度、数据量、训练步数和验证损失。每次只改一个因素，并记录配置、训练步数和验证结果。
+小模型可以从 AdamW 开始：学习率在 `3e-4` 到 `1e-3` 的量级试验，`weight_decay` 比较 `0.01` 和 `0.1`。最终取值由 batch size、模型宽度、数据量、训练步数和验证损失决定。每次只改一个因素，并记录配置、训练步数和验证结果。
 
 ```python
 # 这里假设前面的参数分组已经得到两个列表。
@@ -330,20 +346,74 @@ optimizer = torch.optim.AdamW(
 )
 ```
 
-`betas=(0.9, 0.95)` 是一些语言模型配置会尝试的设置，不代表所有 TinyLLM 都应使用它。先用固定小数据过拟合一个 batch，确认训练循环正确，再扩大数据和调参；不要把“优化器没选对”和“模型或数据管线有 bug”混在一起。
+`betas=(0.9, 0.95)` 是一些语言模型配置会尝试的设置，可以作为一个候选。调参前先用固定小数据过拟合一个 batch，确认训练循环正确，再扩大数据；这样“优化器选得不好”和“模型或数据管线有 bug”这两类问题就能分开排查。
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-默认用 <strong>AdamW</strong>：自适应更新便于建立训练基线，解耦的 weight decay 可以单独控制。给普通矩阵权重设置衰减，给归一化缩放参数和偏置（若有）设置 `weight_decay=0`；峰值学习率与衰减系数由验证损失确定，不把下面的演示数值当固定配方。若优化器状态占用成为瓶颈，再评估 Adafactor 等节省状态的方案。不要同时在 loss 中给同一参数加 L2 项又在 AdamW 中施加衰减。
+**默认用 AdamW。**
 
-## 读完后的检查
+理由：自适应更新便于建立训练基线，解耦的 weight decay 可以单独控制。普通矩阵权重设置衰减，归一化缩放参数和偏置（若有）设 `weight_decay=0`；峰值学习率与衰减系数由验证损失确定，上面的数值只是起点。权重衰减只在 AdamW 里设置一次。
 
-- 学习率控制当前步子的大小；Momentum 还记住过去的方向。
-- Adam 为每个参数估计梯度方向和尺度，并用偏差修正启动阶段的估计。
-- AdamW 把权重衰减从 Adam 的梯度变换中分离出来；它和在损失中加 L2 项不应混为一谈。
-- 优化器状态是训练状态的一部分，严格续训时要和模型参数一起保存。
-- 参数组允许矩阵权重、偏置和归一化参数使用不同的 weight decay。
+什么时候改：优化器状态的内存占用成为瓶颈时，再评估 Adafactor 等节省状态的方案。
+
+::: warning 常见误区
+- **Adam 不是“免调参”。** 它对学习率没那么敏感，但学习率、`betas`、`eps` 仍然影响结果，损失曲线仍然要看。
+- **Adam + L2 不等于 AdamW。** 在 Adam 里，加进损失的 L2 项会被 $\sqrt{v}$ 缩放；AdamW 的衰减绕过这一步。
+- **别把同一参数衰减两次。** 已经在 AdamW 里设了 `weight_decay`，就不要再往损失里手动加同一组参数的 L2 项。
+- **只存模型参数不算严格续训。** Adam 的 `exp_avg`、`exp_avg_sq` 和步数也是训练状态，要和模型一起保存、一起加载。
+- **一次小实验不能给优化器排名。** 开头的轨迹图和动手实验的曲线，都随学习率和步数改变。
+- **Adafactor 不能只换类名。** 它的学习率规则和相对步长设置与 AdamW 不同，要整套核对。
+:::
+
+## 检查理解
+
+1. 开头的狭长谷里，为什么 SGD 很难选出一个合适的学习率？
+
+   <details><summary>参考答案</summary>
+
+   $b$ 方向比 $a$ 方向陡 25 倍：学习率大到让 $a$ 方向走得快时，$b$ 方向会来回折返甚至发散；小到让 $b$ 方向稳定时，$a$ 方向又走得很慢。
+
+   </details>
+
+2. Momentum 和 RMSProp 分别给 SGD 加了什么？Adam 和它们是什么关系？
+
+   <details><summary>参考答案</summary>
+
+   Momentum 记住过去的方向（一阶移动平均），RMSProp 按每个参数最近的梯度尺度调整步长（二阶移动平均）。Adam 同时保存两者，并对启动阶段做偏差修正。
+
+   </details>
+
+3. Adam + L2 和 AdamW 的区别在哪一步？
+
+   <details><summary>参考答案</summary>
+
+   Adam + L2 把 $\lambda w$ 加进梯度，它随后被除以 $\sqrt{v}$；AdamW 的梯度只来自原损失，衰减 $\eta\lambda w$ 在自适应缩放之外直接作用于参数。
+
+   </details>
+
+4. 训练中断后只加载了 `model.state_dict()`，继续训练会有什么不同？
+
+   <details><summary>参考答案</summary>
+
+   模型能正常前向，但 Adam 的 $m$、$v$ 和步数都丢了，从 0 重新累积，偏差修正也从头开始，前几步的更新与中断前的轨迹不同。
+
+   </details>
+
+5. 为什么 RMSNorm 的 $\gamma$ 和偏置通常放进 `weight_decay=0` 的参数组？
+
+   <details><summary>参考答案</summary>
+
+   它们是一维的缩放或平移参数，作用是调整尺度和偏移，往 0 拉会改变归一化后的标准尺寸；衰减主要用于矩阵权重。常用 `ndim == 1` 或名字以 `bias` 结尾来识别。
+
+   </details>
+
+## 参考资料
+
+- 《动手学深度学习》[优化算法章节](https://zh.d2l.ai/chapter_optimization/index.html)：本章的算法脉络参考于此，公式、示例和实验均改写为 TinyLLM 的学习场景
+- [PyTorch 优化器文档 `torch.optim`](https://docs.pytorch.org/docs/stable/optim.html)：本章的 API 依据
+- [PyTorch AdamW](https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html)
+- [Adam: A Method for Stochastic Optimization，Kingma 与 Ba，2014](https://arxiv.org/abs/1412.6980)
+- [Decoupled Weight Decay Regularization（AdamW），Loshchilov 与 Hutter，2017](https://arxiv.org/abs/1711.05101)
+- [Adafactor，Shazeer 与 Stern，2018](https://arxiv.org/abs/1804.04235)
 
 下一章会把“每一步走多大”进一步交给学习率策略：warmup、衰减和按 step 更新的调度器（[第 15 章](./learning-rate.md)，规划中）。已完成的下一章是[第 17 章：数值精度](./precision.md)。
-
-本章的算法脉络参考《动手学深度学习》的[优化算法章节](https://zh.d2l.ai/chapter_optimization/index.html)，公式、示例和实验均改写为 TinyLLM 的学习场景，并以 [PyTorch 优化器文档](https://docs.pytorch.org/docs/stable/optim.html) 为 API 依据。

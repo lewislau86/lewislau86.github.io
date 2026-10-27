@@ -208,19 +208,35 @@ print(w.grad.item())  # 对应更新后的 w，约为 24.6
 
 1. `[2, 3, 4]` 的三轴各表示什么？
 
-   <details><summary>参考答案</summary>2 条样本（batch）× 每条 3 个 token（seq）× 每个 token 4 个特征（hidden）。</details>
+   <details><summary>参考答案</summary>
+
+   2 条样本（batch）× 每条 3 个 token（seq）× 每个 token 4 个特征（hidden）。
+
+   </details>
 
 2. 形状为 `[4]` 的偏置为什么能加到 `[2, 3, 4]` 上？`[3]` 为什么不行？
 
-   <details><summary>参考答案</summary>从最右一轴对齐：4 对 4 相等，左边缺的两轴当作 1 并沿它们复制。`[3]` 的最右轴是 3，与 4 不等也不为 1，无法配对。</details>
+   <details><summary>参考答案</summary>
+
+   从最右一轴对齐：4 对 4 相等，左边缺的两轴当作 1 并沿它们复制。`[3]` 的最右轴是 3，与 4 不等也不为 1，无法配对。
+
+   </details>
 
 3. $w=2,x=3,t=1$ 时，梯度为什么是 30？
 
-   <details><summary>参考答案</summary>$p=wx=6$，$\partial L/\partial p=2(p-t)=10$，$\partial p/\partial w=x=3$，链式法则相乘得 30。</details>
+   <details><summary>参考答案</summary>
+
+   $p=wx=6$，$\partial L/\partial p=2(p-t)=10$，$\partial p/\partial w=x=3$，链式法则相乘得 30。
+
+   </details>
 
 4. 在更新参数前连续做两次前向和 `backward()`，`w.grad` 是多少？为什么？
 
-   <details><summary>参考答案</summary>60。`backward()` 把新梯度加到 `.grad` 上而不是覆盖，所以训练循环每步都要先清空梯度。</details>
+   <details><summary>参考答案</summary>
+
+   60。`backward()` 把新梯度加到 `.grad` 上而不是覆盖，所以训练循环每步都要先清空梯度。
+
+   </details>
 
 ## 参考资料
 

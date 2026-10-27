@@ -209,19 +209,35 @@ notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第
 
 1. 对 `[batch, seq, d]` 的张量做 RMSNorm，一共计算多少个 RMS？
 
-   <details><summary>参考答案</summary>batch × seq 个，每个 token 一个。</details>
+   <details><summary>参考答案</summary>
+
+   batch × seq 个，每个 token 一个。
+
+   </details>
 
 2. 不看代码，手算 $x=[2,2,2]$ 经过 LayerNorm 和 RMSNorm（$\epsilon=0$）的输出。
 
-   <details><summary>参考答案</summary>LayerNorm：方差为 0，分母为 0，所以真实实现必须有正的 $\epsilon$，输出为 $[0,0,0]$。RMSNorm：RMS=2，输出 $[1,1,1]$。</details>
+   <details><summary>参考答案</summary>
+
+   LayerNorm：方差为 0，分母为 0，所以真实实现必须有正的 $\epsilon$，输出为 $[0,0,0]$。RMSNorm：RMS=2，输出 $[1,1,1]$。
+
+   </details>
 
 3. 为什么 Pre-Norm 结构在所有 Block 之后还要再加一次归一化？
 
-   <details><summary>参考答案</summary>Pre-Norm 只归一化子层的输入，残差流本身一直没被归一化，会随层数变大；最终归一化把它调回标准尺寸再交给输出层。</details>
+   <details><summary>参考答案</summary>
+
+   Pre-Norm 只归一化子层的输入，残差流本身一直没被归一化，会随层数变大；最终归一化把它调回标准尺寸再交给输出层。
+
+   </details>
 
 4. 有人把模型里的 `nn.LayerNorm` 全部替换成 `nn.RMSNorm`，然后加载原来的预训练权重。会有什么问题？
 
-   <details><summary>参考答案</summary>RMSNorm 没有 bias，也不减均值；原权重是在 LayerNorm 的输出分布上训练出来的，替换后每层的输入分布都变了，模型效果通常会明显下降。</details>
+   <details><summary>参考答案</summary>
+
+   RMSNorm 没有 bias，也不减均值；原权重是在 LayerNorm 的输出分布上训练出来的，替换后每层的输入分布都变了，模型效果通常会明显下降。
+
+   </details>
 
 ## 参考资料
 

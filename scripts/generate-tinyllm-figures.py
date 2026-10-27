@@ -42,7 +42,7 @@ def svg(name, title, description, height, body, width=960):
 <g font-family='{FONT}' fill="{INK}" text-anchor="middle">{body}</g></svg>'''
     document = document.replace("{MARKERS}", "".join(
         f'<marker id="arrow-{c[1:]}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="{c}"/></marker>'
-        for c in (BLUE, TEAL, ORANGE, RED, GRAY, INK)))
+        for c in (BLUE, TEAL, ORANGE, RED, GRAY, INK, "#7c3aed")))
     ET.fromstring(document)
     (OUT / name).write_text(document + "\n", encoding="utf-8")
 
@@ -334,6 +334,446 @@ def first_run_loss():
               f"训练损失从约 {loss[0]:.1f} 迅速降到约 {smooth[-1]:.2f}；验证损失只在开头略降，随后升到约 {log['val_loss'][-1]:.1f}，高于乱猜水平，说明模型在背诵训练集。")
 
 
+# ---------- 第 3、5、6、7、14、17 章共用工具 ----------
+
+PURPLE = "#7c3aed"
+MONO = '"Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace'
+SOFT = {BLUE: "#eff6ff", TEAL: "#ecfdf5", ORANGE: "#fffbeb", RED: "#fef2f2", PURPLE: "#f5f3ff", GRAY: "#ffffff"}
+
+
+def mtext(x, y, value, size=17, color=INK, weight="normal", anchor="middle"):
+    """等宽文字；只用于纯 ASCII 内容（等宽字体多数不含中文）。"""
+    family = f" font-family='{MONO}'" if value.isascii() else ""
+    return (f'<text x="{x}" y="{y}" font-size="{size}" fill="{color}" font-weight="{weight}" '
+            f'text-anchor="{anchor}"{family}>{escape(value)}</text>')
+
+
+def cbox(x, y, w, h, color=GRAY, dash=False, width=2):
+    return box(x, y, w, h, SOFT.get(color, "#ffffff"), color, dash, width)
+
+
+def load(name):
+    src = DATA / name
+    if not src.exists():
+        raise SystemExit(f"missing {src}: run python scripts/tinyllm-figure-data.py first")
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+# ---------- 第 3 章：初始化与残差 ----------
+
+def init_fan_in():
+    d = load("tinyllm-init-fan-in.json")
+    fig, ax = plt.subplots(figsize=(10, 5.0), layout="constrained")
+    w = d["widths"]
+    ax.loglog(w, d["fixed_1"], marker="o", color=RED, lw=2.2, label="固定 std = 1")
+    ax.loglog(w, d["fixed_0.02"], marker="o", color=ORANGE, lw=2.2, label="固定 std = 0.02")
+    ax.loglog(w, d["he"], marker="o", color=PURPLE, lw=2.2, label="He：std = √(2 / fan_in)")
+    ax.loglog(w, d["xavier"], marker="o", color=TEAL, lw=2.8, label="Xavier：std = √(2 / (fan_in + fan_out))")
+    ax.axhline(1, color=GRAY, lw=1, ls="--")
+    ax.set_xticks(w, [str(v) for v in w])
+    ax.set_xlabel("输入宽度 fan_in（输出宽度相同）")
+    ax.set_ylabel("输出标准差（输入 std = 1）")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17), ncol=2, fontsize=11, frameon=False)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "init-fan-in.svg", "不同初始化下线性层输出的尺度",
+              "输入标准差为 1 时，固定 std 的初始化让输出标准差随宽度按根号增长；Xavier 让输出标准差保持在 1 附近，He 保持在约 1.41（为 ReLU 预留的放大）。")
+
+
+def residual_depth():
+    d = load("tinyllm-residual-depth.json")
+    layers = np.arange(1, d["depth"] + 1)
+    style = {"plain": ("纯堆叠 x = F(x)", RED), "residual": ("残差、无归一化 x = x + F(x)", ORANGE),
+             "pre_ln": ("Pre-LN x = x + F(LN(x))", TEAL), "post_ln": ("Post-LN x = LN(x + F(x))", BLUE)}
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.0), layout="constrained")
+    for key, (label, color) in style.items():
+        axes[0].semilogy(layers, d["rms"][key], color=color, lw=2.2, label=label)
+        axes[1].semilogy(layers, d["grad"][key], color=color, lw=2.2, label=label)
+    axes[0].set_title("前向：每层输出的 RMS", fontsize=14)
+    axes[1].set_title("反向：损失对每层输出的梯度范数", fontsize=14)
+    for ax in axes:
+        ax.set_xlabel("层号")
+        ax.grid(alpha=0.25, which="both")
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="outside lower center", ncol=2, fontsize=11, frameon=False)
+    save_plot(fig, "residual-depth.svg", "32 层网络中的信号与梯度",
+              "32 层随机初始化网络：纯堆叠时输出 RMS 逐层缩小、梯度越靠近输入越小；无归一化的残差让 RMS 逐层增大、靠近输入的梯度变大；Pre-LN 的增长缓和得多；Post-LN 每层输出 RMS 固定为 1。")
+
+
+def residual_path():
+    body = text(480, 40, "残差块：前向多一条加法，反向多一条直通的梯度路径", 23, weight="bold")
+    body += text(80, 125, "x", 26, BLUE, "bold")
+    body += path("M100 118 H190", BLUE)
+    body += cbox(195, 88, 200, 60, BLUE)
+    body += text(295, 125, "子层 F", 20, BLUE, "bold")
+    body += path("M395 118 H470", BLUE)
+    body += circle(490, 118, 20)
+    body += text(490, 126, "+", 26, weight="bold")
+    body += path("M510 118 H590", BLUE)
+    body += text(600, 126, "y = x + F(x)", 22, BLUE, "bold", anchor="start")
+    body += path("M140 118 V210 H490 V140", TEAL, 3.5)
+    body += text(315, 232, "直通路径：x 原样加到输出上", 16, TEAL)
+    body += cbox(60, 270, 840, 150, ORANGE)
+    body += text(480, 305, "反向传播时，从 y 传回来的梯度 g 分成两路再相加：", 18, ORANGE, "bold")
+    body += mtext(480, 345, "dL/dx = g + J_F(x)^T · g", 22, INK, "bold")
+    body += text(480, 385, "第一项来自直通路径，不经过 F 的任何运算；第二项经过 F 的雅可比，可能被放大或缩小。", 16, INK)
+    body += text(480, 455, "直通路径保证梯度至少有一条“原样”的通道；多层叠加后整体仍可能变大或变小，所以还要配合初始化与归一化。", 15, GRAY)
+    svg("residual-path.svg", "残差连接的前向与反向",
+        "输入 x 经过子层 F 后与 x 本身相加得到 y；反向时梯度 g 一路原样传回 x，另一路经过 F 的雅可比，两路相加。", 480, body)
+
+
+# ---------- 第 5 章：激活与门控前馈层 ----------
+
+def activation_fit():
+    d = load("tinyllm-activation-fit.json")
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    ax.plot(d["x"], d["y"], color=GRAY, lw=4, alpha=0.45, label="目标 sin(x)")
+    ax.plot(d["x"], d["linear"]["pred"], color=RED, lw=2.2, ls="--", label=f"Linear → Linear（无激活），MSE {d['linear']['loss']:.3f}")
+    ax.plot(d["x"], d["gelu"]["pred"], color=TEAL, lw=2.2, label=f"Linear → GELU → Linear，MSE {d['gelu']['loss']:.1e}")
+    ax.set_xlabel("x")
+    ax.set_ylabel("输出")
+    ax.legend(loc="upper left", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "activation-fit.svg", "有无激活函数时的拟合结果",
+              "同样是 1→32→1 的两层网络训练 1500 步：中间没有激活函数时只能拟合出一条直线；加入 GELU 后几乎与 sin 曲线重合。")
+
+
+def swiglu_vs_ffn():
+    body = text(480, 40, "普通 FFN 与 SwiGLU：参数量相同，结构不同", 23, weight="bold")
+    # 普通 FFN
+    body += text(240, 85, "普通 FFN（中间宽度 4d）", 18, BLUE, "bold")
+    body += mtext(240, 106, "x  [B, T, d]", 15, GRAY)
+    body += cbox(140, 132, 200, 46, BLUE) + mtext(240, 161, "up: d → 4d", 15, INK, "bold")
+    body += arrow(240, 178, 240, 196, BLUE)
+    body += cbox(140, 200, 200, 46, BLUE) + text(240, 229, "GELU / ReLU", 15, INK, "bold")
+    body += arrow(240, 246, 240, 264, BLUE)
+    body += cbox(140, 268, 200, 46, BLUE) + mtext(240, 297, "down: 4d → d", 15, INK, "bold")
+    body += mtext(240, 340, "out [B, T, d]", 15, GRAY)
+    body += text(240, 380, "权重：d·4d + 4d·d = 8d²", 17, BLUE, "bold")
+    body += arrow(240, 113, 240, 128, BLUE)
+    # SwiGLU
+    body += text(690, 85, "SwiGLU（中间宽度 m ≈ 8d/3）", 18, TEAL, "bold")
+    body += mtext(690, 106, "x  [B, T, d]", 15, GRAY)
+    body += cbox(530, 132, 145, 46, TEAL) + mtext(602, 161, "gate: d → m", 14, INK, "bold")
+    body += cbox(705, 132, 145, 46, TEAL) + mtext(777, 161, "value: d → m", 14, INK, "bold")
+    body += path("M690 113 V118 H602 V128", TEAL) + path("M690 118 H777 V128", TEAL)
+    body += cbox(530, 200, 145, 46, TEAL) + text(602, 229, "SiLU", 15, INK, "bold")
+    body += arrow(602, 178, 602, 196, TEAL)
+    body += circle(690, 291, 20, SOFT[TEAL], TEAL) + text(690, 299, "⊙", 22, TEAL, "bold")
+    body += path("M602 246 V291 H668", TEAL) + path("M777 178 V291 H712", TEAL)
+    body += text(800, 320, "逐元素相乘：门控", 13.5, TEAL)
+    body += cbox(590, 330, 200, 40, TEAL) + mtext(690, 356, "down: m → d", 15, INK, "bold")
+    body += arrow(690, 311, 690, 326, TEAL)
+    body += text(690, 400, "权重：3 · d · m = 3 · d · 8d/3 = 8d²", 17, TEAL, "bold")
+    body += f'<line x1="465" y1="70" x2="465" y2="410" stroke="#e2e8f0" stroke-width="2"/>'
+    body += text(480, 445, "例：d = 12 时，普通 FFN 用 m = 48 有 1152 个权重；SwiGLU 用 m = 32，也是 1152 个。", 16, GRAY)
+    svg("swiglu-vs-ffn.svg", "普通前馈层与 SwiGLU 的结构对比",
+        "普通 FFN 先把 d 维升到 4d，过激活函数后降回 d，权重 8d²；SwiGLU 用 gate 与 value 两条投影升到 m 维，gate 经过 SiLU 后与 value 逐元素相乘，再降回 d，中间宽度取 8d/3 时权重也是 8d²。", 470, body)
+
+
+# ---------- 第 6 章：词元化 ----------
+
+def utf8_lengths():
+    samples = [("A", "A"), ("猫", "猫"), ("é", "é（一个码点）"), ("é", "e + 组合重音"), ("👩‍💻", "👩‍💻 组合 emoji")]
+    body = text(480, 40, "同一个“字”，码点数和字节数可以完全不同", 23, weight="bold")
+    body += text(140, 85, "看起来", 15, GRAY, "bold") + text(390, 85, "Unicode 码点", 15, GRAY, "bold") + text(730, 85, "UTF-8 字节", 15, GRAY, "bold")
+    for i, (s, label) in enumerate(samples):
+        y = 105 + i * 70
+        body += text(140, y + 32, label, 17, INK, "bold")
+        cps = [f"U+{ord(c):04X}" for c in s]
+        x = 260
+        for cp in cps:
+            body += cbox(x, y + 8, 82, 36, BLUE) + mtext(x + 41, y + 32, cp, 12.5, BLUE, "bold")
+            x += 86
+        bts = s.encode("utf-8")
+        bx = 560
+        for b in bts:
+            body += f'<rect x="{bx}" y="{y + 10}" width="27" height="32" rx="4" fill="{SOFT[ORANGE]}" stroke="{ORANGE}" stroke-width="1.5"/>'
+            body += mtext(bx + 13.5, y + 31, f"{b:02X}", 11, ORANGE)
+            bx += 30
+        body += text(bx + 18, y + 32, f"{len(bts)}", 16, ORANGE, "bold", anchor="start")
+    body += text(480, 470, "len(text) 数码点，len(text.encode('utf-8')) 数字节；token 数还取决于具体分词器——这是四种不同的“长度”。", 15, GRAY)
+    svg("utf8-lengths.svg", "码点与 UTF-8 字节",
+        "A 是 1 个码点 1 个字节；猫是 1 个码点 3 个字节；é 是 1 个码点 2 个字节；e 加组合重音是 2 个码点 3 个字节；女人加零宽连接符加电脑的 emoji 是 3 个码点 11 个字节。", 495, body)
+
+
+def bpe_merges():
+    words = [(list("abab"), 3), (list("abac"), 2), (list("ad"), 1)]
+
+    def merge(parts, pair):
+        out, i = [], 0
+        while i < len(parts):
+            if i + 1 < len(parts) and (parts[i], parts[i + 1]) == pair:
+                out.append(parts[i] + parts[i + 1])
+                i += 2
+            else:
+                out.append(parts[i])
+                i += 1
+        return out
+
+    states, notes = [words], ["起点：每个字母是一个单位"]
+    for _ in range(2):
+        counts = {}
+        for parts, f in states[-1]:
+            for pair in zip(parts, parts[1:]):
+                counts[pair] = counts.get(pair, 0) + f
+        best = min(counts, key=lambda p: (-counts[p], p))
+        notes.append(f"合并 {best[0]} + {best[1]} → {best[0] + best[1]}（加权出现 {counts[best]} 次）")
+        states.append([(merge(p, best), f) for p, f in states[-1]])
+    body = text(480, 40, "BPE 训练：统计加权的相邻对，反复合并最常见的一对", 23, weight="bold")
+    colors = [GRAY, BLUE, TEAL]
+    for k, (state, note) in enumerate(zip(states, notes)):
+        y = 80 + k * 125
+        body += text(40, y + 20, f"第 {k} 步", 17, colors[k], "bold", anchor="start")
+        body += text(130, y + 20, note, 16, colors[k], anchor="start")
+        x = 60
+        for parts, f in state:
+            px = x
+            for part in parts:
+                w = 34 + 18 * (len(part) - 1)
+                body += cbox(px, y + 38, w, 44, colors[k] if len(part) > 1 else GRAY)
+                body += mtext(px + w / 2, y + 66, part, 17, INK, "bold")
+                px += w + 4
+            body += text(px + 8, y + 66, f"× {f}", 15, GRAY, anchor="start")
+            x = px + 90
+    body += text(480, 470, "训练得到的是一份有顺序的合并规则；编码新文本时按这份顺序合并，不再重新统计。", 15, GRAY)
+    svg("bpe-merges.svg", "BPE 的两步合并",
+        "语料 abab 出现 3 次、abac 2 次、ad 1 次。第 1 步 a+b 加权出现 8 次，合并为 ab；第 2 步 ab+ab 出现 3 次，合并为 abab。", 495, body)
+
+
+def label_shift():
+    body = text(480, 40, "下一词元训练：输入去掉最后一位，标签去掉第一位，补齐位置不算损失", 21, weight="bold")
+    rows = [["<bos>", "猫", "<eos>", "<pad>", "<pad>", "<pad>"], ["<bos>", "我", "在", "学习", "。", "<eos>"]]
+    cell, x0 = 92, 250
+    for r, seq in enumerate(rows):
+        y0 = 80 + r * 200
+        body += text(40, y0 + 18, f"样本 {r + 1}", 17, INK, "bold", anchor="start")
+        n = len(seq) - 1
+        for i in range(n):
+            tok = seq[i]
+            pad = tok == "<pad>"
+            body += f'<rect x="{x0 + i * cell}" y="{y0 + 30}" width="{cell - 6}" height="40" rx="6" fill="{"#f1f5f9" if pad else SOFT[BLUE]}" stroke="{GRAY if pad else BLUE}"/>'
+            body += text(x0 + i * cell + cell / 2 - 3, y0 + 56, tok, 15, GRAY if pad else BLUE, "bold")
+            body += mtext(x0 + i * cell + cell / 2 - 3, y0 + 92, "0" if pad else "1", 14, GRAY)
+            lab = seq[i + 1]
+            ignore = lab == "<pad>"
+            body += f'<rect x="{x0 + i * cell}" y="{y0 + 104}" width="{cell - 6}" height="40" rx="6" fill="{"#f1f5f9" if ignore else SOFT[TEAL]}" stroke="{GRAY if ignore else TEAL}"/>'
+            body += mtext(x0 + i * cell + cell / 2 - 3, y0 + 130, "-100", 14, GRAY, "bold") if ignore else text(x0 + i * cell + cell / 2 - 3, y0 + 130, lab, 15, TEAL, "bold")
+        body += text(235, y0 + 56, "input_ids", 14, BLUE, anchor="end")
+        body += text(235, y0 + 92, "attention_mask", 14, GRAY, anchor="end")
+        body += text(235, y0 + 130, "labels", 14, TEAL, anchor="end")
+    body += text(480, 470, "EOS 是要学会的结束目标，保留在标签里；PAD 对应的标签写成 -100，交叉熵用 ignore_index 跳过它。", 15, GRAY)
+    svg("label-shift.svg", "输入与标签的错位和掩码",
+        "两条样本补齐到同样长度后，input_ids 取前 n-1 位，labels 取后 n-1 位；attention_mask 中 1 表示有效、0 表示补齐；补齐位置的标签写成 -100，不参与损失，EOS 保留为最后一个目标。", 495, body)
+
+
+# ---------- 第 7 章：词嵌入与输出层 ----------
+
+def embedding_lookup():
+    vocab = ["<pad>", "<eos>", "我", "在", "学习", "数学"]
+    body = text(480, 40, "查表：token ID 就是嵌入矩阵的行号", 23, weight="bold")
+    body += text(110, 95, "输入 ID", 16, GRAY, "bold")
+    ids = [2, 3, 4]
+    colors = [BLUE, TEAL, ORANGE]
+    for i, (tid, c) in enumerate(zip(ids, colors)):
+        body += cbox(70 + i * 0, 115 + i * 60, 80, 44, c) + mtext(110, 144 + i * 60, str(tid), 18, c, "bold")
+    body += text(470, 95, "嵌入矩阵 E：[V = 6, d = 4]（可训练参数）", 16, GRAY, "bold")
+    for r, word in enumerate(vocab):
+        y = 112 + r * 46
+        hit = r in ids
+        c = colors[ids.index(r)] if hit else GRAY
+        body += mtext(325, y + 28, str(r), 14, GRAY, anchor="end")
+        body += text(363, y + 28, word, 14, c if hit else GRAY, "bold" if hit else "normal")
+        for j in range(4):
+            body += f'<rect x="{400 + j * 62}" y="{y}" width="58" height="40" rx="4" fill="{SOFT[c] if hit else "#ffffff"}" stroke="{c if hit else "#cbd5e1"}" stroke-width="{2 if hit else 1}"/>'
+        if hit:
+            k = ids.index(r)
+            body += path(f"M152 {137 + k * 60} C220 {137 + k * 60} 240 {y + 20} 300 {y + 20}", c, 2)
+            body += path(f"M650 {y + 20} C720 {y + 20} 730 {137 + k * 60} 768 {137 + k * 60}", c, 2)
+    body += text(840, 95, "输出向量 [3, 4]", 16, GRAY, "bold")
+    for i, c in enumerate(colors):
+        for j in range(4):
+            body += f'<rect x="{772 + j * 40}" y="{117 + i * 60}" width="36" height="40" rx="4" fill="{SOFT[c]}" stroke="{c}" stroke-width="2"/>'
+    body += text(480, 420, "nn.Embedding 只是按行取值，等价于 one-hot 向量乘 E，但不必真的构造 one-hot。", 15, GRAY)
+    body += text(480, 448, "ID 的大小没有含义：2 和 3 相邻，不代表“我”和“在”的向量相近。", 15, GRAY)
+    svg("embedding-lookup.svg", "词嵌入查表",
+        "输入 ID 2、3、4 分别取出 6 行 4 列嵌入矩阵的第 2、3、4 行，得到形状为 3×4 的向量序列。", 470, body)
+
+
+def tied_output():
+    body = text(480, 40, "输入查表与输出打分可以共用同一张表", 23, weight="bold")
+    body += cbox(360, 160, 240, 120, PURPLE)
+    body += text(480, 205, "E  [V, d]", 22, PURPLE, "bold")
+    body += text(480, 240, "同一个 Parameter", 15, PURPLE)
+    body += cbox(40, 80, 220, 60, BLUE) + text(150, 116, "输入：取第 i 行", 16, BLUE, "bold")
+    body += mtext(150, 166, "ID → E[i]  [d]", 15, BLUE)
+    body += path("M262 110 C320 110 330 180 356 190", BLUE)
+    body += cbox(700, 80, 220, 60, TEAL) + text(810, 116, "输出：和每一行做点积", 16, TEAL, "bold")
+    body += mtext(810, 166, "h · E[j] → logit_j", 15, TEAL)
+    body += path("M604 190 C640 180 650 110 696 110", TEAL)
+    body += cbox(700, 220, 220, 140, TEAL)
+    body += mtext(810, 250, "h  [B, T, d]", 14, INK)
+    body += mtext(810, 280, "logits = h @ E^T", 15, TEAL, "bold")
+    body += mtext(810, 310, "[B, T, V]", 14, INK)
+    body += text(810, 342, "softmax → 下一个 token 的概率", 13.5, GRAY)
+    body += cbox(40, 220, 220, 140, BLUE)
+    body += mtext(150, 250, "ids  [B, T]", 14, INK)
+    body += mtext(150, 280, "x = E[ids]", 15, BLUE, "bold")
+    body += mtext(150, 310, "[B, T, d]", 14, INK)
+    body += text(150, 342, "再加位置、进 Transformer", 13.5, GRAY)
+    body += text(480, 410, "共享后少一份 V×d 的权重；输入端和输出端的梯度都会汇入这同一张表。", 16, GRAY)
+    svg("tied-output.svg", "输入嵌入与输出层共享权重",
+        "输入端用 token ID 从 E 中取一行得到向量；输出端用隐藏向量 h 与 E 的每一行做点积得到每个候选 token 的 logit。两端使用同一个形状为 V×d 的参数 E。", 440, body)
+
+
+def kv_cache():
+    body = text(480, 40, "KV cache：每生成一步只算新 token 的 K、V，接到缓存后面", 22, weight="bold")
+    toks = ["我", "在", "学", "习"]
+    for step in range(3):
+        y = 80 + step * 125
+        n = 2 + step
+        body += text(40, y + 24, "prefill" if step == 0 else f"decode 第 {step} 步", 16, INK, "bold", anchor="start")
+        for i in range(n):
+            new = (step == 0) or i == n - 1
+            c = ORANGE if new else GRAY
+            body += f'<rect x="{200 + i * 70}" y="{y + 4}" width="62" height="36" rx="5" fill="{SOFT[ORANGE] if new else "#f1f5f9"}" stroke="{c}"/>'
+            body += text(231 + i * 70, y + 28, f"K{i + 1}", 14, c, "bold")
+            body += f'<rect x="{200 + i * 70}" y="{y + 46}" width="62" height="36" rx="5" fill="{SOFT[ORANGE] if new else "#f1f5f9"}" stroke="{c}"/>'
+            body += text(231 + i * 70, y + 70, f"V{i + 1}", 14, c, "bold")
+            body += text(231 + i * 70, y + 104, toks[i], 13, GRAY)
+        qx = 200 + n * 70 + 40
+        body += cbox(qx, y + 24, 70, 40, TEAL) + text(qx + 35, y + 50, f"Q{n}", 15, TEAL, "bold")
+        body += path(f"M{qx - 2} {y + 44} H{200 + n * 70 + 4}", TEAL, 2)
+        body += text(qx + 90, y + 40, "新 Q 与所有 K 打分，", 14, TEAL, anchor="start")
+        body += text(qx + 90, y + 62, "再对所有 V 加权求和", 14, TEAL, anchor="start")
+    body += f'<rect x="200" y="452" width="22" height="16" fill="{SOFT[ORANGE]}" stroke="{ORANGE}"/>' + text(230, 466, "本步新算的", 14, GRAY, anchor="start")
+    body += '<rect x="340" y="452" width="22" height="16" fill="#f1f5f9" stroke="#64748b"/>' + text(370, 466, "从缓存直接读", 14, GRAY, anchor="start")
+    body += text(480, 500, "缓存的是 K、V 张量，注意力权重每一步都要用新的 Q 重新算；缓存大小随上下文长度线性增长。", 15, GRAY)
+    svg("kv-cache.svg", "KV cache 随生成步数增长",
+        "prefill 时一次算出前两个 token 的 K、V；之后每个 decode 步只为新 token 计算一组 K、V 并接到缓存后面，新 token 的 Q 与全部 K 打分、对全部 V 加权求和。", 520, body)
+
+
+# ---------- 第 14 章：优化器 ----------
+
+def optimizer_paths():
+    d = load("tinyllm-optimizer-paths.json")
+    a, b = d["curvature"]
+    fig, ax = plt.subplots(figsize=(10, 4.6), layout="constrained")
+    xs, ys = np.meshgrid(np.linspace(-5, 1.5, 300), np.linspace(-2, 2, 300))
+    ax.contour(xs, ys, 0.5 * (a * xs ** 2 + b * ys ** 2), levels=[0.5, 2, 5, 10, 20, 35], colors="#cbd5e1", linewidths=1)
+    palette = [RED, ORANGE, PURPLE, TEAL]
+    for (name, trace), color in zip(d["paths"].items(), palette):
+        t = np.array(trace)
+        ax.plot(t[:, 0], t[:, 1], marker="o", ms=3, lw=1.6, color=color, label=name)
+    ax.scatter([d["paths"][next(iter(d["paths"]))][0][0]], [d["paths"][next(iter(d["paths"]))][0][1]], color=INK, zorder=5, s=40)
+    ax.scatter([0], [0], marker="*", color=INK, s=140, zorder=5)
+    ax.text(-4.5, 1.78, "起点", fontsize=12)
+    ax.text(0.08, 0.12, "最低点", fontsize=12)
+    ax.set_xlabel("参数 a（坡度平缓的方向）")
+    ax.set_ylabel("参数 b（坡度陡 25 倍）")
+    ax.set_aspect("equal")
+    ax.legend(loc="lower right", fontsize=10, framealpha=0.95)
+    save_plot(fig, "optimizer-paths.svg", "狭长山谷中的四种优化器",
+              "在 f = 0.5(a² + 25b²) 上从同一点出发走 40 步：SGD 在陡峭的 b 方向来回振荡、在平缓的 a 方向前进缓慢；Momentum 积累了 a 方向的速度；RMSProp 和 Adam 按各方向的梯度尺度调整步长，更直接地走向最低点。")
+
+
+def optimizer_curves():
+    d = load("tinyllm-optimizer-curves.json")
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for (name, hist), color in zip(d.items(), [RED, ORANGE, BLUE, TEAL]):
+        ax.semilogy(hist, color=color, lw=2.2, ls="--" if name == "AdamW" else "-", label=f"{name}：{hist[0]:.3f} → {hist[-1]:.4f}")
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("均方误差（对数刻度）")
+    ax.legend(loc="upper right", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "optimizer-curves.svg", "四种优化器拟合正弦的损失曲线",
+              "同一个两层网络、同一份初始参数拟合正弦 300 步：SGD 下降最慢，Momentum 最终损失最低，Adam 和 AdamW 前期下降最快，两者曲线几乎重合。")
+
+
+def adamw_vs_l2():
+    body = text(480, 40, "L2 正则与 AdamW：衰减项要不要经过自适应缩放", 23, weight="bold")
+    for k, (name, color, steps, note) in enumerate([
+        ("Adam + L2（把 λw 加进梯度）", ORANGE,
+         ["g = ∇L + λ·w", "m, v ← 用 g 更新", "w ← w − η · m / (√v + ε)"],
+         "衰减也被除以 √v：梯度大的参数，衰减反而变弱"),
+        ("AdamW（衰减单独做）", TEAL,
+         ["g = ∇L", "m, v ← 用 g 更新", "w ← w − η · m / (√v + ε) − η·λ·w"],
+         "每个参数按同一比例 ηλ 收缩，与梯度大小无关")]):
+        x = 40 + k * 460
+        body += text(x + 210, 90, name, 18, color, "bold")
+        for i, s in enumerate(steps):
+            y = 110 + i * 72
+            body += cbox(x, y, 420, 50, color)
+            body += text(x + 210, y + 32, s, 17, INK, "bold")
+            if i:
+                body += arrow(x + 210, y - 20, x + 210, y - 4, color)
+        body += text(x + 210, 350, note, 15, color)
+    body += text(480, 395, "m、v 为偏差校正后的一阶、二阶矩。对普通 SGD 两种写法等价；对 Adam 这类自适应优化器，它们是两种不同的算法。", 15, GRAY)
+    svg("adamw-vs-l2.svg", "Adam 加 L2 与 AdamW 的区别",
+        "Adam 加 L2 把 λw 加进梯度，衰减项随后被二阶矩缩放；AdamW 用原始梯度更新一、二阶矩，参数更新后再单独减去 ηλw，让所有参数按同一比例衰减。", 425, body)
+
+
+# ---------- 第 17 章：数值精度 ----------
+
+def float_formats():
+    body = text(480, 40, "16 位的两种分法：FP16 多给尾数，BF16 多给指数", 23, weight="bold")
+    fmts = [("FP32", 1, 8, 23, "eps ≈ 1.19e-7", "max ≈ 3.4e38"), ("FP16", 1, 5, 10, "eps ≈ 9.8e-4", "max = 65504"), ("BF16", 1, 8, 7, "eps ≈ 7.8e-3", "max ≈ 3.4e38")]
+    unit = 17
+    for k, (name, s, e, m, eps, mx) in enumerate(fmts):
+        y = 85 + k * 105
+        body += text(40, y + 30, name, 20, INK, "bold", anchor="start")
+        x = 130
+        for count, color, label in [(s, GRAY, "符号"), (e, BLUE, f"指数 {e} 位"), (m, ORANGE, f"尾数 {m} 位")]:
+            w = count * unit
+            body += f'<rect x="{x}" y="{y + 6}" width="{w}" height="38" rx="4" fill="{SOFT.get(color, "#f1f5f9") if color != GRAY else "#e2e8f0"}" stroke="{color}" stroke-width="1.5"/>'
+            for i in range(1, count):
+                body += f'<line x1="{x + i * unit}" y1="{y + 6}" x2="{x + i * unit}" y2="{y + 44}" stroke="{color}" stroke-opacity="0.25"/>'
+            if count > 2:
+                body += text(x + w / 2, y + 66, label, 13.5, color)
+            x += w
+        body += mtext(x + 20, y + 22, eps, 14, ORANGE, anchor="start")
+        body += mtext(x + 20, y + 44, mx, 14, BLUE, anchor="start")
+    body += text(480, 420, "指数位决定能表示多大、多小（范围），尾数位决定相邻两个数挨得多近（精度）。", 16, GRAY)
+    body += text(480, 448, "BF16 与 FP32 的指数位相同，所以范围几乎一样；代价是尾数只有 7 位，刻度比 FP16 粗 8 倍。", 16, GRAY)
+    svg("float-formats.svg", "FP32、FP16、BF16 的位布局",
+        "FP32 有 1 位符号、8 位指数、23 位尾数；FP16 有 1、5、10 位，最大 65504，eps 约 9.8e-4；BF16 有 1、8、7 位，范围与 FP32 接近，eps 约 7.8e-3。", 470, body)
+
+
+def float_spacing():
+    d = load("tinyllm-float-spacing.json")
+    v = np.array(d["values"])
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    for name, color in [("FP32", GRAY), ("FP16", BLUE), ("BF16", ORANGE)]:
+        sp = [np.nan if s is None else s for s in d[name]["spacing"]]
+        ax.loglog(v, sp, marker="o", ms=3.5, lw=2.2, color=color, label=f"{name}（eps = {d[name]['eps']:.2g}）")
+    ax.axvline(65504, color=RED, ls="--", lw=1.4)
+    ax.text(65504 * 0.55, 3e-7, "FP16 最大值 65504\n再大就溢出为 inf", color=RED, fontsize=11, ha="right")
+    ax.annotate("1000 附近 BF16 的间距是 4：\n1000 和 1001 存成同一个数", xy=(1024, 8), xytext=(8, 40),
+                arrowprops={"arrowstyle": "->", "color": ORANGE}, color=ORANGE, fontsize=11)
+    ax.set_xlabel("数值大小")
+    ax.set_ylabel("相邻可表示数的间距")
+    ax.legend(loc="upper left", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "float-spacing.svg", "不同格式的刻度间距",
+              "相邻可表示数的间距随数值大小成比例增长：同一数量级上 BF16 的间距是 FP16 的 8 倍，FP32 远小于两者；FP16 在 65504 以上没有有限值。")
+
+
+def autocast_flow():
+    body = text(480, 40, "autocast：按算子选精度，参数仍以 FP32 保存", 23, weight="bold")
+    body += cbox(40, 90, 220, 70, GRAY) + text(150, 122, "模型参数", 17, INK, "bold") + mtext(150, 146, "FP32", 15, GRAY)
+    body += cbox(330, 75, 300, 270, BLUE, dash=True)
+    body += text(480, 100, "with torch.autocast(...)", 15, BLUE, "bold")
+    body += cbox(355, 115, 250, 58, ORANGE) + text(480, 140, "matmul / linear / conv", 15, INK, "bold") + text(480, 162, "转成 FP16 / BF16 计算", 13.5, ORANGE)
+    body += cbox(355, 190, 250, 58, TEAL) + text(480, 215, "softmax / layer_norm / 损失", 15, INK, "bold") + text(480, 237, "按 FP32 计算", 13.5, TEAL)
+    body += cbox(355, 265, 250, 58, GRAY) + text(480, 290, "其他算子", 15, INK, "bold") + text(480, 312, "跟随输入 dtype", 13.5, GRAY)
+    body += path("M262 125 H351", GRAY)
+    body += cbox(700, 160, 220, 70, PURPLE) + text(810, 192, "loss.backward()", 16, INK, "bold") + text(810, 216, "梯度累加回 FP32 参数", 13.5, PURPLE)
+    body += path("M634 220 H696", PURPLE)
+    body += cbox(700, 265, 220, 70, RED) + text(810, 297, "只有 FP16 才需要", 15, INK, "bold") + text(810, 320, "GradScaler 防梯度下溢", 13.5, RED)
+    body += text(480, 395, "具体哪些算子转低精度，由 PyTorch 对每种设备维护的列表决定，随版本可能变化；打印实际 dtype 最可靠。", 15, GRAY)
+    svg("autocast-flow.svg", "autocast 混合精度的数据流",
+        "参数保存为 FP32；在 autocast 区域内，矩阵乘法等算子转为 FP16 或 BF16 计算，softmax、layer_norm 和损失等按 FP32 计算，其余跟随输入；反向传播的梯度累加回 FP32 参数，使用 FP16 时还需要 GradScaler。", 420, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -376,6 +816,11 @@ def main():
     norm_geometry()
     pre_post_norm()
     first_run_loss()
+    # 第 3、5、6、7、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
+    for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
+               label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
+               float_formats, float_spacing, autocast_flow):
+        fn()
     print("figures written to", OUT)
 
 
