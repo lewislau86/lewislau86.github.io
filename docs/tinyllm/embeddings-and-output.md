@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 6 章](./tokenization.md)的 token ID；[第 2 章](./tensors-and-autograd.md)的矩阵乘法与梯度。
 
-**实践方式：** [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output)，固定的六项教学词表和 PyTorch，CPU 即可，不下载模型或语料。先猜形状和结果，再运行每一格核对；这里的数字只为看清机制，不代表训练好的语言能力。
+**实践方式：** [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output)（也可以直接运行 <a href="/tinyllm/code/embeddings-and-output.py" download>embeddings-and-output.py</a>），固定的六项教学词表和 PyTorch，CPU 即可，不下载模型或语料。先猜形状和结果，再运行每一格核对；这里的数字只为看清机制，不代表训练好的语言能力。
 :::
 
 [上一章](./tokenization.md)把文本变成了 token ID。假设“我 在 学习”被编码成 `[2, 3, 4]`：2、3、4 是词表的行号，它们之间的大小毫无语言含义。模型要用它们做计算，两端各缺一步：<strong>输入端</strong>要把 ID 变成向量，<strong>输出端</strong>要把向量变回“下一个 token 是谁”的分数。本章沿着这一次往返，把两端接起来，再顺带看看向量进入注意力之后变成了什么。
@@ -22,23 +22,13 @@ pageClass: tinyllm-course
 
 ## 1. 一个 ID 怎样变成一个向量
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/embeddings-and-output.py" download>embeddings-and-output.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/embeddings-and-output.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python embeddings-and-output.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/embeddings-and-output)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/embeddings-and-output.ipynb)。
+:::
+
 设词表大小为 $V$，隐藏维数为 $d$。输入嵌入表 $E$ 是形状为 $[V,d]$ 的<strong>可训练参数</strong>，ID $i$ 对应第 $i$ 行 $E_i$。先猜：一批形状为 `[2, 3]` 的 ID 查表后是什么形状？
 
-```python
-import torch
-from torch import nn
-
-torch.manual_seed(7)
-vocab = ["<pad>", "<eos>", "我", "在", "学习", "数学"]
-ids = torch.tensor([[2, 3, 4], [2, 3, 5]], dtype=torch.long)
-embedding = nn.Embedding(num_embeddings=len(vocab), embedding_dim=4)
-vectors = embedding(ids)
-
-assert embedding.weight.shape == (6, 4)
-assert vectors.shape == (2, 3, 4)
-assert torch.equal(vectors[0, 0], embedding.weight[2])
-assert torch.equal(vectors[0, 0], vectors[1, 0])
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#lookup
 
 ![六项词表的嵌入表 E 形状为 [6,4]；ID 序列 [2,3,4] 分别取出第 2、3、4 行，拼成形状为 [3,4] 的向量序列](/tinyllm/figures/embedding-lookup.svg)
 
@@ -48,10 +38,7 @@ assert torch.equal(vectors[0, 0], vectors[1, 0])
 
 查表也可以看成矩阵乘法：先构造长度为 $V$、只有第 $i$ 项为 1 的 one-hot 向量，再乘 $E$，结果就是 $E_i$。两种写法数值相同，查表省去了构造庞大 one-hot 张量的开销：
 
-```python
-one_hot = torch.nn.functional.one_hot(ids, num_classes=len(vocab)).float()
-assert torch.allclose(one_hot @ embedding.weight, vectors)
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#one-hot
 
 向量之间的关系由训练数据、目标函数和参数更新逐步形成。刚初始化时，`我` 和 `在` 的向量只是两组随机数，谈不上谁和谁更像。
 
@@ -66,15 +53,7 @@ $$
 
 $j$ 遍历词表，$z_{b,t,j}$ 是位置 $(b,t)$ 对候选 token $j$ 的 <strong>logit</strong>，即 softmax 之前的原始分数。PyTorch 的 `nn.Linear(d, V)` 把权重存为 `[V,d]`，计算等价于 `H @ W.T + b`。先猜 `logits` 的形状：
 
-```python
-output = nn.Linear(4, len(vocab), bias=True)
-logits = output(vectors)
-probabilities = logits.softmax(dim=-1)
-
-assert output.weight.shape == (6, 4)
-assert logits.shape == (2, 3, 6)
-assert torch.allclose(probabilities.sum(dim=-1), torch.ones(2, 3))
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#logits
 
 `softmax(dim=-1)` 在六个候选之间归一化，每个位置得到一个概率分布。每个位置的分布都是对<strong>下一个</strong> token 的预测。`argmax` 取最高分的 ID；实际生成还可能按温度、top-k 或 top-p 采样，见 [第 21 章](generation.md)。
 
@@ -82,34 +61,11 @@ assert torch.allclose(probabilities.sum(dim=-1), torch.ones(2, 3))
 
 用一条完整的教学序列 `我 在 学习 <eos>`：输入前三项 `[2,3,4]`，目标是后移一位的 `[3,4,1]`。看见“我”预测“在”，看见“我 在”预测“学习”，看见“我 在 学习”预测结束，和第 6 章构造的标签一样。这个训练目标在 [第 13 章](language-model-loss.md) 进一步展开。
 
-```python
-import torch.nn.functional as F
-
-input_ids = torch.tensor([[2, 3, 4]])
-target_ids = torch.tensor([[3, 4, 1]])
-model_input = embedding(input_ids)
-model_logits = output(model_input)  # 此处还没有 Transformer，只演示两端
-loss = F.cross_entropy(model_logits.reshape(-1, len(vocab)), target_ids.reshape(-1))
-
-embedding.zero_grad()
-output.zero_grad()
-loss.backward()
-assert embedding.weight.grad is not None
-assert output.weight.grad is not None
-print("loss:", round(loss.item(), 4))
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#loss
 
 `cross_entropy` 直接接收<strong>原始 logits</strong>，内部自己做 log-softmax。[PyTorch 交叉熵接口](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.cross_entropy.html)规定了输入与目标的形状。上面只做了一次反向传播，参数还没动。现在用同一批数据走一步更新，再重新计算损失：
 
-```python
-optimizer = torch.optim.SGD(list(embedding.parameters()) + list(output.parameters()), lr=0.1)
-before = loss.item()
-optimizer.step()
-after_logits = output(embedding(input_ids))
-after = F.cross_entropy(after_logits.reshape(-1, len(vocab)), target_ids.reshape(-1)).item()
-assert after < before
-print("更新前/后:", round(before, 4), round(after, 4))
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#sgd-step
 
 损失下降，说明梯度确实从输出端一路传回了嵌入表。这一步只证明了小样本上的一次更新有效；模型还没有位置编码和注意力，无法利用完整上下文。
 
@@ -134,16 +90,7 @@ $$
 
 为了让上面的等式直接成立，本节用<strong>无偏置输出层</strong>；带输出偏置的模型同样可以共享权重，偏置作为额外参数单独存在。[Press 与 Wolf 的研究](https://arxiv.org/abs/1608.05859)讨论了共享输入和输出嵌入的训练效果；它是一种设计选择，效果要在具体模型上验证。
 
-```python
-tied_embedding = nn.Embedding(len(vocab), 4)
-tied_output = nn.Linear(4, len(vocab), bias=False)
-tied_output.weight = tied_embedding.weight  # 同一个 Parameter，不是复制数值
-
-assert tied_output.weight is tied_embedding.weight
-assert tied_output.weight.data_ptr() == tied_embedding.weight.data_ptr()
-assert len({id(p) for p in list(tied_embedding.parameters()) +
-            list(tied_output.parameters())}) == 1
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#tying
 
 共享之后，第 3 节“只有出现过的行才有输入梯度”的规律就要改写：输出分类的梯度落在所有行上，并与输入查表的梯度汇合，所以没有出现在输入中的行也会获得梯度。Notebook 会用 `F.linear(hidden, embedding.weight)` 对照共享层的结果，并在反向传播后检查这一点。
 
@@ -162,20 +109,7 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 
 下面的单头、小维度实验同时检查掩码和形状；权重随机，注意力数值没有语义：
 
-```python
-import math
-
-position = nn.Embedding(3, 4)
-x = vectors[0] + position(torch.arange(3))  # [seq, d]，教学用绝对位置向量
-q_proj, k_proj, v_proj = (nn.Linear(4, 4, bias=False) for _ in range(3))
-q, k, v = q_proj(x), k_proj(x), v_proj(x)
-scores = q @ k.T / math.sqrt(4)
-future = torch.triu(torch.ones(3, 3, dtype=torch.bool), diagonal=1)
-weights = scores.masked_fill(future, float("-inf")).softmax(dim=-1)
-context = weights @ v
-assert context.shape == (3, 4)
-assert torch.allclose(weights[0, 1:], torch.zeros(2))
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#qkv
 
 注意力用 Q/K 的点积做匹配，匹配范围是<strong>本次前向中的 token 位置</strong>。K 的行数随位置数增长，V 参与加权求和；某一层的 K 是逐 token 的中间特征，没有经过文本级聚合，也没有为检索任务训练，所以它和第 7 节要讲的“文本向量”是两种东西。[第 9 章](self-attention.md) 会继续展开多头、缩放和掩码。
 
@@ -189,17 +123,7 @@ assert torch.allclose(weights[0, 1:], torch.zeros(2))
 
 用上一节的 `x` 逐个位置跑一遍，结果应该和一次性计算的 `context` 一致：
 
-```python
-cached_k, cached_v, incremental = [], [], []
-for t in range(len(x)):
-    q_t = q_proj(x[t:t+1])
-    cached_k.append(k_proj(x[t:t+1]))
-    cached_v.append(v_proj(x[t:t+1]))
-    all_k, all_v = torch.cat(cached_k), torch.cat(cached_v)
-    attention_t = (q_t @ all_k.T / math.sqrt(4)).softmax(dim=-1)
-    incremental.append(attention_t @ all_v)
-assert torch.allclose(torch.cat(incremental), context, atol=1e-6)
-```
+<<< @/public/tinyllm/code/embeddings-and-output.py#kv-cache
 
 这个等式成立，是因为因果模型中每个位置只看过去：新 token 到来时，旧位置的 K/V 保持原样。实际缓存还要处理多层、多头、批量、位置编码、padding 和服务端的内存管理；训练时通常整段并行计算，用不到逐 token 缓存。缓存是<strong>本次推理内的计算复用</strong>，生命周期随请求结束；前缀复用也要求输入与模型状态满足匹配条件。[Hugging Face KV cache 文档](https://huggingface.co/docs/transformers/kv_cache)和 [第 22 章](inference-efficiency.md)分别介绍实现策略与显存成本。
 

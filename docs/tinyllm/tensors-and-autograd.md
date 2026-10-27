@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 1 章](./first-run.md)跑通的流水线；高中导数。
 
-**实践方式：** [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd)，CPU 即可。每遇到一个形状或结果，先自己猜，再运行代码核对。
+**实践方式：** [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd)（也可以直接运行 <a href="/tinyllm/code/tensors-and-autograd.py" download>tensors-and-autograd.py</a>），CPU 即可。每遇到一个形状或结果，先自己猜，再运行代码核对。
 :::
 
 [第 1 章](./first-run.md)的训练循环里有两行我们没有解释：模型输入的 `x` 是形状为 `[32, 24]` 的一堆数字，`loss.backward()` 之后参数就知道往哪边调了。这引出两个问题：<strong>这些数字怎样排在一起？模型怎样知道哪些参数需要调整？</strong>前一个靠张量和形状回答，后一个靠自动求导回答。本章沿着一次小模型计算，把它们串起来。
@@ -24,24 +24,19 @@ pageClass: tinyllm-course
 
 ## 从一批 token 到隐藏向量
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/tensors-and-autograd.py" download>tensors-and-autograd.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/tensors-and-autograd.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python tensors-and-autograd.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/tensors-and-autograd)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tensors-and-autograd.ipynb)。
+:::
+
 假设有两句话，每句话都取三个 token。用整数给它们编号：
 
-```python
-import torch
-
-token_ids = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.long)
-print(token_ids.shape)  # torch.Size([2, 3])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#token-ids
 
 外层有两行，表示两句话；每行有三个数，表示三个 token。所以形状 `[2, 3]` 的两个位置分别是<strong>样本数</strong>和<strong>每条样本的 token 数</strong>，常记作 `[batch, seq]`。形状是张量的“尺寸说明”；轴名是我们根据用途给它的解释，PyTorch 并不知道第二轴一定是句子长度。
 
 token 编号只是索引，不能直接告诉模型“这个词有什么特征”。假设后续步骤把每个编号变成四个浮点数，那么一批隐藏向量就有三个轴：
 
-```python
-hidden = torch.arange(24, dtype=torch.float32).reshape(2, 3, 4)
-print(hidden.shape)       # torch.Size([2, 3, 4])
-print(hidden[0, 1, :])    # tensor([4., 5., 6., 7.])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#hidden
 
 `[2, 3, 4]` 读作：<strong>2 条样本 × 每条 3 个 token × 每个 token 4 个特征</strong>，简写为 `[batch, seq, hidden]`。`hidden[0, 1, :]` 选中第一条样本的第二个 token；最后的 `:` 表示取它的全部四个特征。索引从 0 开始。`torch.arange(24)` 只是为演示形状填入 0 到 23，真实隐藏向量来自模型计算。
 
@@ -53,10 +48,7 @@ print(hidden[0, 1, :])    # tensor([4., 5., 6., 7.])
 
 原来的 `[2, 3, 4]` 一共有 $2\times3\times4=24$ 个数。`reshape(2, 12)` 把每条样本的 `3×4` 个位置合在一轴，数字总数不变：
 
-```python
-flat = hidden.reshape(2, 12)
-print(flat.shape)  # torch.Size([2, 12])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#reshape
 
 `transpose` 做的是另一件事：<strong>交换轴</strong>。`hidden.transpose(1, 2)` 得到 `[2, 4, 3]`。原来第二轴代表 token、第三轴代表特征；交换后，第二轴代表特征、第三轴代表 token。不能仅凭数字总数相同，就把 `reshape` 和 `transpose` 当成同一种操作。
 
@@ -66,12 +58,7 @@ print(flat.shape)  # torch.Size([2, 12])
 
 假设希望四个特征分别加上 1、2、3、4。不必写循环逐个处理 token，可以把长度为 4 的向量加到整个 `hidden` 上：
 
-```python
-bias = torch.tensor([1., 2., 3., 4.])
-shifted = hidden + bias
-print(shifted.shape)       # torch.Size([2, 3, 4])
-print(shifted[0, 1, :])    # tensor([5., 7., 9., 11.])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#broadcast
 
 `bias` 对准最后一轴的四个特征；两条样本中的每个 token 都加同一组数。这叫<strong>广播</strong>。判断能否广播时，从形状最右边开始比较：两轴长度相等，或其中一轴为 1，才可以配对；缺少的左侧轴可看作长度为 1。`[2, 3, 4] + [4]` 可以，`[2, 3, 4] + [3]` 不可以，因为最后一轴的 4 和 3 对不上。[PyTorch 广播规则](https://docs.pytorch.org/docs/stable/notes/broadcasting.html)给出了完整定义。
 
@@ -79,22 +66,13 @@ print(shifted[0, 1, :])    # tensor([5., 7., 9., 11.])
 
 加法和 `*` 都是逐位置运算。如果要把一个 token 的<strong>四个旧特征组合成六个新特征</strong>，则要用矩阵乘法。设权重形状为 `[4, 6]`：
 
-```python
-weight = torch.ones(4, 6)
-out = hidden @ weight
-print(out.shape)          # torch.Size([2, 3, 6])
-print(out[0, 1, :])       # tensor([22., 22., 22., 22., 22., 22.])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#matmul
 
 `@` 在每个 token 上做一遍“长度 4 的向量 × 4 行 6 列的矩阵”。前两轴仍是 2 和 3，最后一轴变成 6。比如 `hidden[0, 1, :]` 是 `[4, 5, 6, 7]`，这里权重全为 1，因此六个输出都是 $4+5+6+7=22$。真实权重会在训练中改变，让模型学习不同的特征组合。
 
 PyTorch 用 `nn.Linear(4, 6)` 封装这类计算。它内部存储的 `weight` 是 `[6, 4]`，计算时会转置权重，再加一个长度为 6 的偏置。因此输入 `[2, 3, 4]`，输出仍是 `[2, 3, 6]`：
 
-```python
-linear = torch.nn.Linear(4, 6)
-print(linear.weight.shape)   # torch.Size([6, 4])
-print(linear(hidden).shape)  # torch.Size([2, 3, 6])
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#linear
 
 到这里，张量已经能从输入走到输出。但权重一开始并不知道怎样产生“好”的输出。为了看清训练的原理，我们暂时把许多权重缩成<strong>一个参数</strong>。
 
@@ -110,26 +88,7 @@ $$
 
 我们先让 PyTorch 自己回答“梯度是多少”，暂时不写求导公式。把 $w$ 标记为需要学习的参数，再照平常写出预测和损失：
 
-```python
-w = torch.nn.Parameter(torch.tensor(2.0))
-x = torch.tensor(3.0)
-target = torch.tensor(1.0)
-
-prediction = w * x
-loss = (prediction - target).square()
-
-print(w.requires_grad)           # True：需要计算 w 的梯度
-print(x.requires_grad)           # False：不需要计算输入 x 的梯度
-print(w.grad)                    # None：此时还没有反向计算
-print(prediction.grad_fn is not None)  # True：乘法被记录下来
-print(loss.grad_fn is not None)        # True：损失也连在计算图上
-
-loss.backward()
-
-print(prediction.item())  # 6.0
-print(loss.item())        # 25.0
-print(w.grad.item())      # 30.0
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#autograd
 
 这段代码没有写任何导数公式，却得到了 30。发生了什么？前向计算时，PyTorch 一面算数值，一面把依赖关系记下来：`w → 乘以 x → prediction → 减去 target → 平方 → loss`。`grad_fn` 不为空，说明结果知道自己由什么运算产生。调用 `loss.backward()` 后，自动求导从损失沿这些运算往回走，用各运算自带的求导规则和链式法则算到 `w`；结果保存在 `w.grad`。`x` 没有要求梯度，所以它的 `.grad` 仍是 `None`。这条从本次前向计算建立的关系叫<strong>计算图</strong>；下一次重新前向，会建立新的图。
 
@@ -147,15 +106,7 @@ $$
 
 模型也不会只有一个参数。下面给预测再加一个可学习偏置 $b$。我们没有手写 $b$ 的求导规则，`backward()` 仍会分别把梯度交给两个参数：
 
-```python
-w2 = torch.nn.Parameter(torch.tensor(2.0))
-b2 = torch.nn.Parameter(torch.tensor(0.0))
-prediction2 = w2 * x + b2
-loss2 = (prediction2 - target).square()
-loss2.backward()
-print(w2.grad.item(), b2.grad.item())  # 30.0 10.0
-print(x.grad)                           # None
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#two-params
 
 两条路径都通向同一个损失：$w_2$ 经过乘法和加法，$b_2$ 经过加法。自动求导会沿各自的路径回传。只看结果也能理解差别：在当前点稍微改变 $b_2$，预测值等量改变，因此它的梯度是 10；稍微改变 $w_2$，预测值会改变输入 $x=3$ 倍，所以梯度是 30。参数一多，自动求导的价值就更明显了。`loss` 是标量，因此能直接调用 `backward()`；若结果是向量，通常先汇总成标量损失。[PyTorch 自动求导入门](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)展示了相同的计算图机制。
 
@@ -167,25 +118,13 @@ print(x.grad)                           # None
 
 图里的橙色虚线是 $w=2$ 处的切线，斜率就是梯度 30。沿着让损失变小的方向（这里是向左）走一小步，就从 25 降到了 16.81。学习率决定这一步迈多大：太小走得慢，太大可能直接跨过谷底。
 
-```python
-with torch.no_grad():
-    w -= 0.01 * w.grad
-
-new_loss = (w * x - target).square()
-print(w.item())         # 约 1.7
-print(new_loss.item())  # 约 16.81
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#update
 
 `torch.no_grad()` 使这次手动更新不进入求导记录。真实训练通常用优化器执行参数更新；这里手动写出，是为了看清梯度的作用。
 
 还有一个容易踩的坑：`backward()` 会把新梯度<strong>加到</strong> `.grad` 上。如果在更新前重新前向计算并反传同样的损失，却没有清空旧梯度，30 会累加为 60。准备下一步训练时，先清空：
 
-```python
-w.grad = None
-loss = (w * x - target).square()
-loss.backward()
-print(w.grad.item())  # 对应更新后的 w，约为 24.6
-```
+<<< @/public/tinyllm/code/tensors-and-autograd.py#zero-grad
 
 这里得到 $2\times(1.7\times3-1)\times3=24.6$，因为参数已经改变。如果想观察 <strong>30 变 60</strong>，应在更新前连续做两次独立前向与反传。实际训练循环通常在每步开头调用 `optimizer.zero_grad(set_to_none=True)`；有意累积多个小批次的梯度是 [第 18 章](gradient-stability.md) 要讲的策略。
 

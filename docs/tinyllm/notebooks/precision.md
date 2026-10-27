@@ -1,5 +1,5 @@
 ---
-title: "第 17 章 · 数值精度与混合精度（notebook 在线查看）"
+title: "第 17 章：数值精度与混合精度（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -10,15 +10,21 @@ pageClass: tinyllm-course
 <!-- 本页由 scripts/build-tinyllm-code.py 根据 notebook 自动生成，请勿手改。 -->
 
 ::: tip 这是 notebook 的只读预览
-[返回教案](/tinyllm/precision) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/precision.ipynb) · <a href="/tinyllm/notebooks/precision.ipynb" download>下载 .ipynb</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/precision.ipynb)
+[返回教案](/tinyllm/precision) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/precision.ipynb) · <a href="/tinyllm/notebooks/precision.ipynb" download>下载 .ipynb</a> · <a href="/tinyllm/code/precision.py" download>下载 .py</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/precision.ipynb)
 
 下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。
 :::
 
 ::: v-pre
-# 第 17 章 · 数值精度与混合精度
+# 第 17 章：数值精度与混合精度
 
-对应 [本章教案](https://lewislau86.github.io/tinyllm/precision)。按顺序运行；基础数值实验只需 CPU；PyTorch 的设备计时在 CUDA/MPS 可用时运行，MLX 部分需要额外安装。读者只需知道张量、矩阵乘法和函数调用。本章遵循 **What → How → Do**：先看浮点数能存什么，再看运算路径，最后比较同一模型的结果。
+配套教案：https://lewislau86.github.io/tinyllm/precision
+
+从上到下运行即可（`python precision.py`）。基础数值实验只需 CPU 和 PyTorch；
+CUDA/MPS 的计时实验和 MLX 实验是可选的，环境里没有时会打印提示并跳过。
+这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
+本章遵循 **What → How → Do**：先看浮点数能存什么，再看运算路径，最后比较同一模型的结果。
 :::
 
 ::: v-pre
@@ -40,9 +46,44 @@ print('基础数值实验在 CPU 运行；设备与 MLX 可选实验在后面')
 ```
 
 ```text
-PyTorch: 2.11.0
-CUDA 可用: False MPS 可用: True
+PyTorch: 2.14.1+cpu
+CUDA 可用: False MPS 可用: False
 基础数值实验在 CPU 运行；设备与 MLX 可选实验在后面
+```
+
+::: v-pre
+## 问题：1001 去哪儿了？
+
+先猜下面三行的输出。
+:::
+
+<p class="nb-label">In [2]</p>
+
+```python
+print(torch.tensor([1000., 1001.]).to(torch.bfloat16))
+print(torch.tensor([1000., 1001.]).to(torch.float16))
+print(torch.tensor(300., dtype=torch.float16).square())
+```
+
+```text
+tensor([1000., 1000.], dtype=torch.bfloat16)
+tensor([1000., 1001.], dtype=torch.float16)
+tensor(inf, dtype=torch.float16)
+```
+
+::: v-pre
+同样占 16 位，BF16 把 1000 和 1001 存成了同一个数（刻度太粗），FP16 却连 $300^2=90000$ 都存不下（范围太窄）。
+换成 BF16 再平方：范围够了，但结果会舍入到最近的刻度。
+:::
+
+<p class="nb-label">In [3]</p>
+
+```python
+print(torch.tensor(300., dtype=torch.bfloat16).square())  # tensor(90112., dtype=torch.bfloat16)
+```
+
+```text
+tensor(90112., dtype=torch.bfloat16)
 ```
 
 ::: v-pre
@@ -51,12 +92,12 @@ CUDA 可用: False MPS 可用: True
 `torch.finfo(dtype).eps`：1 附近相邻两个可表示数的间隔；`tiny`：最小**正规**正数，不一定是最小非零数；`max`：最大有限数。这里的 `eps` 与归一化公式的防零参数不同。
 :::
 
-<p class="nb-label">In [2]</p>
+<p class="nb-label">In [4]</p>
 
 ```python
 for dtype in (torch.float32, torch.float16, torch.bfloat16):
-    f = torch.finfo(dtype)
-    print(f'{str(dtype):15s} bits={f.bits:2d}  eps={f.eps:.9g}  tiny={f.tiny:.9g}  max={f.max:.9g}')
+    info = torch.finfo(dtype)
+    print(dtype, info.eps, info.tiny, info.max)
 
 n = 1_000_000
 for dtype in (torch.float32, torch.float16, torch.bfloat16):
@@ -64,9 +105,9 @@ for dtype in (torch.float32, torch.float16, torch.bfloat16):
 ```
 
 ```text
-torch.float32   bits=32  eps=1.1920929e-07  tiny=1.17549435e-38  max=3.40282347e+38
-torch.float16   bits=16  eps=0.0009765625  tiny=6.10351562e-05  max=65504
-torch.bfloat16  bits=16  eps=0.0078125  tiny=1.17549435e-38  max=3.38953139e+38
+torch.float32 1.1920928955078125e-07 1.1754943508222875e-38 3.4028234663852886e+38
+torch.float16 0.0009765625 6.103515625e-05 65504.0
+torch.bfloat16 0.0078125 1.1754943508222875e-38 3.3895313892515355e+38
 torch.float32 一百万个元素的原始张量约占 4.0 MB
 torch.float16 一百万个元素的原始张量约占 2.0 MB
 torch.bfloat16 一百万个元素的原始张量约占 2.0 MB
@@ -82,7 +123,7 @@ torch.bfloat16 一百万个元素的原始张量约占 2.0 MB
 先在 FP32 里创建相邻整数，再转成低精度；最后转回 FP32 只是为了容易打印，不能恢复原数。
 :::
 
-<p class="nb-label">In [3]</p>
+<p class="nb-label">In [5]</p>
 
 ```python
 near_1000 = torch.tensor([999., 1000., 1001., 1002., 1003.])
@@ -107,7 +148,7 @@ torch.bfloat16 存储结果: [1000.0, 1000.0, 1000.0, 1000.0, 1004.0] 可区分�
 FP16 能存下 1000，却存不下它的平方。很小的数也可能在转换或运算时变为 0。先转 FP32 再做后续运算，只有在信息仍存在时才有用。
 :::
 
-<p class="nb-label">In [4]</p>
+<p class="nb-label">In [6]</p>
 
 ```python
 big = torch.tensor([1000.], dtype=torch.float16)
@@ -137,7 +178,7 @@ torch.bfloat16 小数存储后: [1.0011717677116394e-08, 1.0011717677116394e-07,
 直接对大 logits 求 `exp` 会溢出；先减最大值再求指数，softmax 的数学结果不变。`torch.softmax` 是实际应调用的函数。
 :::
 
-<p class="nb-label">In [5]</p>
+<p class="nb-label">In [7]</p>
 
 ```python
 logits = torch.tensor([1000., 1001., 1002.])
@@ -165,7 +206,7 @@ torch.softmax: tensor([0.0900, 0.2447, 0.6652])
 用 FP64 结果作较高精度的**数值参照**。分别打印平均/最大绝对误差与非有限值数量；参考值接近零时，单看相对误差容易误导。这里的输入量级较温和，具体误差随设备和内核变化。
 :::
 
-<p class="nb-label">In [6]</p>
+<p class="nb-label">In [8]</p>
 
 ```python
 a = torch.randn(64, 64)
@@ -181,9 +222,9 @@ for dtype in (torch.float32, torch.float16, torch.bfloat16):
 ```
 
 ```text
-torch.float32 输出 dtype: torch.float32 平均绝对误差: 8.13874e-07 最大绝对误差: 8.71358e-06 非有限值: 0
-torch.float16 输出 dtype: torch.float16 平均绝对误差: 0.00227059 最大绝对误差: 0.0163647 非有限值: 0
-torch.bfloat16 输出 dtype: torch.bfloat16 平均绝对误差: 0.0182221 最大绝对误差: 0.115183 非有限值: 0
+torch.float32 输出 dtype: torch.float32 平均绝对误差: 8.36636e-07 最大绝对误差: 9.89148e-06 非有限值: 0
+torch.float16 输出 dtype: torch.float16 平均绝对误差: 0.00226702 最大绝对误差: 0.0163676 非有限值: 0
+torch.bfloat16 输出 dtype: torch.bfloat16 平均绝对误差: 0.018222 最大绝对误差: 0.115184 非有限值: 0
 ```
 
 ::: v-pre
@@ -191,12 +232,38 @@ torch.bfloat16 输出 dtype: torch.bfloat16 平均绝对误差: 0.0182221 最大
 :::
 
 ::: v-pre
+## How 5. `autocast` 的基本用法
+
+参数保持 FP32，输入也从 FP32 开始；进入 `autocast` 区域后由框架按算子选择 dtype。
+:::
+
+<p class="nb-label">In [9]</p>
+
+```python
+# model 保持 FP32 参数；输入也从 FP32 开始。
+# CUDA/MPS 上先试 FP16；CPU 示例使用 BF16。
+device = torch.device("cuda" if torch.cuda.is_available() else
+                      "mps" if torch.backends.mps.is_available() else "cpu")
+amp_dtype = torch.float16 if device.type in ("cuda", "mps") else torch.bfloat16
+model = torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.LayerNorm(4))
+x = torch.randn(2, 4)
+model, x = model.to(device), x.to(device)
+with torch.autocast(device_type=device.type, dtype=amp_dtype):
+    y = model(x)
+print(y.dtype)  # 这是最终输出 dtype，不代表所有内部算子的 dtype
+```
+
+```text
+torch.bfloat16
+```
+
+::: v-pre
 ## Do 6. 同一小模型的 FP32 与 autocast
 
 模型权重和输入从 FP32 开始。CUDA 使用 FP16 autocast，CPU 使用 BF16 autocast；`autocast` 按算子和设备选择 dtype，不等于直接把整个模型调用 `.half()`。观察线性层、激活函数、归一化和最终输出各自的 dtype，并与 FP32 输出比较。
 :::
 
-<p class="nb-label">In [7]</p>
+<p class="nb-label">In [10]</p>
 
 ```python
 class TinyBlock(nn.Module):
@@ -230,13 +297,13 @@ print('最终输出最大绝对差:', (fp32_stages[-1] - amp_stages[-1].float())
 ```
 
 ```text
-设备: mps autocast 目标 dtype: torch.float16
+设备: cpu autocast 目标 dtype: torch.bfloat16
 参数存储 dtype: torch.float32 输入 dtype: torch.float32
-fc1 FP32 输出: torch.float32 autocast 输出: torch.float16
-GELU FP32 输出: torch.float32 autocast 输出: torch.float16
-fc2 FP32 输出: torch.float32 autocast 输出: torch.float16
-LayerNorm FP32 输出: torch.float32 autocast 输出: torch.float32
-最终输出最大绝对差: 0.0013904571533203125
+fc1 FP32 输出: torch.float32 autocast 输出: torch.bfloat16
+GELU FP32 输出: torch.float32 autocast 输出: torch.bfloat16
+fc2 FP32 输出: torch.float32 autocast 输出: torch.bfloat16
+LayerNorm FP32 输出: torch.float32 autocast 输出: torch.bfloat16
+最终输出最大绝对差: 0.015501260757446289
 ```
 
 ::: v-pre
@@ -249,7 +316,7 @@ LayerNorm FP32 输出: torch.float32 autocast 输出: torch.float32
 CUDA 与 MPS 均可计时，并在测量前后同步。CPU 跳过设备性能测试。**MPS 的 autocast 算子覆盖与 CUDA 不同**，实验打印实际输出 dtype；若 dtype 没变，不应把两组时间解释成 FP32 对 FP16。CUDA 用 `max_memory_allocated`，MPS 用 `driver_allocated_memory` 记录测得的驱动分配量；两者统计口径不同，不能跨设备直接比较。
 :::
 
-<p class="nb-label">In [8]</p>
+<p class="nb-label">In [11]</p>
 
 ```python
 if device.type == 'cpu':
@@ -295,8 +362,7 @@ else:
 ```
 
 ```text
-mps FP32 每次前向 ms: 0.209 MPS 驱动已分配 MB（当前值） 17.32 输出 dtype: torch.float32
-mps autocast FP16 每次前向 ms: 0.614 MPS 驱动已分配 MB（当前值） 17.56 输出 dtype: torch.float32
+无 CUDA/MPS：跳过加速设备的计时与显存实验。
 ```
 
 ::: v-pre
@@ -309,7 +375,7 @@ mps autocast FP16 每次前向 ms: 0.614 MPS 驱动已分配 MB（当前值） 1
 MLX 与 PyTorch MPS 是不同框架。这里用 **MLX 原生数组**复现“存储舍入、矩阵乘法误差、归一化后尺度”三个关键现象，能安装 MLX 时还测一次 MLX GPU 的前向时间。`mlx.core` 采用惰性求值，所以计时前后用 `mx.eval` 强制完成计算。无法导入 MLX 时给出安装提示，不影响前面的 PyTorch 实验。MLX 示例采用单独的随机数据，不与 PyTorch 的时间或误差作严格横向排名。
 :::
 
-<p class="nb-label">In [9]</p>
+<p class="nb-label">In [12]</p>
 
 ```python
 try:
@@ -326,7 +392,7 @@ except ImportError:
 未安装 MLX；Apple silicon 原生 Python 可运行 pip install mlx 后重试本节。
 ```
 
-<p class="nb-label">In [10]</p>
+<p class="nb-label">In [13]</p>
 
 ```python
 if mlx_available:
@@ -359,7 +425,7 @@ if mlx_available:
 **读输出：**MLX 也能显示 FP16/BF16 在 1000 附近的刻度差异。这里检查矩阵乘法是否有限，不把不同框架、设备或随机输入的误差数字直接当作性能排行。MLX 的原生 `LayerNorm` 与 PyTorch 的 `nn.LayerNorm` 作用相近，但两套实现的内核、默认设备和 API 不应混用。
 :::
 
-<p class="nb-label">In [11]</p>
+<p class="nb-label">In [14]</p>
 
 ```python
 if mlx_available and mx.device_count(mx.gpu) > 0:

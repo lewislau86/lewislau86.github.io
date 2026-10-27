@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的梯度与 `backward()`；[第 1 章](./first-run.md)的训练循环。
 
-**实践方式：** [optimizers.ipynb](/tinyllm/notebooks/optimizers)，固定数据，CPU 即可。
+**实践方式：** [optimizers.ipynb](/tinyllm/notebooks/optimizers)（也可以直接运行 <a href="/tinyllm/code/optimizers.py" download>optimizers.py</a>），固定数据，CPU 即可。
 :::
 
 <TinyLLMMap active="optimizers" />
@@ -34,6 +34,10 @@ pageClass: tinyllm-course
 
 ## 1. 从手动更新到 `optimizer.step()`
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/optimizers.py" download>optimizers.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/optimizers.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python optimizers.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/optimizers)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/optimizers.ipynb)。
+:::
+
 设模型只有一个参数 $w$，损失为 $L(w)$。第 2 章的手动更新写成公式是：
 
 $$
@@ -42,37 +46,13 @@ $$
 
 $\eta$ 是学习率，决定步子大小；$g_t$ 是当前梯度。梯度为正就把参数减小，为负就增大。下面让 $w$ 学会把 $x=2$ 映射到 $t=6$，理想值是 $w=3$。运行之前先猜：学习率 0.1 时，$w$ 会单调逼近 3，还是在 3 两边跳？
 
-```python
-import torch
-
-# 让 w 学会把 x=2 映射到 t=6：理想 w=3
-x = torch.tensor(2.0)
-target = torch.tensor(6.0)
-w = torch.tensor(0.0)
-learning_rate = 0.1
-
-for step in range(8):
-    prediction = w * x
-    loss = (prediction - target).square()
-    grad = 2 * (prediction - target) * x  # 这一行也可以由 autograd 得到
-    w = w - learning_rate * grad
-    print(step, round(w.item(), 4), round(loss.item(), 4))
-```
+<<< @/public/tinyllm/code/optimizers.py#manual-update
 
 答案是单调逼近。把梯度 $8w-24$ 代进去，更新变成 $w \leftarrow 0.2\,w+2.4$：每一步离 3 的距离缩小到原来的 0.2 倍。学习率改成 0.2，系数变成 $-0.6$，$w$ 会在 3 两边跳着收敛；改成 0.3，系数是 $-1.4$，越跳越远。
 
 真实训练有数百万个参数、随机小批量和复杂的计算图，这部分交给 `torch.optim`。基本用法只有三步：
 
-```python
-model = torch.nn.Linear(1, 1)
-optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
-
-prediction = model(torch.tensor([[2.0]]))
-loss = (prediction - torch.tensor([[6.0]])).square().mean()
-optimizer.zero_grad()  # 清除上一步留下的梯度
-loss.backward()        # 计算本步梯度
-optimizer.step()       # 按 SGD 规则更新参数
-```
+<<< @/public/tinyllm/code/optimizers.py#optim-basics
 
 三步的顺序是固定的：`backward()` 写入新梯度，`step()` 读取它来改参数，`zero_grad()` 在下一步开始前清掉旧梯度，否则新旧梯度会相加。
 
@@ -96,21 +76,11 @@ $$
 
 $\beta$ 越接近 1，记忆越长。连续朝同一方向的梯度会叠加，来回变化的分量则部分抵消。回到开头的图：$a$ 方向的梯度一直指向原点，速度越积越大；$b$ 方向的梯度来回变号，互相抵消。代价是惯性也会把参数带过谷底。
 
-```python
-optimizer = torch.optim.SGD(
-    model.parameters(),
-    lr=0.01,
-    momentum=0.9,
-)
-```
+<<< @/public/tinyllm/code/optimizers.py#momentum
 
 速度 $v_t$ 是<strong>优化器状态</strong>，保存在优化器里，`model.parameters()` 里没有它：
 
-```python
-state = optimizer.state_dict()
-print(state.keys())  # state 和 param_groups
-# state 中会出现 momentum_buffer
-```
+<<< @/public/tinyllm/code/optimizers.py#momentum-state
 
 第 7 节讲检查点时会用到这一点。
 
@@ -166,14 +136,7 @@ $$
 
 默认的 `betas=(0.9, 0.999)` 就是这两个指数平均的记忆系数。Adam 在训练初期通常比较省心，学习率仍然要调，损失和梯度仍然要看。
 
-```python
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=3e-4,
-    betas=(0.9, 0.999),
-    eps=1e-8,
-)
-```
+<<< @/public/tinyllm/code/optimizers.py#adam
 
 ## 5. AdamW：权重衰减放在哪里
 
@@ -193,13 +156,7 @@ $$
 
 读图时跟着 $\lambda w$ 这一项走。左边（Adam + L2）它先混进梯度 $g=\nabla L+\lambda w$，然后和梯度一起进入 $m$、$v$，最后被除以 $\sqrt{v}$：梯度一直很大的参数，衰减反而被压小。右边（AdamW）梯度只有 $\nabla L$，衰减 $\eta\lambda w$ 绕过 $m$、$v$，对每个参数按同样的比例生效。在普通 SGD 中两种写法很接近；在 Adam 中它们的效果不同。AdamW 采用右边的方式，是语言模型常用的默认选择：
 
-```python
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=3e-4,
-    weight_decay=0.1,
-)
-```
+<<< @/public/tinyllm/code/optimizers.py#adamw
 
 `weight_decay` 是优化器更新的一部分。[PyTorch AdamW 文档](https://docs.pytorch.org/docs/stable/generated/torch.optim.AdamW.html)给出了完整算法；本章 notebook 会在一个标量参数上把 Adam + L2 与 AdamW 的单步结果直接打印出来。
 
@@ -207,42 +164,17 @@ optimizer = torch.optim.AdamW(
 
 Transformer 常见的做法是：矩阵权重使用 weight decay，偏置和归一化的缩放参数不衰减。实现方式是把参数拆成多个 parameter group：
 
-```python
-weight_decay, no_decay = [], []
-for name, parameter in model.named_parameters():
-    if not parameter.requires_grad:
-        continue
-    if parameter.ndim == 1 or name.endswith("bias"):
-        no_decay.append(parameter)
-    else:
-        weight_decay.append(parameter)
-
-optimizer = torch.optim.AdamW([
-    {"params": weight_decay, "weight_decay": 0.1},
-    {"params": no_decay, "weight_decay": 0.0},
-], lr=3e-4)
-```
+<<< @/public/tinyllm/code/optimizers.py#param-groups
 
 `parameter.ndim == 1` 是常见的工程规则，用来覆盖 LayerNorm/RMSNorm 的缩放参数（[第 4 章](./normalization.md)的 $\gamma$）；具体项目也可能采用别的约定。建好之后检查一遍，确认参数没有漏掉或重复：
 
-```python
-all_ids = [id(p) for group in optimizer.param_groups for p in group["params"]]
-assert len(all_ids) == len(set(all_ids))
-print([group["weight_decay"] for group in optimizer.param_groups])
-```
+<<< @/public/tinyllm/code/optimizers.py#check-groups
 
 ## 7. 优化器状态与检查点
 
 模型参数描述“模型现在是什么样”，优化器状态描述“优化器记得什么”。SGD 带 Momentum 时有动量缓冲区；Adam/AdamW 为每个参数保存 `exp_avg`（即 $m$）、`exp_avg_sq`（即 $v$）和步数。训练中断后要沿原来的轨迹继续，就把两者一起保存：
 
-```python
-checkpoint = {
-    "model": model.state_dict(),
-    "optimizer": optimizer.state_dict(),
-    "step": 1200,
-}
-torch.save(checkpoint, "tinyllm_step1200.pt")
-```
+<<< @/public/tinyllm/code/optimizers.py#checkpoint
 
 恢复时先建立<strong>相同结构和参数组</strong>的模型与优化器，再加载两份状态。只加载模型时，模型照样能前向，但 Adam 的动量和历史尺度都从 0 重新开始，前几步的更新会和中断前不同。
 
@@ -256,43 +188,8 @@ Adam/AdamW 为每个参数保存两份同形状的移动平均，优化器状态
 
 下面让一个两层 tanh 小网络拟合固定的正弦数据。四个优化器从同一份初始参数开始，训练步数、批量和学习率都写在代码里。运行之前先猜：谁下降得最快？AdamW 和 Adam 的曲线会差多少？
 
-```python
-import copy
-import math
-import torch
-
-torch.manual_seed(7)
-x = torch.linspace(-math.pi, math.pi, 128).unsqueeze(1)
-y = torch.sin(x)
-base = torch.nn.Sequential(
-    torch.nn.Linear(1, 16),
-    torch.nn.Tanh(),
-    torch.nn.Linear(16, 1),
-)
-initial = copy.deepcopy(base.state_dict())
-
-optimizers = {
-    "SGD": lambda parameters: torch.optim.SGD(parameters, lr=0.05),
-    "Momentum": lambda parameters: torch.optim.SGD(parameters, lr=0.05, momentum=0.9),
-    "Adam": lambda parameters: torch.optim.Adam(parameters, lr=0.01),
-    "AdamW": lambda parameters: torch.optim.AdamW(parameters, lr=0.01, weight_decay=1e-3),
-}
-results = {}
-for name, make_optimizer in optimizers.items():
-    model = copy.deepcopy(base)
-    model.load_state_dict(initial)
-    optimizer = make_optimizer(model.parameters())
-    history = []
-    for step in range(300):
-        prediction = model(x)
-        loss = (prediction - y).square().mean()
-        optimizer.zero_grad(set_to_none=True)
-        loss.backward()
-        optimizer.step()
-        history.append(loss.item())
-    results[name] = history
-    print(name, round(history[0], 4), "->", round(history[-1], 6))
-```
+<<< @/public/tinyllm/code/optimizers.py#fixed-data
+<<< @/public/tinyllm/code/optimizers.py#compare
 
 ![同一初始化下 300 步的训练损失（对数坐标）：四条曲线都从 0.735 开始，SGD 降到 0.0256，Momentum 降到 0.0017，Adam 与 AdamW 都降到 0.0070，两条曲线几乎重合](/tinyllm/figures/optimizer-curves.svg)
 
@@ -300,19 +197,7 @@ for name, make_optimizer in optimizers.items():
 
 如果环境中有 `plotly`，可以画出交互式曲线：
 
-```python
-import plotly.graph_objects as go
-figure = go.Figure()
-for name, history in results.items():
-    figure.add_trace(go.Scatter(y=history, mode="lines", name=name))
-figure.update_layout(
-    title="四种优化器的训练损失",
-    xaxis_title="step",
-    yaxis_title="mean squared error",
-    yaxis_type="log",
-)
-figure.show()
-```
+<<< @/public/tinyllm/code/optimizers.py#plot
 
 ## 10. 把小实验接回 TinyLLM
 
@@ -331,20 +216,7 @@ figure.show()
 
 小模型可以从 AdamW 开始：学习率在 `3e-4` 到 `1e-3` 的量级试验，`weight_decay` 比较 `0.01` 和 `0.1`。最终取值由 batch size、模型宽度、数据量、训练步数和验证损失决定。每次只改一个因素，并记录配置、训练步数和验证结果。
 
-```python
-# 这里假设前面的参数分组已经得到两个列表。
-decay_parameters = weight_decay
-no_decay_parameters = no_decay
-optimizer = torch.optim.AdamW(
-    [
-        {"params": decay_parameters, "weight_decay": 0.1},
-        {"params": no_decay_parameters, "weight_decay": 0.0},
-    ],
-    lr=3e-4,
-    betas=(0.9, 0.95),
-    eps=1e-8,
-)
-```
+<<< @/public/tinyllm/code/optimizers.py#tinyllm-config
 
 `betas=(0.9, 0.95)` 是一些语言模型配置会尝试的设置，可以作为一个候选。调参前先用固定小数据过拟合一个 batch，确认训练循环正确，再扩大数据；这样“优化器选得不好”和“模型或数据管线有 bug”这两类问题就能分开排查。
 

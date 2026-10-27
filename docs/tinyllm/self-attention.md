@@ -39,6 +39,7 @@ $$
 归一化后，点积就是两个单位向量的夹角余弦，取值在 $[-1,1]$，再由 $g$ 决定整体幅度。
 
 ```python
+# 示意代码，不能单独运行；可运行的 QK Norm 实验见 normalization.py
 # q, k, v: [batch, heads, seq, head_dim]；g 是模型里注册的可学习标量
 q_unit = F.normalize(q, p=2, dim=-1, eps=1e-6)   # 一定写 dim=-1：每个头的 head_dim
 k_unit = F.normalize(k, p=2, dim=-1, eps=1e-6)

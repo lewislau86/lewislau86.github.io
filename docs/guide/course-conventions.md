@@ -141,7 +141,7 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 
 **原则：代码只有一个来源，文章只引用、不手抄。** 正文里手抄的代码会缺 `import`、依赖前文变量，改了 notebook 也没人会发现两边对不上。
 
-- TinyLLM：每章一个能独立运行的完整脚本，放在 `docs/public/tinyllm/code/<文件名>.py`，与正文同名，自带全部 `import`，`python <文件>` 从头跑到尾能复现正文中的所有输出。（第 1 章已按此完成，其余章节逐步迁移。）
+- TinyLLM：每章一个能独立运行的完整脚本，放在 `docs/public/tinyllm/code/<文件名>.py`，与正文同名，自带全部 `import`，`python <文件>` 从头跑到尾能复现正文中的所有输出。（已成文的 9 章都已按此迁移。）
 - 正文中的代码块用 VitePress 片段导入。在脚本里圈出片段：
 
   ```python

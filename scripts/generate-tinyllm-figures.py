@@ -763,15 +763,15 @@ def autocast_flow():
     body += cbox(330, 75, 300, 270, BLUE, dash=True)
     body += text(480, 100, "with torch.autocast(...)", 15, BLUE, "bold")
     body += cbox(355, 115, 250, 58, ORANGE) + text(480, 140, "matmul / linear / conv", 15, INK, "bold") + text(480, 162, "转成 FP16 / BF16 计算", 13.5, ORANGE)
-    body += cbox(355, 190, 250, 58, TEAL) + text(480, 215, "softmax / layer_norm / 损失", 15, INK, "bold") + text(480, 237, "按 FP32 计算", 13.5, TEAL)
+    body += cbox(355, 190, 250, 58, TEAL) + text(480, 215, "softmax / layer_norm / 损失", 15, INK, "bold") + text(480, 237, "CUDA 上按 FP32 计算", 13.5, TEAL)
     body += cbox(355, 265, 250, 58, GRAY) + text(480, 290, "其他算子", 15, INK, "bold") + text(480, 312, "跟随输入 dtype", 13.5, GRAY)
     body += path("M262 125 H351", GRAY)
     body += cbox(700, 160, 220, 70, PURPLE) + text(810, 192, "loss.backward()", 16, INK, "bold") + text(810, 216, "梯度累加回 FP32 参数", 13.5, PURPLE)
     body += path("M634 220 H696", PURPLE)
     body += cbox(700, 265, 220, 70, RED) + text(810, 297, "只有 FP16 才需要", 15, INK, "bold") + text(810, 320, "GradScaler 防梯度下溢", 13.5, RED)
-    body += text(480, 395, "具体哪些算子转低精度，由 PyTorch 对每种设备维护的列表决定，随版本可能变化；打印实际 dtype 最可靠。", 15, GRAY)
+    body += text(480, 395, "图中名单以 CUDA 为例；CPU、MPS 的名单不同（例如 CPU 上 layer_norm 跟随输入 dtype），随版本也会变化，打印实际 dtype 最可靠。", 15, GRAY)
     svg("autocast-flow.svg", "autocast 混合精度的数据流",
-        "参数保存为 FP32；在 autocast 区域内，矩阵乘法等算子转为 FP16 或 BF16 计算，softmax、layer_norm 和损失等按 FP32 计算，其余跟随输入；反向传播的梯度累加回 FP32 参数，使用 FP16 时还需要 GradScaler。", 420, body)
+        "参数保存为 FP32；在 autocast 区域内，矩阵乘法等算子转为 FP16 或 BF16 计算，在 CUDA 上 softmax、layer_norm 和损失等按 FP32 计算，其余跟随输入；反向传播的梯度累加回 FP32 参数，使用 FP16 时还需要 GradScaler。", 420, body)
 
 
 # ---------- 第 1 章：模型知道的 vs 上下文给的 ----------

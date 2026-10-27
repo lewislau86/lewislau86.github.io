@@ -76,6 +76,7 @@ $$
 可以在 Hugging Face 模型卡所列的环境里用下面的流程试验；首次运行会下载模型，本章 notebook 默认不执行这一段：
 
 ```python
+# 示意代码：需要先 pip install sentence-transformers 并下载模型，本课程脚本默认不运行
 from sentence_transformers import SentenceTransformer
 
 retriever = SentenceTransformer("intfloat/multilingual-e5-small")

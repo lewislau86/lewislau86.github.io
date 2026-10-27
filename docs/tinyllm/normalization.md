@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的张量形状，[第 3 章](./initialization-and-residuals.md)的残差连接。
 
-**实践方式：** [normalization.ipynb](/tinyllm/notebooks/normalization)，CPU 即可，不需要训练模型。
+**实践方式：** [normalization.ipynb](/tinyllm/notebooks/normalization)（也可以直接运行 <a href="/tinyllm/code/normalization.py" download>normalization.py</a>），CPU 即可，不需要训练模型。
 :::
 
 <TinyLLMMap active="normalization" />
@@ -30,12 +30,13 @@ pageClass: tinyllm-course
 
 ## 1. 先看一个向量：归一化沿哪一维做
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/normalization.py" download>normalization.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/normalization.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python normalization.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/normalization)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/normalization.ipynb)。
+:::
+
 隐藏状态的形状是 `[batch, seq, d]`。归一化**对每个 token 单独处理**，只在最后一维的 $d$ 个数之间算统计量，不跨 token、也不跨样本：
 
-```python
-x = torch.randn(2, 4, 8)       # 2 条样本 × 4 个 token × 每个 token 8 个特征
-# 归一化只看 x[b, t, :] 这 8 个数，对 2×4=8 个 token 各算一次
-```
+<<< @/public/tinyllm/code/normalization.py#token-axis
 
 所以下面所有公式都只针对**一个**向量 $x=(x_1,\ldots,x_d)$。我们用 $x=[1,2,3]$ 手算，$d=3$；为了算得干净，暂时令防止除零的 $\epsilon=0$、可学习参数取初值。
 
@@ -57,10 +58,7 @@ $$
 
 $\gamma_i$、$\beta_i$ 是每一维各一个的可学习缩放和平移，初值分别为 1 和 0。它们让模型在需要时把“标准尺寸”再调回别的值，所以归一化并不剥夺表达能力。
 
-```python
-layer_norm = nn.LayerNorm(d, eps=1e-5)   # 只归一化最后一维；weight=γ、bias=β 各 d 个
-y = layer_norm(x)                        # 形状不变：[batch, seq, d]
-```
+<<< @/public/tinyllm/code/normalization.py#layernorm
 
 ## 3. RMSNorm：只管长度，不管均值
 
@@ -77,10 +75,7 @@ $$
 
 ![二维平面上散落的向量沿各自方向被拉伸或压缩，全部落到半径为根号 2 的圆上](/tinyllm/figures/norm-geometry.svg)
 
-```python
-rms_norm = nn.RMSNorm(d, eps=1e-5)       # 只有 weight=γ，没有 bias
-y = rms_norm(x)
-```
+<<< @/public/tinyllm/code/normalization.py#rmsnorm
 
 `nn.RMSNorm` 的 `eps` 默认是 `None`，会按内部计算类型自动选取；这里显式写 `1e-5`，方便和其他实现对照。参见 [PyTorch RMSNorm 文档](https://docs.pytorch.org/docs/stable/generated/torch.nn.RMSNorm.html)。
 
@@ -104,16 +99,7 @@ $$
 
 手算 $x=[1,2,3]$：$\|x\|_2=\sqrt{14}\approx3.742$，$g=1$ 时 $y\approx[0.267,\ 0.535,\ 0.802]$。它和 RMSNorm 只差一个常数倍 $\sqrt d$，区别主要在于可学习参数的个数。PyTorch 没有内置模块，自己写几行即可：
 
-```python
-class ScaleNorm(nn.Module):
-    def __init__(self, eps=1e-6):
-        super().__init__()
-        self.g = nn.Parameter(torch.tensor(1.0))   # 整层只有一个可学习标量
-        self.eps = eps
-
-    def forward(self, x):
-        return self.g * x / (x.norm(p=2, dim=-1, keepdim=True) + self.eps)
-```
+<<< @/public/tinyllm/code/normalization.py#scalenorm
 
 ScaleNorm 出自 [Transformers without Tears](https://arxiv.org/abs/1910.05895) 的机器翻译实验；论文还同时改了其他设计，不能把效果全归到这一层。
 
@@ -144,18 +130,7 @@ Pre-Norm 有一个副作用：残差流本身从不被归一化，会随层数�
 
 一个 Block 有注意力和前馈两个子层，所以有两次归一化、两次残差：
 
-```python
-class Block(nn.Module):
-    def __init__(self, d):
-        super().__init__()
-        self.norm1, self.norm2 = nn.RMSNorm(d), nn.RMSNorm(d)
-        self.attn, self.ffn = ..., ...       # 第 9 章、第 5 章
-
-    def forward(self, x):
-        x = x + self.attn(self.norm1(x))     # Pre-Norm：先归一化，再进子层，再加回
-        x = x + self.ffn(self.norm2(x))
-        return x
-```
+<<< @/public/tinyllm/code/normalization.py#block
 
 还有一些摆法是这两种的变体。比如 Gemma 2 在子层前后都放 RMSNorm（常叫 Sandwich Norm），NormFormer 在注意力和前馈层内部再加几处归一化。它们改的都是**位置**，不是新的统计公式。
 

@@ -14,21 +14,20 @@ next: false
 
 **前置：** 张量与矩阵乘法；[第 4 章](./normalization.md)的归一化。
 
-**实践方式：** [precision.ipynb](/tinyllm/notebooks/precision)，基础实验只需 CPU；有 CUDA、MPS 或 MLX 时可运行加速实验。
+**实践方式：** [precision.ipynb](/tinyllm/notebooks/precision)（也可以直接运行 <a href="/tinyllm/code/precision.py" download>precision.py</a>），基础实验只需 CPU；有 CUDA、MPS 或 MLX 时可运行加速实验。
 :::
 
 <TinyLLMMap active="precision" />
 
 ## 问题：1001 去哪儿了？
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/precision.py" download>precision.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/precision.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python precision.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/precision)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/precision.ipynb)。
+:::
+
 先猜下面三行的输出：
 
-```python
-import torch
-print(torch.tensor([1000., 1001.]).to(torch.bfloat16))
-print(torch.tensor([1000., 1001.]).to(torch.float16))
-print(torch.tensor(300., dtype=torch.float16).square())
-```
+<<< @/public/tinyllm/code/precision.py#opening
 
 实际结果（PyTorch CPU）：
 
@@ -58,12 +57,7 @@ tensor(inf, dtype=torch.float16)
 
 这些界限都可以用 `torch.finfo(dtype)` 查询：`eps` 是 <strong>1 与下一个可表示数的距离</strong>，`tiny` 是最小<strong>正规</strong>正数，`max` 是最大有限数。有些设备和运算还能表示比 `tiny` 更小的非正规数。[PyTorch 类型信息](https://docs.pytorch.org/docs/stable/type_info.html)
 
-```python
-import torch
-for dtype in (torch.float32, torch.float16, torch.bfloat16):
-    info = torch.finfo(dtype)
-    print(dtype, info.eps, info.tiny, info.max)
-```
+<<< @/public/tinyllm/code/precision.py#finfo
 
 ## 2. 刻度随数值变大：舍入、溢出与下溢
 
@@ -72,6 +66,10 @@ for dtype in (torch.float32, torch.float16, torch.bfloat16):
 ![相邻可表示数的间隔随数值大小成比例增长（对数坐标）；同一量级上 BF16 的间隔是 FP16 的 8 倍；在 1000 附近 BF16 的间隔是 4，1000 与 1001 被存成同一个数；FP16 在 65504 以上没有有限值](/tinyllm/figures/float-spacing.svg)
 
 三条线都是斜着向上的阶梯：数越大，刻度越稀。同一量级上 BF16 的间隔是 FP16 的 8 倍（尾数少 3 位）。看 1000 附近：BF16 的间隔是 4，能存的数是 …996、1000、1004…，1001 只能舍入到 1000，这就是开头第一行的结果；FP16 在这里的间隔是 0.5，1001 能精确存下。FP16 的线在 65504 处截止，再往上没有有限值，所以 90000 变成了 `inf`。
+
+BF16 的范围够大，同一个平方不会溢出，但结果要舍入到最近的刻度（90000 附近 BF16 的间隔是 512）：
+
+<<< @/public/tinyllm/code/precision.py#bf16-square
 
 把三种现象分开：
 
@@ -123,23 +121,11 @@ $$
 
 全部使用 FP32 最简单，但显存和计算成本较高。前几节给出了一个分工思路：矩阵乘法量大、对舍入相对宽容，适合低精度；求和、归一化、softmax 和损失对范围和舍入敏感，留在高精度。混合精度就是让框架<strong>按算子</strong>做这种选择：
 
-![参数始终以 FP32 存储；进入 autocast 区域后，matmul、linear、conv 以 FP16/BF16 执行，softmax、layer_norm 和损失以 FP32 执行，其余算子跟随输入 dtype；反向传播把梯度累积到 FP32 参数上；只有 FP16 需要 GradScaler](/tinyllm/figures/autocast-flow.svg)
+![参数始终以 FP32 存储；进入 autocast 区域后，matmul、linear、conv 以 FP16/BF16 执行，在 CUDA 上 softmax、layer_norm 和损失以 FP32 执行，其余算子跟随输入 dtype；反向传播把梯度累积到 FP32 参数上；只有 FP16 需要 GradScaler](/tinyllm/figures/autocast-flow.svg)
 
-从左往右读。参数一直以 FP32 存储；进入 `autocast` 区域后，`matmul`、`linear`、`conv` 先把输入转成 FP16/BF16 再算，`softmax`、`layer_norm` 和损失在 FP32 里算，其余算子跟随输入的 dtype。反向传播把梯度累积回 FP32 参数，优化器也在 FP32 上更新。最右边的 `GradScaler` 只在 FP16 时需要。图中的算子名单只是示例，具体策略随设备和 PyTorch 版本变化，以 [PyTorch AMP 文档](https://docs.pytorch.org/docs/stable/amp.html)为准。
+从左往右读。参数一直以 FP32 存储；进入 `autocast` 区域后，`matmul`、`linear`、`conv` 先把输入转成 FP16/BF16 再算，在 CUDA 上 `softmax`、`layer_norm` 和损失在 FP32 里算，其余算子跟随输入的 dtype。反向传播把梯度累积回 FP32 参数，优化器也在 FP32 上更新。最右边的 `GradScaler` 只在 FP16 时需要。图中的算子名单以 CUDA 为例。不同设备的名单不一样：在 CPU 上（本章用 PyTorch 2.14 实测），`layer_norm` 不会被强制转成 FP32，而是跟随输入。下面这段代码里它接在以 BF16 计算的 `Linear` 后面，所以输出是 `torch.bfloat16`。具体策略随设备和 PyTorch 版本变化，以 [PyTorch AMP 文档](https://docs.pytorch.org/docs/stable/amp.html)为准，最可靠的办法是打印实际 dtype。
 
-```python
-# model 保持 FP32 参数；输入也从 FP32 开始。
-# CUDA/MPS 上先试 FP16；CPU 示例使用 BF16。
-device = torch.device("cuda" if torch.cuda.is_available() else
-                      "mps" if torch.backends.mps.is_available() else "cpu")
-amp_dtype = torch.float16 if device.type in ("cuda", "mps") else torch.bfloat16
-model = torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.LayerNorm(4))
-x = torch.randn(2, 4)
-model, x = model.to(device), x.to(device)
-with torch.autocast(device_type=device.type, dtype=amp_dtype):
-    y = model(x)
-print(y.dtype)  # 这是最终输出 dtype，不代表所有内部算子的 dtype
-```
+<<< @/public/tinyllm/code/precision.py#autocast
 
 `autocast` 和对模型调用 `.half()` 或 `.bfloat16()` 是两回事：后者直接改变参数和输入的存储 dtype，敏感运算也随之失去 FP32 输入。本章 notebook 用固定矩阵比较 FP32 与手动转换后的误差，再用同一小模型比较 FP32 与 autocast；CUDA/MPS 可用时还会计时。MPS 的算子策略可能与 CUDA 不同，要打印实际输出 dtype。低精度是否更快、更省内存，要在自己的设备上测；框架还可能为类型转换、临时缓冲区和缓存额外分配内存。
 
@@ -229,7 +215,7 @@ Apple silicon 上有两条独立路径：PyTorch 的 `device="mps"` 仍使用 Py
 
    <details><summary>参考答案</summary>
 
-   参数仍存为 FP32；`linear` 以 FP16/BF16 执行；`layer_norm` 通常以 FP32 执行。具体名单随设备和版本变化，要打印实际 dtype 核对。
+   参数仍存为 FP32；`linear` 以 FP16/BF16 执行；`layer_norm` 在 CUDA 上按 FP32 执行；在 CPU 上跟随输入，接在 BF16 的 `linear` 后面时输出是 bfloat16（本章脚本实测）。名单随设备和版本变化，要打印实际 dtype 核对。
 
    </details>
 

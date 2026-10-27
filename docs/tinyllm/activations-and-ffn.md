@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 3 章](./initialization-and-residuals.md)的残差子层，[第 4 章](./normalization.md)的 RMSNorm 与 Pre-Norm。
 
-**实践方式：** [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn)，CPU 即可，图表使用 Plotly。
+**实践方式：** [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn)（也可以直接运行 <a href="/tinyllm/code/activations-and-ffn.py" download>activations-and-ffn.py</a>），CPU 即可，图表使用 Plotly。
 :::
 
 <TinyLLMMap active="activations-and-ffn" />
@@ -46,16 +46,13 @@ $$
 \operatorname{FFN}(x)=W_{down}\,\phi(W_{up}x+b_{up})+b_{down}.
 $$
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/activations-and-ffn.py" download>activations-and-ffn.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/activations-and-ffn.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python activations-and-ffn.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/activations-and-ffn)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/activations-and-ffn.ipynb)。
+:::
+
 公式把 $x$ 当列向量；PyTorch 以最后一轴为特征，等价代码是 `down(phi(up(x)))`。记 $d$ 为模型隐藏宽度、$m$ 为前馈层中间宽度：`up` 把 $d$ 放大到 $m$，`down` 再投回 $d$，所以输入和输出都是 `[batch, seq, d]`。
 
-```python
-import torch
-from torch import nn
-
-x = torch.randn(2, 3, 8)  # 2 条样本，每条 3 个 token，隐藏宽度 8
-ffn = nn.Sequential(nn.Linear(8, 32), nn.GELU(), nn.Linear(32, 8))
-print(ffn(x).shape)  # torch.Size([2, 3, 8])
-```
+<<< @/public/tinyllm/code/activations-and-ffn.py#ffn-shape
 
 先猜中间那个张量的形状：`up` 之后是 `[2, 3, 32]`，32 落在最后一轴，也就是每个 token 的特征从 8 个扩成 32 个。FFN 对<strong>每个 token 分别使用同一组参数</strong>，token 之间的信息交换由注意力层负责；上下文通过注意力更新后的隐藏状态间接影响 FFN 的输入。
 
@@ -102,17 +99,7 @@ GELU 用 $\Phi(x)$、SiLU 用 $\sigma(x)$ 对输入做随数值变化的平滑�
 
 用代码核对几个点上的输出和导数：
 
-```python
-import torch.nn.functional as F
-
-values = torch.tensor([-2.0, -1.0, 0.0, 1.0, 2.0], requires_grad=True)
-for name, fn in [('Sigmoid', torch.sigmoid), ('Tanh', torch.tanh),
-                 ('ReLU', F.relu), ('GELU', F.gelu), ('SiLU', F.silu)]:
-    probe = values.detach().clone().requires_grad_()
-    output = fn(probe)
-    gradient = torch.autograd.grad(output.sum(), probe)[0]
-    print(name, output.detach().tolist(), gradient.tolist())
-```
+<<< @/public/tinyllm/code/activations-and-ffn.py#activation-points
 
 `F.gelu` 默认计算精确形式，`F.gelu(x, approximate='tanh')` 使用常见的 tanh 近似，两者只有微小的数值差别，模型结构相同。`nn.SiLU` 与 `F.silu` 是同一个激活，“Swish”也常用来称呼同样的 $x\sigma(x)$。详见 [PyTorch GELU](https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html) 和 [SiLU](https://docs.pytorch.org/docs/stable/generated/torch.nn.SiLU.html) 文档。
 
@@ -128,22 +115,7 @@ $$
 
 $g$ 与 $v$ 的形状都是 `[batch, seq, m]`，$\odot$ 是同一 token、同一特征上的乘法；$W_d$ 再把宽度 $m$ 投回 $d$。门 $g$ 由当前输入算出，逐个特征地决定 $v$ 里的信息放行多少。所以从普通 FFN 换到 SwiGLU，结构从两个投影变成了三个投影，同时激活换成了 SiLU。[GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202) 系统比较了这类门控前馈变体，结论来自该论文的实验配置。
 
-```python
-import torch.nn.functional as F
-
-class SwiGLUFFN(nn.Module):
-    def __init__(self, d: int, m: int):
-        super().__init__()
-        self.gate = nn.Linear(d, m, bias=False)
-        self.value = nn.Linear(d, m, bias=False)
-        self.down = nn.Linear(m, d, bias=False)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.down(F.silu(self.gate(x)) * self.value(x))
-
-swiglu = SwiGLUFFN(8, 24)
-print(swiglu(x).shape)  # torch.Size([2, 3, 8])
-```
+<<< @/public/tinyllm/code/activations-and-ffn.py#swiglu
 
 三个投影都不带偏置，便于直接数参数。也可以把 `gate`、`value` 融合成一次宽度 `2m` 的投影再拆成两半，只要权重与拆分轴对应，数学上完全相同；初学时分开写更方便检查每个张量的形状。
 
@@ -169,20 +141,7 @@ $$
 
 其中 $u$ 是注意力残差之后的隐藏状态。RMSNorm 负责把输入调回统一尺寸，SwiGLU 提供非线性和门控，残差加法保留直通路径。注意力留到第 9 章，这里先实现这个<strong>前馈半块</strong>：
 
-```python
-class PreNormFFN(nn.Module):
-    def __init__(self, d: int, m: int):
-        super().__init__()
-        self.norm = nn.RMSNorm(d)
-        self.ffn = SwiGLUFFN(d, m)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.ffn(self.norm(x))
-
-block = PreNormFFN(8, 24)
-out = block(x)
-print(out.shape)  # torch.Size([2, 3, 8])
-```
+<<< @/public/tinyllm/code/activations-and-ffn.py#prenorm-ffn
 
 三个部件各管一件事：删掉 `x + ...`，它仍有非线性，但不再是残差子层；把 `norm` 挪到加法之后，就变成 Post-Norm 位置；把 SiLU 换成 ReLU 或 GELU，只改变激活，Pre-Norm 与残差的结构不变。这里用 `nn.RMSNorm` 与[第 4 章](./normalization.md)的主线一致，LayerNorm 也能放在同一位置。
 

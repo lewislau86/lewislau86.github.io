@@ -1,5 +1,5 @@
 ---
-title: "第 4 章 · LLM 归一化：PyTorch 数据实验（notebook 在线查看）"
+title: "第 4 章：归一化（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -10,25 +10,23 @@ pageClass: tinyllm-course
 <!-- 本页由 scripts/build-tinyllm-code.py 根据 notebook 自动生成，请勿手改。 -->
 
 ::: tip 这是 notebook 的只读预览
-[返回教案](/tinyllm/normalization) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/normalization.ipynb) · <a href="/tinyllm/notebooks/normalization.ipynb" download>下载 .ipynb</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/normalization.ipynb)
+[返回教案](/tinyllm/normalization) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/normalization.ipynb) · <a href="/tinyllm/notebooks/normalization.ipynb" download>下载 .ipynb</a> · <a href="/tinyllm/code/normalization.py" download>下载 .py</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/normalization.ipynb)
 
 下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。
 :::
 
 ::: v-pre
-# 第 4 章 · LLM 归一化：PyTorch 数据实验
+# 第 4 章：归一化
 
-本 notebook 与 [本章教案](https://lewislau86.github.io/tinyllm/normalization) 的第 1–5 节一一对应。读者应先知道张量的形状、最后一维和矩阵乘法；不需要训练模型。运行环境需要 **PyTorch（本例在 2.11.0 验证）** 和 Jupyter。按顺序执行所有单元格。
+配套教案：https://lewislau86.github.io/tinyllm/normalization
+
+从上到下运行即可，CPU 上几秒钟，不需要训练模型。只需要安装 PyTorch；最后的 MLX 对照可选，没装 MLX 会自动跳过。
+这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 
 **学习目标**：观察同一组数据在 LayerNorm、RMSNorm、ScaleNorm 前后的均值/RMS/L2；观察 QK Norm 如何改变注意力分数；理解 DeepNorm 的残差缩放为何不能等同于完整算法。
 
 本实验用固定数据，便于手算与核对。每个代码单元后面有“读输出”的说明。
-:::
-
-::: v-pre
-## 0. 准备数据与统计工具
-
-输入形状为 `[batch=1, seq_len=4, hidden_size=4]`。四行分别是普通向量、整体加 10 的向量、含负数的向量、全零向量。归一化统计量应沿最后一维计算，也就是每个 token 单独算。
 :::
 
 <p class="nb-label">In [1]</p>
@@ -38,7 +36,92 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+torch.manual_seed(0)
 torch.set_printoptions(precision=3, sci_mode=False)
+print('PyTorch:', torch.__version__)
+```
+
+```text
+PyTorch: 2.14.1+cpu
+```
+
+::: v-pre
+## 先手算核对：归一化沿哪一维、`[1,2,3]` 的三种输出
+
+隐藏状态的形状是 `[batch, seq, d]`。归一化对每个 token 单独处理，只在最后一维的 `d` 个数之间算统计量。
+:::
+
+<p class="nb-label">In [2]</p>
+
+```python
+x = torch.randn(2, 4, 8)       # 2 条样本 × 4 个 token × 每个 token 8 个特征
+# 归一化只看 x[b, t, :] 这 8 个数，对 2×4=8 个 token 各算一次
+rms_per_token = x.square().mean(dim=-1).sqrt()
+print(rms_per_token.shape)     # torch.Size([2, 4])：每个 token 一个 RMS
+```
+
+```text
+torch.Size([2, 4])
+```
+
+::: v-pre
+用教案里的 `x=[1,2,3]`（`d=3`）核对 LayerNorm、RMSNorm、ScaleNorm 的手算结果。`eps` 很小，三位小数与 `eps=0` 的手算一致。
+:::
+
+<p class="nb-label">In [3]</p>
+
+```python
+x = torch.tensor([[[1., 2., 3.]]])       # [batch=1, seq=1, d=3]
+d = x.shape[-1]
+layer_norm = nn.LayerNorm(d, eps=1e-5)   # 只归一化最后一维；weight=γ、bias=β 各 d 个
+y = layer_norm(x)                        # 形状不变：[batch, seq, d]
+print(y.detach())                        # tensor([[[-1.225,  0.000,  1.225]]])
+```
+
+```text
+tensor([[[-1.225,  0.000,  1.225]]])
+```
+
+<p class="nb-label">In [4]</p>
+
+```python
+rms_norm = nn.RMSNorm(d, eps=1e-5)       # 只有 weight=γ，没有 bias
+y = rms_norm(x)
+print(y.detach())                        # tensor([[[0.463, 0.926, 1.389]]])
+```
+
+```text
+tensor([[[0.463, 0.926, 1.389]]])
+```
+
+<p class="nb-label">In [5]</p>
+
+```python
+class ScaleNorm(nn.Module):
+    def __init__(self, eps=1e-6):
+        super().__init__()
+        self.g = nn.Parameter(torch.tensor(1.0))   # 整层只有一个可学习标量
+        self.eps = eps
+
+    def forward(self, x):
+        return self.g * x / (x.norm(p=2, dim=-1, keepdim=True) + self.eps)
+
+print(ScaleNorm()(x).detach())           # tensor([[[0.267, 0.535, 0.802]]])
+```
+
+```text
+tensor([[[0.267, 0.535, 0.802]]])
+```
+
+::: v-pre
+## 0. 准备数据与统计工具
+
+输入形状为 `[batch=1, seq_len=4, hidden_size=4]`。四行分别是普通向量、整体加 10 的向量、含负数的向量、全零向量。归一化统计量应沿最后一维计算，也就是每个 token 单独算。
+:::
+
+<p class="nb-label">In [6]</p>
+
+```python
 x = torch.tensor([[[1., 2., 3., 4.],
                    [11., 12., 13., 14.],
                    [-4., -2., 0., 2.],
@@ -52,12 +135,12 @@ def summarize(name, t):
     print('RMS: ', t.square().mean(dim=-1).sqrt().detach())
     print('L2:  ', t.norm(p=2, dim=-1).detach())
 
-print('PyTorch:', torch.__version__, '| shape:', tuple(x.shape))
+print('shape:', tuple(x.shape))
 summarize('原始输入', x)
 ```
 
 ```text
-PyTorch: 2.11.0 | shape: (1, 4, 4)
+shape: (1, 4, 4)
 原始输入
 tensor([[[ 1.,  2.,  3.,  4.],
          [11., 12., 13., 14.],
@@ -78,7 +161,7 @@ L2:   tensor([[ 5.477, 25.100,  4.899,  0.000]])
 对应 教案 的 **1. LayerNorm**。`nn.LayerNorm(normalized_shape=d, eps=1e-5)` 在最后 `d` 维中归一化；这里 `d` 是整数，因此只处理最后一维。默认 `elementwise_affine=True, bias=True`，会创建形状为 `[d]` 的 `weight` 和 `bias`，初值分别为 1 和 0。`eps` 加在方差上，防止除零。
 :::
 
-<p class="nb-label">In [2]</p>
+<p class="nb-label">In [7]</p>
 
 ```python
 ln = nn.LayerNorm(normalized_shape=d, eps=1e-5)
@@ -111,7 +194,7 @@ L2:   tensor([[2.000, 2.000, 2.000, 0.000]])
 对应 教案 的 **2. RMSNorm**。`nn.RMSNorm(normalized_shape=d, eps=1e-5)` 同样只处理最后一维。默认 `elementwise_affine=True`，只创建 `[d]` 的 `weight`，没有 `bias`。若不显式传 `eps`，PyTorch 的默认值是 `None`，会按内部计算类型（opmath dtype）选择 machine epsilon；官方文档说明 FP16/BF16 输入在此采用 FP32 的 epsilon；这里固定 `1e-5` 以方便对照。
 :::
 
-<p class="nb-label">In [3]</p>
+<p class="nb-label">In [8]</p>
 
 ```python
 rms = nn.RMSNorm(normalized_shape=d, eps=1e-5)
@@ -144,7 +227,7 @@ L2:   tensor([[2.000, 2.000, 2.000, 0.000]])
 对应 教案 的 **3. ScaleNorm**。PyTorch 没有同名 `nn.ScaleNorm` 标准模块；可以用 `F.normalize(x, p=2, dim=-1, eps=1e-6)` 做 L2 归一化，再乘标量 $g$。**务必写 `dim=-1`**：`F.normalize` 的默认 `dim=1` 会在本例中沿 `seq_len`，不是隐藏维度。`eps` 通过 `max(L2, eps)` 保护零向量。
 :::
 
-<p class="nb-label">In [4]</p>
+<p class="nb-label">In [9]</p>
 
 ```python
 g = 1.0  # 为观察 L2=1，暂固定；训练时可使用 nn.Parameter。
@@ -176,7 +259,7 @@ L2:   tensor([[1.000, 1.000, 1.000, 0.000]])
 下列单元格演示默认 `dim=1` 的危险。先比较每个 token 的 L2；正确设置应让前三个 token 的 L2 接近 1。
 :::
 
-<p class="nb-label">In [5]</p>
+<p class="nb-label">In [10]</p>
 
 ```python
 wrong = F.normalize(x, p=2)  # 默认 dim=1：沿 token/seq 维度
@@ -196,7 +279,7 @@ dim=-1 时各 token 的 L2: tensor([[1.000, 1.000, 1.000, 0.000]])
 对应第 9 章《自注意力》中的 **QK Norm** 一节。核心目标是控制 Q/K 点积形成的 attention logits，减少 softmax 过度饱和及相关训练不稳定风险。现代模型还分为拆头前对整条 Q/K 投影归一化的 layerwise 版本（OLMo 2/3）和拆头后逐头归一化的 headwise 版本（Qwen 3、Gemma 3、Marin 32B）；下面实验只演示原论文的逐头 L2 形式，并非所有模型的 QK Norm 实现。Q/K 形状为 `[batch, heads, seq_len, head_dim]`；`F.normalize(..., dim=-1)` 处理每个头的向量。先计算原始 `q @ k.transpose(-2, -1)`，再观察归一化后的 logits 和 softmax。`transpose(-2, -1)` 只交换 key 的 `seq_len` 与 `head_dim`，保留 batch/head 维度：`[B,H,S_k,D] → [B,H,D,S_k]`；因此分数形状为 `[B,H,S_q,S_k]`。softmax 要沿最后一维 `S_k` 计算，即每个 query 对所有 key 的概率。
 :::
 
-<p class="nb-label">In [6]</p>
+<p class="nb-label">In [11]</p>
 
 ```python
 q = torch.tensor([[[[10., 0.], [0., 1.]]]])
@@ -232,7 +315,7 @@ print('归一化后 softmax:', norm_scores.softmax(dim=-1))
 `F.scaled_dot_product_attention(q,k,v,is_causal=False,scale=1.0)` 返回加权后的 value，**不直接返回 logits/概率**。`scale` 只能是 Python 数值，不能直接传 `nn.Parameter`。若 $g$ 可学习，可以先做 `q_unit * g`，再设 `scale=1.0`。不传 `scale` 时，函数会默认使用 $1/\sqrt{d_k}$。本例无因果掩码；自回归模型应设置 `is_causal=True`。
 :::
 
-<p class="nb-label">In [7]</p>
+<p class="nb-label">In [12]</p>
 
 ```python
 v = torch.tensor([[[[1., 0.], [0., 1.]]]])
@@ -257,7 +340,7 @@ print('与手算概率一致:', torch.allclose(attention_out, norm_scores.softma
 对应第 25 章《大规模训练稳定性》中的 **DeepNorm** 一节。这里仅观察 `LayerNorm(alpha*x + branch)` 中 `alpha` 对数据的影响。`alpha=1.5` 是**演示值，不是论文系数**。完整 DeepNorm 必须按模型深度和编码器/解码器结构选择系数，并使用配套的权重初始化；PyTorch 没有独立 `nn.DeepNorm` 标准模块。
 :::
 
-<p class="nb-label">In [8]</p>
+<p class="nb-label">In [13]</p>
 
 ```python
 residual_x = torch.tensor([[[1., 2., 3., 4.]]])
@@ -318,7 +401,7 @@ x ──┬───────────────────────
 以 `base=[1,2,3,4]` 为例。`base+10` 是**每个特征同时平移**；`base*3` 是**正数整体放大**。暂用 FP32、初始参数和很小的 `eps`。预测哪种方法会让 `base` 与 `base+10` 的输出一致？
 :::
 
-<p class="nb-label">In [9]</p>
+<p class="nb-label">In [14]</p>
 
 ```python
 base = torch.tensor([[[1., 2., 3., 4.]]])
@@ -364,12 +447,40 @@ ScaleNorm
 :::
 
 ::: v-pre
+### Pre-Norm Block：两次归一化、两次残差
+
+一个 Block 有注意力和前馈两个子层。这里先用占位子层把数据流跑通：注意力在第 9 章实现，前馈层在第 5 章实现。
+:::
+
+<p class="nb-label">In [15]</p>
+
+```python
+class Block(nn.Module):
+    def __init__(self, d):
+        super().__init__()
+        self.norm1, self.norm2 = nn.RMSNorm(d), nn.RMSNorm(d)
+        self.attn = nn.Linear(d, d)          # 占位：真正的注意力见第 9 章
+        self.ffn = nn.Sequential(nn.Linear(d, 4 * d), nn.GELU(), nn.Linear(4 * d, d))  # 第 5 章
+
+    def forward(self, x):
+        x = x + self.attn(self.norm1(x))     # Pre-Norm：先归一化，再进子层，再加回
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+print(Block(4)(torch.randn(2, 3, 4)).shape)  # torch.Size([2, 3, 4])
+```
+
+```text
+torch.Size([2, 3, 4])
+```
+
+::: v-pre
 ## 8. DeepNorm 系数与初始化：decoder-only 的具体例子
 
 [DeepNet 论文第 4.3 节](https://arxiv.org/pdf/2203.00555) 给出 decoder-only、$M$ 层时的 $\alpha=(2M)^{1/4}$、$\beta=(8M)^{-1/4}$。$\alpha$ 固定用于残差分支，$\beta$ 用于**标准初始化之后**缩放每层的前馈权重、注意力 value 投影和 output 投影权重。下面构造一个缩小的模块演示参数选择；没有训练网络，不能用它推断深层训练稳定性。
 :::
 
-<p class="nb-label">In [10]</p>
+<p class="nb-label">In [16]</p>
 
 ```python
 M = 12  # decoder-only Transformer 层数；可改成 24 观察系数
@@ -420,7 +531,7 @@ M=12, alpha=2.2134, beta=0.3195
 对应 [教案](https://lewislau86.github.io/tinyllm/normalization)。`torch.finfo(dtype).eps` 是 1 附近的间隔，`tiny` 是最小**正规范数**正数，`max` 是最大有限数；它们与归一化层的 `eps` 参数不是同一个概念。各设备/内核对中间值的处理可能不同，所以先看输入被舍入成什么，再看归一化输出。
 :::
 
-<p class="nb-label">In [11]</p>
+<p class="nb-label">In [17]</p>
 
 ```python
 for dtype in (torch.float32, torch.float16, torch.bfloat16):
@@ -460,7 +571,7 @@ torch.bfloat16
 下面故意选择容易让低精度平方/求和出问题的数值。它说明手写公式的运算顺序和中间 dtype 很重要，不等于断言 PyTorch 内置归一化层都采用低精度平方。
 :::
 
-<p class="nb-label">In [12]</p>
+<p class="nb-label">In [18]</p>
 
 ```python
 for dtype, values in [
@@ -510,7 +621,7 @@ torch.bfloat16 存储输入: tensor([[1000., 1000., 1000., 1000.]]) 输出: tens
 同样是约 1000 的输入，FP16 可以存下输入，却存不下它的平方。先在 FP32 中运行归一化，再转成 FP16 去平方，可以比较后续运算是否仍得到有限值。这是**运算顺序与数值范围**的小实验，不是在测试归一化层的内部精度，也不代表所有模型中的数值都被限制在 1 附近。
 :::
 
-<p class="nb-label">In [13]</p>
+<p class="nb-label">In [19]</p>
 
 ```python
 large = torch.tensor([[999., 1000., 1001., 1002.]], dtype=torch.float32)
@@ -551,7 +662,7 @@ RMSNorm 归一化后: tensor([[0.999, 1.000, 1.001, 1.002]], dtype=torch.float16
 沿最后一维 `mean` 求均值；减均值后求平方均值（方差）；`rsqrt` 计算倒数平方根。`weight`/`bias` 是逐维参数。`eps` 放在方差里面，与 `nn.LayerNorm` 对照。
 :::
 
-<p class="nb-label">In [14]</p>
+<p class="nb-label">In [20]</p>
 
 ```python
 class TeachingLayerNorm(nn.Module):
@@ -598,7 +709,7 @@ LayerNorm：输出、输入梯度、weight/bias 梯度均与 nn.LayerNorm 接近
 省去均值和中心化方差，只计算 `x.square().mean(dim=-1)`。默认只有逐维 `weight`；没有 `bias`。
 :::
 
-<p class="nb-label">In [15]</p>
+<p class="nb-label">In [21]</p>
 
 ```python
 class TeachingRMSNorm(nn.Module):
@@ -639,7 +750,7 @@ RMSNorm：输出、输入梯度、weight 梯度均与 nn.RMSNorm 接近
 `torch.linalg.vector_norm(..., ord=2, dim=-1, keepdim=True)` 取得 L2 长度。一个可学习标量 `g` 乘到每个 token 的归一化向量上。这里使用 教案 公式的 `norm + eps`；它和 `F.normalize` 的 `max(norm, eps)` 只在接近零时有差别。
 :::
 
-<p class="nb-label">In [16]</p>
+<p class="nb-label">In [22]</p>
 
 ```python
 class TeachingScaleNorm(nn.Module):
@@ -680,7 +791,7 @@ g 的梯度: 1.9999992847442627
 `q/k` 为 `[B,H,S,D]`。分别沿 `D` 维做 L2 归一化；`k.transpose(-2,-1)` 变成 `[B,H,D,S_k]`；分数 `[B,H,S_q,S_k]` 在最后一维 softmax。可学习尺度 `g` 乘在 query 上，再用 `scaled_dot_product_attention(..., scale=1.0)` 对照。这里不加因果 mask，便于逐项观察；自回归模型要在 softmax 前遮住未来 key。
 :::
 
-<p class="nb-label">In [17]</p>
+<p class="nb-label">In [23]</p>
 
 ```python
 class TeachingQKNorm(nn.Module):
@@ -715,7 +826,11 @@ print('与 SDPA 输出接近，且 g、q 均有梯度')
 ```
 
 ```text
-logits: tensor([[[[1., 0.],
+logits: 
+```
+
+```text
+tensor([[[[1., 0.],
           [0., 1.]]]])
 概率: tensor([[[[0.731, 0.269],
           [0.269, 0.731]]]])
@@ -732,7 +847,7 @@ logits: tensor([[[[1., 0.],
 这是完整的**小型 decoder-only Block 结构演示**：两个子层各用 `LayerNorm(alpha*x + F(x))`，`alpha=(2M)^(1/4)`；所有线性层先用 Xavier 初始化，随后只将注意力的 V/O 投影及前馈层的两个投影乘 `beta=(8M)^(-1/4)`。注意力使用因果 mask。代码体现论文针对 decoder-only 的系数与初始化规则；它并未训练 $M$ 个 Block，因此无法证明稳定性收益。
 :::
 
-<p class="nb-label">In [18]</p>
+<p class="nb-label">In [24]</p>
 
 ```python
 class TeachingDeepNormBlock(nn.Module):
@@ -827,12 +942,12 @@ alpha: 2.2134 | 输出形状: (2, 3, 4)
 :::
 
 ::: v-pre
-## 12. MLX 对照实验（可选）
+## 13. MLX 对照实验（可选）
 
 前面的 PyTorch 实验可在 CPU 上运行；Apple silicon 用户也可以用 PyTorch MPS 执行适用的张量运算。本节另用 **MLX 原生数组**对照五种方法的关键步骤。MLX 和 PyTorch MPS 是不同框架；没有安装 MLX 时自动跳过。MLX 惰性求值，打印前用 `mx.eval` 完成计算。这里用无可学习参数或固定参数的小数据展示数学步骤；训练版模块及梯度检查仍以本章 PyTorch 实现为准。
 :::
 
-<p class="nb-label">In [19]</p>
+<p class="nb-label">In [25]</p>
 
 ```python
 try:
@@ -849,7 +964,7 @@ except ImportError:
 未安装 MLX；Apple silicon 原生 Python 可用 pip install mlx，然后重跑本节。
 ```
 
-<p class="nb-label">In [20]</p>
+<p class="nb-label">In [26]</p>
 
 ```python
 if mlx_available:
@@ -865,7 +980,7 @@ if mlx_available:
     print('手写 RMSNorm:', rms.tolist())
     print('手写 ScaleNorm (g=1):', scale.tolist())
     built_ln = mlx_nn.LayerNorm(d, eps=eps, affine=False)(v)
-    built_rms = mlx_nn.RMSNorm(d, eps=eps)  # 默认缩放权重初始化为 1(v)
+    built_rms = mlx_nn.RMSNorm(d, eps=eps)(v)  # 默认缩放权重初始化为 1
     mx.eval(built_ln, built_rms)
     print('mlx.nn.LayerNorm:', built_ln.tolist())
     print('mlx.nn.RMSNorm:', built_rms.tolist())
@@ -875,7 +990,7 @@ if mlx_available:
 **读输出：**LayerNorm 先减均值，RMSNorm 只控制均方根，ScaleNorm 控制 L2 长度。`mlx.nn.LayerNorm` / `mlx.nn.RMSNorm` 是 MLX 原生模块；手写式用于看步骤，不用作性能基准。
 :::
 
-<p class="nb-label">In [21]</p>
+<p class="nb-label">In [27]</p>
 
 ```python
 if mlx_available:

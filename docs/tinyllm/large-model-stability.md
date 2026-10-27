@@ -35,6 +35,7 @@ $$
 $\beta$ 作用于前馈层权重，以及注意力的 value 投影和 output 投影；query、key 投影不在名单内。编码器或 encoder-decoder 的系数不同，不能套用这组公式。具体见 [DeepNet 论文第 4.3 节](https://arxiv.org/pdf/2203.00555)。
 
 ```python
+# 示意代码，不能单独运行；可运行的 DeepNorm 实验见 normalization.py
 M = 24                                   # 总层数
 alpha, beta = (2 * M) ** 0.25, (8 * M) ** -0.25
 norm = nn.LayerNorm(d)

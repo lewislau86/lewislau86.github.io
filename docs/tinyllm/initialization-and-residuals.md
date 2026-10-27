@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的张量形状与自动求导。
 
-**实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)，CPU 即可，图表使用 Plotly。
+**实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)（也可以直接运行 <a href="/tinyllm/code/initialization-and-residuals.py" download>initialization-and-residuals.py</a>），CPU 即可，图表使用 Plotly。
 :::
 
 <TinyLLMMap active="initialization-and-residuals" />
@@ -63,22 +63,11 @@ $$
 
 均匀版 Xavier、He 使用对应的均匀分布界限，目标方差与表中思路一致。层宽相等时，Xavier normal 的标准差约为 $1/\sqrt d$，正好满足第 1 节的 $n_{\mathrm{in}}\operatorname{Var}(w)\approx1$，所以图中 Xavier 线停在 1.0。ReLU 的 He normal 约为 $\sqrt{2/d}$，方差多了一倍，所以在<strong>激活函数之前</strong>测得的输出标准差约为 $\sqrt2\approx1.41$；经过 ReLU 去掉一半之后，二阶矩才回到 1，这才是它的推导目标。
 
-```python
-import torch
-from torch import nn
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/initialization-and-residuals.py" download>initialization-and-residuals.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/initialization-and-residuals.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python initialization-and-residuals.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/initialization-and-residuals)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/initialization-and-residuals.ipynb)。
+:::
 
-torch.manual_seed(7)
-linear = nn.Linear(64, 128)
-print(linear.weight.shape)  # [128, 64]：fan_in=64，fan_out=128
-
-with torch.no_grad():
-    nn.init.xavier_normal_(linear.weight)
-    nn.init.zeros_(linear.bias)
-
-weights = torch.empty(100_000)
-nn.init.trunc_normal_(weights, mean=0.0, std=1.0, a=-2.0, b=2.0)
-print(weights.min().item(), weights.max().item(), weights.std().item())
-```
+<<< @/public/tinyllm/code/initialization-and-residuals.py#init-api
 
 `trunc_normal_` 的 `std=1` 指截断<strong>之前</strong>的正态分布尺度，实测标准差会低于 1。`nn.init` 系列原地修改参数，放在模块构造时或训练开始前运行一次即可。`nn.Linear` 自带一套默认初始化（与上面手动选择的 Xavier 不同）；要复现实验，就明确写出初始化函数并记录随机种子。[PyTorch 初始化 API](https://docs.pytorch.org/docs/stable/nn.init.html)列出了各分布和 `fan` 的定义。
 
@@ -106,12 +95,7 @@ $$
 
 用一个标量手算：令 $F(x)=0.1x$，有残差时 $y=x+0.1x=1.1x$，导数为 1.1；没有残差时导数只有 0.1。
 
-```python
-x = torch.tensor(2.0, requires_grad=True)
-y = x + 0.1 * x
-y.backward()
-print(y.item(), x.grad.item())  # 2.2, 1.1
-```
+<<< @/public/tinyllm/code/initialization-and-residuals.py#residual-grad
 
 每层的局部雅可比因此是 $I+J_{F_l}$，深层网络的总梯度是很多个这样的矩阵相乘。乘积里的 $J_{F_l}$ 仍可能把梯度一路放大。下一节用 32 层的实验看清这一点。
 
@@ -170,8 +154,8 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 
 [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) 分三步运行：
 
-1. 对多次抽样的权重记录均值、标准差和截断范围；改变 `fan_in`，比较固定 `std` 与 Xavier/He 的输出方差，Plotly 图对应本章开头那张图。
-2. 让同一个输入通过一串小型残差层，对比纯堆叠、Pre-LN、Post-LN 与带显式缩放的 Pre-LN。记录每层输出的 RMS 和输入梯度范数，对应第 5 节的图。
+1. 对多次抽样的权重记录均值、标准差和截断范围；改变 `fan_in`，比较固定 `std` 与 Xavier/He 的输出方差，Plotly 图和本章开头那张图思路相同，只是宽度取 16、64、256 三档。
+2. 让同一个输入通过一串小型残差层，对比纯堆叠、Pre-LN、Post-LN 与带显式缩放的 Pre-LN。记录每层输出的 RMS 和输入梯度范数。它和第 5 节的图思路相同，但规模更小（16 层、宽度 32），所以具体数值不同；第 5 节的图由 `scripts/tinyllm-figure-data.py` 以 32 层、宽度 64 单独生成。
 3. 改变深度和随机种子重复观察。
 
 这些实验只包含初始化时的前向和反向，没有优化器和训练数据，用来练习“怎么测”，而不是判断哪种结构在语言模型上更好。

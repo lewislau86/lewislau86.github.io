@@ -10,7 +10,7 @@ pageClass: tinyllm-course
 <!-- 本页由 scripts/build-tinyllm-code.py 根据 notebook 自动生成，请勿手改。 -->
 
 ::: tip 这是 notebook 的只读预览
-[返回教案](/tinyllm/tokenization) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tokenization.ipynb) · <a href="/tinyllm/notebooks/tokenization.ipynb" download>下载 .ipynb</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tokenization.ipynb)
+[返回教案](/tinyllm/tokenization) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tokenization.ipynb) · <a href="/tinyllm/notebooks/tokenization.ipynb" download>下载 .ipynb</a> · <a href="/tinyllm/code/tokenization.py" download>下载 .py</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tokenization.ipynb)
 
 下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。
 :::
@@ -18,19 +18,14 @@ pageClass: tinyllm-course
 ::: v-pre
 # 第 6 章：文本与词元化
 
-适合掌握 Python 字符串、列表和字典的读者。本实验从 Unicode/字节开始，训练一个小型 ByteLevel BPE，检查特殊 token、标签移位、保存加载，并比较四种词表预算。无需 PyTorch、GPU 或模型下载。
+配套教案：https://lewislau86.github.io/tinyllm/tokenization
 
-建议按顺序运行全部单元；训练文本与测量文本均内置，后者不用于拟合词表。这里只验证词元化机制，不训练语言模型，不复现近期论文的性能结果。
-
-[完整教案](https://lewislau86.github.io/tinyllm/chapter4_tokenization)
-
-## 环境
-
-使用 Python 3.11，在 notebook 当前内核环境安装：
-```python
-%pip install tokenizers==0.22.2 plotly==6.3.0
-```
-安装只需执行一次；装好后重启内核，再从头运行。下面不会自动安装或更改环境。
+从上到下运行即可（`python tokenization.py`），CPU 上几秒钟。需要安装 `tokenizers` 和 `plotly`
+（本章记录的结果来自 tokenizers 0.23.3、plotly 7.1.0），无需 PyTorch、GPU 或模型下载。
+这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
+本实验从 Unicode/字节开始，训练一个小型 ByteLevel BPE，检查特殊 token、标签移位、保存加载，
+并比较四种词表预算。训练文本与测量文本均内置，后者不用于拟合词表。
 :::
 
 <p class="nb-label">In [1]</p>
@@ -39,18 +34,13 @@ pageClass: tinyllm-course
 import sys
 import tokenizers
 import plotly
-import plotly.io as pio
 print("Python:", sys.version.split()[0])
 print("Tokenizers:", tokenizers.__version__, "Plotly:", plotly.__version__)
-assert tokenizers.__version__ == "0.22.2", "请使用教案指定的 Tokenizers 版本"
-assert plotly.__version__ == "6.3.0", "请使用教案指定的 Plotly 版本"
-# 只存紧凑的图表数据，避免将完整 Plotly JavaScript 嵌入 notebook。
-pio.renderers.default = "plotly_mimetype"
 ```
 
 ```text
-Python: 3.11.15
-Tokenizers: 0.22.2 Plotly: 6.3.0
+Python: 3.10.12
+Tokenizers: 0.23.3 Plotly: 7.1.0
 ```
 
 ::: v-pre
@@ -411,7 +401,7 @@ fig.update_layout(
 fig.show()
 ```
 
-> 这里是一张交互式图表，网页预览无法显示，请在 Colab 或本地运行查看。
+![第 12 格输出的图表（静态快照，交互版请在 Colab 或本地运行）](/tinyllm/notebooks/img/tokenization-12-1.svg)
 
 ::: v-pre
 ## 9. 练习：规范化后还原什么？
@@ -518,7 +508,7 @@ print("最长匹配:", greedy, "；全局最少 token:", optimal)
 - [TokSuite（ICML 2026）](https://proceedings.mlr.press/v306/altintas26a.html)
 - [CNF-MCE（2026-10 预印本）](https://arxiv.org/abs/2610.01127)
 
-本 notebook 使用小语料的 CPU 实验，不包含语言模型预训练或论文性能复现。完整解释和限制见[本章教案](https://lewislau86.github.io/tinyllm/chapter4_tokenization)。
+本 notebook 使用小语料的 CPU 实验，不包含语言模型预训练或论文性能复现。完整解释和限制见[本章教案](https://lewislau86.github.io/tinyllm/tokenization)。
 :::
 
 <p class="nb-label">In [15]</p>

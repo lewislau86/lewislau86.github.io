@@ -65,7 +65,7 @@ TinyLLM 位于 `docs/tinyllm/`，由本站直接维护（不再从 tinyllm 仓�
 - 每章代码：`docs/public/tinyllm/code/<文件名>.py` 是唯一来源，正文用 `<<< @/public/tinyllm/code/<文件>.py#区域名` 引用其中片段；
   notebook `docs/public/tinyllm/notebooks/<文件名>.ipynb` 由 `python scripts/build-tinyllm-code.py` 从脚本生成（`--check` 只运行检查）。
   每个 notebook 还有站内只读预览页 `/tinyllm/notebooks/<文件名>`（由同一脚本生成，`--pages` 只刷新预览页）。
-  目前第 1 章已迁移，其余章节逐步迁移。协作约束见根目录 `AGENTS.md`。
+  已成文的 9 章都已迁移；预览页里的 Plotly 图表由 kaleido 导出为静态 SVG。协作约束见根目录 `AGENTS.md`。
 - 配图：`python scripts/generate-tinyllm-figures.py` 重新生成 `docs/public/tinyllm/figures/` 下的 SVG
   （需要 matplotlib、NumPy 和中文字体）。第 1 章损失曲线读取 `scripts/data/tinyllm-first-run-log.json`，
   该文件由 `build-tinyllm-code.py` 运行 `first-run.py` 时自动更新。

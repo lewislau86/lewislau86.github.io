@@ -13,6 +13,10 @@ Usage (needs torch, nbformat, nbclient, ipykernel):
   python scripts/build-tinyllm-code.py first-run    # only some chapters
   python scripts/build-tinyllm-code.py --check      # only run the scripts, write nothing
   python scripts/build-tinyllm-code.py --pages      # only re-render the in-site notebook viewer pages
+  python scripts/build-tinyllm-code.py --run-notebooks <chapter>...
+                                                    # re-execute a notebook that has no code/*.py yet
+Plotly charts are exported to static SVG for the viewer pages (needs plotly and kaleido>=1,
+which drives a local Chrome/Chromium).
 
 Each notebook also gets a read-only viewer page docs/tinyllm/notebooks/<chapter>.md (code cells,
 saved outputs, links to Colab / download / GitHub), served at /tinyllm/notebooks/<chapter>.
@@ -23,6 +27,7 @@ ARTIFACTS, which are copied to where the figure scripts expect them.
 
 from pathlib import Path
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -39,7 +44,9 @@ ARTIFACTS = {("first-run", "first_run_log.json"): ROOT / "scripts/data/tinyllm-f
 
 def run_script(path: Path, workdir: Path) -> None:
     print(f"[run] {path.name}")
-    result = subprocess.run([sys.executable, str(path)], cwd=workdir, capture_output=True, text=True, encoding="utf-8")
+    # 脚本里的 fig.show() 在命令行下默认会打开浏览器；检查时改成只输出 JSON，不阻塞、不弹窗
+    env = dict(os.environ, PLOTLY_RENDERER="json", MPLBACKEND="Agg")
+    result = subprocess.run([sys.executable, str(path)], cwd=workdir, capture_output=True, text=True, encoding="utf-8", env=env)
     if result.returncode != 0:
         print(result.stdout[-2000:])
         print(result.stderr[-4000:])
@@ -89,10 +96,59 @@ def _fence(body: str, lang: str = "text") -> str:
     return f"{fence}{lang}\n{body}\n{fence}"
 
 
+def _plotly_figure(data: dict):
+    """从 notebook 输出里取出 Plotly 图表的 JSON：优先用 plotly MIME，其次解析 HTML 里的 Plotly.newPlot 参数。"""
+    for key, value in data.items():
+        if key.startswith("application/vnd.plotly"):
+            return value
+    page = _text(data.get("text/html"))
+    m = re.search(r"Plotly\.newPlot\(\s*\"[^\"]+\",\s*", page)
+    if not m:
+        return None
+    decoder = json.JSONDecoder()
+    traces, end = decoder.raw_decode(page, m.end())
+    rest = page[end:].lstrip().lstrip(",").lstrip()
+    layout, _ = decoder.raw_decode(rest)
+    return {"data": traces, "layout": layout}
+
+
+def _plotly_to_svg(data: dict, target: Path) -> bool:
+    """把 Plotly 图表导出成静态 SVG。需要 plotly 与 kaleido>=1（kaleido 会调用本机的 Chrome/Chromium）。"""
+    figure = _plotly_figure(data)
+    if figure is None:
+        return False
+    try:
+        import plotly.io as pio
+        figure.get("layout", {}).pop("template", None)  # 旧版 plotly 的主题可能含新版已删除的属性
+        fig = pio.from_json(json.dumps(figure), skip_invalid=True)
+        fig.update_layout(width=900, height=480)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        pio.write_image(fig, str(target), format="svg")
+    except Exception as exc:  # 没装 kaleido 或找不到浏览器时退回文字提示
+        print(f"[warn] plotly export failed for {target.name}: {str(exc).splitlines()[0]}")
+        return False
+    print(f"[img] {target.relative_to(ROOT)}")
+    return True
+
+
+def execute_notebook(nb_path: Path) -> None:
+    """原地重新执行一个 notebook 并保存输出。用于还没有迁移到 code/*.py 的章节。"""
+    import nbformat
+    from nbclient import NotebookClient
+
+    nb = nbformat.read(nb_path, as_version=4)
+    with tempfile.TemporaryDirectory() as tmp:
+        NotebookClient(nb, timeout=1200, kernel_name="python3", resources={"metadata": {"path": tmp}}).execute()
+    nbformat.write(nb, nb_path)
+    print(f"[ipynb] executed {nb_path.relative_to(ROOT)}")
+
+
 def render_page(nb_path: Path) -> None:
     """把一个 .ipynb 渲染成站内可浏览的页面 docs/tinyllm/notebooks/<章节>.md。"""
     nb = json.loads(nb_path.read_text(encoding="utf-8"))
     slug = nb_path.stem
+    for old in (ROOT / "docs/public/tinyllm/notebooks/img").glob(f"{slug}-*"):
+        old.unlink()
     has_py = (CODE / f"{slug}.py").exists()
     title = slug + ".ipynb"
     for cell in nb["cells"]:
@@ -135,6 +191,7 @@ def render_page(nb_path: Path) -> None:
         if cell["cell_type"] != "code" or not src:
             continue
         n_code += 1
+        n_fig = 0
         parts += [f"<p class=\"nb-label\">In [{n_code}]</p>", "", _fence(src, "python"), ""]
         for out in cell.get("outputs", []):
             kind = out.get("output_type")
@@ -147,12 +204,18 @@ def render_page(nb_path: Path) -> None:
                 if "image/png" in data:
                     img_dir = ROOT / "docs/public/tinyllm/notebooks/img"
                     img_dir.mkdir(parents=True, exist_ok=True)
-                    name = f"{slug}-{n_code}.png"
+                    n_fig += 1
+                    name = f"{slug}-{n_code}-{n_fig}.png"
                     import base64
                     (img_dir / name).write_bytes(base64.b64decode(_text(data["image/png"])))
                     parts += [f"![第 {n_code} 格的输出图像](/tinyllm/notebooks/img/{name})", ""]
                 elif any(k.startswith("application/vnd.plotly") or k == "text/html" for k in data):
-                    parts += ["> 这里是一张交互式图表，网页预览无法显示，请在 Colab 或本地运行查看。", ""]
+                    n_fig += 1
+                    name = f"{slug}-{n_code}-{n_fig}.svg"
+                    if _plotly_to_svg(data, ROOT / "docs/public/tinyllm/notebooks/img" / name):
+                        parts += [f"![第 {n_code} 格输出的图表（静态快照，交互版请在 Colab 或本地运行）](/tinyllm/notebooks/img/{name})", ""]
+                    else:
+                        parts += ["> 这里是一张交互式图表，未能导出静态图，请在 Colab 或本地运行查看。", ""]
                 elif "text/plain" in data:
                     parts += [_fence(_text(data["text/plain"])), ""]
     PAGES.mkdir(parents=True, exist_ok=True)
@@ -163,6 +226,13 @@ def render_page(nb_path: Path) -> None:
 def main() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     check_only = "--check" in sys.argv
+    if "--run-notebooks" in sys.argv:  # 原地重跑尚未迁移章节的 notebook，再刷新预览页
+        if not args:
+            raise SystemExit("--run-notebooks needs chapter names, e.g. activations-and-ffn")
+        for name in args:
+            execute_notebook(NOTEBOOKS / f"{name}.ipynb")
+            render_page(NOTEBOOKS / f"{name}.ipynb")
+        return
     if "--pages" in sys.argv:  # 只根据现有 notebook 重新生成在线预览页，不运行代码
         for nb_path in sorted(NOTEBOOKS.glob("*.ipynb")):
             if not args or nb_path.stem in args:

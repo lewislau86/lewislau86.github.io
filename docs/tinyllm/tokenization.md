@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** Python 字符串、列表和字典；[第 1 章](./first-run.md)的字符级编号。
 
-**实践方式：** [tokenization.ipynb](/tinyllm/notebooks/tokenization)，内置小语料，CPU 即可，不下载模型或数据集。建议先读到第 6 节再运行；第 9 节的近期研究可以留到最后。
+**实践方式：** [tokenization.ipynb](/tinyllm/notebooks/tokenization)（也可以直接运行 <a href="/tinyllm/code/tokenization.py" download>tokenization.py</a>），内置小语料，CPU 即可，不下载模型或数据集。建议先读到第 6 节再运行；第 9 节的近期研究可以留到最后。
 :::
 
 [第 1 章](./first-run.md)用了最朴素的办法：唐诗语料里出现过的 556 个字，一个字一个号，“床前明月光”变成 `[169, 65, 237, 253, 45]`。这张表在唐诗上够用，可一旦换一段文字就露了底：输入里出现一个英文单词、一行 Python 代码或一个 emoji，表里根本查不到；就算都查得到，“一字一号”也让常见的词组（比如“学习”“语言模型”）每次都占好几个位置。
@@ -48,19 +48,13 @@ $$
 
 要决定怎样切分，先得知道文字在计算机里是什么。Python 的 `str` 表示 Unicode 文本，基本单位是<strong>码点</strong>；屏幕上看起来的“一个字”叫字形，它可能由几个码点组成。UTF-8 再把每个码点编码成 1～4 个<strong>字节</strong>，每个字节是 0～255 之间的整数。`len(text)` 数码点，`len(text.encode("utf-8"))` 数字节。[Python Unicode HOWTO](https://docs.python.org/3/howto/unicode.html)
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/tokenization.py" download>tokenization.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/tokenization.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python tokenization.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/tokenization)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tokenization.ipynb)。
+:::
+
 先猜一猜：`猫`、`é`、`👩‍💻` 各有几个码点、几个字节？
 
-```python
-import unicodedata
-
-samples = ["A", "猫", "é", "e\u0301", "👩‍💻"]
-for text in samples:
-    print(repr(text), "码点:", len(text),
-          "UTF-8 字节:", len(text.encode("utf-8")))
-
-assert "é" != "e\u0301"
-assert unicodedata.normalize("NFC", "e\u0301") == "é"
-```
+<<< @/public/tinyllm/code/tokenization.py#unicode-lengths
 
 ![五个样例的码点数与 UTF-8 字节数：A 是 1 个码点 1 个字节，猫是 1 个码点 3 个字节（E7 8C AB），é 是 1 个码点 2 个字节，e 加组合重音是 2 个码点 3 个字节，👩‍💻 是 3 个码点 11 个字节](/tinyllm/figures/utf8-lengths.svg)
 
@@ -93,33 +87,7 @@ assert unicodedata.normalize("NFC", "e\u0301") == "é"
 
 Byte Pair Encoding，简称 BPE。先用只有 ASCII 字母的小语料看清机制：`abab` 出现 3 次、`abac` 出现 2 次、`ad` 出现 1 次。初始单位是单个字母，统计相邻对时要乘上每条样本的出现次数。先猜：第一步会合并哪一对？
 
-```python
-from collections import Counter
-
-weighted_words = [(list("abab"), 3), (list("abac"), 2), (list("ad"), 1)]
-
-def merge_pair(parts, pair):
-    result, i = [], 0
-    while i < len(parts):
-        if i + 1 < len(parts) and (parts[i], parts[i + 1]) == pair:
-            result.append(parts[i] + parts[i + 1])
-            i += 2
-        else:
-            result.append(parts[i])
-            i += 1
-    return result
-
-for step in range(2):
-    counts = Counter()
-    for parts, frequency in weighted_words:
-        for pair in zip(parts, parts[1:]):
-            counts[pair] += frequency
-    # 次数相同时按字符串排序，固定这个教学实现的选择规则。
-    best = min(counts, key=lambda pair: (-counts[pair], pair))
-    print("第", step + 1, "步:", best, "次数:", counts[best])
-    weighted_words = [(merge_pair(parts, best), frequency)
-                      for parts, frequency in weighted_words]
-```
+<<< @/public/tinyllm/code/tokenization.py#bpe-merges
 
 ![BPE 在语料 abab×3、abac×2、ad×1 上的两步合并：第 1 步 a+b 的加权次数为 8，合并成 ab；第 2 步 ab+ab 的次数为 3，合并成 abab](/tinyllm/figures/bpe-merges.svg)
 
@@ -145,48 +113,15 @@ Unigram 从一大批候选片段及其概率出发，逐步删减出词表，编
 
 一个 tokenizer 是一条流水线：<strong>规范化 → 预切分 → BPE 等模型切分并映射 ID → 添加特殊 token</strong>。解码时根据 ID 找回片段，再按解码规则拼回文本。规范化、预切分和后处理都属于配置，需要和词表一起保存。[Tokenizers 流水线](https://huggingface.co/docs/tokenizers/pipeline)
 
-本章固定使用 `tokenizers==0.22.2`，以保证 API 一致（它未必是资料核对日的最新版本）；notebook 的 Plotly 图表固定为 `plotly==6.3.0`。在 Python 3.11 环境中安装：
+本章固定使用 `tokenizers==0.23.3`，以保证 API 一致（它未必是资料核对日的最新版本）；Plotly 图表用 `plotly==7.1.0`。在 Python 3.10 及以上环境中安装：
 
 ```sh
-python -m pip install tokenizers==0.22.2 plotly==6.3.0
+python -m pip install tokenizers==0.23.3 plotly==7.1.0
 ```
 
 下面是专门编写的教学训练集，混合了中文、英文、代码、数字和 emoji。后面用来测量的句子另行列出，<strong>不参与训练词表</strong>。真实项目也是先划分训练、验证和测试数据，再只用训练部分拟合 tokenizer。
 
-```python
-from tokenizers import Tokenizer, models, trainers, pre_tokenizers, decoders, processors
-
-train_texts = [
-    "TinyLLM learns from text. Text becomes tokens.",
-    "A tokenizer maps text to token IDs and back.",
-    "We train a small language model with a small vocabulary.",
-    "我在学习语言模型。词元化把文本转换成编号。",
-    "我们用中文和英文训练一个小词表。模型学习预测下一个词元。",
-    "文本可以包含空格、换行和标点。学习需要反复实验。",
-    "def add(a, b):\n    return a + b\n",
-    "for step in range(10):\n    loss = step / 10\n",
-    "price = 12.50; count = 2026; version = 'v1.2.3'",
-    "Cafe café e\u0301; emoji 🙂; tabs\tand newlines\n",
-]
-special_tokens = ["<pad>", "<unk>", "<bos>", "<eos>"]
-
-def train_tokenizer(vocab_size):
-    tok = Tokenizer(models.BPE(unk_token="<unk>"))
-    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
-    tok.decoder = decoders.ByteLevel()
-    trainer = trainers.BpeTrainer(
-        vocab_size=vocab_size,
-        min_frequency=2,
-        special_tokens=special_tokens,
-        initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
-        show_progress=False,
-    )
-    tok.train_from_iterator(train_texts, trainer=trainer)
-    return tok
-
-tokenizer = train_tokenizer(320)
-print("实际词表大小:", tokenizer.get_vocab_size())
-```
+<<< @/public/tinyllm/code/tokenization.py#train-tokenizer
 
 几个参数的含义：
 
@@ -199,21 +134,7 @@ print("实际词表大小:", tokenizer.get_vocab_size())
 
 ### 观察切分，同时检查还原
 
-```python
-probe = "猫在学习 TinyLLM。\n"
-encoded = tokenizer.encode(probe, add_special_tokens=False)
-print("tokens:", encoded.tokens)
-print("IDs:", encoded.ids)
-print("offsets:", encoded.offsets)
-assert tokenizer.decode(encoded.ids, skip_special_tokens=False) == probe
-
-roundtrip_cases = ["", "  空格\t换行\n", "é", "e\u0301", "👩‍💻", "𠮷", probe]
-for text in roundtrip_cases:
-    ids = tokenizer.encode(text, add_special_tokens=False).ids
-    assert tokenizer.token_to_id("<unk>") not in ids
-    assert tokenizer.decode(ids, skip_special_tokens=False) == text
-print("普通文本往返检查通过:", len(roundtrip_cases), "个案例")
-```
+<<< @/public/tinyllm/code/tokenization.py#encode-roundtrip
 
 打印出的 token 里可能有 `Ġ` 之类的符号，看起来像乱码：这是字节映射的显示形式，`Ġ` 代表一个空格字节。`offsets` 给出每个 token 对应的原文区间；一个汉字被拆成几个字节片段时，这几个片段的区间会重叠在同一个字上。
 
@@ -228,29 +149,11 @@ print("普通文本往返检查通过:", len(roundtrip_cases), "个案例")
 
 把 `<bos>`、`<eos>` 注册进词表只是给它们分配了 ID；什么时候插入它们，由<strong>后处理模板</strong>决定。本例显式设置模板：
 
-```python
-bos_id = tokenizer.token_to_id("<bos>")
-eos_id = tokenizer.token_to_id("<eos>")
-pad_id = tokenizer.token_to_id("<pad>")
-tokenizer.post_processor = processors.TemplateProcessing(
-    single="<bos> $A <eos>",
-    special_tokens=[("<bos>", bos_id), ("<eos>", eos_id)],
-)
-with_special = tokenizer.encode("我在学习。")
-assert with_special.ids[0] == bos_id and with_special.ids[-1] == eos_id
-assert with_special.ids.count(bos_id) == with_special.ids.count(eos_id) == 1
-print(with_special.tokens)
-assert tokenizer.decode(with_special.ids) == "我在学习。"
-```
+<<< @/public/tinyllm/code/tokenization.py#special-template
 
 `decode` 默认跳过特殊 token，所以用户看不到 BOS/EOS。再看一个边界情况：普通输入里恰好写了字面量 `<eos>`，库会把它识别成已注册的特殊 token，默认解码随之把它跳过：
 
-```python
-literal = tokenizer.encode("文档里写了 <eos>", add_special_tokens=False)
-assert eos_id in literal.ids
-print("保留特殊标记:", tokenizer.decode(literal.ids, skip_special_tokens=False))
-print("默认跳过标记:", tokenizer.decode(literal.ids))
-```
+<<< @/public/tinyllm/code/tokenization.py#literal-eos
 
 可见“原文可逆”带有条件。`add_special_tokens=False` 关闭的只是模板插入；用户文本中的保留标记怎样处理，需要产品自己定下转义或普通文本编码策略，并把用户字符串当作不可信输入对待。
 
@@ -267,24 +170,7 @@ print("默认跳过标记:", tokenizer.decode(literal.ids))
 
 真实训练按 batch 处理，长短不一的样本要先补齐。下面只用列表构造数据，不需要 PyTorch：
 
-```python
-sequences = [tokenizer.encode(text).ids for text in ["猫", "我在学习 TinyLLM。"]]
-width = max(map(len, sequences))
-padded = [ids + [pad_id] * (width - len(ids)) for ids in sequences]
-masks = [[1] * len(ids) + [0] * (width - len(ids)) for ids in sequences]
-
-input_ids = [row[:-1] for row in padded]
-attention_mask = [row[:-1] for row in masks]
-labels = [[token if valid else -100 for token, valid in zip(row[1:], mask[1:])]
-          for row, mask in zip(padded, masks)]
-
-for original, row_labels in zip(sequences, labels):
-    valid_labels = [value for value in row_labels if value != -100]
-    assert valid_labels == original[1:]
-    assert valid_labels[-1] == eos_id
-print("batch/序列长度:", len(input_ids), len(input_ids[0]))
-print("两条样本有效目标数:", [sum(x != -100 for x in row) for row in labels])
-```
+<<< @/public/tinyllm/code/tokenization.py#label-shift
 
 ![两条补齐到相同长度的样本：input_ids 取前 n-1 个位置，labels 取后 n-1 个位置；attention_mask 有效位置为 1、补齐位置为 0；补齐位置的标签记为 -100，EOS 保留为目标](/tinyllm/figures/label-shift.svg)
 
@@ -304,19 +190,7 @@ print("两条样本有效目标数:", [sum(x != -100 for x in row) for row in la
 
 ### 保存、加载与模型兼容性
 
-```python
-import hashlib
-from pathlib import Path
-from tempfile import TemporaryDirectory
-
-with TemporaryDirectory() as directory:
-    path = Path(directory) / "tokenizer.json"
-    tokenizer.save(str(path))
-    reloaded = Tokenizer.from_file(str(path))
-    for text in roundtrip_cases + ["文档里写了 <eos>"]:
-        assert reloaded.encode(text).ids == tokenizer.encode(text).ids
-    print("保存后加载的编码一致；SHA-256:", hashlib.sha256(path.read_bytes()).hexdigest())
-```
+<<< @/public/tinyllm/code/tokenization.py#save-load
 
 `TemporaryDirectory` 在实验后清理文件；实际训练时把 `tokenizer.json` 保存在检查点目录，同时记录训练语料版本、库版本和训练参数。用对话模板时还要另存模板及相关配置，因为这份底层 Tokenizers JSON 只含分词流水线，chat template 属于 Transformers 层。
 
@@ -326,28 +200,7 @@ tokenizer 和嵌入权重是一对：重新训练 tokenizer 后，旧 ID 的含�
 
 下面固定训练文本、预切分和频次阈值，只改变词表预算。测量用四段未参与训练的文本；这是观察机制的小实验，用来看趋势，而非给语言或代码能力排名。
 
-```python
-evaluation_texts = {
-    "中文": "今天我们检查词元化，看看陌生汉字龘能否还原。",
-    "英文": "A tiny tokenizer should preserve unfamiliar text exactly.",
-    "代码": "def square(x):\n    return x ** 2\n",
-    "数字与 emoji": "2026-10-11 price=19.95 👩‍💻",
-}
-measurements = []
-for budget in [260, 288, 320, 384]:
-    candidate = train_tokenizer(budget)
-    for domain, text in evaluation_texts.items():
-        ids = candidate.encode(text, add_special_tokens=False).ids
-        assert candidate.decode(ids, skip_special_tokens=False) == text
-        measurements.append({
-            "budget": budget, "actual_vocab": candidate.get_vocab_size(),
-            "domain": domain, "tokens": len(ids),
-            "bytes_per_token": len(text.encode("utf-8")) / len(ids),
-        })
-for row in measurements:
-    print(row["budget"], row["actual_vocab"], row["domain"], row["tokens"],
-          round(row["bytes_per_token"], 3))
-```
+<<< @/public/tinyllm/code/tokenization.py#budget-sweep
 
 先预测：预算从 260 加到 384，四段文本的 token 数会怎样变？实际词表会不会正好是 384？本章固定环境下的实测如下，每个领域对应上面的一条留出文本，不含 BOS/EOS：
 
@@ -414,7 +267,7 @@ $$
 4. 文本中直接写入 `<eos>`，比较默认解码与 `skip_special_tokens=False`。解释“关闭自动添加”和“把标记当普通文本”有什么区别。
 5. 观察 batch 中的最后一个有效目标，确认它是 EOS；再检查补齐目标是否为 `-100`，以及标签有没有被移位两次。
 
-Notebook 提供 NFC、词表预算和最短切分的参考答案。验证记录：2026-10-11，Python 3.11、Tokenizers 0.22.2、Plotly 6.3.0；配套 notebook 从头运行，检查普通文本还原、特殊标记行为、保存加载、标签移位及四组词表预算。这些是 CPU 上的小型 tokenizer 实验，不含语言模型预训练，也不复现上述论文的性能数字。
+Notebook 提供 NFC、词表预算和最短切分的参考答案。验证记录：2026-10-27，Python 3.10、Tokenizers 0.23.3、Plotly 7.1.0；配套脚本从头运行，检查普通文本还原、特殊标记行为、保存加载、标签移位及四组词表预算。这些是 CPU 上的小型 tokenizer 实验，不含语言模型预训练，也不复现上述论文的性能数字。
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 

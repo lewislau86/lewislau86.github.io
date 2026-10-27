@@ -10,7 +10,7 @@ pageClass: tinyllm-course
 <!-- 本页由 scripts/build-tinyllm-code.py 根据 notebook 自动生成，请勿手改。 -->
 
 ::: tip 这是 notebook 的只读预览
-[返回教案](/tinyllm/tensors-and-autograd) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tensors-and-autograd.ipynb) · <a href="/tinyllm/notebooks/tensors-and-autograd.ipynb" download>下载 .ipynb</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tensors-and-autograd.ipynb)
+[返回教案](/tinyllm/tensors-and-autograd) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tensors-and-autograd.ipynb) · <a href="/tinyllm/notebooks/tensors-and-autograd.ipynb" download>下载 .ipynb</a> · <a href="/tinyllm/code/tensors-and-autograd.py" download>下载 .py</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/tensors-and-autograd.ipynb)
 
 下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。
 :::
@@ -18,7 +18,12 @@ pageClass: tinyllm-course
 ::: v-pre
 # 第 2 章：PyTorch 张量与自动求导
 
-配套[教案](https://lewislau86.github.io/tinyllm/tensors-and-autograd)。请从上到下运行，先猜形状和数值，再看输出。核心实验固定在 CPU；末尾另测本机 CUDA/MPS 与可选 MLX。
+配套教案：https://lewislau86.github.io/tinyllm/tensors-and-autograd
+
+从上到下运行即可，CPU 上几秒钟。只需要安装 PyTorch（MLX 可选）。
+这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
+请先猜形状和数值，再看输出。核心实验固定在 CPU；末尾另测本机 CUDA/MPS 与可选 MLX。
 :::
 
 ::: v-pre
@@ -40,32 +45,48 @@ print("MPS 可用:", torch.backends.mps.is_available())
 ```
 
 ```text
-PyTorch: 2.11.0
+PyTorch: 2.14.1+cpu
 CUDA 可用: False
-MPS 可用: True
+MPS 可用: False
 ```
 
 ::: v-pre
 ## 1. 张量：形状、类型与索引
 
-先预测 `hidden[0, 1, :]` 是哪 4 个数。词元 ID 用整数，隐藏状态用浮点数。
+两句话，每句三个 token，用整数编号。形状 `[2, 3]` 读作 `[batch, seq]`。
 :::
 
 <p class="nb-label">In [2]</p>
 
 ```python
 token_ids = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.long)
+print(token_ids.shape)  # torch.Size([2, 3])
+print("dtype:", token_ids.dtype)
+```
+
+```text
+torch.Size([2, 3])
+dtype: torch.int64
+```
+
+::: v-pre
+先预测 `hidden[0, 1, :]` 是哪 4 个数。词元 ID 用整数，隐藏状态用浮点数。
+:::
+
+<p class="nb-label">In [3]</p>
+
+```python
 hidden = torch.arange(24, dtype=torch.float32).reshape(2, 3, 4)
-print("token_ids:", token_ids.shape, token_ids.dtype)
-print("hidden:", hidden.shape, "ndim=", hidden.ndim, "device=", hidden.device)
-print("第 1 个样本的第 2 个 token:", hidden[0, 1, :])
+print(hidden.shape)       # torch.Size([2, 3, 4])
+print(hidden[0, 1, :])    # tensor([4., 5., 6., 7.])
+print("ndim=", hidden.ndim, "dtype=", hidden.dtype, "device=", hidden.device)
 assert hidden[0, 1, :].tolist() == [4., 5., 6., 7.]
 ```
 
 ```text
-token_ids: torch.Size([2, 3]) torch.int64
-hidden: torch.Size([2, 3, 4]) ndim= 3 device= cpu
-第 1 个样本的第 2 个 token: tensor([4., 5., 6., 7.])
+torch.Size([2, 3, 4])
+tensor([4., 5., 6., 7.])
+ndim= 3 dtype= torch.float32 device= cpu
 ```
 
 ::: v-pre
@@ -74,19 +95,21 @@ hidden: torch.Size([2, 3, 4]) ndim= 3 device= cpu
 `reshape` 重新安排形状；`transpose` 交换两个轴。`transpose` 后的内存布局通常不连续。`reshape` 是否复制取决于布局；要独立副本请显式 `clone()`。
 :::
 
-<p class="nb-label">In [3]</p>
+<p class="nb-label">In [4]</p>
 
 ```python
 flat = hidden.reshape(2, 12)
+print(flat.shape)  # torch.Size([2, 12])
 swapped = hidden.transpose(1, 2)
-print("reshape:", flat.shape, "transpose:", swapped.shape)
+print("transpose:", swapped.shape)
 print("transpose 连续吗:", swapped.is_contiguous(), "stride:", swapped.stride())
 print("独立副本:", hidden.clone().shape)
 assert flat.shape == (2, 12) and swapped.shape == (2, 4, 3)
 ```
 
 ```text
-reshape: torch.Size([2, 12]) transpose: torch.Size([2, 4, 3])
+torch.Size([2, 12])
+transpose: torch.Size([2, 4, 3])
 transpose 连续吗: False stride: (12, 1, 4)
 独立副本: torch.Size([2, 3, 4])
 ```
@@ -97,45 +120,70 @@ transpose 连续吗: False stride: (12, 1, 4)
 `bias` 是 `[4]`，与 `[2,3,4]` 相加时，最后一轴匹配；每个 token 都加同一个偏置。
 :::
 
-<p class="nb-label">In [4]</p>
+<p class="nb-label">In [5]</p>
 
 ```python
-x = torch.zeros(2, 3, 4)
 bias = torch.tensor([1., 2., 3., 4.])
-y = x + bias
-print("x + bias:", y.shape, y[0, 0], y[1, 2])
+shifted = hidden + bias
+print(shifted.shape)       # torch.Size([2, 3, 4])
+print(shifted[0, 1, :])    # tensor([ 5.,  7.,  9., 11.])
+assert shifted[0, 1, :].tolist() == [5., 7., 9., 11.]
+
+# 再用全零张量看得更清楚：每个 token 加到的都是同一个 bias
+y = torch.zeros(2, 3, 4) + bias
+print("zeros + bias:", y.shape, y[0, 0], y[1, 2])
 assert y.shape == (2, 3, 4)
 assert torch.equal(y[0, 0], bias) and torch.equal(y[1, 2], bias)
 ```
 
 ```text
-x + bias: torch.Size([2, 3, 4]) tensor([1., 2., 3., 4.]) tensor([1., 2., 3., 4.])
+torch.Size([2, 3, 4])
+tensor([ 5.,  7.,  9., 11.])
+zeros + bias: torch.Size([2, 3, 4]) tensor([1., 2., 3., 4.]) tensor([1., 2., 3., 4.])
 ```
 
 ::: v-pre
 ## 3. 逐元素乘法、矩阵乘法与 `nn.Linear`
 
-`*` 不会求内积；`@` 使用末尾两个轴做矩阵乘法。`nn.Linear(4,6)` 存 `[6,4]` 权重，内部使用权重的转置。
+`*` 不会求内积；`@` 使用末尾两个轴做矩阵乘法。
 :::
 
-<p class="nb-label">In [5]</p>
+<p class="nb-label">In [6]</p>
 
 ```python
 weight = torch.ones(4, 6)
+out = hidden @ weight
+print(out.shape)          # torch.Size([2, 3, 6])
+print(out[0, 1, :])       # tensor([22., 22., 22., 22., 22., 22.])
 print("逐元素乘法:", (bias * bias).shape)
-print("矩阵乘法:", (y @ weight).shape)
-linear = nn.Linear(in_features=4, out_features=6, bias=True)
-result = linear(y)
-manual = y @ linear.weight.T + linear.bias
-print("Linear 权重:", linear.weight.shape, "输出:", result.shape)
+assert out[0, 1, :].tolist() == [22.] * 6
+```
+
+```text
+torch.Size([2, 3, 6])
+tensor([22., 22., 22., 22., 22., 22.])
+逐元素乘法: torch.Size([4])
+```
+
+::: v-pre
+`nn.Linear(4,6)` 存 `[6,4]` 权重，内部使用权重的转置，再加偏置。
+:::
+
+<p class="nb-label">In [7]</p>
+
+```python
+linear = torch.nn.Linear(4, 6)
+print(linear.weight.shape)   # torch.Size([6, 4])
+print(linear(hidden).shape)  # torch.Size([2, 3, 6])
+result = linear(hidden)
+manual = hidden @ linear.weight.T + linear.bias
 assert result.shape == (2, 3, 6)
 assert torch.allclose(result, manual)
 ```
 
 ```text
-逐元素乘法: torch.Size([4])
-矩阵乘法: torch.Size([2, 3, 6])
-Linear 权重: torch.Size([6, 4]) 输出: torch.Size([2, 3, 6])
+torch.Size([6, 4])
+torch.Size([2, 3, 6])
 ```
 
 ::: v-pre
@@ -144,7 +192,7 @@ Linear 权重: torch.Size([6, 4]) 输出: torch.Size([2, 3, 6])
 Q 的末尾是 `[query_len, head_dim]`；K 的末尾是 `[key_len, head_dim]`。只有把 K **最后两轴**交换，乘积才得到 `[query_len, key_len]`。
 :::
 
-<p class="nb-label">In [6]</p>
+<p class="nb-label">In [8]</p>
 
 ```python
 q = torch.randn(2, 3, 4, 5)
@@ -161,47 +209,136 @@ Q: torch.Size([2, 3, 4, 5]) K: torch.Size([2, 3, 6, 5]) K 转置后: torch.Size(
 ```
 
 ::: v-pre
-## 4. 自动求导：手算后再反传
+## 4. 自动求导：先让 PyTorch 算，再手算核对
 
 $L=(wx-t)^2$，若 $w=2,x=3,t=1$，则 $L=25$，$dL/dw=2(wx-t)x=30$。`Parameter` 默认追踪梯度，`grad_fn` 显示损失来自运算图。
 :::
 
-<p class="nb-label">In [7]</p>
+<p class="nb-label">In [9]</p>
 
 ```python
-w = nn.Parameter(torch.tensor(2.0))
-x_scalar = torch.tensor(3.0)
+w = torch.nn.Parameter(torch.tensor(2.0))
+x = torch.tensor(3.0)
 target = torch.tensor(1.0)
-loss = (w * x_scalar - target).square()
-print("loss:", loss.item(), "grad_fn:", type(loss.grad_fn).__name__)
+
+prediction = w * x
+loss = (prediction - target).square()
+
+print(w.requires_grad)           # True：需要计算 w 的梯度
+print(x.requires_grad)           # False：不需要计算输入 x 的梯度
+print(w.grad)                    # None：此时还没有反向计算
+print(prediction.grad_fn is not None)  # True：乘法被记录下来
+print(loss.grad_fn is not None)        # True：损失也连在计算图上
+
 loss.backward()
-print("自动求导:", w.grad.item(), "手算:", 2 * (2 * 3 - 1) * 3)
+
+print(prediction.item())  # 6.0
+print(loss.item())        # 25.0
+print(w.grad.item())      # 30.0
+print("grad_fn:", type(loss.grad_fn).__name__, "| 手算:", 2 * (2 * 3 - 1) * 3)
 assert w.grad.item() == 30.0
 ```
 
 ```text
-loss: 25.0 grad_fn: PowBackward0
-自动求导: 30.0 手算: 30
+True
+False
+None
+True
+True
+6.0
+25.0
+30.0
+grad_fn: PowBackward0 | 手算: 30
+```
+
+::: v-pre
+### 两个参数
+
+再加一个可学习偏置 $b$，`backward()` 会把梯度分别交给两个参数。
+:::
+
+<p class="nb-label">In [10]</p>
+
+```python
+w2 = torch.nn.Parameter(torch.tensor(2.0))
+b2 = torch.nn.Parameter(torch.tensor(0.0))
+prediction2 = w2 * x + b2
+loss2 = (prediction2 - target).square()
+loss2.backward()
+print(w2.grad.item(), b2.grad.item())  # 30.0 10.0
+print(x.grad)                           # None
+assert (w2.grad.item(), b2.grad.item()) == (30.0, 10.0)
+```
+
+```text
+30.0 10.0
+None
+```
+
+::: v-pre
+### 手动更新一步
+
+学习率 0.01：$w$ 从 2 变为 1.7，损失从 25 降到 16.81。
+:::
+
+<p class="nb-label">In [11]</p>
+
+```python
+with torch.no_grad():
+    w -= 0.01 * w.grad
+
+new_loss = (w * x - target).square()
+print(w.item())         # 约 1.7
+print(new_loss.item())  # 约 16.81
+assert abs(w.item() - 1.7) < 1e-6 and abs(new_loss.item() - 16.81) < 1e-4
+```
+
+```text
+1.7000000476837158
+16.81000328063965
+```
+
+::: v-pre
+### 清空梯度后再反传
+
+参数已经变了，新梯度对应更新后的 $w$：$2\times(1.7\times3-1)\times3=24.6$。
+:::
+
+<p class="nb-label">In [12]</p>
+
+```python
+w.grad = None
+loss = (w * x - target).square()
+loss.backward()
+print(w.grad.item())  # 对应更新后的 w，约为 24.6
+assert abs(w.grad.item() - 24.6) < 1e-4
+```
+
+```text
+24.60000228881836
 ```
 
 ::: v-pre
 ### 梯度会累积
 
-重新前向计算同一损失并反传，`.grad` 会从 30 变为 60。准备下一步训练前，需要清空梯度；优化器通常提供 `zero_grad(set_to_none=True)`。
+换一个新参数，在更新前连续做两次独立前向与反传，`.grad` 会从 30 变为 60。准备下一步训练前，需要清空梯度；优化器通常提供 `zero_grad(set_to_none=True)`。
 :::
 
-<p class="nb-label">In [8]</p>
+<p class="nb-label">In [13]</p>
 
 ```python
-second_loss = (w * x_scalar - target).square()
-second_loss.backward()
-print("两次反传后:", w.grad.item())
-assert w.grad.item() == 60.0
-w.grad = None
-print("清空后:", w.grad)
+w_acc = nn.Parameter(torch.tensor(2.0))
+(w_acc * x - target).square().backward()
+print("一次反传后:", w_acc.grad.item())
+(w_acc * x - target).square().backward()
+print("两次反传后:", w_acc.grad.item())
+assert w_acc.grad.item() == 60.0
+w_acc.grad = None
+print("清空后:", w_acc.grad)
 ```
 
 ```text
+一次反传后: 30.0
 两次反传后: 60.0
 清空后: None
 ```
@@ -212,12 +349,12 @@ print("清空后:", w.grad)
 `no_grad` 停止记录新运算；`detach` 从旧图分离结果；`eval()` 仅切换模块行为，不关掉自动求导。
 :::
 
-<p class="nb-label">In [9]</p>
+<p class="nb-label">In [14]</p>
 
 ```python
-z = w * x_scalar
+z = w * x
 with torch.no_grad():
-    pred = w * x_scalar
+    pred = w * x
 separated = z.detach()
 probe = nn.Linear(1, 1)
 probe.eval()
@@ -239,7 +376,7 @@ detach: False eval 后仍追踪: True
 用 `float64` 和中心差分核对 `w=2` 时的导数。差分是近似值，容许很小误差。
 :::
 
-<p class="nb-label">In [10]</p>
+<p class="nb-label">In [15]</p>
 
 ```python
 w64 = torch.tensor(2.0, dtype=torch.float64, requires_grad=True)
@@ -263,7 +400,7 @@ assert abs(finite_diff.item() - 30.0) < 1e-6
 同一设备上的 `Linear` 与输入可以计算。这里逐一测试 CPU、可用的 CUDA/MPS；结果只说明这个小算子可运行，不代表所有算子兼容或性能更好。
 :::
 
-<p class="nb-label">In [11]</p>
+<p class="nb-label">In [16]</p>
 
 ```python
 devices = [torch.device("cpu")]
@@ -284,17 +421,13 @@ for device in devices:
 cpu 输出: (2, 3, 2) 权重梯度: (2, 4)
 ```
 
-```text
-mps 输出: (2, 3, 2) 权重梯度: (2, 4)
-```
-
 ::: v-pre
 ## 7. 可选 MLX：另一框架的函数式梯度
 
 MLX 不是 PyTorch 的 `device`。此格只在安装 MLX 的环境运行；使用 `mx.grad`，不调用 `.backward()`。未安装时会明确报告跳过。
 :::
 
-<p class="nb-label">In [12]</p>
+<p class="nb-label">In [17]</p>
 
 ```python
 try:

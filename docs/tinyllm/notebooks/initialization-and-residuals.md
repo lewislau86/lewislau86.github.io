@@ -10,15 +10,20 @@ pageClass: tinyllm-course
 <!-- 本页由 scripts/build-tinyllm-code.py 根据 notebook 自动生成，请勿手改。 -->
 
 ::: tip 这是 notebook 的只读预览
-[返回教案](/tinyllm/initialization-and-residuals) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/initialization-and-residuals.ipynb) · <a href="/tinyllm/notebooks/initialization-and-residuals.ipynb" download>下载 .ipynb</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/initialization-and-residuals.ipynb)
+[返回教案](/tinyllm/initialization-and-residuals) · [在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/initialization-and-residuals.ipynb) · <a href="/tinyllm/notebooks/initialization-and-residuals.ipynb" download>下载 .ipynb</a> · <a href="/tinyllm/code/initialization-and-residuals.py" download>下载 .py</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/initialization-and-residuals.ipynb)
 
-下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。这份 notebook 没有保存运行输出，运行后才能看到结果。
+下面的代码和输出与 notebook 文件完全一致。想修改、运行，请用 Colab 打开或下载到本地。
 :::
 
 ::: v-pre
 # 第 3 章：初始化与残差路径
 
-配套[教案](https://lewislau86.github.io/tinyllm/initialization-and-residuals)。按顺序运行，CPU 即可。图表使用 Plotly；需要 `torch` 和 `plotly`。随机种子只让本次演示易复现，不能代替多次试验。
+配套教案：https://lewislau86.github.io/tinyllm/initialization-and-residuals
+
+从上到下运行即可，CPU 上几秒钟。需要安装 PyTorch 和 Plotly（画图）。
+这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
+随机种子只让本次演示易复现，不能代替多次试验。
 :::
 
 <p class="nb-label">In [1]</p>
@@ -33,22 +38,39 @@ torch.manual_seed(7)
 print('PyTorch:', torch.__version__)
 ```
 
+```text
+PyTorch: 2.14.1+cpu
+```
+
 ::: v-pre
 ## 1. 检查权重形状与初始化分布
 
-先预测 `nn.Linear(64,128)` 的权重形状。截断正态的 `std` 是截断前分布的参数；观察实测值。
+先预测 `nn.Linear(64,128)` 的权重形状，再用 Xavier 重设权重。截断正态的 `std` 是截断前分布的参数；观察实测值。
 :::
 
 <p class="nb-label">In [2]</p>
 
 ```python
-layer = nn.Linear(64, 128)
-assert tuple(layer.weight.shape) == (128, 64)
-w = torch.empty(100_000)
-nn.init.trunc_normal_(w, mean=0.0, std=1.0, a=-2.0, b=2.0)
-print('shape:', tuple(layer.weight.shape))
-print('truncated range/std:', float(w.min()), float(w.max()), float(w.std()))
-assert w.min() >= -2 and w.max() <= 2 and w.std() < 1
+torch.manual_seed(7)
+linear = nn.Linear(64, 128)
+print(linear.weight.shape)  # torch.Size([128, 64])：fan_in=64，fan_out=128
+
+with torch.no_grad():
+    nn.init.xavier_normal_(linear.weight)
+    nn.init.zeros_(linear.bias)
+
+weights = torch.empty(100_000)
+nn.init.trunc_normal_(weights, mean=0.0, std=1.0, a=-2.0, b=2.0)
+print(weights.min().item(), weights.max().item(), weights.std().item())
+assert tuple(linear.weight.shape) == (128, 64)
+assert weights.min() >= -2 and weights.max() <= 2 and weights.std() < 1
+print('Xavier 后权重标准差:', linear.weight.std().item(), ' 理论值:', (2 / (64 + 128)) ** 0.5)
+```
+
+```text
+torch.Size([128, 64])
+-1.9999624490737915 1.999965786933899 0.8809995055198669
+Xavier 后权重标准差: 0.1019958034157753  理论值: 0.10206207261596575
 ```
 
 ::: v-pre
@@ -82,6 +104,18 @@ for row in rows:
 assert all(math.isfinite(row[3]) for row in rows)
 ```
 
+```text
+width= 16  fixed 0.1  weight_std=0.091  output_std=0.368
+width= 16  Xavier     weight_std=0.273  output_std=1.096
+width= 16  He/ReLU    weight_std=0.359  output_std=1.440
+width= 64  fixed 0.1  weight_std=0.099  output_std=0.790
+width= 64  Xavier     weight_std=0.125  output_std=0.998
+width= 64  He/ReLU    weight_std=0.177  output_std=1.422
+width=256  fixed 0.1  weight_std=0.100  output_std=1.599
+width=256  Xavier     weight_std=0.063  output_std=1.001
+width=256  He/ReLU    weight_std=0.088  output_std=1.407
+```
+
 <p class="nb-label">In [4]</p>
 
 ```python
@@ -92,6 +126,8 @@ for name in methods:
 fig.update_layout(title='初始化时线性层输出的标准差', xaxis_title='输入/输出宽度 d', yaxis_title='输出标准差（无单位）')
 fig.show()
 ```
+
+![第 4 格输出的图表（静态快照，交互版请在 Colab 或本地运行）](/tinyllm/notebooks/img/initialization-and-residuals-4-1.svg)
 
 ::: v-pre
 ## 3. 残差的局部梯度
@@ -105,8 +141,12 @@ fig.show()
 x = torch.tensor(2.0, requires_grad=True)
 y = x + 0.1 * x
 y.backward()
-print('output=', float(y.detach()), 'input gradient=', float(x.grad))
+print(y.item(), x.grad.item())  # 约 2.2 和 1.1（float32 有舍入误差）
 assert abs(float(x.grad) - 1.1) < 1e-6
+```
+
+```text
+2.200000047683716 1.100000023841858
 ```
 
 ::: v-pre
@@ -152,6 +192,13 @@ for kind, (activation, gradient) in traces.items():
     assert all(math.isfinite(v) for v in activation + gradient)
 ```
 
+```text
+plain last activation RMS= 0.8442 input gradient RMS= 0.019154
+pre last activation RMS= 4.6482 input gradient RMS= 0.239465
+post last activation RMS= 1.0 input gradient RMS= 0.004591
+scaled-pre last activation RMS= 1.4457 input gradient RMS= 0.017322
+```
+
 <p class="nb-label">In [7]</p>
 
 ```python
@@ -162,6 +209,10 @@ for metric, idx in [('激活 RMS', 0), ('梯度 RMS', 1)]:
     fig.update_layout(title=metric + ' 随深度的变化（随机初始化）', xaxis_title='层数（0 为输入）', yaxis_title=metric + '（无单位）')
     fig.show()
 ```
+
+![第 7 格输出的图表（静态快照，交互版请在 Colab 或本地运行）](/tinyllm/notebooks/img/initialization-and-residuals-7-1.svg)
+
+![第 7 格输出的图表（静态快照，交互版请在 Colab 或本地运行）](/tinyllm/notebooks/img/initialization-and-residuals-7-2.svg)
 
 ::: v-pre
 ## 5. 改深度和种子
@@ -176,6 +227,18 @@ for depth in [4, 16, 32]:
     for seed in [7, 11, 19]:
         a, g = trace_stack('scaled-pre', depth=depth, seed=seed)
         print('depth=%2d seed=%2d final_RMS=%.3f input_grad_RMS=%.5f' % (depth, seed, a[-1], g[0]))
+```
+
+```text
+depth= 4 seed= 7 final_RMS=1.387 input_grad_RMS=0.01559
+depth= 4 seed=11 final_RMS=1.385 input_grad_RMS=0.01647
+depth= 4 seed=19 final_RMS=1.463 input_grad_RMS=0.01789
+depth=16 seed= 7 final_RMS=1.446 input_grad_RMS=0.01732
+depth=16 seed=11 final_RMS=1.340 input_grad_RMS=0.01626
+depth=16 seed=19 final_RMS=1.402 input_grad_RMS=0.01604
+depth=32 seed= 7 final_RMS=1.447 input_grad_RMS=0.01659
+depth=32 seed=11 final_RMS=1.423 input_grad_RMS=0.01570
+depth=32 seed=19 final_RMS=1.313 input_grad_RMS=0.01696
 ```
 
 ::: v-pre
