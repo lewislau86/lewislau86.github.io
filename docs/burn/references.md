@@ -105,6 +105,8 @@ GPU 资料核对日期：**2026-10-25**。相关内容编入[第 5 章：GPU 编
 
 ## 推荐的原始阅读入口
 
+数学知识集中整理在[数学预备篇](./math-foundations.md)。主要对照作者维护的《动手学深度学习》[线性代数](https://d2l.ai/chapter_preliminaries/linear-algebra.html)、[微积分](https://d2l.ai/chapter_preliminaries/calculus.html)与 [PyTorch 数值精度说明](https://docs.pytorch.org/docs/2.12/notes/numerical_accuracy.html)。配图为本教程绘制；手算使用正文统一的小模型，不代表已完成分类、量化或 GPU 性能实验。
+
 - 第一次使用：[Getting started](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/getting-started.md)。
 - 框架结构：[Tensor](https://github.com/tracel-ai/burn/blob/v0.22.1/contributor-book/src/project-architecture/tensor.md)、[Backend](https://github.com/tracel-ai/burn/blob/v0.22.1/contributor-book/src/project-architecture/backend.md)。
 - 后端扩展：[接口与分派](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/advanced/backend-extension/README.md)、[CubeCL 内核](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/advanced/backend-extension/custom-cubecl-kernel.md)、[WGPU 内核](https://github.com/tracel-ai/burn/blob/v0.22.1/burn-book/src/advanced/backend-extension/custom-wgpu-kernel.md)。

@@ -95,6 +95,16 @@ Python 的一个变量可以先指向二阶张量，再指向三阶张量。Rust
 
 要表示相同函数，必须令 `A=Wᵀ`。主线矩阵恰好是方阵，形状检查抓不住方向错误；数值仍然会变。若把 W 原样写进 PyTorch Linear，会得到 `XWᵀ+b=[[-1,5]]`，ReLU 后为 `[[0,5]]`。
 
+把“同一函数、两种存法”直接写成公式：
+
+$$
+W=\begin{bmatrix}1&-1\\2&1\end{bmatrix},\qquad
+A=W^{\mathsf T}=\begin{bmatrix}1&2\\-1&1\end{bmatrix},
+\qquad XA^{\mathsf T}+b=XW+b.
+$$
+
+这里 $W$ 是 Burn 线性层的权重，$A$ 是 PyTorch 线性层的权重；$\mathsf T$ 表示转置。图解与矩乘规则可回看[数学预备篇](./math-foundations.md)，不要把转置当成两个框架给权重额外乘了一个数。
+
 因此完整 Python 例子这样写入参数：
 
 ```python

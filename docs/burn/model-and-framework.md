@@ -44,6 +44,17 @@ H = ReLU(Z)
 
 `W` 是权重（weight），`b` 是偏置（bias）。它们是模型参数：训练时需要找到合适的数值，预测时用这些数值参与运算。
 
+把同一过程写成数学公式，后面阅读源码时就能逐项对应：
+
+$$
+\begin{aligned}
+Z_{ij}&=\sum_{k=1}^{K}X_{ik}W_{kj}+b_j,\\
+H_{ij}&=\operatorname{ReLU}(Z_{ij})=\max(0,Z_{ij}).
+\end{aligned}
+$$
+
+这里的 $i$ 选第几个样本，$j$ 选第几个输出，$k$ 遍历输入特征；$\sum$ 表示把每个 $k$ 对应的乘积加起来。本式采用数学中常见的从 1 编号，实际程序的数组下标则从 0 开始。形状为 $X\in\mathbb{R}^{M\times K}$、$W\in\mathbb{R}^{K\times N}$、$b\in\mathbb{R}^{N}$，输出为 $H\in\mathbb{R}^{M\times N}$。本例 $M=1$、$K=2$、$N=2$；$\mathbb{R}$ 只表示这些位置放的是实数，程序实际用浮点数近似保存。看不熟的符号可随时查[数学预备篇](./math-foundations.md)，先跟着下面的具体数字算即可。
+
 矩阵乘法把输入的每一行与权重的每一列做乘加：
 
 ```text

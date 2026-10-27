@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="660" viewBox="0 0 960 660" role="img" aria-labelledby="title desc">
+  <title id="title">自定义操作 y 等于 x 平方加 x 的前向和加权反向</title>
+  <desc id="desc">前向从输入负二、零、三得到输出二、零、十二。目标 L 为 y 与常量 g 的逐元素乘积之和，g 为二、负一、零点五。反向将上游梯度 g 乘以本地导数负三、一、七，得到输入梯度负六、负一、三点五。</desc>
+  <defs>
+    <marker id="forward" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#3c749f"/></marker>
+    <marker id="backward" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#a46a25"/></marker>
+  </defs>
+  <rect width="960" height="660" rx="18" fill="#f7fafc"/>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" fill="#19344b" text-anchor="middle">
+    <text x="480" y="44" font-size="26" font-weight="700">前向算数值，反向接住上游梯度</text>
+    <text x="480" y="76" font-size="18" fill="#526b7e">逐元素操作：y = x² + x · 标量目标：L = Σ gᵢyᵢ</text>
+    <text x="480" y="117" font-size="19" font-weight="600" fill="#3c749f">前向：从左到右</text>
+    <g fill="#edf4fc" stroke="#96b7d0" stroke-width="1.5">
+      <rect x="35" y="140" width="245" height="100" rx="11"/>
+      <rect x="355" y="140" width="250" height="100" rx="11"/>
+      <rect x="680" y="140" width="245" height="100" rx="11"/>
+    </g>
+    <g font-size="22" font-weight="600">
+      <text x="157" y="179">输入 x</text><text x="480" y="179">自定义操作</text><text x="802" y="179">输出 y</text>
+      <text x="157" y="216">[−2, 0, 3]</text><text x="480" y="216">x² + x</text><text x="802" y="216">[2, 0, 12]</text>
+    </g>
+    <g fill="none" stroke="#3c749f" stroke-width="2.8" marker-end="url(#forward)">
+      <path d="M283 191H347"/><path d="M608 191H672"/>
+    </g>
+    <text x="480" y="286" font-size="20" font-weight="600" fill="#8b581d">反向：从右到左</text>
+    <g fill="#fff3e5" stroke="#d1ad7a" stroke-width="1.5">
+      <rect x="35" y="309" width="245" height="115" rx="11"/>
+      <rect x="355" y="309" width="250" height="115" rx="11"/>
+      <rect x="680" y="309" width="245" height="115" rx="11"/>
+    </g>
+    <g font-size="21" font-weight="600" fill="#7b501f">
+      <text x="157" y="343">传给输入的梯度</text><text x="480" y="343">乘本地导数</text><text x="802" y="343">收到的上游梯度</text>
+      <text x="157" y="376">dL/dx = g × (2x + 1)</text><text x="480" y="376">2x + 1 = [−3, 1, 7]</text><text x="802" y="376">g = dL/dy</text>
+      <text x="157" y="408">[−6, −1, 3.5]</text><text x="802" y="408">[2, −1, 0.5]</text>
+    </g>
+    <g fill="none" stroke="#a46a25" stroke-width="2.8" marker-end="url(#backward)">
+      <path d="M677 368H613"/><path d="M352 368H288"/>
+    </g>
+    <rect x="35" y="466" width="890" height="142" rx="12" fill="#fff" stroke="#c7d4df"/>
+    <text x="480" y="502" font-size="21" font-weight="700">不能把反向永远写成 2x + 1</text>
+    <g font-size="18" fill="#526b7e">
+      <text x="480" y="537">只有 L = Σ yᵢ 时，收到的 g 才全是 1。</text>
+      <text x="480" y="569">后续计算改变了目标，g 也会改变；反向必须保留这份权重。</text>
+    </g>
+  </g>
+</svg>

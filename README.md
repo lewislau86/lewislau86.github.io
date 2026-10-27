@@ -50,6 +50,8 @@ learn-cuda 固定版本的 15 个主题已分别在第 5、12、13、15 章讲�
 `docs/public/burn/learn-cuda-reference.rs` 提供 Rust 标准库数学参考，八组检查已通过。`docs/public/burn/nvidia-gpu-labs/` 提供固定 NVIDIA 提交与 Cargo.lock 的 Tile 加法、Softmax、小矩阵乘法；本机未编译或运行 CUDA。`learn-cuda-coverage.json` 记录源码、正文与验证状态，15 个主题的完整 Rust GPU 移植和硬件性能复现仍未完成。
 `docs/public/burn/first-inference/` 提供固定 Burn 0.22.1 的 CPU 学习包。第 16 章用 `comparison.rs` 与 `pytorch_compare.py` 对照两套框架；第 11、14 章用 `regression_train.rs` / `regression_verify.rs` 验证训练、保存与新进程加载。Python 环境与 Cargo 依赖分别管理。
 
+数学预备篇通过 `/burn/math-foundations` 访问，公式使用 VitePress 的 MathJax；图解保存在 `docs/public/burn/`。六张数学图可用 `python scripts/generate-burn-math-figures.py` 重新生成（需要 matplotlib、NumPy 和中文字体；Windows 自动选择微软雅黑，其他平台可安装 Noto Sans CJK SC）。
+
 修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。
 运行包内代码时应在解压目录构建，或为 Cargo 指定站点目录之外的 `CARGO_TARGET_DIR`，避免把编译产物作为静态资源发布。
 
