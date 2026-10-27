@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的张量形状与自动求导。
 
-**实践方式：** <a href="/tinyllm/notebooks/initialization-and-residuals.ipynb" download>initialization-and-residuals.ipynb</a>，CPU 即可，图表使用 Plotly。
+**实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)，CPU 即可，图表使用 Plotly。
 :::
 
 <TinyLLMMap active="initialization-and-residuals" />
@@ -168,7 +168,7 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 
 ## 8. 动手实验：测量每一层，而不只看一条损失曲线
 
-<a href="/tinyllm/notebooks/initialization-and-residuals.ipynb" download>initialization-and-residuals.ipynb</a> 分三步运行：
+[initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) 分三步运行：
 
 1. 对多次抽样的权重记录均值、标准差和截断范围；改变 `fan_in`，比较固定 `std` 与 Xavier/He 的输出方差，Plotly 图对应本章开头那张图。
 2. 让同一个输入通过一串小型残差层，对比纯堆叠、Pre-LN、Post-LN 与带显式缩放的 Pre-LN。记录每层输出的 RMS 和输入梯度范数，对应第 5 节的图。

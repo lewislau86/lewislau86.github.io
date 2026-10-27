@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** 会运行 Python，装好 PyTorch。不需要懂任何深度学习。
 
-**实践方式：** <a href="/tinyllm/notebooks/first-run.ipynb" download>first-run.ipynb</a>（也可以直接运行 <a href="/tinyllm/code/first-run.py" download>first-run.py</a>），CPU 约半分钟。
+**实践方式：** [first-run.ipynb](/tinyllm/notebooks/first-run)（也可以直接运行 <a href="/tinyllm/code/first-run.py" download>first-run.py</a>），CPU 约半分钟。
 :::
 
 后面 26 章会把语言模型拆成零件，一件件讲清楚。拆开之前，先把整台机器开起来看看它在做什么。这一章的代码**故意不解释原理**：遇到看不懂的地方，记下它属于总图里的哪个零件就够了，后面会有专门的章节回答。
@@ -73,7 +73,7 @@ pageClass: tinyllm-course
 ## 1. 准备语料：39 首五言唐诗
 
 ::: info 本章代码从哪里来
-本章所有代码都在一个文件里：<a href="/tinyllm/code/first-run.py" download>first-run.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/first-run.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python first-run.py` 从头跑到尾即可。notebook 版本也由同一个文件生成。
+本章所有代码都在一个文件里：<a href="/tinyllm/code/first-run.py" download>first-run.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/first-run.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python first-run.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/first-run)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/first-run.ipynb)。
 :::
 
 语言模型要从文本里学规律，所以先准备文本。这里用 39 首五言唐诗，每首一行，一共一千多个字。前 35 首用来训练，最后 4 首**不给模型看**，留着检查它是不是真学会了：

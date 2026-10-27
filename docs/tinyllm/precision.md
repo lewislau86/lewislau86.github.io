@@ -14,7 +14,7 @@ next: false
 
 **前置：** 张量与矩阵乘法；[第 4 章](./normalization.md)的归一化。
 
-**实践方式：** <a href="/tinyllm/notebooks/precision.ipynb" download>precision.ipynb</a>，基础实验只需 CPU；有 CUDA、MPS 或 MLX 时可运行加速实验。
+**实践方式：** [precision.ipynb](/tinyllm/notebooks/precision)，基础实验只需 CPU；有 CUDA、MPS 或 MLX 时可运行加速实验。
 :::
 
 <TinyLLMMap active="precision" />
@@ -117,7 +117,7 @@ $$
 
 框架内置的 `nn.LayerNorm`、`nn.RMSNorm` 通常在内部用更高精度计算统计量。自己手写归一化时，可以显式用 `x.float()` 算平方均值和除法，再转回输入 dtype；这保护的是转换之后的计算，已经发生的输入舍入无法弥补。判断效果时分别看三件事：激活是否有限、离 FP32 参考有多远、训练是否收敛。
 
-<a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a> 的低精度单元格演示了三种情况：FP16 对微小值的舍入或下溢、BF16 在较大基数上丢失小差异、先低精度平方与先转 FP32 再平方的差别，最后比较 `nn.LayerNorm`、`nn.RMSNorm` 在 FP32/FP16/BF16 输入上的输出误差。
+[normalization.ipynb](/tinyllm/notebooks/normalization) 的低精度单元格演示了三种情况：FP16 对微小值的舍入或下溢、BF16 在较大基数上丢失小差异、先低精度平方与先转 FP32 再平方的差别，最后比较 `nn.LayerNorm`、`nn.RMSNorm` 在 FP32/FP16/BF16 输入上的输出误差。
 
 ## 6. 混合精度与 `autocast`
 
@@ -151,7 +151,7 @@ Apple silicon 上有两条独立路径：PyTorch 的 `device="mps"` 仍使用 Py
 
 ## 8. 动手实验
 
-打开 <a href="/tinyllm/notebooks/precision.ipynb" download>precision.ipynb</a>，从上往下运行：
+打开 [precision.ipynb](/tinyllm/notebooks/precision)，从上往下运行：
 
 | 实验                 | 主要 PyTorch 调用                                      | 该看什么                                                  |
 | ------------------ | -------------------------------------------------- | ----------------------------------------------------- |

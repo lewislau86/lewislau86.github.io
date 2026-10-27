@@ -43,7 +43,7 @@ y = norm(alpha * x + sublayer(x))        # 只是残差块的前向；初始化�
 
 **DeepNorm 是一整套方案**：只给残差乘一个任意的 $\alpha$、不改初始化，不能叫做 DeepNorm；它也不是“把 RMSNorm 换掉”就能得到的收益。论文在最高 1000 层的 Transformer 上验证了它，但 BERT、GPT、LLaMA 的原始架构都没有采用它。
 
-<a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a> 的 DeepNorm 单元格先比较 `alpha=1` 与演示值 `alpha=1.5` 对 LayerNorm 输入的影响，再按论文系数构造一个带因果注意力和前馈层的小 Block，检查形状和梯度。它不验证深层训练效果。
+[normalization.ipynb](/tinyllm/notebooks/normalization) 的 DeepNorm 单元格先比较 `alpha=1` 与演示值 `alpha=1.5` 对 LayerNorm 输入的影响，再按论文系数构造一个带因果注意力和前馈层的小 Block，检查形状和梯度。它不验证深层训练效果。
 
 ## 参考资料
 

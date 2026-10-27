@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 3 章](./initialization-and-residuals.md)的残差子层，[第 4 章](./normalization.md)的 RMSNorm 与 Pre-Norm。
 
-**实践方式：** <a href="/tinyllm/notebooks/activations-and-ffn.ipynb" download>activations-and-ffn.ipynb</a>，CPU 即可，图表使用 Plotly。
+**实践方式：** [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn)，CPU 即可，图表使用 Plotly。
 :::
 
 <TinyLLMMap active="activations-and-ffn" />
@@ -188,7 +188,7 @@ print(out.shape)  # torch.Size([2, 3, 8])
 
 ## 7. 动手实验：曲线、梯度、参数与简单拟合
 
-<a href="/tinyllm/notebooks/activations-and-ffn.ipynb" download>activations-and-ffn.ipynb</a> 包含四组检查：
+[activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) 包含四组检查：
 
 1. 用 Plotly 同时画 Sigmoid、Tanh、ReLU、GELU、SiLU 的函数和 `autograd` 导数曲线；对照饱和区、ReLU 负半轴和零点附近。
 2. 在 `[2, 3, d]` 输入上运行普通 FFN 与 SwiGLU，打印每一步形状，并用 `sum(p.numel() for p in model.parameters())` 核对第 5 节的参数公式。

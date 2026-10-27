@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 1 章](./first-run.md)跑通的流水线；高中导数。
 
-**实践方式：** <a href="/tinyllm/notebooks/tensors-and-autograd.ipynb" download>tensors-and-autograd.ipynb</a>，CPU 即可。每遇到一个形状或结果，先自己猜，再运行代码核对。
+**实践方式：** [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd)，CPU 即可。每遇到一个形状或结果，先自己猜，再运行代码核对。
 :::
 
 [第 1 章](./first-run.md)的训练循环里有两行我们没有解释：模型输入的 `x` 是形状为 `[32, 24]` 的一堆数字，`loss.backward()` 之后参数就知道往哪边调了。这引出两个问题：<strong>这些数字怎样排在一起？模型怎样知道哪些参数需要调整？</strong>前一个靠张量和形状回答，后一个靠自动求导回答。本章沿着一次小模型计算，把它们串起来。

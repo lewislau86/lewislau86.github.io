@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的张量形状，[第 3 章](./initialization-and-residuals.md)的残差连接。
 
-**实践方式：** <a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a>，CPU 即可，不需要训练模型。
+**实践方式：** [normalization.ipynb](/tinyllm/notebooks/normalization)，CPU 即可，不需要训练模型。
 :::
 
 <TinyLLMMap active="normalization" />
@@ -165,7 +165,7 @@ class Block(nn.Module):
 
 ## 7. 动手实验
 
-打开 <a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a>，从上到下运行。输入固定，不需要下载数据。
+打开 [normalization.ipynb](/tinyllm/notebooks/normalization)，从上到下运行。输入固定，不需要下载数据。
 
 | 实验 | 输入 | 应该看到 |
 | --- | --- | --- |

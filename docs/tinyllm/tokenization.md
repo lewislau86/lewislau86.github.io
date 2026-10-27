@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** Python 字符串、列表和字典；[第 1 章](./first-run.md)的字符级编号。
 
-**实践方式：** <a href="/tinyllm/notebooks/tokenization.ipynb" download>tokenization.ipynb</a>，内置小语料，CPU 即可，不下载模型或数据集。建议先读到第 6 节再运行；第 9 节的近期研究可以留到最后。
+**实践方式：** [tokenization.ipynb](/tinyllm/notebooks/tokenization)，内置小语料，CPU 即可，不下载模型或数据集。建议先读到第 6 节再运行；第 9 节的近期研究可以留到最后。
 :::
 
 [第 1 章](./first-run.md)用了最朴素的办法：唐诗语料里出现过的 556 个字，一个字一个号，“床前明月光”变成 `[169, 65, 237, 253, 45]`。这张表在唐诗上够用，可一旦换一段文字就露了底：输入里出现一个英文单词、一行 Python 代码或一个 emoji，表里根本查不到；就算都查得到，“一字一号”也让常见的词组（比如“学习”“语言模型”）每次都占好几个位置。
@@ -406,7 +406,7 @@ $$
 
 ## 10. 动手检查与练习
 
-先预测结果，再运行 <a href="/tinyllm/notebooks/tokenization.ipynb" download>tokenization.ipynb</a>：
+先预测结果，再运行 [tokenization.ipynb](/tinyllm/notebooks/tokenization)：
 
 1. `é` 与 `e\u0301` 看起来相近，为什么码点数和字节数不同？添加 NFC 后，应该断言还原原文，还是还原 NFC 后的文本？
 2. 只用英文语料训练，再编码从未出现过的汉字；为什么保留 256 个基础字节就能避免 UNK，而这个汉字却可能占好几个 token？

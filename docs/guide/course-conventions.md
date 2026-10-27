@@ -153,7 +153,7 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 
   Markdown 里写一行 `<<< @/public/tinyllm/code/first-run.py#model`，构建时会把这段代码原样嵌入页面（标记行本身不会显示）。每章第一个代码块之前放一个 `::: info` 框，说明代码出处并给出完整脚本的下载和 GitHub 链接。
 - 只为说明某个 API 参数、本身不打算运行的几行示意代码，可以留在 Markdown 里，旁边写明“示意”并链接完整脚本。
-- notebook 由脚本生成，不要手改：脚本里 `# %%` 开始一个代码格，`# %% [markdown]` 开始一个说明格。运行 `python scripts/build-tinyllm-code.py <章节>` 会执行脚本、生成 `docs/public/tinyllm/notebooks/<文件名>.ipynb` 并保存输出；`--check` 只运行、不写文件。notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
+- notebook 由脚本生成，不要手改：脚本里 `# %%` 开始一个代码格，`# %% [markdown]` 开始一个说明格。运行 `python scripts/build-tinyllm-code.py <章节>` 会执行脚本、生成 `docs/public/tinyllm/notebooks/<文件名>.ipynb` 并保存输出；`--check` 只运行、不写文件。同时会生成站内只读预览页 `docs/tinyllm/notebooks/<文件名>.md`（网址 `/tinyllm/notebooks/<文件名>`），显示全部代码和保存的输出，并提供“在 Colab 中运行”“下载 .ipynb / .py”“在 GitHub 上查看”链接；正文提到 notebook 时链接到这个预览页，而不是 `.ipynb` 文件本身。只刷新预览页用 `--pages`。notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
 - Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。mini-redis 的 zip 由 `scripts/package-mini-redis.py` 从源码快照生成，只含代码与实验，教程正文以网站为准。
 - 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
 

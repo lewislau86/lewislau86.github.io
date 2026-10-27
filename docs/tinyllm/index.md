@@ -26,15 +26,15 @@ pageClass: tinyllm-course
 
 | 章节 | 标题 | 内容 | notebook |
 | --- | --- | --- | --- |
-| 第 1 章 | [先跑通一个最小 TinyLLM](./first-run.md) | 39 首唐诗、不到 100 行代码，训练一个能“写诗”的小模型，看损失曲线与过拟合 | <a href="/tinyllm/notebooks/first-run.ipynb" download>first-run.ipynb</a> |
-| 第 2 章 | [张量与自动求导](./tensors-and-autograd.md) | 张量形状、广播、矩阵乘法、计算图与一次手算梯度 | <a href="/tinyllm/notebooks/tensors-and-autograd.ipynb" download>tensors-and-autograd.ipynb</a> |
-| 第 3 章 | [初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | <a href="/tinyllm/notebooks/initialization-and-residuals.ipynb" download>initialization-and-residuals.ipynb</a> |
-| 第 4 章 | [归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | <a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a> |
-| 第 5 章 | [激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | <a href="/tinyllm/notebooks/activations-and-ffn.ipynb" download>activations-and-ffn.ipynb</a> |
-| 第 6 章 | [文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | <a href="/tinyllm/notebooks/tokenization.ipynb" download>tokenization.ipynb</a> |
-| 第 7 章 | [词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、Q/K/V 与 KV cache、权重共享 | <a href="/tinyllm/notebooks/embeddings-and-output.ipynb" download>embeddings-and-output.ipynb</a> |
-| 第 14 章 | [优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | <a href="/tinyllm/notebooks/optimizers.ipynb" download>optimizers.ipynb</a> |
-| 第 17 章 | [数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | <a href="/tinyllm/notebooks/precision.ipynb" download>precision.ipynb</a> |
+| 第 1 章 | [先跑通一个最小 TinyLLM](./first-run.md) | 39 首唐诗、不到 100 行代码，训练一个能“写诗”的小模型，看损失曲线与过拟合 | [first-run.ipynb](/tinyllm/notebooks/first-run) |
+| 第 2 章 | [张量与自动求导](./tensors-and-autograd.md) | 张量形状、广播、矩阵乘法、计算图与一次手算梯度 | [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd) |
+| 第 3 章 | [初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) |
+| 第 4 章 | [归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [normalization.ipynb](/tinyllm/notebooks/normalization) |
+| 第 5 章 | [激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) |
+| 第 6 章 | [文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [tokenization.ipynb](/tinyllm/notebooks/tokenization) |
+| 第 7 章 | [词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、Q/K/V 与 KV cache、权重共享 | [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output) |
+| 第 14 章 | [优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [optimizers.ipynb](/tinyllm/notebooks/optimizers) |
+| 第 17 章 | [数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [precision.ipynb](/tinyllm/notebooks/precision) |
 
 ## 课程路线 {#roadmap}
 

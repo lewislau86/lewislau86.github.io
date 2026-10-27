@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 6 章](./tokenization.md)的 token ID；[第 2 章](./tensors-and-autograd.md)的矩阵乘法与梯度。
 
-**实践方式：** <a href="/tinyllm/notebooks/embeddings-and-output.ipynb" download>embeddings-and-output.ipynb</a>，固定的六项教学词表和 PyTorch，CPU 即可，不下载模型或语料。先猜形状和结果，再运行每一格核对；这里的数字只为看清机制，不代表训练好的语言能力。
+**实践方式：** [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output)，固定的六项教学词表和 PyTorch，CPU 即可，不下载模型或语料。先猜形状和结果，再运行每一格核对；这里的数字只为看清机制，不代表训练好的语言能力。
 :::
 
 [上一章](./tokenization.md)把文本变成了 token ID。假设“我 在 学习”被编码成 `[2, 3, 4]`：2、3、4 是词表的行号，它们之间的大小毫无语言含义。模型要用它们做计算，两端各缺一步：<strong>输入端</strong>要把 ID 变成向量，<strong>输出端</strong>要把向量变回“下一个 token 是谁”的分数。本章沿着这一次往返，把两端接起来，再顺带看看向量进入注意力之后变成了什么。
@@ -209,7 +209,7 @@ assert torch.allclose(torch.cat(incremental), context, atol=1e-6)
 
 ## 8. 动手实验
 
-打开 <a href="/tinyllm/notebooks/embeddings-and-output.ipynb" download>embeddings-and-output.ipynb</a>，从上到下运行。
+打开 [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output)，从上到下运行。
 
 | 实验 | 应该看到 |
 | --- | --- |

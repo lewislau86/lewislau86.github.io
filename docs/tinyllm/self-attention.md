@@ -65,7 +65,7 @@ out = F.scaled_dot_product_attention(
 
 QK Norm 让训练更稳定，但也改变了注意力的表达方式。[OlmPool](https://allenai.org/papers/olmpool) 的受控实验发现它有助于稳定训练，却在长上下文扩展实验中损害了部分效果。所以 TinyLLM 默认**不加** QK Norm，先监测注意力 logits 的最大值和注意力熵；训练中出现分数失控时再引入，并在目标上下文长度上重新评估。
 
-<a href="/tinyllm/notebooks/normalization.ipynb" download>normalization.ipynb</a> 的 QK Norm 单元格用两个长度差异很大的 Q/K 向量演示：原始点积最大为 100，L2 归一化后最大为 1，softmax 分布随之变平。
+[normalization.ipynb](/tinyllm/notebooks/normalization) 的 QK Norm 单元格用两个长度差异很大的 Q/K 向量演示：原始点积最大为 100，L2 归一化后最大为 1，softmax 分布随之变平。
 
 ## 参考资料
 

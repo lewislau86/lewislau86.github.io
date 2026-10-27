@@ -61,3 +61,11 @@
   background: #fff;
   padding: 6px;
 }
+
+/* notebook 在线预览页：In [n] 标签紧贴代码块，输出块用浅色底区分 */
+.vp-doc p.nb-label {
+  margin: 1.5rem 0 -0.6rem;
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.8rem;
+  color: var(--vp-c-text-3);
+}

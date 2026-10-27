@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的梯度与 `backward()`；[第 1 章](./first-run.md)的训练循环。
 
-**实践方式：** <a href="/tinyllm/notebooks/optimizers.ipynb" download>optimizers.ipynb</a>，固定数据，CPU 即可。
+**实践方式：** [optimizers.ipynb](/tinyllm/notebooks/optimizers)，固定数据，CPU 即可。
 :::
 
 <TinyLLMMap active="optimizers" />
