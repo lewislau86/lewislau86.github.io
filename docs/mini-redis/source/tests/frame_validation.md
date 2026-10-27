@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # tests/frame_validation.rs：用一个反例区分非法帧与半帧
@@ -58,4 +58,4 @@ unwrap_err 要求 check 失败，之后 match 再要求它是 Other 而不是 In
 
 [src/frame.rs](/mini-redis/source/src/frame.md) → [src/connection.rs](/mini-redis/source/src/connection.md) → [tests/server.rs](/mini-redis/source/tests/server.md)。
 
-跨文件串读：[第 04 章：帧边界与错误](/mini-redis/04-resp-and-connection.md)。
+跨文件串读：[第 4 章：帧边界与错误](/mini-redis/resp-and-connection.md)。

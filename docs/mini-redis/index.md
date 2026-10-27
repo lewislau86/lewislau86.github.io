@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # 从 mini-redis 学 Rust 与 Redis 架构
@@ -13,13 +13,13 @@ editLink: false
 ## 先选阅读入口
 
 - **按源码文件读**：[28 篇独立源码文章](/mini-redis/source/index.md)。每个原项目 Rust 文件对应一篇文章，逐文件讲调用者、关键方法、交互与影响。
-- **按行为串起来读**：下面的 00—12 章；例如 [SET/GET 逐站源码对应表](/mini-redis/03-request-path.md#这一章对应哪些源码和独立文章) 将一次请求经过的文件与独立文章连起来。
+- **按行为串起来读**：下面的第 0～13 章；例如 [SET/GET 逐站源码对应表](/mini-redis/request-path.md#这一章对应哪些源码和独立文章) 将一次请求经过的文件与独立文章连起来。
 
-建议先用 00 建立整体位置，再读 03 的请求链；遇到不清楚的文件就进入对应文章，读完回到流程继续。这样既能把一个文件读细，也能知道它在整条链路中做什么。
+建议先用第 0 章建立整体位置，再读第 3 章的请求链；遇到不清楚的文件就进入对应文章，读完回到流程继续。这样既能把一个文件读细，也能知道它在整条链路中做什么。
 
 ## 下载源码与实验
 
-<a href="/mini-redis/mini-redis-study.zip" download>下载完整学习包（ZIP）</a>，解压后进入 `mini-redis-study/`，即可按正文的相对路径查阅源码和运行命令。学习包包含本教程、对应源码、Cargo 锁文件与配套实验。
+<a href="/mini-redis/mini-redis-study.zip" download>下载完整学习包（ZIP）</a>，解压后进入 `mini-redis-study/`，即可按正文中的路径查阅源码和运行命令。学习包包含对应源码、Cargo 锁文件与配套实验；教程正文以本网站为准。
 
 网页中的源码链接指向本次发布的代码快照。实验需要在本地 Rust 环境运行，浏览器提供阅读和下载。
 
@@ -27,37 +27,37 @@ editLink: false
 
 | 章节 | 我们要解决的问题 | 顺路学到的 Rust |
 | --- | --- | --- |
-| [00 整体架构](/mini-redis/00-architecture.md) | 哪个文件做什么，怎样连接通信，后续怎样优化？ | 进程、模块、任务、共享状态的整体关系 |
-| [01 跑通第一条请求](/mini-redis/01-first-run.md) | 从 CLI 到自己写客户端，如何完成一次读写？ | Cargo、路径依赖、模块、函数、宏 |
-| [02 用所有权管理一份数据](/mini-redis/02-rust-foundations.md) | 数据由谁持有，什么时候能借用，什么时候释放？ | 变量、类型、所有权、借用、结构体、枚举 |
-| [03 沿着 SET/GET 走一遍](/mini-redis/03-request-path.md) | 字节、帧、命令和数据库如何接起来？ | 方法接收者、泛型、trait、Result、`?` |
-| [04 TCP 字节如何变成帧](/mini-redis/04-resp-and-connection.md) | 半条消息和多条消息一起到达怎么办？ | 切片、Cursor、生命周期、错误枚举 |
-| [05 为什么服务器能同时服务多人](/mini-redis/05-tokio-server.md) | 异步操作何时执行，等待时其他客户端怎么继续？ | Future、runtime、features、spawn、Send、select |
-| [06 数据如何安全地共享](/mini-redis/06-shared-storage.md) | 多个连接怎样访问同一张表？ | Arc、Mutex、内部可变性、闭包、RAII |
-| [07 到期的数据由谁删除](/mini-redis/07-expiration.md) | 不扫描整张表，怎样找到下一条过期记录？ | Option、元组排序、BTreeSet、Notify |
-| [08 发布订阅为什么改变连接状态](/mini-redis/08-pubsub.md) | 服务器怎样主动推送，慢订阅者会怎样？ | channel、Stream、Pin、trait 对象 |
-| [09 客户端为什么有三种形态](/mini-redis/09-clients.md) | 多个调用者能安全共用一个连接吗？ | mpsc、oneshot、迭代器、同步与异步边界 |
-| [10 如何停机与验证行为](/mini-redis/10-shutdown-and-tests.md) | 怎么通知退出，又怎么知道已经退出？ | Drop、通道关闭、测试、虚拟时间 |
-| [11 从教学服务器走向 Redis](/mini-redis/11-real-redis.md) | 持久化、复制、集群分别解决什么问题？ | 区分语言实现与数据库架构 |
-| [12 动手练习与知识索引](/mini-redis/12-exercises-and-index.md) | 我是否真的能独立读代码、做修改？ | 编译器诊断、边界测试、知识复盘 |
-| [13 TTL 测试排查](/mini-redis/13-ttl-test-debugging.md) | 测试为什么会挂起，怎样定位并可靠验证过期？ | 虚拟时间、帧边界、单元测试、超时与任务收尾 |
+| [第 0 章 · 整体架构](/mini-redis/architecture.md) | 哪个文件做什么，怎样连接通信，后续怎样优化？ | 进程、模块、任务、共享状态的整体关系 |
+| [第 1 章 · 跑通第一条请求](/mini-redis/first-run.md) | 从 CLI 到自己写客户端，如何完成一次读写？ | Cargo、路径依赖、模块、函数、宏 |
+| [第 2 章 · 用所有权管理一份数据](/mini-redis/rust-foundations.md) | 数据由谁持有，什么时候能借用，什么时候释放？ | 变量、类型、所有权、借用、结构体、枚举 |
+| [第 3 章 · 沿着 SET/GET 走一遍](/mini-redis/request-path.md) | 字节、帧、命令和数据库如何接起来？ | 方法接收者、泛型、trait、Result、`?` |
+| [第 4 章 · TCP 字节如何变成帧](/mini-redis/resp-and-connection.md) | 半条消息和多条消息一起到达怎么办？ | 切片、Cursor、生命周期、错误枚举 |
+| [第 5 章 · 为什么服务器能同时服务多人](/mini-redis/tokio-server.md) | 异步操作何时执行，等待时其他客户端怎么继续？ | Future、runtime、features、spawn、Send、select |
+| [第 6 章 · 数据如何安全地共享](/mini-redis/shared-storage.md) | 多个连接怎样访问同一张表？ | Arc、Mutex、内部可变性、闭包、RAII |
+| [第 7 章 · 到期的数据由谁删除](/mini-redis/expiration.md) | 不扫描整张表，怎样找到下一条过期记录？ | Option、元组排序、BTreeSet、Notify |
+| [第 8 章 · 发布订阅为什么改变连接状态](/mini-redis/pubsub.md) | 服务器怎样主动推送，慢订阅者会怎样？ | channel、Stream、Pin、trait 对象 |
+| [第 9 章 · 客户端为什么有三种形态](/mini-redis/clients.md) | 多个调用者能安全共用一个连接吗？ | mpsc、oneshot、迭代器、同步与异步边界 |
+| [第 10 章 · 如何停机与验证行为](/mini-redis/shutdown-and-tests.md) | 怎么通知退出，又怎么知道已经退出？ | Drop、通道关闭、测试、虚拟时间 |
+| [第 11 章 · 从教学服务器走向 Redis](/mini-redis/real-redis.md) | 持久化、复制、集群分别解决什么问题？ | 区分语言实现与数据库架构 |
+| [第 12 章 · 动手练习与知识索引](/mini-redis/exercises-and-index.md) | 我是否真的能独立读代码、做修改？ | 编译器诊断、边界测试、知识复盘 |
+| [第 13 章 · TTL 测试排查](/mini-redis/ttl-test-debugging.md) | 测试为什么会挂起，怎样定位并可靠验证过期？ | 虚拟时间、帧边界、单元测试、超时与任务收尾 |
 
-先读 00 建立代码与通信的整体地图，优化路线可以在读完源码后回看。再按顺序完成 01—04，运行 CLI 和自己写的客户端，学会解释语法后进入请求链路；完成 05—07，通过异步小实验理解执行机制，再阅读并发与共享状态；最后读 08—12，把连接生命周期与完整数据库架构连起来。各章安排了思考题与参考答案，最后一章还有综合练习。不要只背名词：能够在源码中找到支持结论的函数，才算真正读懂。
+先读第 0 章建立代码与通信的整体地图，优化路线可以在读完源码后回看。再按顺序完成第 1～4 章，运行 CLI 和自己写的客户端，学会解释语法后进入请求链路；完成第 5～7 章，通过异步小实验理解执行机制，再阅读并发与共享状态；然后读第 8～12 章，把连接生命周期与完整数据库架构连起来。第 13 章是一次 TTL 测试的完整排查记录，适合读完第 7、10 章后阅读。各章安排了思考题与参考答案，第 12 章还有综合练习。不要只背名词：能够在源码中找到支持结论的函数，才算真正读懂。
 
 ## 核心章节怎样读成源码分析
 
-第 03—10 章围绕实际调用链展开：先定位调用者和所在任务，再读源码，最后追踪返回值、状态变化以及对连接和其他任务的影响。Rust 概念用于解释这些代码为什么成立；读完一个方法后，要返回调用处看后续执行，不能只停在函数内部。
+第 3～10 章围绕实际调用链展开：先定位调用者和所在任务，再读源码，最后追踪返回值、状态变化以及对连接和其他任务的影响。Rust 概念用于解释这些代码为什么成立；读完一个方法后，要返回调用处看后续执行，不能只停在函数内部。
 
 | 你想追踪的行为 | 依次进入的核心代码 | 阅读位置 |
 | --- | --- | --- |
-| 一次 SET 从发起到确认 | Client::set_cmd → 网络 → Handler → Command → Set::apply → Db::set → 响应 | [03 请求链路](/mini-redis/03-request-path.md) |
-| 半条请求还没读完 | read_frame → parse_frame → Frame::check；返回后决定继续等还是交付 | [04 帧与连接](/mini-redis/04-resp-and-connection.md) |
-| 新连接接入及失败范围 | server::run → Listener::run → spawn → Handler::run | [05 任务与服务](/mini-redis/05-tokio-server.md) |
-| 写入、覆盖与查询可见性 | Set/Get::apply → Db::set/get → 共享状态 → 命令响应 | [06 共享存储](/mini-redis/06-shared-storage.md) |
-| SET TTL 之后自动删除 | Db::set → Notify → purge_expired_tasks → purge_expired_keys | [07 过期任务](/mini-redis/07-expiration.md) |
-| 一个连接发布，另一连接收消息 | Publish::apply → Db::publish → broadcast → Subscribe::apply | [08 发布订阅](/mini-redis/08-pubsub.md) |
-| 多调用者共用一个连接 | BufferedClient::get → mpsc → run → Client → oneshot | [09 客户端协作](/mini-redis/09-clients.md) |
-| 停止通知怎样变成退出完成 | server::run drop → Shutdown::recv → Handler 释放 → 完成通道关闭 | [10 停机生命周期](/mini-redis/10-shutdown-and-tests.md) |
+| 一次 SET 从发起到确认 | Client::set_cmd → 网络 → Handler → Command → Set::apply → Db::set → 响应 | [第 3 章 · 请求链路](/mini-redis/request-path.md) |
+| 半条请求还没读完 | read_frame → parse_frame → Frame::check；返回后决定继续等还是交付 | [第 4 章 · 帧与连接](/mini-redis/resp-and-connection.md) |
+| 新连接接入及失败范围 | server::run → Listener::run → spawn → Handler::run | [第 5 章 · 任务与服务](/mini-redis/tokio-server.md) |
+| 写入、覆盖与查询可见性 | Set/Get::apply → Db::set/get → 共享状态 → 命令响应 | [第 6 章 · 共享存储](/mini-redis/shared-storage.md) |
+| SET TTL 之后自动删除 | Db::set → Notify → purge_expired_tasks → purge_expired_keys | [第 7 章 · 过期任务](/mini-redis/expiration.md) |
+| 一个连接发布，另一连接收消息 | Publish::apply → Db::publish → broadcast → Subscribe::apply | [第 8 章 · 发布订阅](/mini-redis/pubsub.md) |
+| 多调用者共用一个连接 | BufferedClient::get → mpsc → run → Client → oneshot | [第 9 章 · 客户端协作](/mini-redis/clients.md) |
+| 停止通知怎样变成退出完成 | server::run drop → Shutdown::recv → Handler 释放 → 完成通道关闭 | [第 10 章 · 停机生命周期](/mini-redis/shutdown-and-tests.md) |
 
 每条链都需要区分普通函数调用、跨任务消息和 TCP 通信。例如 `Set::apply → Db::set` 是同一任务的直接调用，`Db::set → Notify → 清理任务` 是唤醒关系，客户端到服务端则必须经过字节编码。三种箭头不能解释成同一种调用栈。
 
@@ -65,7 +65,7 @@ editLink: false
 
 - 本地包版本：`mini-redis 0.4.1`，Rust edition `2018`。
 - 运行逻辑分析基线：Git commit `3d93b42bc363220f85af4fc9e1bebd35b588a4a3`；当前源码注释已中文化，函数逻辑未变，行号按当前文件同步。
-- 发布快照：Git commit `e82795bdd6eba12f6a148683cc94b28ccef41ad3`，包含中文注释与 TTL 测试修复；`scripts/mini-redis-source.json` 记录的是这一快照。分析基线说明改动从哪一版逻辑开始，二者不是同一个提交。
+- 发布快照：Git commit `e82795bdd6eba12f6a148683cc94b28ccef41ad3`，包含中文注释与 TTL 测试修复；网站 `docs/public/mini-redis/source/` 与学习包都对应这一快照。分析基线说明改动从哪一版逻辑开始，二者不是同一个提交。
 - 初稿及首次核验：2026-10-08；后续补充及源码注释中文化：2026-10-09。
 - 文中的源码链接指向随教程发布的代码快照；函数名作为定位依据，避免代码增删后行号失效。
 - 正文标为“源码节选”的代码保留关键实现；标为“教学示例”的代码用于说明概念。可完整运行的程序集中在 [labs](/mini-redis/labs/index.md)。
@@ -75,32 +75,18 @@ editLink: false
 
 ## 先看整体地图
 
-```text
-mini-redis-cli / Client
-       │ 请求：SET / GET 编码为 RESP 字节
-       ▼
-TCP → Connection → Frame → Command → Db
-       ▲                          │    │
-       └────── 响应 Frame ────────┘    ├─ HashMap：键值
-                                      ├─ BTreeSet：过期索引
-                                      └─ broadcast：订阅消息
+<MiniRedisMap />
 
-server::Listener：接收连接、限制连接数、创建 Handler
-每个 Handler：循环处理一个连接的请求
-后台清理任务：等待下一次过期时间或 Notify
-停机路径：停止接入 → 通知 Handler → 等待连接任务退出
-```
+图中的箭头是逻辑调用/数据流，不代表每个方框都运行在独立线程。第 5 章会专门解释任务与线程的区别。
 
-图中的箭头是逻辑调用/数据流，不代表每个方框都运行在独立线程。第 05 章会专门解释任务与线程的区别。
-
-完整的进程边界、代码职责表、连接过程、请求与订阅通信，以及分阶段优化路线，见 [00 整体架构](/mini-redis/00-architecture.md)。
+完整的进程边界、代码职责表、连接过程、请求与订阅通信，以及分阶段优化路线，见 [第 0 章 · 整体架构](/mini-redis/architecture.md)。
 
 ## 配套实验与验证
 
-第 01 章的 hello_tokio 连接你手动启动的服务，复现“自己写客户端”的过程：
+第 1 章的 hello_tokio 连接你手动启动的服务，复现“自己写客户端”的过程：
 
 ```sh
-# 先按第 01 章在另一个终端启动 16379 服务
+# 先按第 1 章在另一个终端启动 16379 服务
 cargo run --locked --manifest-path docs/labs/Cargo.toml --bin hello_tokio
 ```
 
@@ -126,11 +112,11 @@ Rust 语义以 [The Rust Programming Language](https://doc.rust-lang.org/book/) 
 
 | 官方页面的内容 | 本笔记中的承接 |
 | --- | --- |
-| 建项目、加依赖、编写客户端 | 第 01 章与 hello_tokio 实验，使用本地路径依赖 |
-| 拆解连接与读写代码 | 第 02 章讲所有权，第 03 章讲 connect、请求链路与 `.await?` |
-| 异步调用的执行时机 | 第 05 章与 async_basics 实验 |
-| async main、runtime、Cargo features | 第 05 章区分编译配置、运行环境和任务提交 |
+| 建项目、加依赖、编写客户端 | 第 1 章与 hello_tokio 实验，使用本地路径依赖 |
+| 拆解连接与读写代码 | 第 2 章讲所有权，第 3 章讲 connect、请求链路与 `.await?` |
+| 异步调用的执行时机 | 第 5 章与 async_basics 实验 |
+| async main、runtime、Cargo features | 第 5 章区分编译配置、运行环境和任务提交 |
 
 这里按本地 API 调整示例，并把“初次接触时看懂顺序”和“读源码时理解机制”分开安排。官方页面、版本锁定的 API 文档与本地源码相互补充。
 
-开始阅读：[00 整体架构](/mini-redis/00-architecture.md)，然后进入 [01 跑通第一条请求](/mini-redis/01-first-run.md)。
+开始阅读：[第 0 章 · 整体架构](/mini-redis/architecture.md)，然后进入 [第 1 章 · 跑通第一条请求](/mini-redis/first-run.md)。

@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/clients/mod.rs：三种客户端的统一出口
@@ -51,4 +51,4 @@ pub use buffered_client::BufferedClient;
 
 [src/lib.rs](/mini-redis/source/src/lib.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/clients/buffered_client.rs](/mini-redis/source/src/clients/buffered_client.md) → [src/clients/blocking_client.rs](/mini-redis/source/src/clients/blocking_client.md)。
 
-跨文件串读：[第 09 章：客户端关系](/mini-redis/09-clients.md)。
+跨文件串读：[第 9 章：客户端关系](/mini-redis/clients.md)。

@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # tests/server.rs：用原始 TCP 检查线上协议
@@ -57,7 +57,7 @@ Pub/Sub 用有上限的等待检查没有多余消息，但这只能说明该时
 
 ## TTL 测试为何改用完整帧
 
-旧测试在第一次 GET 等待期间，暂停的 Tokio 时钟自动前进到 1.001 秒。服务器已回复 5 字节的 Null，测试却还在等 world 的 11 字节，所以挂起而不是断言失败。2026-10-10 已捕获具体字节并修复，详见 [第 13 章](/mini-redis/13-ttl-test-debugging.md)。
+旧测试在第一次 GET 等待期间，暂停的 Tokio 时钟自动前进到 1.001 秒。服务器已回复 5 字节的 Null，测试却还在等 world 的 11 字节，所以挂起而不是断言失败。2026-10-10 已捕获具体字节并修复，详见 [第 13 章](/mini-redis/ttl-test-debugging.md)。
 
 现在 key_value_timeout 不暂停时钟，保留原始 SET EX 请求，用 Connection::read_frame 识别 OK/Bulk/Null。GET 返回 world 就继续轮询，Null 表示清理完成，其他帧立即报告实际值。整个网络场景有 5 秒真实时间上限，随后发送 oneshot 停止信号，并在 1 秒内等待服务器退出。
 
@@ -79,4 +79,4 @@ tokio::time::advance 推进 runtime 的时钟，TCP 读写依然需要实际 I/O
 
 [src/server.rs](/mini-redis/source/src/server.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/db.rs](/mini-redis/source/src/db.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [tests/client.rs](/mini-redis/source/tests/client.md)。
 
-跨文件串读：[第 10 章：停机与测试](/mini-redis/10-shutdown-and-tests.md)。
+跨文件串读：[第 10 章：停机与测试](/mini-redis/shutdown-and-tests.md)。

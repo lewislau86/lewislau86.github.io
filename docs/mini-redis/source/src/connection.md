@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/connection.rs：TCP 字节流与完整 Frame 之间的边界
@@ -108,4 +108,4 @@ flush 成功不是数据库耐久写入证明；写失败也可能已经送出�
 
 [src/frame.rs](/mini-redis/source/src/frame.md) → [src/server.rs](/mini-redis/source/src/server.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md)。
 
-跨文件串读：[第 04 章：帧边界](/mini-redis/04-resp-and-connection.md)。
+跨文件串读：[第 4 章：帧边界](/mini-redis/resp-and-connection.md)。

@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # examples/hello_world.rs：从业务入口走进 SET/GET
@@ -61,4 +61,4 @@ Client::connect 返回 Future；await 得到 Result，? 取 Client 或提前退�
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/set.rs](/mini-redis/source/src/cmd/set.md) → [src/cmd/get.rs](/mini-redis/source/src/cmd/get.md) → [tests/client.rs](/mini-redis/source/tests/client.md)。
 
-跨文件串读：[第 03 章：沿着 SET/GET 走一遍](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：沿着 SET/GET 走一遍](/mini-redis/request-path.md)。

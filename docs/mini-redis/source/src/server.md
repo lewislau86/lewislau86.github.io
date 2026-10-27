@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/server.rs：接入任务、连接任务与退出协调
@@ -92,4 +92,4 @@ move 使 handler 和 permit 归新 Future 所有，spawn 让它独立于 accept 
 
 [src/connection.rs](/mini-redis/source/src/connection.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/db.rs](/mini-redis/source/src/db.md) → [src/shutdown.rs](/mini-redis/source/src/shutdown.md)。
 
-跨文件串读：[第 05 章：三个 run 的完整链路](/mini-redis/05-tokio-server.md)。
+跨文件串读：[第 5 章：三个 run 的完整链路](/mini-redis/tokio-server.md)。

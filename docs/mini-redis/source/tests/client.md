@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # tests/client.rs：从公开 API 验证端到端返回值
@@ -80,4 +80,4 @@ tokio::test 建立测试 runtime；unwrap 在这里用于把不符合预期的�
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/server.rs](/mini-redis/source/tests/server.md) → [examples/hello_world.rs](/mini-redis/source/examples/hello_world.md)。
 
-跨文件串读：[第 10 章：测试与生命周期](/mini-redis/10-shutdown-and-tests.md)。
+跨文件串读：[第 10 章：测试与生命周期](/mini-redis/shutdown-and-tests.md)。

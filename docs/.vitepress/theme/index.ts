@@ -2,6 +2,7 @@ import DefaultTheme from 'vitepress/theme'
 import type { Theme } from 'vitepress'
 import Layout from './Layout.vue'
 import TinyLLMMap from './components/TinyLLMMap.vue'
+import MiniRedisMap from './components/MiniRedisMap.vue'
 import './style.css'
 
 export default {
@@ -10,5 +11,6 @@ export default {
   enhanceApp({ app }) {
     // 课程地图组件在 Markdown 中直接使用：<TinyLLMMap active="normalization" />
     app.component('TinyLLMMap', TinyLLMMap)
+    app.component('MiniRedisMap', MiniRedisMap)
   }
 } satisfies Theme

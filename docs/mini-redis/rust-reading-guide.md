@@ -1,10 +1,10 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # 读 mini-redis 时，把 Rust 写法拆开理解
 
-[返回学习目录](/mini-redis/index.md) · [逐文件文章](/mini-redis/source/index.md) · [所有权基础](/mini-redis/02-rust-foundations.md)
+[返回学习目录](/mini-redis/index.md) · [逐文件文章](/mini-redis/source/index.md) · [所有权基础](/mini-redis/rust-foundations.md)
 
 这是一份随源码查阅的说明。遇到不熟悉的写法，不必先学完所有高级语法：先找到下面对应的小节，理解它在当前调用链里解决什么问题，再回到文件文章继续。片段旁的注释解释语言规则，正文继续追踪谁调用、资源属于谁、失败会影响哪里。
 
@@ -152,7 +152,7 @@ Db 的每个克隆都持有 `Arc<Shared>`。Arc 的计数回答“数据还有�
 
 `let state = &mut *state;` 先通过 Guard 的 DerefMut 解引用为 State，再借用为 `&mut State`。这是同名变量遮蔽，不是赋值类型突变。编译器可以在结构体层面区分 entries 与 expirations 两个字段的借用。原 Guard 仍然活着并持锁，不会因为新变量是引用就自动解锁。
 
-DbDropGuard 的 Drop 通知清理任务退出；Semaphore 许可 Drop 归还名额；完成通道 Sender Drop 参与停机确认。Drop 负责资源收尾，不能直接 await 异步清理完成。理解这点后，再看 [Db](/mini-redis/source/src/db.md) 和 [停机章节](/mini-redis/10-shutdown-and-tests.md)。
+DbDropGuard 的 Drop 通知清理任务退出；Semaphore 许可 Drop 归还名额；完成通道 Sender Drop 参与停机确认。Drop 负责资源收尾，不能直接 await 异步清理完成。理解这点后，再看 [Db](/mini-redis/source/src/db.md) 和 [停机章节](/mini-redis/shutdown-and-tests.md)。
 
 <a id="lifetimes"></a>
 ## 生命周期标注说明返回的引用来自哪里
@@ -166,7 +166,7 @@ fn get_line<'a>(src: &mut Cursor<&'a [u8]>) -> Result<&'a [u8], Error>
 
 内部 `&'a [u8]` 指向输入字节；返回的 `&'a [u8]` 是同一份输入的一部分。外层 `&mut Cursor` 用于推进位置，它与内层数据的有效期不是同一个概念。标注不会延长内存存活，只让编译器检查返回借用是否可能超过来源。
 
-这也解释了为什么 Connection 解析完成后能消费缓冲：Frame::parse 会创建自己拥有的 String、Bytes、Vec；最终返回的 Frame 不继续借用接收缓冲。`&str` 和 `&[u8]` 都是切片引用，携带区域信息，不拥有数据。继续看 [Frame](/mini-redis/source/src/frame.md) 与 [所有权基础](/mini-redis/02-rust-foundations.md)。
+这也解释了为什么 Connection 解析完成后能消费缓冲：Frame::parse 会创建自己拥有的 String、Bytes、Vec；最终返回的 Frame 不继续借用接收缓冲。`&str` 和 `&[u8]` 都是切片引用，携带区域信息，不拥有数据。继续看 [Frame](/mini-redis/source/src/frame.md) 与 [所有权基础](/mini-redis/rust-foundations.md)。
 
 <a id="iterators"></a>
 ## 闭包把一小段工作交给容器执行

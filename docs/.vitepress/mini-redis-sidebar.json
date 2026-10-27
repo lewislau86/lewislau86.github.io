@@ -7,7 +7,7 @@
         "link": "/"
       },
       {
-        "text": "教程总览与下载",
+        "text": "课程总览与下载",
         "link": "/mini-redis/"
       },
       {
@@ -21,87 +21,88 @@
     ]
   },
   {
-    "text": "整体架构",
+    "text": "第一部分 · 整体架构",
     "collapsed": false,
     "items": [
       {
-        "text": "00 整体架构：代码职责、连接通信与后续优化",
-        "link": "/mini-redis/00-architecture"
+        "text": "第 0 章 · 整体架构：代码职责、连接通信与后续优化",
+        "link": "/mini-redis/architecture"
       }
     ]
   },
   {
-    "text": "入门与请求链路",
+    "text": "第二部分 · 入门与请求链路",
     "collapsed": false,
     "items": [
       {
-        "text": "01 跑通第一条请求",
-        "link": "/mini-redis/01-first-run"
+        "text": "第 1 章 · 跑通第一条请求",
+        "link": "/mini-redis/first-run"
       },
       {
-        "text": "02 用所有权管理一份数据",
-        "link": "/mini-redis/02-rust-foundations"
+        "text": "第 2 章 · 用所有权管理一份数据",
+        "link": "/mini-redis/rust-foundations"
       },
       {
-        "text": "03 沿着 SET/GET 走一遍",
-        "link": "/mini-redis/03-request-path"
+        "text": "第 3 章 · 沿着 SET/GET 走一遍",
+        "link": "/mini-redis/request-path"
       },
       {
-        "text": "04 TCP 字节如何变成帧",
-        "link": "/mini-redis/04-resp-and-connection"
+        "text": "第 4 章 · TCP 字节如何变成帧",
+        "link": "/mini-redis/resp-and-connection"
       }
     ]
   },
   {
-    "text": "并发、存储与生命周期",
+    "text": "第三部分 · 并发、存储与生命周期",
     "collapsed": false,
     "items": [
       {
-        "text": "05 为什么服务器能同时服务多人",
-        "link": "/mini-redis/05-tokio-server"
+        "text": "第 5 章 · 为什么服务器能同时服务多人",
+        "link": "/mini-redis/tokio-server"
       },
       {
-        "text": "06 数据如何安全地共享",
-        "link": "/mini-redis/06-shared-storage"
+        "text": "第 6 章 · 数据如何安全地共享",
+        "link": "/mini-redis/shared-storage"
       },
       {
-        "text": "07 到期的数据由谁删除",
-        "link": "/mini-redis/07-expiration"
+        "text": "第 7 章 · 到期的数据由谁删除",
+        "link": "/mini-redis/expiration"
       },
       {
-        "text": "08 发布订阅为什么改变连接状态",
-        "link": "/mini-redis/08-pubsub"
+        "text": "第 8 章 · 发布订阅为什么改变连接状态",
+        "link": "/mini-redis/pubsub"
       },
       {
-        "text": "09 客户端为什么有三种形态",
-        "link": "/mini-redis/09-clients"
+        "text": "第 9 章 · 客户端为什么有三种形态",
+        "link": "/mini-redis/clients"
       },
       {
-        "text": "10 如何停机与验证行为",
-        "link": "/mini-redis/10-shutdown-and-tests"
+        "text": "第 10 章 · 如何停机与验证行为",
+        "link": "/mini-redis/shutdown-and-tests"
       }
     ]
   },
   {
-    "text": "架构与实践",
+    "text": "第四部分 · 架构与实践",
     "collapsed": false,
     "items": [
       {
-        "text": "11 从教学服务器走向 Redis",
-        "link": "/mini-redis/11-real-redis"
+        "text": "第 11 章 · 从教学服务器走向 Redis",
+        "link": "/mini-redis/real-redis"
       },
       {
-        "text": "12 动手练习与知识索引",
-        "link": "/mini-redis/12-exercises-and-index"
+        "text": "第 12 章 · 动手练习与知识索引",
+        "link": "/mini-redis/exercises-and-index"
       },
       {
-        "text": "13 一条 TTL 测试为什么会一直等待",
-        "link": "/mini-redis/13-ttl-test-debugging"
+        "text": "第 13 章 · 一条 TTL 测试为什么会一直等待",
+        "link": "/mini-redis/ttl-test-debugging"
       }
     ]
   },
   {
     "text": "配套资料",
+    "collapsed": false,
     "items": [
       {
         "text": "配套实验",

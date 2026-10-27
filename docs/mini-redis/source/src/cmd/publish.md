@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/publish.rs：将一次发布翻译为接收者数量
@@ -74,4 +74,4 @@ apply 消费 self，所以可以借用频道名 `&self.channel`，同时把另�
 
 [src/db.rs](/mini-redis/source/src/db.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [examples/pub.rs](/mini-redis/source/examples/pub.md)。
 
-跨文件串读：[第 08 章：发布订阅](/mini-redis/08-pubsub.md)。
+跨文件串读：[第 8 章：发布订阅](/mini-redis/pubsub.md)。

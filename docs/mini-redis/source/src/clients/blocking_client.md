@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/clients/blocking_client.rs：把异步 Client 接到同步程序
@@ -90,4 +90,4 @@ into_iter 消费同步订阅者，返回一个具体但隐藏名称的迭代器�
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/clients/mod.rs](/mini-redis/source/src/clients/mod.md)。
 
-跨文件串读：[第 09 章：客户端边界](/mini-redis/09-clients.md)。
+跨文件串读：[第 9 章：客户端边界](/mini-redis/clients.md)。

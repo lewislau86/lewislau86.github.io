@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/clients/client.rs：一条连接上的请求与响应
@@ -112,4 +112,4 @@ get/set 的 &mut self 是暂时独占，调用结束后可以继续用 Client。
 
 [src/cmd/get.rs](/mini-redis/source/src/cmd/get.md) → [src/cmd/set.rs](/mini-redis/source/src/cmd/set.md) → [src/connection.rs](/mini-redis/source/src/connection.md) → [src/clients/buffered_client.rs](/mini-redis/source/src/clients/buffered_client.md) → [tests/client.rs](/mini-redis/source/tests/client.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

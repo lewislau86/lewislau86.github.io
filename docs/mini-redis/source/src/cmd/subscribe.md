@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/subscribe.rs：接管连接并复用多个频道流
@@ -132,4 +132,4 @@ Messages 从内向外是产出 Bytes 的 Stream、隐藏具体类型的 dyn、�
 
 [src/db.rs](/mini-redis/source/src/db.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/shutdown.rs](/mini-redis/source/src/shutdown.md) → [tests/server.rs](/mini-redis/source/tests/server.md)。
 
-跨文件串读：[第 08 章：连接模式变化](/mini-redis/08-pubsub.md)。
+跨文件串读：[第 8 章：连接模式变化](/mini-redis/pubsub.md)。

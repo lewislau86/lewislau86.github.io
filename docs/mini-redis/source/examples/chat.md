@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # examples/chat.rs：尚未实现的聊天入口
@@ -46,4 +46,4 @@ unimplemented! 是运行时触发 panic 的宏，占位函数能够编译但不�
 
 [examples/pub.rs](/mini-redis/source/examples/pub.md) → [examples/sub.rs](/mini-redis/source/examples/sub.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md)。
 
-跨文件串读：[第 12 章：扩展练习](/mini-redis/12-exercises-and-index.md)。
+跨文件串读：[第 12 章：扩展练习](/mini-redis/exercises-and-index.md)。

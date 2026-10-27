@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # 配套实验
@@ -10,7 +10,7 @@ editLink: false
 
 所有命令从仓库根目录执行。此目录是独立 Cargo package，通过路径依赖使用当前仓库源码；不修改主项目的依赖、生产代码或原有测试。实验使用独立 Cargo.lock，直接依赖的 Tokio 1.32.0、bytes 1.5.0 与本次根锁文件对应版本一致。
 
-先按[第 01 章](/mini-redis/01-first-run.md)启动 16379 上的服务，再运行最小客户端：
+先按[第 1 章](/mini-redis/first-run.md)启动 16379 上的服务，再运行最小客户端：
 
 ```sh
 cargo run --locked --manifest-path docs/labs/Cargo.toml --bin hello_tokio

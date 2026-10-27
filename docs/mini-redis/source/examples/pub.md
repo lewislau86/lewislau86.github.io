@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # examples/pub.rs：一次发布调用的应用入口
@@ -56,4 +56,4 @@ publish(...).await? 先检查错误，再产生 u64 数量；后面的分号丢�
 
 [examples/sub.rs](/mini-redis/source/examples/sub.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/publish.rs](/mini-redis/source/src/cmd/publish.md) → [src/db.rs](/mini-redis/source/src/db.md)。
 
-跨文件串读：[第 08 章：发布订阅](/mini-redis/08-pubsub.md)。
+跨文件串读：[第 8 章：发布订阅](/mini-redis/pubsub.md)。

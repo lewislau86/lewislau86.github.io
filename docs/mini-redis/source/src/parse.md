@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/parse.rs：从帧数组按顺序取出命令参数
@@ -78,4 +78,4 @@ Set 读取必需 key/value 时 EndOfStream 是失败，读取可选 TTL 开始�
 
 [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/cmd/set.rs](/mini-redis/source/src/cmd/set.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md)。
 
-跨文件串读：[第 03 章：命令解析站点](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：命令解析站点](/mini-redis/request-path.md)。

@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/frame.rs：协议类型、游标解析与展示
@@ -92,4 +92,4 @@ get_line 的 `a` 关联返回切片与原输入字节，不延长数据寿命。
 
 [src/connection.rs](/mini-redis/source/src/connection.md) → [src/parse.rs](/mini-redis/source/src/parse.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/frame_validation.rs](/mini-redis/source/tests/frame_validation.md)。
 
-跨文件串读：[第 04 章：Frame 在连接中的位置](/mini-redis/04-resp-and-connection.md)。
+跨文件串读：[第 4 章：Frame 在连接中的位置](/mini-redis/resp-and-connection.md)。

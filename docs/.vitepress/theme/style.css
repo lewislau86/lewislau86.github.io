@@ -35,13 +35,17 @@
   .burn-course .vp-doc th,
   .burn-course .vp-doc td,
   .tinyllm-course .vp-doc th,
-  .tinyllm-course .vp-doc td {
+  .tinyllm-course .vp-doc td,
+  .mini-redis-course .vp-doc th,
+  .mini-redis-course .vp-doc td {
     min-width: 9rem;
   }
   .burn-course .vp-doc th:first-child,
   .burn-course .vp-doc td:first-child,
   .tinyllm-course .vp-doc th:first-child,
-  .tinyllm-course .vp-doc td:first-child {
+  .tinyllm-course .vp-doc td:first-child,
+  .mini-redis-course .vp-doc th:first-child,
+  .mini-redis-course .vp-doc td:first-child {
     min-width: 5rem;
   }
 }

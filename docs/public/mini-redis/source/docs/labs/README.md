@@ -1,10 +1,10 @@
 # 配套实验
 
-[返回笔记目录](../README.md)
+[返回笔记目录](https://lewislau86.github.io/mini-redis/)
 
 所有命令从仓库根目录执行。此目录是独立 Cargo package，通过路径依赖使用当前仓库源码；不修改主项目的依赖、生产代码或原有测试。实验使用独立 Cargo.lock，直接依赖的 Tokio 1.32.0、bytes 1.5.0 与本次根锁文件对应版本一致。
 
-先按[第 01 章](../01-first-run.md)启动 16379 上的服务，再运行最小客户端：
+先按[第 1 章](https://lewislau86.github.io/mini-redis/first-run)启动 16379 上的服务，再运行最小客户端：
 
 ```sh
 cargo run --locked --manifest-path docs/labs/Cargo.toml --bin hello_tokio
@@ -57,4 +57,4 @@ cargo check --locked --manifest-path docs/labs/Cargo.toml --bins
 
 本次机器默认 stable 缺少 rustfmt，实际格式检查使用已有工具链：`cargo +1.98.1 fmt --manifest-path docs/labs/Cargo.toml --check`。一般环境若已安装 rustfmt，直接运行上面的命令即可。
 
-依赖下载失败时先处理网络或本机缓存；不要因为锁文件限制而随意删掉锁文件。实验出现超时则查看是哪一步没有完成，结合对应源码与[验证记录](../validation.md)判断，不能仅增加等待时间就认为问题解决。
+依赖下载失败时先处理网络或本机缓存；不要因为锁文件限制而随意删掉锁文件。实验出现超时则查看是哪一步没有完成，结合对应源码与[验证记录](https://lewislau86.github.io/mini-redis/validation)判断，不能仅增加等待时间就认为问题解决。

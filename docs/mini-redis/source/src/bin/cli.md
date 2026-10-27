@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/bin/cli.rs：将终端参数翻译成客户端调用
@@ -64,4 +64,4 @@ clap 的 derive 宏读取 struct/enum 的声明和辅助属性，生成参数解
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/bin/server.rs](/mini-redis/source/src/bin/server.md)。
 
-跨文件串读：[第 01 章：实际运行](/mini-redis/01-first-run.md)。
+跨文件串读：[第 1 章：实际运行](/mini-redis/first-run.md)。

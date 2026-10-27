@@ -71,16 +71,16 @@ TinyLLM 位于 `docs/tinyllm/`，由本站直接维护（不再从 tinyllm 仓�
 
 三个课程共用的写作与目录规范见 `docs/guide/course-conventions.md`。
 
-## 同步 mini-redis 教程
+## 编写 mini-redis 教程
 
-网站 `/mini-redis/` 发布本地 `mini-redis/docs` 的当前版本（整体架构导读、13 章正文、28 篇逐文件分析、Rust 源码阅读说明、总览、实验说明和验证记录）。
+mini-redis 位于 `docs/mini-redis/`，由本站直接维护（不再从本地 mini-redis/docs 导入），通过 `/mini-redis/` 访问。
+包含 14 章正文（第 0 章整体架构 + 第 1～13 章）、28 篇逐文件源码分析（`docs/mini-redis/source/`）、Rust 源码阅读说明、配套实验和验证记录。
+章节文件名使用主题名（如 `tokio-server.md`），顺序由 `docs/.vitepress/mini-redis-sidebar.json` 决定；旧的 `NN-*.md` 地址保留为跳转页。
+逐文件分析的侧栏是 `docs/.vitepress/mini-redis-source-sidebar.json`。
 
-```sh
-python3 scripts/import-mini-redis.py /Users/lewislau/MyResearch/mini-redis/docs
-npm run docs:build
-```
+配图：`python scripts/generate-mini-redis-figures.py` 重新生成 `docs/public/mini-redis/figures/` 下的 SVG（只用 Python 标准库）。
+全书架构图组件：`docs/.vitepress/theme/components/MiniRedisMap.vue`，章节中写 `<MiniRedisMap active="文件名" />`。
 
-导入不修改源仓库。`scripts/mini-redis-source.json` 记录源码基线与发布文件哈希，
-其中教程可能是源仓库尚未提交的本地内容。保留原验证记录的时间和限制，本次发布检查不等于重新执行 Rust 实验。
-源码链接指向本站仓库 `docs/public/mini-redis/source/` 的文件；完整学习包包含源码、锁文件、LICENSE 和 docs/labs，保留实验所需的相对路径依赖。
-修改原始 docs 后，重新导入、构建并提交本站即可更新；当前不跨仓库自动同步。
+源码快照位于 `docs/public/mini-redis/source/`（发布快照 `e82795b`，含中文注释、TTL 测试修复与 `docs/labs` 实验）。
+修改快照或实验后运行 `python scripts/package-mini-redis.py` 重新生成 `mini-redis-study.zip`。
+保留原验证记录的时间和限制，发布检查不等于重新执行 Rust 实验。

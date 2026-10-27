@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/bin/server.rs：把进程配置接到服务生命周期
@@ -69,4 +69,4 @@ pub async fn main() -> mini_redis::Result<()> {
 
 [src/server.rs](/mini-redis/source/src/server.md) → [src/shutdown.rs](/mini-redis/source/src/shutdown.md)。
 
-跨文件串读：[第 05 章：服务执行边界](/mini-redis/05-tokio-server.md)。
+跨文件串读：[第 5 章：服务执行边界](/mini-redis/tokio-server.md)。

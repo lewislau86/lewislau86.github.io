@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/get.rs：从 Db 读取并生成响应
@@ -86,4 +86,4 @@ new 没有 self，是关联函数；key(&self) 返回借用；into_frame(self) �
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/db.rs](/mini-redis/source/src/db.md) → [src/connection.rs](/mini-redis/source/src/connection.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

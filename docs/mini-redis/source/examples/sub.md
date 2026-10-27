@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # examples/sub.rs：建立订阅后接收一条消息
@@ -64,4 +64,4 @@ subscribe 消费 Client 的 self，可在内部自行声明 mut，不要求调�
 
 [examples/pub.rs](/mini-redis/source/examples/pub.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [src/bin/cli.rs](/mini-redis/source/src/bin/cli.md)。
 
-跨文件串读：[第 08 章：发布订阅](/mini-redis/08-pubsub.md)。
+跨文件串读：[第 8 章：发布订阅](/mini-redis/pubsub.md)。

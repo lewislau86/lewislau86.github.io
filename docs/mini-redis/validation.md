@@ -1,12 +1,12 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # 本地验证记录
 
 [返回学习目录](/mini-redis/index.md)
 
-最新状态（2026-10-10）：原 TTL 挂起已定位并修复，`cargo test --locked` 全套通过，无跳过项。根因与修复见 [第 13 章](/mini-redis/13-ttl-test-debugging.md)；以下保留各日期的历史结果。
+最新状态（2026-10-10）：原 TTL 挂起已定位并修复，`cargo test --locked` 全套通过，无跳过项。根因与修复见 [第 13 章](/mini-redis/ttl-test-debugging.md)；以下保留各日期的历史结果。
 
 首次验证日期：2026-10-08；Hello Tokio 补充验证：2026-10-09。本文按批次记录实际执行结果，不把教学说明、预期结果与实际运行混为一谈。
 
@@ -36,7 +36,7 @@ editLink: false
 | `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin frames` | GET 的全部不完整前缀、完整帧、Null、非法负 Bulk 长度、连续帧边界通过 |
 | `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin roundtrip` | GET/SET、缺失键、PING、二进制值、TTL、覆盖取消 TTL、文本 Pub/Sub、拆开发送、连续请求、停机通过 |
 | `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin multiplex` | 8 个任务通过一条连接完成 16 次 Get/Set，停机通过 |
-| 第 01 章 server/CLI 命令 | 在 16379 启动独立进程；PING、SET、GET、缺失键、1000ms TTL 的实际输出符合正文 |
+| 第 1 章 server/CLI 命令 | 在 16379 启动独立进程；PING、SET、GET、缺失键、1000ms TTL 的实际输出符合正文 |
 | Ctrl+C 与重启 | 两次服务均以退出码 0 结束；重启后 `course` 不存在 |
 | `cargo test --locked -- --skip key_value_timeout` | 14 个集成测试通过，1 个被过滤；11 个文档测试通过（均为编译检查） |
 | `cargo +1.98.1 fmt --manifest-path docs/labs/Cargo.toml --check` | 通过 |
@@ -58,7 +58,7 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 
 ## 2026-10-09 Hello Tokio 补充验证
 
-阅读 [Hello Tokio](https://tokio.rs/tokio/tutorial/hello-tokio) 后，补齐第 01、03、05 章的客户端入门、连接构造、异步执行与 runtime，并调整相关章节衔接、目录和练习。新增 hello_tokio 与 async_basics，实验总数从四个增加到六个；主项目生产代码与依赖未改动。
+阅读 [Hello Tokio](https://tokio.rs/tokio/tutorial/hello-tokio) 后，补齐第 1、3、5 章的客户端入门、连接构造、异步执行与 runtime，并调整相关章节衔接、目录和练习。新增 hello_tokio 与 async_basics，实验总数从四个增加到六个；主项目生产代码与依赖未改动。
 
 环境仍为上述 rustc/cargo 1.99.0，格式检查使用已有 1.98.1 工具链。Tokio 的版本文档网页在本次读取中不可用，runtime、入口宏与 feature 配置改由本机 Cargo 缓存中 `tokio-1.32.0`、`tokio-macros-2.1.0` 的源码文档核对；Hello Tokio 页面与标准库 Future 文档正常读取。
 
@@ -68,8 +68,8 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 | `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin hello_tokio` | 独立服务监听 16379，输出 `course = Some(b"rust")`，值断言通过 |
 | hello_tokio 追加 `-- 127.0.0.1:16379` | 显式地址路径通过，输出一致 |
 | `cargo run --locked --manifest-path docs/labs/Cargo.toml --bin async_basics` | 完整输出逐行匹配正文，先创建两个 Future，再依次执行；丢弃的阶段没有执行 |
-| 第 01 章完整客户端代码块 | 从 Markdown 提取，用本地依赖编译并连接实验服务，输出符合正文 |
-| 第 05 章显式多线程 runtime 代码块 | 从 Markdown 提取，编译并连接实验服务执行，退出码 0 |
+| 第 1 章完整客户端代码块 | 从 Markdown 提取，用本地依赖编译并连接实验服务，输出符合正文 |
+| 第 5 章显式多线程 runtime 代码块 | 从 Markdown 提取，编译并连接实验服务执行，退出码 0 |
 | 实验服务停止 | SIGINT 后退出码 0，无遗留实验服务 |
 | `cargo +1.98.1 fmt --manifest-path docs/labs/Cargo.toml --check` | 通过 |
 
@@ -79,13 +79,13 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 
 ## 2026-10-09 整体架构章核对
 
-新增 [00 整体架构](/mini-redis/00-architecture.md)，并接入目录、根 README、第 01 章导航与第 12 章练习。按当前源码核对入口、模块职责、连接配额、帧与命令转换、共享状态、过期任务、订阅以及停机通道；优化方向区分现有实现事实、改进建议和待测性能假设。
+新增 [第 0 章 · 整体架构](/mini-redis/architecture.md)，并接入目录、根 README、第 1 章导航与第 12 章练习。按当前源码核对入口、模块职责、连接配额、帧与命令转换、共享状态、过期任务、订阅以及停机通道；优化方向区分现有实现事实、改进建议和待测性能假设。
 
 本轮仅改 Markdown，检查本地链接目标、代码围栏与行尾空白；没有新增或执行运行时测试，没有修改生产代码、实验程序或依赖。优化路线尚未实施，也未进行性能基准测量。之前的测试与实验结果仍以各自记录日期和范围为准。
 
 ## 2026-10-09 核心源码调用链补强
 
-第 03—10 章补强为跨文件调用链分析：定位调用者、任务归属、被调用者、参数来源、共享状态变化和返回/失败影响。第 03 章按一次完整 SET/GET 重写；其余章节将源码节选放入对应分析位置，串起连接、任务、存储、过期、订阅、客户端队列及停机路径。目录与第 00、12 章同步调整阅读和练习方式。
+第 3～10 章补强为跨文件调用链分析：定位调用者、任务归属、被调用者、参数来源、共享状态变化和返回/失败影响。第 3 章按一次完整 SET/GET 重写；其余章节将源码节选放入对应分析位置，串起连接、任务、存储、过期、订阅、客户端队列及停机路径。目录与第 00、12 章同步调整阅读和练习方式。
 
 新增 31 处带 `source` 注记的源码节选，按注记中的源文件和行范围重新提取，去除整行注释（当时批次；后续批次改为保留中文注释）、统一片段缩进后逐段比较，全部一致。该核对证明展示的代码对应当前源码，不是执行测试。调用关系另行对照实际调用处阅读，明确 TCP/通道/通知箭头不是同一调用栈。
 
@@ -93,7 +93,7 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 
 ## 2026-10-09 按源码文件建立独立文章
 
-新增 `docs/source/`：为原项目 `src/` 的 20 个 Rust 文件、`examples/` 的 4 个文件、`tests/` 的 4 个文件各建立一篇独立分析，共 28 篇，并提供索引。文章路径镜像源文件路径，以 `analyzes` 注记记录对应关系。第 03 章增加 SET/GET 的 14 项逐站文件与方法映射，其余相关章节和总目录增加双向阅读入口。
+新增 `docs/source/`：为原项目 `src/` 的 20 个 Rust 文件、`examples/` 的 4 个文件、`tests/` 的 4 个文件各建立一篇独立分析，共 28 篇，并提供索引。文章路径镜像源文件路径，以 `analyzes` 注记记录对应关系。第 3 章增加 SET/GET 的 14 项逐站文件与方法映射，其余相关章节和总目录增加双向阅读入口。
 
 | 本轮检查 | 实际结果 |
 | --- | --- |
@@ -130,7 +130,7 @@ cargo test --locked --test server key_value_timeout -- --exact --nocapture
 
 对旧测试做临时分段读取诊断，记录实际字节及暂停的 Tokio 时间。一次诊断运行通过，第一次 GET 在虚拟时间 960ms 返回 world；下一次运行在第一次 GET 收到 `$-1\r\n`（5 字节）时，虚拟时间已到 1.001s，随后外部 3 秒上限终止等待。此时还没有执行显式 advance；旧测试期待 11 字节，所以无法进入断言。
 
-根因由复现记录与本机 tokio-1.32.0 的 time/clock.rs 文档共同确认：暂停时钟可以自动前进，真实网络等待可能让过期定时器先触发；read_exact 不识别完整 Null，继续等永远不会到来的剩余字节。版本文档网页读取失败，语义核对使用锁文件对应的本地依赖源码。诊断日志及过程已整理到 [第 13 章](/mini-redis/13-ttl-test-debugging.md)。
+根因由复现记录与本机 tokio-1.32.0 的 time/clock.rs 文档共同确认：暂停时钟可以自动前进，真实网络等待可能让过期定时器先触发；read_exact 不识别完整 Null，继续等永远不会到来的剩余字节。版本文档网页读取失败，语义核对使用锁文件对应的本地依赖源码。诊断日志及过程已整理到 [第 13 章](/mini-redis/ttl-test-debugging.md)。
 
 修复范围：tests/server.rs 的 TTL 场景改用真实时间、原始 SET EX 输入、Connection 完整帧读取、5 秒场景上限和 1 秒受控停机上限；src/db.rs 仅追加 cfg(test) 单元测试模块，生产 Db 实现与本轮起点逐字一致。此前尚未提交的中文注释及文档改动保留。
 

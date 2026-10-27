@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/mod.rs：将协议帧分派到具体命令
@@ -97,4 +97,4 @@ get_name 为日志等调用提供统一名字，不负责解析。新增命令�
 
 [src/parse.rs](/mini-redis/source/src/parse.md) → [src/cmd/get.rs](/mini-redis/source/src/cmd/get.md) → [src/cmd/set.rs](/mini-redis/source/src/cmd/set.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [src/cmd/unknown.rs](/mini-redis/source/src/cmd/unknown.md) → [src/server.rs](/mini-redis/source/src/server.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

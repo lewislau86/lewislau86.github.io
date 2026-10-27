@@ -1,10 +1,10 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # 按源码文件阅读：一份源码，一篇分析
 
-[返回总目录](/mini-redis/index.md) · [整体架构](/mini-redis/00-architecture.md) · [SET/GET 跨文件串读](/mini-redis/03-request-path.md)
+[返回总目录](/mini-redis/index.md) · [整体架构](/mini-redis/architecture.md) · [SET/GET 跨文件串读](/mini-redis/request-path.md)
 
 这里为当前仓库 `src/` 的 20 个 Rust 文件，以及 `examples/`、`tests/` 的各 4 个 Rust 文件建立一一对应的文章，共 28 篇。文件路径原样映射，例如 `src/cmd/set.rs` 对应 `docs/source/src/cmd/set.md`。每篇都有原文件链接、交互关系、关键实现、Rust 解释、状态及错误影响，并链接上下游文件。
 
@@ -14,7 +14,7 @@ editLink: false
 
 ## 如果从 SET/GET 开始
 
-先读 [第 03 章的逐站对应表](/mini-redis/03-request-path.md#这一章对应哪些源码和独立文章)，再按以下顺序进入文件文章：
+先读 [第 3 章的逐站对应表](/mini-redis/request-path.md#这一章对应哪些源码和独立文章)，再按以下顺序进入文件文章：
 
 1. [hello_world.rs](/mini-redis/source/examples/hello_world.md) 看业务入口，[client.rs](/mini-redis/source/src/clients/client.md) 看请求发起和结果解释。
 2. [set.rs](/mini-redis/source/src/cmd/set.md)、[get.rs](/mini-redis/source/src/cmd/get.md) 看命令如何编码，以及服务端如何执行。

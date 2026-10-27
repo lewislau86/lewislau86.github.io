@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/unknown.rs：把未知操作写成协议错误
@@ -55,4 +55,4 @@ tests/server.rs 用原始 TcpStream 检查未知命令及订阅模式下 GET/SET
 
 [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/server.rs](/mini-redis/source/tests/server.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

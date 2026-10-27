@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/shutdown.rs：让一个连接记住停止通知
@@ -76,4 +76,4 @@ Handler 的 select 停止分支返回 Ok，回到 spawn 闭包后 Handler 随任
 
 [src/server.rs](/mini-redis/source/src/server.md) → [src/cmd/subscribe.rs](/mini-redis/source/src/cmd/subscribe.md) → [src/db.rs](/mini-redis/source/src/db.md)。
 
-跨文件串读：[第 10 章：通知与完成](/mini-redis/10-shutdown-and-tests.md)。
+跨文件串读：[第 10 章：通知与完成](/mini-redis/shutdown-and-tests.md)。

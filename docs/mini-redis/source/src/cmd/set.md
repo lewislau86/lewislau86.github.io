@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/set.rs：解析可选 TTL，先写入再确认
@@ -116,4 +116,4 @@ expire: Option&lt;Duration> 表示有没有 TTL，Result 表示解析/执行成�
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/parse.rs](/mini-redis/source/src/parse.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/db.rs](/mini-redis/source/src/db.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

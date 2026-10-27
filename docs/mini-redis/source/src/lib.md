@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/lib.rs：库的入口与公开边界
@@ -72,4 +72,4 @@ use shutdown::Shutdown;
 
 [src/clients/mod.rs](/mini-redis/source/src/clients/mod.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [src/bin/server.rs](/mini-redis/source/src/bin/server.md)。
 
-跨文件串读：[第 01 章：入口与模块](/mini-redis/01-first-run.md)。
+跨文件串读：[第 1 章：入口与模块](/mini-redis/first-run.md)。

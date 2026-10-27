@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/clients/buffered_client.rs：用消息队列串行共享 Client
@@ -110,4 +110,4 @@ mpsc send().await 等入队，oneshot rx.await 等回复；后者的成功值本
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/buffered_client.rs](/mini-redis/source/tests/buffered_client.md) → [src/clients/mod.rs](/mini-redis/source/src/clients/mod.md)。
 
-跨文件串读：[第 09 章：三种客户端](/mini-redis/09-clients.md)。
+跨文件串读：[第 9 章：三种客户端](/mini-redis/clients.md)。

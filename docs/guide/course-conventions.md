@@ -12,7 +12,7 @@
 | --- | --- | --- | --- | --- |
 | TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
-| mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/` | `mini-redis-sidebar.json` | 待迁移：仍由 `scripts/import-mini-redis.py` 导入，文件名带编号 |
+| mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
 
 ## 2. 文件名与 URL
 
@@ -37,7 +37,7 @@
 ---
 title: "第 N 章：标题"
 description: "一句话说明本章回答什么问题。"
-pageClass: tinyllm-course        # Burn 用 burn-course
+pageClass: tinyllm-course        # Burn 用 burn-course，mini-redis 用 mini-redis-course
 ---
 
 # 第 N 章：标题
@@ -122,19 +122,21 @@ pageClass: tinyllm-course
 | 示意图（数据流、计算图、张量形状） | 在生成脚本中手写 SVG，文字保留为可选中文本 | `compute-graph.svg`、`pre-post-norm.svg` |
 | 数据图（曲线、柱状图） | matplotlib 生成 SVG，文字转为路径，避免字体缺失 | `norm-motivation.svg`、`first-run-loss.svg` |
 
-- 图由脚本生成，不手工编辑 SVG：TinyLLM 用 `scripts/generate-tinyllm-figures.py`，Burn 用 `scripts/generate-burn-math-figures.py`。改图就改脚本，再重新运行。
+- 图由脚本生成，不手工编辑 SVG：TinyLLM 用 `scripts/generate-tinyllm-figures.py`，mini-redis 用 `scripts/generate-mini-redis-figures.py`，Burn 用 `scripts/generate-burn-math-figures.py`。改图就改脚本，再重新运行。
 - 数据图的数据来自真实运行。需要训练记录的图，把记录保存在 `scripts/data/`，脚本只负责读取和绘制。
 - 图片的替代文本写成一句完整描述，说明图中“看到了什么结论”，而不只是图名。
 - 图下紧跟一段“怎么读这张图”，指出读者应该注意的地方。
 - 配色：蓝 `#2563eb`、青 `#0f766e`、橙 `#b45309`、红 `#b91c1c`、灰 `#64748b`，浅灰底 `#f8fafc`。
 - notebook 内的交互图表统一用 Plotly。
 
-TinyLLM 的全书架构图是 Vue 组件 `docs/.vitepress/theme/components/TinyLLMMap.vue`，在 Markdown 中写 `<TinyLLMMap active="normalization" />` 即可，架构变化时只改这一个文件。
+TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`、`MiniRedisMap.vue`（位于 `docs/.vitepress/theme/components/`）。在章节开头写 `<TinyLLMMap active="normalization" />` 或 `<MiniRedisMap active="tokio-server" />`，就会高亮本章负责的部件；架构或章节对应关系变化时只改组件文件。
+
+能用图表达的结构（调用链、数据流、时间线、内存布局）不要再写成字符画；字节序列、程序输出、日志这类“原样文本”仍用代码块。
 
 ## 7. 配套代码
 
 - TinyLLM：每章一个 notebook，放在 `docs/public/tinyllm/notebooks/<文件名>.ipynb`，与正文同名。提交前从头运行一遍并保存输出；notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
-- Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。
+- Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。mini-redis 的 zip 由 `scripts/package-mini-redis.py` 从源码快照生成，只含代码与实验，教程正文以网站为准。
 - 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
 
 ## 8. 调整顺序与旧地址跳转
@@ -164,7 +166,7 @@ head:
 请继续阅读[第 N 章：标题](./new-name.md)。
 ```
 
-TinyLLM 的 `chapterN_*.md` 都是这样的跳转页。
+TinyLLM 的 `chapterN_*.md`、mini-redis 的 `NN-*.md`、Burn 的旧编号页都是这样的跳转页。
 
 ## 9. 发布前检查
 

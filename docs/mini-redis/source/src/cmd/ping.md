@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # src/cmd/ping.rs：用最小命令理解可选参数
@@ -80,4 +80,4 @@ derive(Default) 为 Option 字段生成 None。无参数与 Some(空 Bytes) 是�
 
 [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [src/cmd/mod.rs](/mini-redis/source/src/cmd/mod.md) → [tests/client.rs](/mini-redis/source/tests/client.md)。
 
-跨文件串读：[第 03 章：SET/GET 完整调用链](/mini-redis/03-request-path.md)。
+跨文件串读：[第 3 章：SET/GET 完整调用链](/mini-redis/request-path.md)。

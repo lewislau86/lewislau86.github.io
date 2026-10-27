@@ -1,5 +1,5 @@
 ---
-editLink: false
+pageClass: mini-redis-course
 ---
 
 # tests/buffered_client.rs：验证队列包装后的基本读写
@@ -40,7 +40,7 @@ set/get 顺序 await，因此覆盖消息进入 mpsc、后台调用 Client、one
 
 ## 它没有制造并发竞争
 
-没有 clone BufferedClient，没有多个调用任务，也没有把 32 个队列槽位压满。测试通过说明基本包装路径可用，但不能证明队列满时的背压、取消调用者、全部发送端关闭或故障连接后的行为。第 09 章和 multiplex 实验另行讨论多调用者场景。
+没有 clone BufferedClient，没有多个调用任务，也没有把 32 个队列槽位压满。测试通过说明基本包装路径可用，但不能证明队列满时的背压、取消调用者、全部发送端关闭或故障连接后的行为。第 9 章和 multiplex 实验另行讨论多调用者场景。
 
 ## 启动和退出的范围
 
@@ -70,4 +70,4 @@ async fn start_server() -> (SocketAddr, JoinHandle<()>) {
 
 [src/clients/buffered_client.rs](/mini-redis/source/src/clients/buffered_client.md) → [src/clients/client.rs](/mini-redis/source/src/clients/client.md) → [tests/client.rs](/mini-redis/source/tests/client.md)。
 
-跨文件串读：[第 09 章：多调用者共享连接](/mini-redis/09-clients.md)。
+跨文件串读：[第 9 章：多调用者共享连接](/mini-redis/clients.md)。
