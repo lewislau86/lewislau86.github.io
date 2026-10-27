@@ -837,6 +837,103 @@ def agent_loop():
         "上下文交给模型，模型预测出一段描述下一步动作的文字，例如读取某个文件；Agent 真的执行这个动作，把文件内容、搜索结果或报错信息追加进上下文；模型读到新资料后判断是否足够，够了就写最终回答，不够就再转一圈。", 520, body)
 
 
+def transformer_to_gpt():
+    body = text(480, 40, "从翻译模型到 GPT：去掉编码器，只留下“预测下一个 token”", 22, weight="bold")
+    # 左：2017 Transformer
+    body += cbox(25, 65, 450, 395, BLUE, dash=True)
+    body += text(250, 92, "2017 · Transformer：为机器翻译设计", 17, BLUE, "bold")
+    src = ["the", "book", "on", "the", "table"]
+    tgt = ["桌子", "上", "的", "书"]
+    body += text(250, 122, "编码器：一次读完整句原文", 14, GRAY)
+    for i, w in enumerate(src):
+        body += cbox(48 + i * 84, 132, 74, 40, BLUE) + mtext(85 + i * 84, 158, w, 15, INK, "bold")
+    links = [(0, 4), (1, 2), (3, 1)]  # (译文位置 j, 原文位置 i)：桌子←table，上←on，书←book
+    for j, i in links:
+        body += f'<path d="M{85 + i * 84} 174 C{85 + i * 84} 230 {95 + j * 100} 230 {95 + j * 100} 282" stroke="{ORANGE}" stroke-width="2" fill="none" stroke-opacity="0.8"/>'
+    for j, w in enumerate(tgt):
+        body += cbox(58 + j * 100, 284, 74, 40, TEAL) + text(95 + j * 100, 310, w, 16, INK, "bold")
+    body += text(250, 348, "解码器：一个词一个词地生成译文", 14, GRAY)
+    body += text(250, 370, "橙线 = 交叉注意力：生成每个译词时回头看原文任意位置", 13.5, ORANGE)
+    body += text(250, 398, "位置编码告诉模型每个词排在第几；注意力让它", 14, INK)
+    body += text(250, 418, "不必按原文顺序对齐，“书”可以去看 book", 14, INK)
+    body += text(250, 440, "训练数据：成对的“原文 → 译文”", 14, BLUE, "bold")
+    # 右：GPT
+    body += cbox(500, 65, 435, 395, TEAL, dash=True)
+    body += text(717, 92, "2018 起 · GPT：只保留解码器", 17, TEAL, "bold")
+    words = ["床", "前", "明", "月", "光"]
+    for i, w in enumerate(words[:4]):
+        body += cbox(540 + i * 82, 135, 70, 40, GRAY) + text(575 + i * 82, 161, w, 17, INK, "bold")
+    body += cbox(540, 195, 312, 70, TEAL)
+    body += text(696, 225, "N 层解码器 Block", 16, INK, "bold")
+    body += text(696, 249, "只能看自己和前面的字", 13.5, TEAL)
+    for i in range(4):
+        body += arrow(575 + i * 82, 177, 575 + i * 82, 192, GRAY, 2)
+    body += arrow(696, 267, 696, 292, TEAL)
+    body += cbox(626, 296, 140, 44, ORANGE) + text(696, 324, "下一个：光", 16, INK, "bold")
+    body += text(717, 370, "没有原文、没有译文，只有一段段连续文本；", 14, INK)
+    body += text(717, 393, "每个位置都在猜下一个 token", 14, INK)
+    body += text(717, 440, "训练数据：任何文字都能用，越多越好", 14, TEAL, "bold")
+    body += text(480, 492, "这门课的 TinyLLM 就是右边这种结构：Decoder-only，目标只有一个，预测下一个 token。", 15, GRAY)
+    svg("transformer-to-gpt.svg", "从 Transformer 翻译模型到 GPT",
+        "左：2017 年的 Transformer 用编码器读完整句英文 the book on the table，解码器逐词生成“桌子上的书”，每生成一个词都通过交叉注意力回头看原文的任意位置，因此词序不同也能对上。右：GPT 去掉编码器，只保留只能看前文的解码器，在连续文本上预测下一个 token。", 515, body)
+
+
+def gpt_scale():
+    rows = [("2018", "GPT-1", "1.17 亿", "约 7000 本书"), ("2019", "GPT-2", "15 亿", "约 40 GB 网页文本"),
+            ("2020", "GPT-3", "1750 亿", "约 3000 亿 token"), ("2022", "ChatGPT", "在 GPT-3.5 上", "再做指令微调和人类反馈训练")]
+    body = text(480, 40, "同一个目标，不断放大：GPT 系列的规模", 22, weight="bold")
+    body += text(150, 82, "年份 · 模型", 14, GRAY, "bold") + text(470, 82, "参数量", 14, GRAY, "bold") + text(830, 82, "训练语料", 14, GRAY, "bold")
+    widths = [51, 151, 336, 0]  # 按 log10(参数量) 画，每十倍约 90 像素
+    for i, (y, name, params, data) in enumerate(rows):
+        yy = 100 + i * 68
+        c = [BLUE, BLUE, TEAL, ORANGE][i]
+        body += cbox(40, yy, 220, 52, c) + text(150, yy + 33, f"{y} · {name}", 17, INK, "bold")
+        if widths[i]:
+            body += f'<rect x="300" y="{yy + 12}" width="{widths[i]}" height="28" rx="6" fill="{SOFT[c]}" stroke="{c}"/>'
+        body += text(300 + max(widths[i], 0) + 10 if widths[i] else 310, yy + 33, params, 16, c, "bold", anchor="start")
+        body += text(830, yy + 33, data, 15, INK)
+    body += text(480, 395, "参数条按对数刻度画：GPT-3 的条只比 GPT-1 长几倍，参数量却多了约 1500 倍。目标始终是预测下一个 token。", 14.5, GRAY)
+    svg("gpt-scale.svg", "GPT 系列的规模增长",
+        "GPT-1 于 2018 年发布，1.17 亿参数，训练语料约 7000 本书；GPT-2 于 2019 年，15 亿参数，约 40GB 网页文本；GPT-3 于 2020 年，1750 亿参数，约 3000 亿 token；2022 年的 ChatGPT 在 GPT-3.5 基础上做了指令微调和人类反馈训练。", 420, body)
+
+
+def modern_block():
+    body = text(480, 40, "2018 年和 2026 年的 Block：零件换了，流水线没变", 22, weight="bold")
+    # 左：GPT-1
+    body += cbox(25, 65, 300, 400, BLUE, dash=True)
+    body += text(175, 92, "GPT-1（2018）", 17, BLUE, "bold")
+    body += text(175, 116, "12 个相同的 Block", 14, GRAY)
+    for k in range(2):
+        y = 135 + k * 140
+        body += cbox(55, y, 240, 52, BLUE) + text(175, y + 32, "完整注意力", 16, INK, "bold")
+        body += arrow(175, y + 52, 175, y + 70, BLUE)
+        body += cbox(55, y + 72, 240, 52, BLUE) + text(175, y + 104, "稠密前馈层", 16, INK, "bold")
+    body += text(175, 430, "每层看全部前文，参数全部参与计算", 13.5, GRAY)
+    # 右：2026
+    body += cbox(350, 65, 585, 400, TEAL, dash=True)
+    body += text(642, 92, "2026 年的典型做法（Kimi K3、Qwen3.5 的思路）", 17, TEAL, "bold")
+    body += text(642, 116, "每 4 层为一组，反复堆叠", 14, GRAY)
+    labels = ["线性注意力", "线性注意力", "线性注意力", "完整注意力"]
+    for i, lab in enumerate(labels):
+        x = 372 + i * 140
+        c = ORANGE if i < 3 else BLUE
+        body += cbox(x, 135, 125, 52, c) + text(x + 62, 160, lab, 15, INK, "bold") + text(x + 62, 179, "前文压成固定状态" if i < 3 else "逐个回看全部前文", 11.5, c)
+        body += arrow(x + 62, 187, x + 62, 205, GRAY, 2)
+        body += cbox(x, 207, 125, 52, PURPLE) + text(x + 62, 238, "MoE 前馈层", 15, INK, "bold")
+        if i < 3:
+            body += arrow(x + 127, 233, x + 138, 233, GRAY, 2)
+    body += cbox(372, 290, 545, 140, PURPLE)
+    body += text(644, 314, "MoE：很多个小前馈层（专家），每个 token 只用其中几个", 15, PURPLE, "bold")
+    for j in range(14):
+        on = j in (2, 7, 11)
+        body += f'<rect x="{392 + j * 36}" y="330" width="30" height="34" rx="5" fill="{SOFT[PURPLE] if on else "#ffffff"}" stroke="{PURPLE if on else "#cbd5e1"}" stroke-width="{2.2 if on else 1}"/>'
+    body += cbox(392, 376, 135, 38, TEAL) + text(459, 400, "共享专家", 14, INK, "bold")
+    body += text(545, 400, "路由器给每个 token 挑少数专家（紫框）；共享专家人人都用", 13, GRAY, anchor="start")
+    body += text(480, 492, "目标仍是预测下一个 token。变化都在“省”：注意力少算、前馈层少激活，才撑得起万亿参数和百万上下文。", 15, GRAY)
+    svg("modern-block.svg", "GPT-1 与 2026 年模型的 Block 结构对比",
+        "左：GPT-1 由 12 个相同的 Block 组成，每个 Block 是完整注意力加稠密前馈层。右：2026 年的典型做法每 4 层为一组，前 3 层用便宜的线性注意力、第 4 层用完整注意力，每层后接 MoE 前馈层；MoE 由很多小专家组成，路由器为每个 token 只挑少数几个，另有所有 token 共用的共享专家。", 515, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -882,7 +979,7 @@ def main():
     # 第 3、5、6、7、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
-               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop):
+               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block):
         fn()
     print("figures written to", OUT)
 

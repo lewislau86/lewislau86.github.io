@@ -9,7 +9,7 @@ pageClass: tinyllm-course
 [课程总览](./index.md) · [下一章](./tensors-and-autograd.md)
 
 ::: tip 本章学习目标
-在自己的电脑上训练一个能“写诗”的小语言模型，亲眼看到损失下降、输出从乱码变成诗句；能指着代码说出每一段对应总图里的哪个零件、由后面哪一章详细讲。
+知道 LLM 从翻译模型到 GPT 的来历，理解它的核心只是“预测下一个 token”；在自己的电脑上训练一个能“写诗”的小语言模型，亲眼看到损失下降、输出从乱码变成诗句；能指着代码说出每一段对应总图里的哪个零件、由后面哪一章详细讲。
 
 **前置：** 会运行 Python，装好 PyTorch。不需要懂任何深度学习。
 
@@ -19,6 +19,56 @@ pageClass: tinyllm-course
 后面 26 章会把语言模型拆成零件，一件件讲清楚。拆开之前，先把整台机器开起来看看它在做什么。这一章的代码**故意不解释原理**：遇到看不懂的地方，记下它属于总图里的哪个零件就够了，后面会有专门的章节回答。
 
 <TinyLLMMap active="first-run" />
+
+## 先补一段背景：LLM 是从翻译模型变来的
+
+动手之前，先花几分钟弄清楚一件事：今天的大语言模型（LLM）最核心的能力到底是什么。答案要从一个翻译模型说起。
+
+**2017 年：Transformer 为翻译而生。** Google 在论文《Attention Is All You Need》里提出 Transformer，用来做机器翻译。它分两半：**编码器**一次读完整句原文，**解码器**一个词一个词地生成译文。翻译的难点在于语序不同，比如 “the book on the table” 要译成“桌子上的书”，译文的第一个词对应的是原文的最后一个词。Transformer 靠两样东西解决这个问题：
+
+- **位置编码**：注意力本身不区分词的先后，位置编码给每个词标上“排在第几”，模型才知道 “the book on the table” 和 “the table on the book” 不是一回事。
+- **注意力**：生成每个译词时，模型可以直接回头看原文的任意位置，不必按顺序一一对齐。生成“书”时，它去看 “book”；生成“桌子”时，它去看 “table”。
+
+这种模型训练时需要成对的数据：一句原文配一句译文。
+
+**2018 年：GPT 只留下解码器。** OpenAI 的 GPT 把编码器整个去掉，也不再需要“原文 → 译文”这样的配对数据，只保留解码器，在一段段普通文本上反复练习一件事：**根据前面的字，预测下一个字**。
+
+![左：2017 年的 Transformer 用编码器读完整句英文，解码器逐词生成“桌子上的书”，每生成一个词都回头看原文任意位置，因此词序不同也能对上。右：GPT 去掉编码器，只保留只能看前文的解码器，在连续文本上预测下一个 token](/tinyllm/figures/transformer-to-gpt.svg)
+
+这个改动看起来是做了减法，却打开了一扇门：任何文字都能拿来当训练数据，书、网页、代码、论坛帖子，不需要人工标注。数据从此不再是瓶颈。
+
+**2019 年以后：同一个目标，不断放大。** GPT-2、GPT-3 的结构和 GPT-1 大体相同，目标也还是预测下一个 token，变的是规模：
+
+![GPT-1 于 2018 年发布，1.17 亿参数，训练语料约 7000 本书；GPT-2 于 2019 年，15 亿参数，约 40GB 网页文本；GPT-3 于 2020 年，1750 亿参数，约 3000 亿 token；2022 年的 ChatGPT 在 GPT-3.5 基础上做了指令微调和人类反馈训练](/tinyllm/figures/gpt-scale.svg)
+
+规模上去以后，GPT-3 只要在提示词里看几个例子，就能做翻译、问答、写代码，而这些任务都没有专门训练过。研究者还发现，模型的损失会随着语料、参数和算力的增加，按相当稳定的规律下降（所谓“缩放定律”）。2022 年的 ChatGPT 在此基础上又做了指令微调和人类反馈训练，让它学会用对话的格式回答，但底层做的事情没有变。
+
+**到了今天，长什么样？** 下面是 2026 年三个公开了权重和架构细节的代表模型，和 GPT-1 放在一起比：
+
+| | GPT-1（2018） | Kimi K3（2026） | DeepSeek V4-Pro（2026） | Qwen3.5（2026） |
+| --- | --- | --- | --- | --- |
+| 总参数 / 每个 token 实际用到 | 1.17 亿 / 全部 | 2.8 万亿 / 1040 亿 | 1.6 万亿 / 490 亿 | 旗舰 3970 亿 / 170 亿；另有 20 亿等稠密小尺寸（全部用到） |
+| 注意力 | 每层完整注意力 | 69 层线性注意力（KDA）+ 24 层完整注意力（Gated MLA） | 两种压缩注意力（CSA、HCA）混合 | 每 4 层：3 层线性注意力（Gated DeltaNet）+ 1 层完整注意力 |
+| 前馈层 | 稠密 | MoE：896 个专家选 16 个，另有 2 个共享专家 | MoE | 旗舰为 MoE：512 个专家选 10 个，另有 1 个共享专家；小尺寸为稠密 |
+| 一次能读多长 | 512 token | 约 100 万 token | 约 100 万 token | 原生 262,144 token，可扩展到约 100 万 |
+| 开放方式 | 论文 | 权重 + 技术报告，Kimi K3 License | 权重 + 技术报告，MIT | 权重，Apache-2.0 |
+| 训练目标 | 预测下一个 token | 预测下一个 token | 预测下一个 token | 预测下一个 token |
+
+先看最后一行：八年过去，目标一个字都没变，都仍然只有解码器、逐个 token 生成。变的是表格中间那几行，而且变化方向一致，都是为了“省”：
+
+![左：GPT-1 由 12 个相同的 Block 组成，每个 Block 是完整注意力加稠密前馈层。右：2026 年的典型做法每 4 层为一组，前 3 层用线性注意力、第 4 层用完整注意力，每层后接 MoE 前馈层；MoE 由很多小专家组成，路由器为每个 token 只挑少数几个，另有所有 token 共用的共享专家](/tinyllm/figures/modern-block.svg)
+
+- **注意力少算一点。** 完整注意力每生成一个 token 都要回看全部前文，上下文到 100 万时又慢又占显存。Kimi K3 和 Qwen3.5 的做法是大部分层改用线性注意力，把前文压成一个固定大小的状态，只留四分之一的层做完整的精确查找；DeepSeek V4 走另一条路，保留注意力但把要回看的内容压缩。按 DeepSeek 模型卡的数字，在 100 万 token 上下文下，V4-Pro 每个 token 的计算量只有上一代 V3.2 的 27%，KV cache 只有 10%。
+- **前馈层少激活一点。** MoE 把一个大前馈层拆成几百个小“专家”，每个 token 只交给其中几个。Kimi K3 总共 2.8 万亿参数，每个 token 只用到约 1040 亿，不到 4%。参数多意味着能装下更多规律，每次只激活一小部分，计算量就不会跟着暴涨。
+- **训练更稳一点。** 规模越大，训练越容易出问题，所以残差连接和优化器也在改：Kimi K3 的 Attention Residuals 让每一层能有选择地回看前面所有层的输出，DeepSeek V4 用 mHC 加固残差连接，并用 Muon 优化器训练。
+
+这些新名词后面都会接上：注意力在[第 9 章](./self-attention.md)，KV cache 和推理成本在[第 22 章](./inference-efficiency.md)，MoE 在[第 24 章](./peft-and-sparsity.md)，残差连接在[第 3 章](./initialization-and-residuals.md)，优化器在[第 14 章](./optimizers.md)。前两个模型动辄上万亿参数，普通电脑跑不起来；**Qwen3.5 有 20 亿参数的小尺寸**，结构同样是“3 层线性注意力 + 1 层完整注意力”交替，学完前几章后可以把它下载下来，对照模型卡和自己写的 TinyLLM 逐层比较。
+
+把这段历史压成一句话：
+
+> **LLM 的核心只有一件事：预测下一个 token。它能做到多少，主要取决于规模：读了多少语料、模型有多大、花了多少算力。**
+
+这门课要亲手搭的 TinyLLM，正是 GPT 这种“只有解码器”的结构，也就是上面那张总图。这一章我们先用最小的规模把它跑起来：语料只有 39 首唐诗，你会亲眼看到，规模太小的时候，“预测下一个字”会变成什么样子。
 
 ## 1. 准备语料：39 首五言唐诗
 
@@ -189,7 +239,7 @@ for step in range(601):
 
 ## 8. ChatGPT 也是这样“学会”的吗？
 
-是的，做的是同一件事。ChatGPT 这类大模型的训练目标和我们这 39 首诗一模一样：**看前面的字，猜下一个字**。区别只在规模：我们的语料是一千多个字、模型有 39 万个参数；大模型读的是几万亿个 token、参数有几百亿到上万亿个。
+是的，做的是同一件事。开头的背景里说过，ChatGPT 这类大模型的训练目标和我们这 39 首诗一模一样：**看前面的字，猜下一个字**。区别只在规模：我们的语料是一千多个字、模型有 39 万个参数；大模型读的是几万亿个 token、参数有几百亿到上万亿个。
 
 规模一大，事情就起了变化。语料多到根本背不下来，模型要把“猜下一个字”这件事做好，只能去抓文字背后反复出现的规律：语法怎么搭、哪些事实常常一起出现、一道题通常怎么一步步推下去。它回答问题时看起来很聪明，靠的就是这些被压缩进参数里的规律。
 
@@ -280,12 +330,32 @@ Agent 也不只查一次。遇到“帮我看看这个项目的测试为什么�
 
    </details>
 
-5. 一个大模型的训练语料截止到去年。今天你问它“昨天的比赛谁赢了”，为什么它可能给出一个读起来很像样、但完全错误的答案？Agent 怎样解决这个问题？
+5. 2017 年的 Transformer 和 GPT 在结构和训练数据上各有什么不同？为什么说这个改动让“规模”成了关键？
+
+   <details><summary>参考答案</summary>
+
+   Transformer 有编码器和解码器，用成对的“原文 → 译文”训练；GPT 只保留解码器，在普通文本上预测下一个 token。不再需要配对数据，任何文字都能拿来训练，于是语料、参数和算力可以一起放大，能力主要随规模增长。
+
+   </details>
+
+6. 一个大模型的训练语料截止到去年。今天你问它“昨天的比赛谁赢了”，为什么它可能给出一个读起来很像样、但完全错误的答案？Agent 怎样解决这个问题？
 
    <details><summary>参考答案</summary>
 
    模型的参数里没有昨天的信息，它只会按见过的规律接出最像“比赛结果”的文字，于是可能编造。Agent 先去搜索当天的新闻，把结果放进上下文，模型再根据这段资料往下写；模型本身没有改变。
 
    </details>
+
+## 参考资料
+
+- [Attention Is All You Need，Vaswani 等，2017](https://arxiv.org/abs/1706.03762)（Transformer）
+- [Improving Language Understanding by Generative Pre-Training，Radford 等，2018](https://cdn.openai.com/research-covers/language-unsupervised/language_understanding_paper.pdf)（GPT-1）
+- [Language Models are Unsupervised Multitask Learners，Radford 等，2019](https://cdn.openai.com/better-language-models/language_models_are_unsupervised_multitask_learners.pdf)（GPT-2）
+- [Language Models are Few-Shot Learners，Brown 等，2020](https://arxiv.org/abs/2005.14165)（GPT-3）
+- [Scaling Laws for Neural Language Models，Kaplan 等，2020](https://arxiv.org/abs/2001.08361)（缩放定律）
+- [Training language models to follow instructions with human feedback，Ouyang 等，2022](https://arxiv.org/abs/2203.02155)（指令微调与人类反馈）
+- [Kimi K3 技术报告，Kimi Team，2026](https://arxiv.org/abs/2607.24653) · [Kimi K3 模型卡](https://huggingface.co/moonshotai/Kimi-K3)
+- [DeepSeek-V4 技术报告与模型卡，DeepSeek-AI，2026](https://huggingface.co/deepseek-ai/DeepSeek-V4-Pro)
+- [Qwen3.5-397B-A17B 模型卡](https://huggingface.co/Qwen/Qwen3.5-397B-A17B) · [Qwen3.5-2B 模型卡](https://huggingface.co/Qwen/Qwen3.5-2B)（资料核对日期：2026-10-27）
 
 下一章从最底层的工具开始：[第 2 章：张量与自动求导](./tensors-and-autograd.md)，回答 `loss.backward()` 到底做了什么。
