@@ -3,17 +3,21 @@
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/first-run
 #
-# 从上到下运行即可，CPU 上约一两分钟。只需要安装 PyTorch。
+# 从上到下运行即可，CPU 上约半分钟。只需要安装 PyTorch。
+# 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
+# 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 # 这一章先把整条流水线跑通：文本 → 编号 → 模型 → 损失 → 更新 → 生成。
 # 每个零件的原理留给后面的章节，代码注释里标出了对应章节号。
 
 # %%
+# region imports
 import math
 import time
 
 import torch
 from torch import nn
 from torch.nn import functional as F
+# endregion imports
 
 torch.manual_seed(0)
 print("PyTorch", torch.__version__)
@@ -66,9 +70,11 @@ POEMS = """
 北阙休上书，南山归敝庐。不才明主弃，多病故人疏。白发催年老，青阳逼岁除。永怀愁不寐，松月夜窗虚。
 八月湖水平，涵虚混太清。气蒸云梦泽，波撼岳阳城。欲济无舟楫，端居耻圣明。坐观垂钓者，徒有羡鱼情。
 """.strip()
+# region split
 lines = POEMS.splitlines()
 train_text = "\n".join(lines[:-4]) + "\n"   # 前 35 首用来训练
 val_text = "\n".join(lines[-4:]) + "\n"     # 最后 4 首不参与训练，只用来检查
+# endregion split
 text = train_text + val_text
 print("诗的数量：", len(lines), "  训练字符数：", len(train_text), "  验证字符数：", len(val_text))
 
@@ -79,11 +85,13 @@ print("诗的数量：", len(lines), "  训练字符数：", len(train_text), " 
 # 模型靠它学会一首诗在哪里结束。
 
 # %%
-chars = sorted(set(text))
-stoi = {ch: i for i, ch in enumerate(chars)}
-itos = {i: ch for ch, i in stoi.items()}
+# region tokenizer
+chars = sorted(set(text))                    # 语料里所有不同的字
+stoi = {ch: i for i, ch in enumerate(chars)} # 字 → 编号
+itos = {i: ch for ch, i in stoi.items()}     # 编号 → 字
 encode = lambda s: [stoi[c] for c in s]
 decode = lambda ids: "".join(itos[i] for i in ids)
+# endregion tokenizer
 
 train_data = torch.tensor(encode(train_text), dtype=torch.long)
 val_data = torch.tensor(encode(val_text), dtype=torch.long)
@@ -102,11 +110,13 @@ assert decode(encode("床前明月光")) == "床前明月光"
 block_size = 24   # 模型一次最多看多少个字
 batch_size = 32
 
+# region batch
 def get_batch(data):
     starts = torch.randint(len(data) - block_size - 1, (batch_size,))
     x = torch.stack([data[s : s + block_size] for s in starts])
     y = torch.stack([data[s + 1 : s + block_size + 1] for s in starts])
     return x, y
+# endregion batch
 
 x, y = get_batch(train_data)
 print("x 形状", tuple(x.shape), "y 形状", tuple(y.shape))
@@ -119,7 +129,8 @@ print("y[0] =", decode(y[0].tolist()).replace("\n", "⏎"))
 # 每个零件后面都有专门的章节；这里先当作黑盒，只要能对上总图即可。
 
 # %%
-class CausalSelfAttention(nn.Module):          # 第 9 章
+# region model
+class CausalSelfAttention(nn.Module):          # 自注意力：第 9 章
     def __init__(self, d, n_heads):
         super().__init__()
         self.n_heads = n_heads
@@ -134,7 +145,7 @@ class CausalSelfAttention(nn.Module):          # 第 9 章
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
-class SwiGLU(nn.Module):                        # 第 5 章
+class SwiGLU(nn.Module):                        # 门控前馈层：第 5 章
     def __init__(self, d, hidden):
         super().__init__()
         self.gate = nn.Linear(d, hidden, bias=False)
@@ -145,10 +156,10 @@ class SwiGLU(nn.Module):                        # 第 5 章
         return self.down(F.silu(self.gate(x)) * self.value(x))
 
 
-class Block(nn.Module):                         # 第 10 章
+class Block(nn.Module):                         # Transformer Block：第 10 章
     def __init__(self, d, n_heads):
         super().__init__()
-        self.norm1 = nn.RMSNorm(d)              # 第 4 章
+        self.norm1 = nn.RMSNorm(d)              # 归一化：第 4 章
         self.attn = CausalSelfAttention(d, n_heads)
         self.norm2 = nn.RMSNorm(d)
         self.ffn = SwiGLU(d, 8 * d // 3)
@@ -159,13 +170,13 @@ class Block(nn.Module):                         # 第 10 章
         return x
 
 
-class TinyLLM(nn.Module):                       # 第 11 章
+class TinyLLM(nn.Module):                       # 完整模型：第 11 章
     def __init__(self, vocab_size, d=96, n_layers=3, n_heads=4, block_size=block_size):
         super().__init__()
-        self.tok = nn.Embedding(vocab_size, d)  # 第 7 章
-        self.pos = nn.Embedding(block_size, d)  # 第 8 章会换成 RoPE
+        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 7 章
+        self.pos = nn.Embedding(block_size, d)  # 位置：第 8 章会换成 RoPE
         self.blocks = nn.ModuleList(Block(d, n_heads) for _ in range(n_layers))
-        self.norm = nn.RMSNorm(d)
+        self.norm = nn.RMSNorm(d)               # 最终归一化
         self.head = nn.Linear(d, vocab_size, bias=False)
         self.head.weight = self.tok.weight      # 输入输出共享一张表：第 7 章
         nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 3 章
@@ -177,6 +188,7 @@ class TinyLLM(nn.Module):                       # 第 11 章
         for block in self.blocks:
             h = block(h)
         return self.head(self.norm(h))          # [B, T, vocab_size] 的 logits
+# endregion model
 
 
 model = TinyLLM(vocab_size)
@@ -189,6 +201,7 @@ print("参数量：", sum(p.numel() for p in model.parameters()))
 # 按概率抽一个字接在后面（第 21 章细讲温度与采样）。
 
 # %%
+# region generate
 @torch.no_grad()
 def generate(prompt, max_new_tokens=48, temperature=0.8):
     model.eval()
@@ -201,6 +214,7 @@ def generate(prompt, max_new_tokens=48, temperature=0.8):
             break
     model.train()
     return decode(idx[0].tolist()).strip()
+# endregion generate
 
 torch.manual_seed(1)
 print("训练前：", generate("春"))
@@ -212,9 +226,11 @@ print("训练前：", generate("春"))
 # 每隔 10 步再在没训练过的 4 首诗上算一次损失（验证损失），只看不更新。
 
 # %%
+# region loss
 def lm_loss(x, y):
     logits = model(x)
     return F.cross_entropy(logits.reshape(-1, vocab_size), y.reshape(-1))
+# endregion loss
 
 @torch.no_grad()
 def val_loss():
@@ -224,6 +240,7 @@ def val_loss():
     return sum(losses) / len(losses)
 
 print("均匀乱猜时的损失约为 ln(词表大小) =", round(math.log(vocab_size), 3))
+# region train
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
 steps = 600
 log = {"loss": [], "val_step": [], "val_loss": [], "uniform": math.log(vocab_size)}
@@ -240,6 +257,7 @@ for step in range(steps + 1):
         log["val_loss"].append(val_loss())
     if step % 100 == 0:
         print(f"step {step:4d}  训练损失 {loss.item():.3f}  验证损失 {log['val_loss'][-1]:.3f}  ({time.time() - start:.0f}s)")
+# endregion train
 
 # %% [markdown]
 # ## 7. 训练之后：再写几首

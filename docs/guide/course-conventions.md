@@ -139,7 +139,21 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 
 ## 7. 配套代码
 
-- TinyLLM：每章一个 notebook，放在 `docs/public/tinyllm/notebooks/<文件名>.ipynb`，与正文同名。提交前从头运行一遍并保存输出；notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
+**原则：代码只有一个来源，文章只引用、不手抄。** 正文里手抄的代码会缺 `import`、依赖前文变量，改了 notebook 也没人会发现两边对不上。
+
+- TinyLLM：每章一个能独立运行的完整脚本，放在 `docs/public/tinyllm/code/<文件名>.py`，与正文同名，自带全部 `import`，`python <文件>` 从头跑到尾能复现正文中的所有输出。（第 1 章已按此完成，其余章节逐步迁移。）
+- 正文中的代码块用 VitePress 片段导入。在脚本里圈出片段：
+
+  ```python
+  # region model
+  class TinyLLM(nn.Module):
+      ...
+  # endregion model
+  ```
+
+  Markdown 里写一行 `<<< @/public/tinyllm/code/first-run.py#model`，构建时会把这段代码原样嵌入页面（标记行本身不会显示）。每章第一个代码块之前放一个 `::: info` 框，说明代码出处并给出完整脚本的下载和 GitHub 链接。
+- 只为说明某个 API 参数、本身不打算运行的几行示意代码，可以留在 Markdown 里，旁边写明“示意”并链接完整脚本。
+- notebook 由脚本生成，不要手改：脚本里 `# %%` 开始一个代码格，`# %% [markdown]` 开始一个说明格。运行 `python scripts/build-tinyllm-code.py <章节>` 会执行脚本、生成 `docs/public/tinyllm/notebooks/<文件名>.ipynb` 并保存输出；`--check` 只运行、不写文件。notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
 - Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。mini-redis 的 zip 由 `scripts/package-mini-redis.py` 从源码快照生成，只含代码与实验，教程正文以网站为准。
 - 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
 

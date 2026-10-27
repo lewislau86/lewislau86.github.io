@@ -62,10 +62,12 @@ TinyLLM 位于 `docs/tinyllm/`，由本站直接维护（不再从 tinyllm 仓�
 文件名使用主题名（如 `normalization.md`），章节顺序由 `docs/.vitepress/tinyllm-sidebar.json` 决定；
 旧的 `chapterN_*.md` 地址保留为跳转页。
 
-- 每章 notebook：`docs/public/tinyllm/notebooks/<文件名>.ipynb`（第 1 章另附 `first-run.py`）。
+- 每章代码：`docs/public/tinyllm/code/<文件名>.py` 是唯一来源，正文用 `<<< @/public/tinyllm/code/<文件>.py#区域名` 引用其中片段；
+  notebook `docs/public/tinyllm/notebooks/<文件名>.ipynb` 由 `python scripts/build-tinyllm-code.py` 从脚本生成（`--check` 只运行检查）。
+  目前第 1 章已迁移，其余章节逐步迁移。协作约束见根目录 `AGENTS.md`。
 - 配图：`python scripts/generate-tinyllm-figures.py` 重新生成 `docs/public/tinyllm/figures/` 下的 SVG
   （需要 matplotlib、NumPy 和中文字体）。第 1 章损失曲线读取 `scripts/data/tinyllm-first-run-log.json`，
-  该文件由运行 `first-run.py` 得到的 `first_run_log.json` 复制而来。
+  该文件由 `build-tinyllm-code.py` 运行 `first-run.py` 时自动更新。
 - 全书架构图：`docs/.vitepress/theme/components/TinyLLMMap.vue`，章节中写 `<TinyLLMMap active="文件名" />`。
   章节成文后，同步更新组件中的 `done` 列表、侧栏和总览页。
 

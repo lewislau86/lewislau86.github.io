@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** 会运行 Python，装好 PyTorch。不需要懂任何深度学习。
 
-**实践方式：** <a href="/tinyllm/notebooks/first-run.ipynb" download>first-run.ipynb</a>（也可以直接运行 <a href="/tinyllm/notebooks/first-run.py" download>first-run.py</a>），CPU 约半分钟。
+**实践方式：** <a href="/tinyllm/notebooks/first-run.ipynb" download>first-run.ipynb</a>（也可以直接运行 <a href="/tinyllm/code/first-run.py" download>first-run.py</a>），CPU 约半分钟。
 :::
 
 后面 26 章会把语言模型拆成零件，一件件讲清楚。拆开之前，先把整台机器开起来看看它在做什么。这一章的代码**故意不解释原理**：遇到看不懂的地方，记下它属于总图里的哪个零件就够了，后面会有专门的章节回答。
@@ -72,13 +72,13 @@ pageClass: tinyllm-course
 
 ## 1. 准备语料：39 首五言唐诗
 
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/first-run.py" download>first-run.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/first-run.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python first-run.py` 从头跑到尾即可。notebook 版本也由同一个文件生成。
+:::
+
 语言模型要从文本里学规律，所以先准备文本。这里用 39 首五言唐诗，每首一行，一共一千多个字。前 35 首用来训练，最后 4 首**不给模型看**，留着检查它是不是真学会了：
 
-```python
-lines = POEMS.splitlines()
-train_text = "\n".join(lines[:-4]) + "\n"   # 前 35 首用来训练
-val_text = "\n".join(lines[-4:]) + "\n"     # 最后 4 首只用来检查
-```
+<<< @/public/tinyllm/code/first-run.py#split
 
 这点数据对语言模型来说少得可怜，后面我们会看到它带来的后果。
 
@@ -86,13 +86,7 @@ val_text = "\n".join(lines[-4:]) + "\n"     # 最后 4 首只用来检查
 
 模型只会处理数字。最简单的办法是给每个不同的字分配一个编号：
 
-```python
-chars = sorted(set(text))                    # 语料里所有不同的字，共 556 个
-stoi = {ch: i for i, ch in enumerate(chars)} # 字 → 编号
-itos = {i: ch for ch, i in stoi.items()}     # 编号 → 字
-encode = lambda s: [stoi[c] for c in s]
-decode = lambda ids: "".join(itos[i] for i in ids)
-```
+<<< @/public/tinyllm/code/first-run.py#tokenizer
 
 运行后，“床前明月光”变成 `[169, 65, 237, 253, 45]`，`decode` 能把它原样还原。这 556 个字（包括标点和换行符）就是模型的**词表**。真实模型不会一个字一个号，而是用 BPE 这类分词器，见[第 6 章](./tokenization.md)。
 
@@ -107,70 +101,15 @@ decode = lambda ids: "".join(itos[i] for i in ids)
 
 看到“床”要猜“前”，看到“床前”要猜“明”，看到“床前明”要猜“月”……一段 24 个字的样本，同时提供了 24 道练习题。一次取 32 段，就得到形状为 `[32, 24]` 的 `x` 和 `y`。这个“错开一位”的目标在[第 13 章](./language-model-loss.md)细讲。
 
+截取样本的代码只有几行：
+
+<<< @/public/tinyllm/code/first-run.py#batch
+
 ## 4. 模型：一个很小的 Transformer
 
 下面就是全部模型代码。现在不需要看懂每一行，只要把注释里的章节号和上面总图对上：
 
-```python
-class CausalSelfAttention(nn.Module):          # 自注意力：第 9 章
-    def __init__(self, d, n_heads):
-        super().__init__()
-        self.n_heads = n_heads
-        self.qkv = nn.Linear(d, 3 * d, bias=False)
-        self.proj = nn.Linear(d, d, bias=False)
-
-    def forward(self, x):
-        B, T, D = x.shape
-        q, k, v = self.qkv(x).split(D, dim=-1)
-        q, k, v = (t.view(B, T, self.n_heads, D // self.n_heads).transpose(1, 2) for t in (q, k, v))
-        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  # 只能看自己和前面的字
-        return self.proj(y.transpose(1, 2).reshape(B, T, D))
-
-
-class SwiGLU(nn.Module):                        # 门控前馈层：第 5 章
-    def __init__(self, d, hidden):
-        super().__init__()
-        self.gate = nn.Linear(d, hidden, bias=False)
-        self.value = nn.Linear(d, hidden, bias=False)
-        self.down = nn.Linear(hidden, d, bias=False)
-
-    def forward(self, x):
-        return self.down(F.silu(self.gate(x)) * self.value(x))
-
-
-class Block(nn.Module):                         # Transformer Block：第 10 章
-    def __init__(self, d, n_heads):
-        super().__init__()
-        self.norm1 = nn.RMSNorm(d)              # 归一化：第 4 章
-        self.attn = CausalSelfAttention(d, n_heads)
-        self.norm2 = nn.RMSNorm(d)
-        self.ffn = SwiGLU(d, 8 * d // 3)
-
-    def forward(self, x):
-        x = x + self.attn(self.norm1(x))        # 残差：第 3 章
-        x = x + self.ffn(self.norm2(x))
-        return x
-
-
-class TinyLLM(nn.Module):                       # 完整模型：第 11 章
-    def __init__(self, vocab_size, d=96, n_layers=3, n_heads=4, block_size=24):
-        super().__init__()
-        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 7 章
-        self.pos = nn.Embedding(block_size, d)  # 位置：第 8 章会换成 RoPE
-        self.blocks = nn.ModuleList(Block(d, n_heads) for _ in range(n_layers))
-        self.norm = nn.RMSNorm(d)               # 最终归一化
-        self.head = nn.Linear(d, vocab_size, bias=False)
-        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 7 章
-        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 3 章
-        nn.init.normal_(self.pos.weight, std=d ** -0.5)
-
-    def forward(self, idx):
-        T = idx.shape[1]
-        h = self.tok(idx) + self.pos(torch.arange(T, device=idx.device))
-        for block in self.blocks:
-            h = block(h)
-        return self.head(self.norm(h))          # [batch, T, 词表大小] 的分数
-```
+<<< @/public/tinyllm/code/first-run.py#model
 
 从 `forward` 往下读，正好是总图从上到下的顺序：编号查表变成向量，加上位置信息，穿过 3 个 Block，最后归一化，再变回词表上每个字的分数（logits）。整个模型约 39 万个参数，而今天的大模型有几百亿甚至上万亿个。
 
@@ -178,18 +117,7 @@ class TinyLLM(nn.Module):                       # 完整模型：第 11 章
 
 生成的办法也很直接：把已有的字送进模型，取最后一个位置的分数，按概率抽一个字接在后面，重复下去，遇到换行就停。
 
-```python
-@torch.no_grad()
-def generate(prompt, max_new_tokens=48, temperature=0.8):
-    idx = torch.tensor([encode(prompt)])
-    for _ in range(max_new_tokens):
-        logits = model(idx[:, -block_size:])[:, -1, :] / temperature
-        next_id = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
-        idx = torch.cat([idx, next_id], dim=1)
-        if itos[next_id.item()] == "\n":
-            break
-    return decode(idx[0].tolist())
-```
+<<< @/public/tinyllm/code/first-run.py#generate
 
 参数还是随机的，以“春”开头写出来是这样：
 
@@ -201,16 +129,13 @@ def generate(prompt, max_new_tokens=48, temperature=0.8):
 
 ## 6. 训练：同一个骨架重复 600 次
 
-训练循环只有四行核心代码，每一步都一样：
+先定义损失：把每个位置的 logits 和目标字做交叉熵，再取平均。
 
-```python
-for step in range(601):
-    x, y = get_batch(train_data)
-    loss = F.cross_entropy(model(x).reshape(-1, vocab_size), y.reshape(-1))  # 前向 + 损失
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()                         # 求梯度：第 2 章
-    optimizer.step()                        # 更新参数：第 14 章
-```
+<<< @/public/tinyllm/code/first-run.py#loss
+
+训练循环的核心是中间四行，每一步都一样：取一批样本，前向算损失，清空旧梯度，`backward()` 求梯度，`optimizer.step()` 更新参数。其余几行只是在记录损失、定期打印：
+
+<<< @/public/tinyllm/code/first-run.py#train
 
 **损失**衡量模型猜得有多差，越小越好。`backward()` 算出每个参数该往哪个方向调，`optimizer.step()` 真的去调一小步。每隔 10 步，我们再用那 4 首没训练过的诗算一次损失，叫**验证损失**，只看不调。
 
