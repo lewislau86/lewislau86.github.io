@@ -1,0 +1,226 @@
+---
+title: "第 1 章：先跑通一个最小 TinyLLM"
+description: "不讲原理，先用不到 100 行 PyTorch 把“文本 → 编号 → 模型 → 损失 → 更新 → 生成”整条流水线跑一遍。"
+pageClass: tinyllm-course
+---
+
+# 第 1 章：先跑通一个最小 TinyLLM
+
+[课程总览](./index.md) · [下一章](./tensors-and-autograd.md)
+
+::: tip 本章学习目标
+在自己的电脑上训练一个能“写诗”的小语言模型，亲眼看到损失下降、输出从乱码变成诗句；能指着代码说出每一段对应总图里的哪个零件、由后面哪一章详细讲。
+
+**前置：** 会运行 Python，装好 PyTorch。不需要懂任何深度学习。
+
+**实践方式：** <a href="/tinyllm/notebooks/first-run.ipynb" download>first-run.ipynb</a>（也可以直接运行 <a href="/tinyllm/notebooks/first-run.py" download>first-run.py</a>），CPU 约半分钟。
+:::
+
+后面 26 章会把语言模型拆成零件，一件件讲清楚。拆开之前，先把整台机器开起来看看它在做什么。这一章的代码**故意不解释原理**：遇到看不懂的地方，记下它属于总图里的哪个零件就够了，后面会有专门的章节回答。
+
+<TinyLLMMap active="first-run" />
+
+## 1. 准备语料：39 首五言唐诗
+
+语言模型要从文本里学规律，所以先准备文本。这里用 39 首五言唐诗，每首一行，一共一千多个字。前 35 首用来训练，最后 4 首**不给模型看**，留着检查它是不是真学会了：
+
+```python
+lines = POEMS.splitlines()
+train_text = "\n".join(lines[:-4]) + "\n"   # 前 35 首用来训练
+val_text = "\n".join(lines[-4:]) + "\n"     # 最后 4 首只用来检查
+```
+
+这点数据对语言模型来说少得可怜，后面我们会看到它带来的后果。
+
+## 2. 把文字变成编号
+
+模型只会处理数字。最简单的办法是给每个不同的字分配一个编号：
+
+```python
+chars = sorted(set(text))                    # 语料里所有不同的字，共 556 个
+stoi = {ch: i for i, ch in enumerate(chars)} # 字 → 编号
+itos = {i: ch for ch, i in stoi.items()}     # 编号 → 字
+encode = lambda s: [stoi[c] for c in s]
+decode = lambda ids: "".join(itos[i] for i in ids)
+```
+
+运行后，“床前明月光”变成 `[169, 65, 237, 253, 45]`，`decode` 能把它原样还原。这 556 个字（包括标点和换行符）就是模型的**词表**。真实模型不会一个字一个号，而是用 BPE 这类分词器，见[第 6 章](./tokenization.md)。
+
+## 3. 训练样本：看前面，猜下一个
+
+语言模型只学一件事：<strong>根据前面的字，预测下一个字。</strong>从语料里随机截一段 24 个字作为输入 `x`，再把它整体往后挪一位作为目标 `y`：
+
+| 位置 | 0 | 1 | 2 | 3 | 4 | … |
+| --- | --- | --- | --- | --- | --- | --- |
+| 输入 `x` | 床 | 前 | 明 | 月 | 光 | … |
+| 目标 `y` | 前 | 明 | 月 | 光 | ， | … |
+
+看到“床”要猜“前”，看到“床前”要猜“明”，看到“床前明”要猜“月”……一段 24 个字的样本，同时提供了 24 道练习题。一次取 32 段，就得到形状为 `[32, 24]` 的 `x` 和 `y`。这个“错开一位”的目标在[第 13 章](./language-model-loss.md)细讲。
+
+## 4. 模型：一个很小的 Transformer
+
+下面就是全部模型代码。现在不需要看懂每一行，只要把注释里的章节号和上面总图对上：
+
+```python
+class CausalSelfAttention(nn.Module):          # 自注意力：第 9 章
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.n_heads = n_heads
+        self.qkv = nn.Linear(d, 3 * d, bias=False)
+        self.proj = nn.Linear(d, d, bias=False)
+
+    def forward(self, x):
+        B, T, D = x.shape
+        q, k, v = self.qkv(x).split(D, dim=-1)
+        q, k, v = (t.view(B, T, self.n_heads, D // self.n_heads).transpose(1, 2) for t in (q, k, v))
+        y = F.scaled_dot_product_attention(q, k, v, is_causal=True)  # 只能看自己和前面的字
+        return self.proj(y.transpose(1, 2).reshape(B, T, D))
+
+
+class SwiGLU(nn.Module):                        # 门控前馈层：第 5 章
+    def __init__(self, d, hidden):
+        super().__init__()
+        self.gate = nn.Linear(d, hidden, bias=False)
+        self.value = nn.Linear(d, hidden, bias=False)
+        self.down = nn.Linear(hidden, d, bias=False)
+
+    def forward(self, x):
+        return self.down(F.silu(self.gate(x)) * self.value(x))
+
+
+class Block(nn.Module):                         # Transformer Block：第 10 章
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.norm1 = nn.RMSNorm(d)              # 归一化：第 4 章
+        self.attn = CausalSelfAttention(d, n_heads)
+        self.norm2 = nn.RMSNorm(d)
+        self.ffn = SwiGLU(d, 8 * d // 3)
+
+    def forward(self, x):
+        x = x + self.attn(self.norm1(x))        # 残差：第 3 章
+        x = x + self.ffn(self.norm2(x))
+        return x
+
+
+class TinyLLM(nn.Module):                       # 完整模型：第 11 章
+    def __init__(self, vocab_size, d=96, n_layers=3, n_heads=4, block_size=24):
+        super().__init__()
+        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 7 章
+        self.pos = nn.Embedding(block_size, d)  # 位置：第 8 章会换成 RoPE
+        self.blocks = nn.ModuleList(Block(d, n_heads) for _ in range(n_layers))
+        self.norm = nn.RMSNorm(d)               # 最终归一化
+        self.head = nn.Linear(d, vocab_size, bias=False)
+        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 7 章
+        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 3 章
+        nn.init.normal_(self.pos.weight, std=d ** -0.5)
+
+    def forward(self, idx):
+        T = idx.shape[1]
+        h = self.tok(idx) + self.pos(torch.arange(T, device=idx.device))
+        for block in self.blocks:
+            h = block(h)
+        return self.head(self.norm(h))          # [batch, T, 词表大小] 的分数
+```
+
+从 `forward` 往下读，正好是总图从上到下的顺序：编号查表变成向量，加上位置信息，穿过 3 个 Block，最后归一化，再变回词表上每个字的分数（logits）。整个模型约 39 万个参数，而今天的大模型有几百亿甚至上万亿个。
+
+## 5. 训练之前，先让它写一首
+
+生成的办法也很直接：把已有的字送进模型，取最后一个位置的分数，按概率抽一个字接在后面，重复下去，遇到换行就停。
+
+```python
+@torch.no_grad()
+def generate(prompt, max_new_tokens=48, temperature=0.8):
+    idx = torch.tensor([encode(prompt)])
+    for _ in range(max_new_tokens):
+        logits = model(idx[:, -block_size:])[:, -1, :] / temperature
+        next_id = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
+        idx = torch.cat([idx, next_id], dim=1)
+        if itos[next_id.item()] == "\n":
+            break
+    return decode(idx[0].tolist())
+```
+
+参数还是随机的，以“春”开头写出来是这样：
+
+```text
+春问巾兹戎除至细车秀无孙除秦蓬宦胜胜俱浑戍除短有入鱼五醅就杯杯怜乾桑地厌适适适歇歇戍适名王杯适适幽
+```
+
+全是随机挑的字，连标点都没有。温度、采样这些细节在[第 21 章](./generation.md)讲。
+
+## 6. 训练：同一个骨架重复 600 次
+
+训练循环只有四行核心代码，每一步都一样：
+
+```python
+for step in range(601):
+    x, y = get_batch(train_data)
+    loss = F.cross_entropy(model(x).reshape(-1, vocab_size), y.reshape(-1))  # 前向 + 损失
+    optimizer.zero_grad(set_to_none=True)
+    loss.backward()                         # 求梯度：第 2 章
+    optimizer.step()                        # 更新参数：第 14 章
+```
+
+**损失**衡量模型猜得有多差，越小越好。`backward()` 算出每个参数该往哪个方向调，`optimizer.step()` 真的去调一小步。每隔 10 步，我们再用那 4 首没训练过的诗算一次损失，叫**验证损失**，只看不调。
+
+![训练损失从约 6.7 迅速降到约 0.1；验证损失只在开头略降，随后上升到约 8.1，超过完全乱猜的水平](/tinyllm/figures/first-run-loss.svg)
+
+这张图值得多看一会儿：
+
+- **起点约等于“完全乱猜”。** 刚开始训练损失是 6.67，很接近橙色虚线 $\ln 556\approx6.32$：如果模型对 556 个字一视同仁，每个字的概率都是 $1/556$，交叉熵正好是 $\ln 556$。这是检查代码有没有写错的第一个信号。
+- **训练损失降得很快。** 200 步左右就降到 0.2 以下，说明模型几乎能准确说出训练集里每个字后面是什么。
+- **验证损失却在上升。** 它只在最开始稍降，随后一路涨到 8 以上，比乱猜还差。模型没有学到“怎么写诗”，而是把 35 首诗**背了下来**；碰到没见过的诗，它反而更自信地猜错。这叫**过拟合**。数据只有一千多字，这几乎是必然的结果。
+
+## 7. 训练之后，再写几首
+
+用同样的开头再生成一次：
+
+```text
+春乃发生。随风潜入夜，润物细无声。野径云俱黑，江船火独明。晓看红湿处，花重锦官城。
+月是故乡明。有弟皆分散，无家问死生。寄书长不达，况乃未休兵。
+山中相送罢，日暮掩柴扉。春草明年绿，王孙归不归。
+孤舟。戎马关山北，凭轩涕泗流。
+```
+
+格式完全对了：五个字一顿，逗号句号交替，一首诗以换行结束。但仔细看，每一句都是训练集里的原句：“春乃发生”接的是《春夜喜雨》的“当春乃发生”，“孤舟”后面接的是《登岳阳楼》里紧跟在“老病有孤舟”之后的那一句。这和验证损失讲的是同一件事：**训练损失低，不等于学会了。**
+
+你的输出应该和上面一致：代码固定了随机种子，CPU 上的结果可以复现。换一台机器或另一个 PyTorch 版本，个别字可能不同，但趋势相同。
+
+## 8. 这一章故意省略了什么
+
+为了让代码短到能一眼看完，这个模型在很多地方用了最简单的做法。后面的章节会一个个换掉：
+
+| 这一章的做法 | 问题 | 由哪一章改进 |
+| --- | --- | --- |
+| 一个字一个编号 | 遇到没见过的字就无法编码；英文、代码很低效 | [第 6 章 · 分词](./tokenization.md) |
+| 可学习的绝对位置向量 | 超过 24 个字就没有位置可用 | [第 8 章 · 位置表示](./position-encoding.md) |
+| 只有一千多字的语料 | 只能背诵，无法泛化 | [第 12 章 · 数据](./data-pipeline.md)、[第 16 章 · 正则化](./regularization.md) |
+| 固定学习率、不裁剪梯度 | 模型一大，训练容易不稳 | [第 15 章 · 学习率](./learning-rate.md)、[第 18 章 · 梯度](./gradient-stability.md) |
+| 全程 FP32 | 大模型显存和速度吃不消 | [第 17 章 · 精度](./precision.md) |
+| 只看损失曲线 | 不知道问题出在哪里 | [第 20 章 · 诊断与评估](./training-evaluation.md) |
+| 每生成一个字都把整段重算一遍 | 文本一长就很慢 | [第 22 章 · 推理效率](./inference-efficiency.md) |
+
+## 本章结论 {#tinyllm-choice}
+
+一个语言模型的完整生命周期就是这条流水线：**文本 → 编号 → 模型 → 下一个字的分数 → 损失 → 梯度 → 更新参数**，训练好以后再用“预测一个字、接上去、再预测”的方式生成。后面所有章节都是在这条流水线的某一段上做文章。
+
+## 检查理解
+
+1. 训练刚开始时损失约为 6.67，为什么说这是“正常”的？
+
+   <details><summary>参考答案</summary>随机参数下模型对 556 个字的预测接近均匀分布，交叉熵约为 $\ln 556\approx6.32$。如果起点远高于这个数（比如几十），通常说明初始化或输出层有问题。</details>
+
+2. 一段长度为 24 的样本 `x`，为什么能提供 24 道“猜下一个字”的练习？
+
+   <details><summary>参考答案</summary>目标 `y` 是 `x` 后移一位，位置 $t$ 的目标是第 $t+1$ 个字。因果注意力让每个位置只能看到自己和前面的字，所以 24 个位置各自是一道独立的题。</details>
+
+3. 训练损失 0.1、验证损失 8.1，说明了什么？要改善它，第一件该做的事是什么？
+
+   <details><summary>参考答案</summary>模型记住了训练集，却没有学到能推广到新诗的规律（过拟合）。最直接的办法是增加数据量；其次才是正则化、减小模型、提前停止等手段。</details>
+
+4. 在总图里找出 `self.head.weight = self.tok.weight` 这一行连接的两个零件。
+
+   <details><summary>参考答案</summary>“词嵌入”和“输出层”。两者共用同一张 `[词表大小, d]` 的表，见第 7 章。</details>
+
+下一章从最底层的工具开始：[第 2 章：张量与自动求导](./tensors-and-autograd.md)，回答 `loss.backward()` 到底做了什么。

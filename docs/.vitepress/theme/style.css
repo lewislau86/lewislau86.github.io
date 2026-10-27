@@ -33,11 +33,27 @@
 @media (max-width: 640px) {
   /* Keep comparison columns readable inside VitePress's scrolling tables. */
   .burn-course .vp-doc th,
-  .burn-course .vp-doc td {
+  .burn-course .vp-doc td,
+  .tinyllm-course .vp-doc th,
+  .tinyllm-course .vp-doc td {
     min-width: 9rem;
   }
   .burn-course .vp-doc th:first-child,
-  .burn-course .vp-doc td:first-child {
+  .burn-course .vp-doc td:first-child,
+  .tinyllm-course .vp-doc th:first-child,
+  .tinyllm-course .vp-doc td:first-child {
     min-width: 5rem;
   }
+}
+
+/* 课程正文中的静态配图：居中、限制宽度，深色模式下给白底图留边。 */
+.vp-doc img[src*='/figures/'] {
+  display: block;
+  margin: 1.25rem auto 0.5rem;
+  max-width: min(100%, 720px);
+  border-radius: 8px;
+}
+.dark .vp-doc img[src*='/figures/'] {
+  background: #fff;
+  padding: 6px;
 }

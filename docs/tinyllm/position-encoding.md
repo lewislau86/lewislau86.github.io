@@ -1,0 +1,19 @@
+---
+title: "第 8 章：位置表示"
+description: "模型怎样知道字的先后顺序：绝对位置编码与 RoPE。"
+pageClass: tinyllm-course
+---
+
+# 第 8 章：位置表示
+
+[课程总览](./index.md) · [上一章](./embeddings-and-output.md) · [下一章](./self-attention.md)
+
+::: info 本章状态：规划中
+正文与 notebook 尚未完成。预计覆盖：绝对位置编码、RoPE，位置作用于注意力的哪个环节。
+:::
+
+<TinyLLMMap active="position-encoding" />
+
+## 本章主线选择（待实验验证）
+
+TinyLLM 默认对注意力的 Q/K 使用 <strong>RoPE</strong>，不另加可学习的绝对位置向量。RoPE 让点积包含相对位置信息，已被多种 Decoder-only 模型使用；但超过训练上下文长度时，不能仅凭公式保证生成质量，须测试并视需要进行上下文扩展训练。教学实验会用绝对位置编码作对照。[RoFormer 原论文](https://arxiv.org/abs/2104.09864)

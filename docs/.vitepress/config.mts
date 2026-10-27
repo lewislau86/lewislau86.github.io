@@ -43,6 +43,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: '新增与发布文档', link: '/guide/writing' },
+          { text: '课程写作规范', link: '/guide/course-conventions' },
           { text: 'Markdown 写作示例', link: '/guide/markdown' }
         ]
       }
@@ -63,9 +64,7 @@ export default defineConfig({
     darkModeSwitchTitle: '切换为深色模式',
     skipToContentLabel: '跳转到正文',
     editLink: {
-      pattern: ({ relativePath }) => relativePath.startsWith('tinyllm/')
-        ? `https://github.com/lewislau86/tinyllm/edit/main/${relativePath.slice('tinyllm/'.length).replace(/^index\.md$/, 'README.md')}`
-        : `https://github.com/lewislau86/lewislau86.github.io/edit/master/docs/${relativePath}`,
+      pattern: 'https://github.com/lewislau86/lewislau86.github.io/edit/master/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
     socialLinks: [{ icon: 'github', link: 'https://github.com/lewislau86/lewislau86.github.io' }],

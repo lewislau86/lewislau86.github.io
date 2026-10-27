@@ -26,6 +26,10 @@
 
 一级标题作为文章标题，二级和三级标题会出现在右侧页内目录中。
 
+::: tip 写系列教程？
+编写 TinyLLM、Burn、mini-redis 这类多章节课程时，请先阅读[课程写作规范](./course-conventions.md)：文件命名、侧栏、章节模板和配图都有统一约定。
+:::
+
 ## 加入左侧目录
 
 打开 `docs/.vitepress/config.mts`，在 `themeConfig.sidebar` 数组中增加一个分组：

@@ -1,0 +1,177 @@
+# 课程写作规范
+
+本站的三个系列教程（TinyLLM、mini-redis、Burn）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
+
+## 1. 网站是唯一来源
+
+所有课程正文都直接在本仓库的 `docs/<课程>/` 里编写和修改，不再从其他仓库导入。配套代码（notebook、Rust 学习包、源码快照）作为下载文件放在 `docs/public/<课程>/`。
+
+这样做的好处是：章节重排、配图、交叉链接都在一处完成，页底的“在 GitHub 上编辑此页”也始终指向真正的源文件。
+
+| 课程 | 正文 | 下载与配图 | 侧栏 | 状态 |
+| --- | --- | --- | --- | --- |
+| TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
+| Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
+| mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/` | `mini-redis-sidebar.json` | 待迁移：仍由 `scripts/import-mini-redis.py` 导入，文件名带编号 |
+
+## 2. 文件名与 URL
+
+- **文件名用主题，不用编号。** 例如 `tinyllm/normalization.md`，而不是 `chapter4_normalization.md`。章节号只出现在标题和侧栏里，调整顺序时 URL 不变。
+- 全部小写，单词之间用连字符：`tensors-and-autograd.md`。
+- 每个课程目录有一个 `index.md` 作为课程总览。
+
+## 3. 侧栏决定顺序
+
+章节顺序由 `docs/.vitepress/<课程>-sidebar.json` 决定，页底的“上一篇 / 下一篇”也按侧栏顺序生成。
+
+- 按“部分”分组，组名写成 `第一部分 · 先跑起来` 的形式。
+- 条目文字写成 `第 N 章 · 标题`。
+- 尚未成文的章节集中放进最后一个折叠分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。
+- 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表和总览页的“已成文的章节”表。
+
+## 4. 章节模板
+
+### 已成文的章节
+
+```md
+---
+title: "第 N 章：标题"
+description: "一句话说明本章回答什么问题。"
+pageClass: tinyllm-course        # Burn 用 burn-course
+---
+
+# 第 N 章：标题
+
+[课程总览](./index.md) · [上一章](./prev.md) · [下一章](./next.md)
+
+::: tip 本章学习目标
+读完后能做到的 2～3 件具体的事。
+
+**前置：** 需要先读哪几章，链接到具体章节。
+
+**实践方式：** 配套 notebook 或学习包的下载链接，以及运行环境。
+:::
+
+开场：从上一章留下的问题或一个具体现象出发，说明本章要解决什么。
+
+<TinyLLMMap active="本章文件名" />   <!-- 仅 TinyLLM：高亮本章负责的零件 -->
+
+## 1. 用一个具体例子展开……
+## 2. ……
+## 动手实验
+
+## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
+
+::: warning 常见误区
+:::
+
+## 检查理解
+
+1. 问题
+
+   <details><summary>参考答案</summary>答案</details>
+
+## 参考资料
+
+下一章预告与链接。
+```
+
+要点：
+
+- **先例子，后结论。** “本章结论 / 主线选择”放在章末，等读者理解了概念再给结论，不在开头抛出尚未解释的术语。
+- **每章只引入当前需要的概念。** 用到后面章节的内容时，给一句直觉解释并链接过去，不在本章展开。需要后续知识才能理解的方法，挪到那一章去讲。
+- **检查理解要带答案**，用 `<details>` 折叠。
+
+### 规划中的章节
+
+```md
+---
+title: "第 N 章：标题"
+description: "……"
+pageClass: tinyllm-course
+---
+
+# 第 N 章：标题
+
+[课程总览](./index.md) · [上一章](./prev.md) · [下一章](./next.md)
+
+::: info 本章状态：规划中
+正文与 notebook 尚未完成。计划覆盖……
+:::
+
+## 本章主线选择（待实验验证）
+```
+
+从其他章节移入、已经写好的小节，可以先放在规划章节里，并在提示框中说明。
+
+## 5. 写作风格
+
+- **叙事式推进。** 一章围绕一条主线（一个小例子、一次计算）往前走，而不是把多个方法平行罗列成手册。理想参照：TinyLLM 第 2 章、Burn 第 10 章。
+- **先猜后验。** 给出形状或数值时，先让读者预测，再用代码或手算核对。
+- **少用否定句堆叠。** 正文说清“它是什么、怎么用”；“不能 / 不等于 / 不是”这类边界说明，保留最关键的一两条，其余集中到章末的 `::: warning 常见误区`。
+- **加粗只用于少量关键句。** 用 `**…**`；当加粗内容以标点结尾、后面紧跟文字时（如 `**结论。**后文`），Markdown 无法识别，改用 `<strong>…</strong>`。
+- 中文与数字、英文之间留空格：`第 4 章`、`RMSNorm 的输出`。
+- 引用论文或文档时直接链接到原始来源；论文在特定实验中的结论，写明适用范围。
+
+## 6. 配图
+
+每个关键概念至少配一张图。配图分两类：
+
+| 类型 | 做法 | 例子 |
+| --- | --- | --- |
+| 示意图（数据流、计算图、张量形状） | 在生成脚本中手写 SVG，文字保留为可选中文本 | `compute-graph.svg`、`pre-post-norm.svg` |
+| 数据图（曲线、柱状图） | matplotlib 生成 SVG，文字转为路径，避免字体缺失 | `norm-motivation.svg`、`first-run-loss.svg` |
+
+- 图由脚本生成，不手工编辑 SVG：TinyLLM 用 `scripts/generate-tinyllm-figures.py`，Burn 用 `scripts/generate-burn-math-figures.py`。改图就改脚本，再重新运行。
+- 数据图的数据来自真实运行。需要训练记录的图，把记录保存在 `scripts/data/`，脚本只负责读取和绘制。
+- 图片的替代文本写成一句完整描述，说明图中“看到了什么结论”，而不只是图名。
+- 图下紧跟一段“怎么读这张图”，指出读者应该注意的地方。
+- 配色：蓝 `#2563eb`、青 `#0f766e`、橙 `#b45309`、红 `#b91c1c`、灰 `#64748b`，浅灰底 `#f8fafc`。
+- notebook 内的交互图表统一用 Plotly。
+
+TinyLLM 的全书架构图是 Vue 组件 `docs/.vitepress/theme/components/TinyLLMMap.vue`，在 Markdown 中写 `<TinyLLMMap active="normalization" />` 即可，架构变化时只改这一个文件。
+
+## 7. 配套代码
+
+- TinyLLM：每章一个 notebook，放在 `docs/public/tinyllm/notebooks/<文件名>.ipynb`，与正文同名。提交前从头运行一遍并保存输出；notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
+- Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。
+- 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
+
+## 8. 调整顺序与旧地址跳转
+
+文件名不含编号，所以调整顺序通常只需要：
+
+1. 修改侧栏 JSON 中的顺序与“第 N 章”文字；
+2. 修改各章标题、frontmatter 的 `title` 和顶部导航中的上一章 / 下一章；
+3. 全文搜索“第 N 章”的文字引用并更新。
+
+如果确实要改文件名，在原位置保留一个跳转页，避免外部链接失效：
+
+```md
+---
+title: 页面已移动
+search: false
+sidebar: false
+outline: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: "0; url=/tinyllm/new-name.html"
+---
+
+# 页面已移动
+
+请继续阅读[第 N 章：标题](./new-name.md)。
+```
+
+TinyLLM 的 `chapterN_*.md` 都是这样的跳转页。
+
+## 9. 发布前检查
+
+```sh
+python scripts/generate-tinyllm-figures.py   # 改了配图时
+npm run docs:build                           # 构建会报告死链
+npm run docs:preview
+```
+
+在预览中至少检查：新章节的侧栏位置、顶部导航、配图在浅色和深色模式下都清晰、notebook 能下载。

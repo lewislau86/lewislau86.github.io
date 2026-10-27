@@ -1,9 +1,14 @@
-# Chapter 6：位置表示
+---
+title: 页面已移动
+search: false
+sidebar: false
+outline: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: "0; url=/tinyllm/position-encoding.html"
+---
 
-本章教案与实验尚在规划中。预计覆盖：绝对位置编码、RoPE，位置作用于注意力的哪个环节。
+# 页面已移动
 
-## 本章主线选择（待实验验证）
-
-TinyLLM 默认对注意力的 Q/K 使用 <strong>RoPE</strong>，不另加可学习的绝对位置向量。RoPE 让点积包含相对位置信息，已被多种 Decoder-only 模型使用；但超过训练上下文长度时，不能仅凭公式保证生成质量，须测试并视需要进行上下文扩展训练。教学实验会用绝对位置编码作对照。[RoFormer 原论文](https://arxiv.org/abs/2104.09864)
-
-返回 [课程总目录](index.md#课程路线规划)。
+TinyLLM 已调整章节顺序。请继续阅读[第 8 章：位置表示](./position-encoding.md)。

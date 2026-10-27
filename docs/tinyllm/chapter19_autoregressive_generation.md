@@ -1,9 +1,14 @@
-# Chapter 19：自回归生成
+---
+title: 页面已移动
+search: false
+sidebar: false
+outline: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: "0; url=/tinyllm/generation.html"
+---
 
-本章教案与实验尚在规划中。预计覆盖：逐 token 解码、温度、top-k、top-p、停止条件与重复问题。
+# 页面已移动
 
-## 本章主线选择（待实验验证）
-
-固定评估先用<strong>贪心解码</strong>，使同一提示词的输出可复现；开放式交互提供温度与 top-p 采样，并明确 EOS、最大输出长度和随机种子。温度低通常更集中，高温或较大 top-p 可增加多样性，也可能增加错误；没有跨任务通用的最佳采样参数。[Nucleus Sampling 论文](https://arxiv.org/abs/1904.09751)
-
-返回 [课程总目录](index.md#课程路线规划)。
+TinyLLM 已调整章节顺序。请继续阅读[第 21 章：自回归生成](./generation.md)。

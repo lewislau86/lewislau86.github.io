@@ -1,9 +1,14 @@
-# Chapter 18：训练诊断与评估
+---
+title: 页面已移动
+search: false
+sidebar: false
+outline: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: "0; url=/tinyllm/training-evaluation.html"
+---
 
-本章教案与实验尚在规划中。预计覆盖：先过拟合一个小 batch，再观察 loss、梯度、验证集困惑度和生成样例。
+# 页面已移动
 
-## 本章主线选择（待实验验证）
-
-先做<strong>单个小 batch 过拟合</strong>来检查前向、反向和参数更新，再在独立验证集报告交叉熵、困惑度以及固定提示词的生成样例。困惑度只在相同 tokenizer 和数据口径下比较；一条训练 loss 曲线既不能证明泛化，也不能单独证明生成质量。
-
-返回 [课程总目录](index.md#课程路线规划)。
+TinyLLM 已调整章节顺序。请继续阅读[第 20 章：训练诊断与评估](./training-evaluation.md)。

@@ -55,21 +55,21 @@ learn-cuda 固定版本的 15 个主题已分别在第 5、12、13、15 章讲�
 修改正文后运行 `npm run docs:build`；若修改学习包，重新验证程序并更新 `docs/public/burn/first-inference.zip`。
 运行包内代码时应在解压目录构建，或为 Cargo 指定站点目录之外的 `CARGO_TARGET_DIR`，避免把编译产物作为静态资源发布。
 
-## 同步 TinyLLM 文档集
+## 编写 TinyLLM 教程
 
-TinyLLM 位于网站 `/tinyllm/`，按照原仓库 `SUMMARY.md` 导入 27 个页面
-（课程总览 + 26 章）和文档中引用的 6 个 notebook。导入按目录识别连续的章节编号，新增章节会进入侧栏，不修改源仓库。
+TinyLLM 位于 `docs/tinyllm/`，由本站直接维护（不再从 tinyllm 仓库导入），通过 `/tinyllm/` 访问。
+课程分五部分、27 章：先用第 1 章跑通一个字符级小模型，再依次讲可训练的网络、构造语言模型、数据与训练、生成与扩展。
+文件名使用主题名（如 `normalization.md`），章节顺序由 `docs/.vitepress/tinyllm-sidebar.json` 决定；
+旧的 `chapterN_*.md` 地址保留为跳转页。
 
-```sh
-python3 scripts/import-tinyllm.py /Users/lewislau/MyResearch/TinyLLM
-npm run docs:build
-```
+- 每章 notebook：`docs/public/tinyllm/notebooks/<文件名>.ipynb`（第 1 章另附 `first-run.py`）。
+- 配图：`python scripts/generate-tinyllm-figures.py` 重新生成 `docs/public/tinyllm/figures/` 下的 SVG
+  （需要 matplotlib、NumPy 和中文字体）。第 1 章损失曲线读取 `scripts/data/tinyllm-first-run-log.json`，
+  该文件由运行 `first-run.py` 得到的 `first_run_log.json` 复制而来。
+- 全书架构图：`docs/.vitepress/theme/components/TinyLLMMap.vue`，章节中写 `<TinyLLMMap active="文件名" />`。
+  章节成文后，同步更新组件中的 `done` 列表、侧栏和总览页。
 
-导入会更新章节、侧栏与下载文件；`scripts/tinyllm-source.json` 记录源提交和文件哈希。
-源内容保留原样，仅适配 README 链接、章节锚点、notebook 下载及 GitBook 导出的强调/行内公式转义。
-源总览尚未登记已完成的第 13 章时，导入会为网站总览补上优化器教案及 notebook 入口。
-源仓库更新后需重新运行导入并提交本站；当前不是跨仓库自动同步。
-TinyLLM 页底的编辑入口指向源仓库，避免下次同步覆盖对本站副本的手动修改。
+三个课程共用的写作与目录规范见 `docs/guide/course-conventions.md`。
 
 ## 同步 mini-redis 教程
 

@@ -1,9 +1,14 @@
-# Chapter 21：指令微调
+---
+title: 页面已移动
+search: false
+sidebar: false
+outline: false
+head:
+  - - meta
+    - http-equiv: refresh
+      content: "0; url=/tinyllm/instruction-finetuning.html"
+---
 
-本章教案与实验尚在规划中。预计覆盖：预训练与监督微调、对话模板、只对答案计算 loss、基础评估。
+# 页面已移动
 
-## 本章主线选择（待实验验证）
-
-在预训练权重上做 <strong>SFT</strong>，固定对话模板和终止 token，并仅对助手答案位置计算 loss。这样监督目标对应模型需要生成的内容；模板或 mask 不一致会让训练目标和推理提示词错位。数据量不足或显存受限时再比较 [LoRA](chapter22_peft_sparsity.md) 微调。
-
-返回 [课程总目录](index.md#课程路线规划)。
+TinyLLM 已调整章节顺序。请继续阅读[第 23 章：指令微调](./instruction-finetuning.md)。
