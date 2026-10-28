@@ -1,0 +1,9 @@
+# TinyLLM 教程的实验环境：CPU 即可，不需要 GPU。
+# 建议先按 https://lewislau86.github.io/tinyllm/setup 单独安装 PyTorch，再运行：
+#   python -m pip install -r requirements.txt
+# 本站最近一次完整运行用的是 Python 3.10.12、torch 2.14.1、tokenizers 0.23.3、plotly 7.1.0。
+
+torch>=2.4          # 所有章节（nn.RMSNorm 需要 2.4 以上）
+tokenizers>=0.20    # 第 4 章：训练字节级 BPE
+plotly>=5.20        # 第 4、8、10、15 章的交互图表
+jupyterlab          # 可选：在本地打开 notebook

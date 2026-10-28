@@ -11,7 +11,7 @@ pageClass: tinyllm-course
 ::: tip 本章学习目标
 知道 LLM 从翻译模型到 GPT 的来历，理解它的核心只是“预测下一个 token”；在自己的电脑上训练一个能“写诗”的小语言模型，亲眼看到损失下降、输出从乱码变成诗句；能指着代码说出每一段对应总图里的哪个零件、由后面哪一章详细讲。
 
-**前置：** 会运行 Python，装好 PyTorch。不需要懂任何深度学习。
+**前置：** 会运行 Python，按[实验环境](./setup.md)装好 PyTorch、下载好代码。不需要懂任何深度学习。
 
 **实践方式：** [first-run.ipynb](/tinyllm/notebooks/first-run)（也可以直接运行 <a href="/tinyllm/code/first-run.py" download>first-run.py</a>），CPU 约半分钟。
 :::

@@ -1,0 +1,22 @@
+{
+  "file": "tang-poems.jsonl",
+  "bytes": 4355257,
+  "sha256": "764f0614663c20e95927c6ecb63e454629f6cb0efefe9ac84454e256f7173fb1",
+  "poems": 17439,
+  "chars": 750384,
+  "splits": {
+    "train": 15758,
+    "val": 852,
+    "test": 829
+  },
+  "order": {
+    "classics": 39,
+    "tangshi300": 99,
+    "quantangshi": 17301
+  },
+  "source": {
+    "repo": "https://github.com/chinese-poetry/chinese-poetry",
+    "commit": "b8594f81a89752241442f2ce267d6f66f96704ee",
+    "license": "MIT"
+  }
+}

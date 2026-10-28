@@ -20,6 +20,7 @@ export default defineConfig({
       { text: 'TinyLLM', link: '/tinyllm/' },
       { text: 'mini-redis', link: '/mini-redis/' },
       { text: 'Burn', link: '/burn/' },
+      { text: '讨论', link: '/discuss' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {

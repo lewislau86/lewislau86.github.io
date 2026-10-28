@@ -53,6 +53,10 @@ ARTIFACTS = {
 }
 
 
+# 章节脚本用 load_poems() 读统一语料；构建时直接指向仓库里的文件，不去网站下载
+os.environ.setdefault("TINYLLM_DATA", str(ROOT / "docs/public/tinyllm/data/tang-poems.jsonl"))
+
+
 def run_script(path: Path, workdir: Path) -> None:
     print(f"[run] {path.name}")
     # 脚本里的 fig.show() 在命令行下默认会打开浏览器；检查时改成只输出 JSON，不阻塞、不弹窗
@@ -275,6 +279,8 @@ def main() -> None:
                     shutil.copyfile(workdir / name, dest)
                     print(f"[data] {dest.relative_to(ROOT)}")
             render_page(NOTEBOOKS / f"{path.stem}.ipynb")
+    if not check_only:  # notebook 变了，整包下载的 zip 也跟着更新
+        subprocess.run([sys.executable, str(ROOT / "scripts/package-tinyllm-code.py")], check=True)
 
 
 if __name__ == "__main__":

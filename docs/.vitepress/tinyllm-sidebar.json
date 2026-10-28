@@ -9,6 +9,10 @@
       {
         "text": "课程总览",
         "link": "/tinyllm/"
+      },
+      {
+        "text": "实验环境：安装与代码下载",
+        "link": "/tinyllm/setup"
       }
     ]
   },
