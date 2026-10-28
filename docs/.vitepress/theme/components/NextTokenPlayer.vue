@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, reactive } from 'vue'
+import { usePlayer } from './usePlayer'
+import PlayerControls from './PlayerControls.vue'
 // 数据由 docs/public/tinyllm/code/first-run.py 在真实训练过程中记录，
 // scripts/build-tinyllm-code.py 复制到 scripts/data。这里不手写任何概率。
 import trace from '../../../../scripts/data/tinyllm-first-run-generation.json'
@@ -13,10 +15,9 @@ const data = computed<Trace>(() => (trace as any)[stage.value])
 const vocab = (trace as any).vocab_size as number
 
 // 每个字分两帧：先算出概率（还没抽），再按概率抽一个接上
-const frame = ref(0)
-const total = computed(() => data.value.steps.length * 2)
-const i = computed(() => Math.floor(frame.value / 2))
-const revealed = computed(() => frame.value % 2 === 1)
+const p = reactive(usePlayer(() => data.value.steps.length * 2, { interval: 750 }))
+const i = computed(() => Math.floor(p.frame / 2))
+const revealed = computed(() => p.frame % 2 === 1)
 const step = computed(() => data.value.steps[i.value])
 
 const shown = (c: string) => (c === '\n' ? '⏎' : c)
@@ -30,25 +31,12 @@ function pct(p: number) {
   return '<0.01%'
 }
 
-const playing = ref(false)
-let timer: ReturnType<typeof setInterval> | undefined
-function stop() { playing.value = false; if (timer) clearInterval(timer); timer = undefined }
-function next() { if (frame.value < total.value - 1) frame.value++; else stop() }
-function prev() { stop(); if (frame.value > 0) frame.value-- }
-function restart() { stop(); frame.value = 0 }
-function toggle() {
-  if (playing.value) return stop()
-  if (frame.value >= total.value - 1) frame.value = 0
-  playing.value = true
-  timer = setInterval(next, 750)
-}
-function switchStage(s: 'before' | 'after') { stop(); stage.value = s; frame.value = 0 }
+function switchStage(s: 'before' | 'after') { p.stop(); stage.value = s; p.frame = 0 }
 watch(() => props.stage, s => switchStage(s))
-onBeforeUnmount(stop)
 </script>
 
 <template>
-  <figure class="ntp">
+  <figure class="anim-card ntp">
     <div class="ntp-tabs" role="tablist">
       <button role="tab" :aria-selected="stage === 'before'" :class="{ on: stage === 'before' }" @click="switchStage('before')">训练前（随机参数）</button>
       <button role="tab" :aria-selected="stage === 'after'" :class="{ on: stage === 'after' }" @click="switchStage('after')">训练 600 步之后</button>
@@ -86,18 +74,7 @@ onBeforeUnmount(stop)
       </div>
     </div>
 
-    <div class="ntp-controls">
-      <button @click="restart">从头</button>
-      <button @click="prev">上一步</button>
-      <button class="ntp-play" @click="toggle">
-        <svg v-if="!playing" viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1L9 5L2 9Z" /></svg>
-        <svg v-else viewBox="0 0 10 10" aria-hidden="true"><path d="M2 1H4V9H2ZM6 1H8V9H6Z" /></svg>
-        {{ playing ? '暂停' : '播放' }}
-      </button>
-      <button @click="stop(); next()">下一步</button>
-      <input type="range" min="0" :max="total - 1" v-model.number="frame" @input="stop" aria-label="拖动到任意一步" />
-      <span class="ntp-count">{{ i + 1 }} / {{ data.steps.length }}</span>
-    </div>
+    <PlayerControls :p="p" :label="`${i + 1} / ${data.steps.length}`" />
     <figcaption>
       真实记录：第 1 章的模型以“{{ data.prompt }}”开头、温度 0.8、随机种子 1 时每一步的概率。播放、单步或拖动滑块查看任意一步。
     </figcaption>
@@ -105,7 +82,6 @@ onBeforeUnmount(stop)
 </template>
 
 <style scoped>
-.ntp { margin: 1.5rem 0 1.75rem; padding: 1rem 1.1rem 0.9rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); }
 .ntp-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.8rem; flex-wrap: wrap; }
 .ntp-tabs button { font-size: 0.85rem; padding: 0.2rem 0.75rem; border-radius: 999px; border: 1px solid var(--vp-c-divider); color: var(--vp-c-text-2); background: var(--vp-c-bg); }
 .ntp-tabs button.on { border-color: var(--vp-c-brand-1); color: var(--vp-c-brand-1); background: var(--vp-c-brand-soft); font-weight: 600; }
@@ -126,14 +102,6 @@ onBeforeUnmount(stop)
 .ntp-row.pick .ntp-p, .ntp-row.pick .ntp-char { color: var(--vp-c-brand-1); font-weight: 700; }
 .ntp-rest .ntp-bar { background: var(--vp-c-divider); }
 .ntp-rest .ntp-char { color: var(--vp-c-text-3); }
-.ntp-controls { display: flex; align-items: center; gap: 0.45rem; margin-top: 0.9rem; flex-wrap: wrap; }
-.ntp-controls button { padding: 0.15rem 0.6rem; border-radius: 6px; border: 1px solid var(--vp-c-divider); background: var(--vp-c-bg); font-size: 0.9rem; }
-.ntp-controls button:hover { border-color: var(--vp-c-brand-1); }
-.ntp-play { color: var(--vp-c-brand-1); font-weight: 600; min-width: 4.8rem; display: inline-flex; align-items: center; gap: 0.3rem; }
-.ntp-play svg { width: 0.7rem; height: 0.7rem; fill: currentColor; }
-.ntp-controls input[type=range] { flex: 1; min-width: 8rem; accent-color: var(--vp-c-brand-1); }
-.ntp-count { font-size: 0.85rem; color: var(--vp-c-text-2); font-variant-numeric: tabular-nums; min-width: 3.6rem; text-align: right; }
-.ntp figcaption { font-size: 0.8rem; color: var(--vp-c-text-3); margin-top: 0.6rem; line-height: 1.6; }
 @media (prefers-reduced-motion: reduce) { .ntp-bar { transition: none; } }
 @media (max-width: 560px) { .ntp-row { grid-template-columns: 1.6rem 1fr 8.5rem; font-size: 0.8rem; } }
 </style>

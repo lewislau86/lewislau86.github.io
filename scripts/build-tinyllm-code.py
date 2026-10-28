@@ -44,6 +44,10 @@ ARTIFACTS = {
     ("first-run", "first_run_generation.json"): ROOT / "scripts/data/tinyllm-first-run-generation.json",
     ("self-attention", "attention_ablation.json"): ROOT / "scripts/data/tinyllm-attention-ablation.json",
     ("position-encoding", "position_ablation.json"): ROOT / "scripts/data/tinyllm-position-ablation.json",
+    ("position-encoding", "rope_demo.json"): ROOT / "scripts/data/tinyllm-rope-demo.json",
+    ("self-attention", "attention_steps.json"): ROOT / "scripts/data/tinyllm-attention-steps.json",
+    ("tensors-and-autograd", "autograd_chain.json"): ROOT / "scripts/data/tinyllm-autograd-chain.json",
+    ("inference-efficiency", "kv_cache_counts.json"): ROOT / "scripts/data/tinyllm-kv-cache-counts.json",
 }
 
 

@@ -56,3 +56,42 @@ assert torch.allclose(torch.cat(incremental), context, atol=1e-6)
 # endregion kv-cache
 print("一次性计算与逐步缓存的最大误差:", (torch.cat(incremental) - context).abs().max().item())
 print("缓存了", len(cached_k), "个位置的 K 和 V；缓存的是 K/V，不是注意力分数")
+
+# %% [markdown]
+# ## 3. 数一数：不缓存要重算多少个 K、V
+#
+# 逐个生成 12 个位置。不缓存时，每一步都把前面所有位置重新送进 `k_proj`、`v_proj`；
+# 有 KV cache 时，每一步只算新来的那一个。数出每一步实际投影了几行，并核对两种做法输出一致。
+
+# %%
+# region count
+torch.manual_seed(0)
+xs = torch.randn(12, 4)                     # 12 个位置的输入向量（示意）
+
+def attend(q_t, ks, vs):
+    return (q_t @ ks.T / math.sqrt(4)).softmax(dim=-1) @ vs
+
+no_cache, with_cache, cache_k, cache_v = [], [], [], []
+for t in range(len(xs)):
+    q_t = q_proj(xs[t:t+1])
+    ks, vs = k_proj(xs[:t+1]), v_proj(xs[:t+1])          # 不缓存：前面所有位置重算一遍
+    out_full = attend(q_t, ks, vs)
+    cache_k.append(k_proj(xs[t:t+1]))                   # KV cache：只算新位置
+    cache_v.append(v_proj(xs[t:t+1]))
+    out_cached = attend(q_t, torch.cat(cache_k), torch.cat(cache_v))
+    assert torch.allclose(out_full, out_cached, atol=1e-6)
+    no_cache.append(ks.shape[0])
+    with_cache.append(cache_k[-1].shape[0])
+print("不缓存，每步重算的 K/V 行数:", no_cache, "合计", sum(no_cache))
+print("KV cache，每步新算的 K/V 行数:", with_cache, "合计", sum(with_cache))
+# endregion count
+
+# %% [markdown]
+# ## 4. 保存计数（可选）
+#
+# 网站上的 KV cache 并排动画就是用这份记录播放的。
+
+# %%
+import json
+with open("kv_cache_counts.json", "w", encoding="utf-8") as f:
+    json.dump({"tokens": list("春乃发生。随风潜入夜，润"), "no_cache": no_cache, "with_cache": with_cache}, f, ensure_ascii=False)

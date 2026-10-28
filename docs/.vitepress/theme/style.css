@@ -69,3 +69,9 @@
   font-size: 0.8rem;
   color: var(--vp-c-text-3);
 }
+
+/* 教学动画的公共外框（组件在 theme/components，数据来自 scripts/data） */
+.anim-card { margin: 1.5rem 0 1.75rem; padding: 1rem 1.1rem 0.9rem; border: 1px solid var(--vp-c-divider); border-radius: 12px; background: var(--vp-c-bg-soft); }
+.anim-card figcaption { font-size: 0.8rem; color: var(--vp-c-text-3); margin-top: 0.6rem; line-height: 1.6; text-align: left; }
+.anim-caption { font-size: 0.9rem; color: var(--vp-c-text-2); margin: 0.6rem 0 0.5rem; min-height: 3.2em; line-height: 1.65; }
+.anim-caption b { color: var(--vp-c-text-1); }

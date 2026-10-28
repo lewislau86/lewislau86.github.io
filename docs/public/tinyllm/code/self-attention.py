@@ -73,6 +73,10 @@ causal_out = causal_weights @ V
 print("causal weights:\n", causal_weights.round(decimals=3))
 print("causal out:\n", causal_out.round(decimals=3))
 # endregion causal
+attention_steps = {                                  # 网站上的逐行单步动画用这份记录
+    "names": ["我", "在", "学习"], "Q": Q.tolist(), "K": K.tolist(), "V": V.tolist(),
+    "scores": scores.tolist(), "future": future.tolist(),
+    "weights": causal_weights.tolist(), "out": causal_out.tolist()}
 assert torch.allclose(causal_weights[0], torch.tensor([1.0, 0.0, 0.0]))
 
 # %% [markdown]
@@ -322,3 +326,5 @@ assert normed_max <= 4.0 + 1e-5
 import json
 with open("attention_ablation.json", "w", encoding="utf-8") as f:
     json.dump({name: {"loss": r[2], "sample": r[1]} for name, r in results.items()}, f, ensure_ascii=False)
+with open("attention_steps.json", "w", encoding="utf-8") as f:
+    json.dump(attention_steps, f, ensure_ascii=False)

@@ -536,3 +536,36 @@ MLX 未安装：跳过可选实验
 参考答案：分别是 3；它交换了 head 与 seq 轴而非末尾的 `seq` 与 `head_dim`；下一次反传前令 `w.grad=None`，或用优化器的 `zero_grad(set_to_none=True)`。下一章学习参数初始化与残差路径。
 :::
 
+::: v-pre
+## 保存计算图的数值（可选）
+
+网站上第 2 章的前向/反向动画就是用这份记录播放的。`retain_grad()` 让中间结果也保留梯度，方便逐个查看。
+:::
+
+<p class="nb-label">In [21]</p>
+
+```python
+import json
+
+w = torch.nn.Parameter(torch.tensor(2.0))
+x, target, lr = torch.tensor(3.0), torch.tensor(1.0), 0.01
+prediction = w * x
+diff = prediction - target
+loss = diff.square()
+for t in (prediction, diff, loss):
+    t.retain_grad()
+loss.backward()
+new_w = w.detach() - lr * w.grad
+chain = {"w": w.item(), "x": x.item(), "target": target.item(), "lr": lr,
+         "values": {"p": prediction.item(), "d": diff.item(), "L": loss.item()},
+         "grads": {"L": loss.grad.item(), "d": diff.grad.item(), "p": prediction.grad.item(), "w": w.grad.item()},
+         "new_w": round(new_w.item(), 6), "new_loss": round((new_w * x - target).square().item(), 6)}
+print(chain)
+with open("autograd_chain.json", "w", encoding="utf-8") as f:
+    json.dump(chain, f)
+```
+
+```text
+{'w': 2.0, 'x': 3.0, 'target': 1.0, 'lr': 0.01, 'values': {'p': 6.0, 'd': 5.0, 'L': 25.0}, 'grads': {'L': 1.0, 'd': 10.0, 'p': 10.0, 'w': 30.0}, 'new_w': 1.7, 'new_loss': 16.810003}
+```
+

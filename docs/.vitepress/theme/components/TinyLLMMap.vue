@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useSvgLinkPrefetchFix } from './svgLinks'
 import { withBase } from 'vitepress'
 
 // 全书唯一的 TinyLLM 架构总图。每章开头用 <TinyLLMMap active="slug" /> 高亮本章负责的零件。
@@ -35,11 +36,13 @@ const blockActive = computed(() => isActive('transformer-block') || isActive('ti
 const residualActive = computed(() => isActive('initialization-and-residuals'))
 const modelActive = computed(() => isActive('tinyllm-model') || isActive('first-run'))
 const href = (slug: string) => withBase(`/tinyllm/${slug}`)
+const svgRoot = ref<SVGSVGElement | null>(null)
+useSvgLinkPrefetchFix(svgRoot)
 </script>
 
 <template>
   <figure :class="['tinyllm-map', { compact: !!active }]">
-    <svg viewBox="0 0 700 660" role="img" aria-label="TinyLLM 架构总图：文本经分词、词嵌入、N 个 Transformer Block、最终归一化与输出层得到 logits；训练时由损失、反向传播与优化器更新参数">
+    <svg ref="svgRoot" viewBox="0 0 700 660" role="img" aria-label="TinyLLM 架构总图：文本经分词、词嵌入、N 个 Transformer Block、最终归一化与输出层得到 logits；训练时由损失、反向传播与优化器更新参数">
       <defs>
         <marker id="tm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" class="tm-arrowhead" />

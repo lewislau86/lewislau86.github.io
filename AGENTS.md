@@ -20,6 +20,10 @@
 6. **折叠答案写成多行。** `<details><summary>参考答案</summary>` 后、`</details>` 前各空一行，否则公式和行内代码不渲染，`<eos>` 这类尖括号还会让构建失败。
 7. **加粗以中文标点结尾、后面紧跟文字时用 `<strong>`**，`**…。**后文` 不会被识别。
 8. **提交前构建。** `npm run docs:build` 必须通过且没有死链。
+9. **动画只放在讲“过程”或“调参数看变化”的地方，做成 Vue 组件。** 组件放在 `docs/.vitepress/theme/components/`，在 `theme/index.ts` 注册；播放逻辑用 `usePlayer.ts`，控制条用 `PlayerControls.vue`，外框用全局样式 `.anim-card`。
+   - 数据只从 `scripts/data/*.json` 导入，由对应章节脚本真实运行得到（在 `scripts/build-tinyllm-code.py` 的 `ARTIFACTS` 里登记）；组件里不手写数值。导出数据不能改变脚本其他输出（需要随机数时先保存、用完恢复）。
+   - 单步类动画默认停在最后一帧（`start: 'last'`），不运行脚本也能看到完整结果；点“播放”从头重演。不自动播放，遵守 `prefers-reduced-motion`。
+   - 有对应静态图时在图注里给出“打开静态图”链接；SVG 里的 `<a>` 要用 `svgLinks.ts` 补 `pathname`，否则 VitePress 预取会报错。
 
 ## 常用命令
 

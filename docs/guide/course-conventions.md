@@ -137,6 +137,27 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 
 能用图表达的结构（调用链、数据流、时间线、内存布局）不要再写成字符画；字节序列、程序输出、日志这类“原样文本”仍用代码块。
 
+### 动画与交互
+
+只有两类内容值得做成动画：**按时间展开的过程**（逐字生成、注意力的四个步骤、前向与反向传播、优化器轨迹、KV cache 的逐步增长）和**调一个参数看结果怎么变**（RoPE 的位置滑块）。讲结构的图（形状、架构）保持静态。
+
+| 章 | 组件 | 数据 |
+| --- | --- | --- |
+| 第 1 章 | `<NextTokenPlayer stage="before" />`、`stage="after"` | `tinyllm-first-run-generation.json`（first-run.py） |
+| 第 2 章 | `<BackpropFlow />` | `tinyllm-autograd-chain.json`（tensors-and-autograd.py） |
+| 第 5 章 | `<AttentionStepper />` | `tinyllm-attention-steps.json`（self-attention.py） |
+| 第 6 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
+| 第 14 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
+| 第 24 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
+
+做法约定：
+
+- 组件在 `docs/.vitepress/theme/components/`，在 `theme/index.ts` 注册；播放逻辑统一用 `usePlayer.ts`（帧号、播放 / 暂停、单步、从头、拖动），控制条统一用 `PlayerControls.vue`，外框用全局样式 `.anim-card`，说明文字用 `.anim-caption`。
+- 数据从 `scripts/data/*.json` 导入，由章节脚本真实运行导出，并在 `scripts/build-tinyllm-code.py` 的 `ARTIFACTS` 里登记；组件不手写数值。脚本导出数据时不能改变其他输出：需要随机数就先保存状态、用完恢复，并核对导出的结果和正文打印的一致。
+- 单步类动画默认停在最后一帧，读者先看到完整结果（等同于原来的静态图），点“播放”从头重演；不自动播放；动效遵守 `prefers-reduced-motion`；颜色用 VitePress 主题变量，深色模式下也要检查。
+- 被动画替换的静态图继续由脚本生成，并在动画图注里给出“打开静态图”链接，供打印或不便播放时使用。
+- 改完后构建站点，用浏览器截取初始帧和中间帧检查，并确认控制台没有报错。
+
 ## 7. 配套代码
 
 **原则：代码只有一个来源，文章只引用、不手抄。** 正文里手抄的代码会缺 `import`、依赖前文变量，改了 notebook 也没人会发现两边对不上。

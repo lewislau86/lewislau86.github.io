@@ -119,6 +119,8 @@ print(f"(m=13, n=11) 的分数: {score(13, 11):.4f}")   # 相差同样 2 个位�
 print(f"(m=40, n=38) 的分数: {score(40, 38):.4f}")
 print(f"(m=3,  n=0)  的分数: {score(3, 0):.4f}")     # 相差 3 个位置，分数不同
 # endregion rope-relative
+rope_demo = {"q": q_vec.tolist(), "k": k_vec.tolist(), "base": 10000.0,   # 网站上的 RoPE 滑块用这份记录
+             "check": {f"{m},{n}": score(m, n) for m, n in [(3, 1), (13, 11), (40, 38), (3, 0)]}}
 assert abs(score(3, 1) - score(40, 38)) < 1e-4 and abs(score(3, 1) - score(3, 0)) > 1e-3
 
 # %%
@@ -361,3 +363,5 @@ import json
 with open("position_ablation.json", "w", encoding="utf-8") as f:
     json.dump({"runs": {k: {"loss": v["loss"], "sample": v["sample"]} for k, v in results.items()},
                "extrapolate": extrap}, f, ensure_ascii=False)
+with open("rope_demo.json", "w", encoding="utf-8") as f:
+    json.dump(rope_demo, f)

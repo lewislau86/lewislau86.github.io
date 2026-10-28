@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useSvgLinkPrefetchFix } from './svgLinks'
 import { withBase } from 'vitepress'
 
 // mini-redis 全书架构图。每章开头用 <MiniRedisMap active="tokio-server" /> 高亮本章涉及的部件；
@@ -39,11 +40,13 @@ const highlight: Record<string, string[]> = {
 const on = computed(() => new Set(highlight[props.active ?? ''] ?? []))
 const isOn = (id: string) => on.value.has(id)
 const href = (slug: string) => withBase(`/mini-redis/${slug}`)
+const svgRoot = ref<SVGSVGElement | null>(null)
+useSvgLinkPrefetchFix(svgRoot)
 </script>
 
 <template>
   <figure :class="['mr-map', { compact: !!active }]">
-    <svg viewBox="0 0 760 530" role="img" aria-label="mini-redis 架构图：客户端进程中的 Client 与 Connection 通过 TCP 字节流连接服务端；服务端由 server::run 启动 Listener，为每个连接创建 Handler 任务，依次读帧、解析命令、执行 apply，访问共享的 Db；后台任务清理过期键，Shutdown 负责停机通知">
+    <svg ref="svgRoot" viewBox="0 0 760 530" role="img" aria-label="mini-redis 架构图：客户端进程中的 Client 与 Connection 通过 TCP 字节流连接服务端；服务端由 server::run 启动 Listener，为每个连接创建 Handler 任务，依次读帧、解析命令、执行 apply，访问共享的 Db；后台任务清理过期键，Shutdown 负责停机通知">
       <defs>
         <marker id="mr-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
           <path d="M0,0 L10,5 L0,10 z" class="mr-arrowhead" />
