@@ -28,17 +28,17 @@ pageClass: tinyllm-course
 
 | 章节 | 内容 | notebook |
 | --- | --- | --- |
-| [第 1 章 · 先跑通一个最小 TinyLLM](./first-run.md) | 39 首唐诗、不到 100 行代码，训练一个能“写诗”的小模型，看损失曲线与过拟合 | [first-run.ipynb](/tinyllm/notebooks/first-run) |
-| [第 2 章 · 张量与自动求导](./tensors-and-autograd.md) | 张量形状、广播、矩阵乘法、计算图与一次手算梯度 | [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd) |
-| [第 3 章 · 文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [tokenization.ipynb](/tinyllm/notebooks/tokenization) |
-| [第 4 章 · 词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、权重共享、Q/K/V 预览 | [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output) |
-| [第 5 章 · 自注意力](./self-attention.md) | Q/K/V、缩放点积、因果掩码、多头注意力；去掉注意力的对照实验与长度平方的代价 | [self-attention.ipynb](/tinyllm/notebooks/self-attention) |
-| [第 6 章 · 位置表示](./position-encoding.md) | 注意力为什么分不出先后；可学习绝对位置、正弦编码、RoPE；背诗与数位置两个对照实验，超过训练长度时的表现 | [position-encoding.ipynb](/tinyllm/notebooks/position-encoding) |
-| [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) |
-| [第 9 章 · 初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) |
-| [第 10 章 · 归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [normalization.ipynb](/tinyllm/notebooks/normalization) |
-| [第 14 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [optimizers.ipynb](/tinyllm/notebooks/optimizers) |
-| [第 17 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [precision.ipynb](/tinyllm/notebooks/precision) |
+| [第 1 章 · 先跑通一个最小 TinyLLM](./first-run.md) | 39 首唐诗、不到 100 行代码，训练一个能“写诗”的小模型，看损失曲线与过拟合 | [查看](/tinyllm/notebooks/first-run) |
+| [第 2 章 · 张量与自动求导](./tensors-and-autograd.md) | 张量形状、广播、矩阵乘法、计算图与一次手算梯度 | [查看](/tinyllm/notebooks/tensors-and-autograd) |
+| [第 3 章 · 文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [查看](/tinyllm/notebooks/tokenization) |
+| [第 4 章 · 词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、权重共享、Q/K/V 预览 | [查看](/tinyllm/notebooks/embeddings-and-output) |
+| [第 5 章 · 自注意力](./self-attention.md) | Q/K/V、缩放点积、因果掩码、多头注意力；去掉注意力的对照实验与长度平方的代价 | [查看](/tinyllm/notebooks/self-attention) |
+| [第 6 章 · 位置表示](./position-encoding.md) | 注意力为什么分不出先后；可学习绝对位置、正弦编码、RoPE；背诗与数位置两个对照实验，超过训练长度时的表现 | [查看](/tinyllm/notebooks/position-encoding) |
+| [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [查看](/tinyllm/notebooks/activations-and-ffn) |
+| [第 9 章 · 初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [查看](/tinyllm/notebooks/initialization-and-residuals) |
+| [第 10 章 · 归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [查看](/tinyllm/notebooks/normalization) |
+| [第 14 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [查看](/tinyllm/notebooks/optimizers) |
+| [第 17 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
 
 ## 课程路线 {#roadmap}
 
