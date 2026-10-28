@@ -276,13 +276,58 @@ print("训练前：", generate("春"))
 ```
 
 ::: v-pre
+下面这个函数和 `generate` 做的事情完全一样，只是把每一步概率最高的 5 个候选字和实际抽中的字记下来，
+网站上第 1 章的逐字生成动画就是用这份记录播放的。它先保存随机数状态、用完再恢复，不影响后面的训练。
+:::
+
+<p class="nb-label">In [7]</p>
+
+```python
+@torch.no_grad()
+def trace_generate(prompt, max_new_tokens=48, temperature=0.8, k=5):
+    model.eval()
+    idx = torch.tensor([encode(prompt)])
+    steps = []
+    for _ in range(max_new_tokens):
+        logits = model(idx[:, -block_size:])[:, -1, :] / temperature
+        probs = F.softmax(logits, dim=-1)
+        next_id = torch.multinomial(probs, num_samples=1)
+        top = torch.topk(probs[0], k)
+        nid = next_id.item()
+        steps.append({"top": [[itos[i], round(p, 5)] for p, i in zip(top.values.tolist(), top.indices.tolist())],
+                      "pick": itos[nid], "p": round(probs[0, nid].item(), 5),
+                      "rank": int((probs[0] > probs[0, nid]).sum().item()) + 1})
+        idx = torch.cat([idx, next_id], dim=1)
+        if itos[nid] == "\n":
+            break
+    model.train()
+    return {"prompt": prompt, "steps": steps}
+
+def record_trace(prompt):
+    rng = torch.get_rng_state()
+    torch.manual_seed(1)
+    trace = trace_generate(prompt)
+    torch.manual_seed(1)
+    assert prompt + "".join(s["pick"] for s in trace["steps"]).strip() == generate(prompt)   # 和 generate 抽到的字完全一样
+    torch.set_rng_state(rng)
+    return trace
+
+generation_trace = {"vocab_size": vocab_size, "temperature": 0.8, "before": record_trace("春")}
+print("训练前记录了", len(generation_trace["before"]["steps"]), "步")
+```
+
+```text
+训练前记录了 48 步
+```
+
+::: v-pre
 ## 6. 训练循环（第 2、14、19 章）
 
 每一步都是同一个骨架：前向得到 logits → 交叉熵损失 → backward 求梯度 → 优化器更新。
 每隔 10 步再在没训练过的 4 首诗上算一次损失（验证损失），只看不更新。
 :::
 
-<p class="nb-label">In [7]</p>
+<p class="nb-label">In [8]</p>
 
 ```python
 def lm_loss(x, y):
@@ -324,27 +369,27 @@ step    0  训练损失 6.671  验证损失 6.311  (0s)
 ```
 
 ```text
-step  100  训练损失 0.760  验证损失 6.805  (5s)
+step  100  训练损失 0.760  验证损失 6.805  (6s)
 ```
 
 ```text
-step  200  训练损失 0.200  验证损失 7.491  (10s)
+step  200  训练损失 0.200  验证损失 7.491  (13s)
 ```
 
 ```text
-step  300  训练损失 0.156  验证损失 7.683  (15s)
+step  300  训练损失 0.156  验证损失 7.683  (21s)
 ```
 
 ```text
-step  400  训练损失 0.102  验证损失 7.943  (20s)
+step  400  训练损失 0.102  验证损失 7.943  (27s)
 ```
 
 ```text
-step  500  训练损失 0.100  验证损失 8.061  (25s)
+step  500  训练损失 0.100  验证损失 8.061  (33s)
 ```
 
 ```text
-step  600  训练损失 0.097  验证损失 8.125  (30s)
+step  600  训练损失 0.097  验证损失 8.125  (39s)
 ```
 
 ::: v-pre
@@ -354,7 +399,7 @@ step  600  训练损失 0.097  验证损失 8.125  (30s)
 训练损失一路下降，验证损失只在最开始短暂下降，随后一路上升：这就是过拟合，第 12、16、20 章会处理。
 :::
 
-<p class="nb-label">In [8]</p>
+<p class="nb-label">In [9]</p>
 
 ```python
 torch.manual_seed(1)
@@ -370,16 +415,25 @@ for prompt in ["春", "月", "山中", "孤舟"]:
 ```
 
 ::: v-pre
-## 8. 保存损失记录（可选）
+## 8. 保存损失记录与生成记录（可选）
 
-网站上的损失曲线图就是用这份记录画的。
+网站上的损失曲线图和逐字生成动画就是用这两份记录画的。
 :::
 
-<p class="nb-label">In [9]</p>
+<p class="nb-label">In [10]</p>
 
 ```python
 import json
 with open("first_run_log.json", "w", encoding="utf-8") as f:
     json.dump(log, f)
+
+generation_trace["after"] = record_trace("春")      # 训练后的逐字记录，供网站动画使用
+with open("first_run_generation.json", "w", encoding="utf-8") as f:
+    json.dump(generation_trace, f, ensure_ascii=False)
+print("训练后：", generation_trace["after"]["prompt"] + "".join(s["pick"] for s in generation_trace["after"]["steps"]).strip())
+```
+
+```text
+训练后： 春乃发生。随风潜入夜，润物细无声。野径云俱黑，江船火独明。晓看红湿处，花重锦官城。
 ```
 

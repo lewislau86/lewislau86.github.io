@@ -41,6 +41,7 @@ REGION = re.compile(r"^# ?(end)?region [\w*-]+$")
 # 脚本运行后需要保留的产物：(章节, 文件名) → 目标路径
 ARTIFACTS = {
     ("first-run", "first_run_log.json"): ROOT / "scripts/data/tinyllm-first-run-log.json",
+    ("first-run", "first_run_generation.json"): ROOT / "scripts/data/tinyllm-first-run-generation.json",
     ("self-attention", "attention_ablation.json"): ROOT / "scripts/data/tinyllm-attention-ablation.json",
     ("position-encoding", "position_ablation.json"): ROOT / "scripts/data/tinyllm-position-ablation.json",
 }

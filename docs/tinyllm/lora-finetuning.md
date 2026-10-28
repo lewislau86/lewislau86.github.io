@@ -6,7 +6,7 @@ pageClass: tinyllm-course
 
 # 第 27 章：参数高效微调（LoRA）
 
-[课程总览](./index.md) · [上一章](./instruction-finetuning.md) · [下一章](./preference-alignment.md)
+[课程总览](./index.md) · [上一章](./instruction-finetuning.md) · [下一章](./rlhf.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：低秩分解、LoRA 插在哪些线性层、秩与缩放系数、与全参数微调的显存和效果对比、把增量合并回原权重后推理。
