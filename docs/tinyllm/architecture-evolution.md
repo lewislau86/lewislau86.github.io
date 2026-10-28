@@ -181,6 +181,23 @@ DeepSeek V4 保留注意力，但把要回看的内容压缩；Qwen3.5 也是“
 | 解决了 | RNN 难并行、长距离对不齐 | 不再需要配对数据，可以一直放大 | 长上下文的缓存、参数增长带来的计算 |
 | 留下的问题 | 数据要人工配对 | 缓存随上下文增长、计算随参数增长 | 训练更复杂，需要专门的稳定方法 |
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+第二代和第三代的区别，在 transformers 里就是两个 Block 类的区别。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 第二代：现代稠密解码器的 Block | [`LlamaDecoderLayer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L273-L313) | 每层都是完整注意力加 SwiGLU，TinyLLM 的主线就是它 |
+| 第三代：混合注意力的 Block | [`Qwen3_5DecoderLayer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L848-L901) | `config.layer_types` 决定这一层用线性注意力（`linear_attn`）还是完整注意力（`self_attn`），对应本章的 3:1 混合 |
+| 线性注意力层 | [`Qwen3_5GatedDeltaNet`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L490-L650) | Gated DeltaNet：在本章朴素线性注意力的基础上加了遗忘门和 delta 更新规则 |
+| 逐 token 更新状态 | [`torch_recurrent_gated_delta_rule`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L424-L483) | 一个 token 一个 token 地更新固定大小的状态，和本章 linear-attention 那段代码的写法二是同一个思路 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器，因果注意力配 RoPE，Pre-Norm 的 RMSNorm，SwiGLU 前馈层。这一代的每个零件都能在 CPU 上单独做实验、看清它的作用，而且至今仍是第三代模型的骨架：Kimi K3 换掉的是注意力的种类和前馈层的密度，“只有解码器、预测下一个 token、Block 一层层叠”的整体结构没有变。第三代的零件放在后面的专题里，在主线基础上逐个替换、对照：MoE 在[第 23 章](./mixture-of-experts.md)，KV cache 和推理成本在[第 25 章](./inference-efficiency.md)，量化在[第 26 章](./quantization.md)。

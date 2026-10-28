@@ -107,6 +107,10 @@
         "link": "/tinyllm/tinyllm-model"
       },
       {
+        "text": "可选 · GPU 完整训练",
+        "link": "/tinyllm/gpu-training"
+      },
+      {
         "text": "第 13 章 · 语料与数据管线",
         "link": "/tinyllm/data-pipeline"
       },

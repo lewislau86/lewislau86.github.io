@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run docs:build
+        env:
+          VITE_WALINE_SERVER_URL: ${{ vars.WALINE_SERVER_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: docs/.vitepress/dist

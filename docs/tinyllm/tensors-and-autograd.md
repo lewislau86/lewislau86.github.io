@@ -187,6 +187,22 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 3. <strong>停止记录梯度。</strong>`no_grad()` 阻止代码块中的新运算进入求导图；`detach()` 使已有结果脱离原图；`model.eval()` 只改变某些层（如 Dropout）的运行方式，本身不会关闭梯度记录。
 4. <strong>计算设备。</strong>CPU 足够运行本章。若把模型放在 CUDA 或 MPS 上，输入也要放在同一设备。notebook 的可选实验只检查小型前向和反向能否运行。MLX 是另一套框架，`mx.grad` 与 PyTorch 的 `backward()` 不能混用。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+真实模型的代码里只写前向计算，反向传播全部交给 PyTorch 的自动求导。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 反向传播的入口 | [`trainer.py 第 2098 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2098) | 相当于本章的 `loss.backward()`；`modeling_llama.py` 整个文件里没有一行手写的求导 |
+| 一步训练 | [`Trainer.training_step`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2023-L2100) | 前向 → 损失 → backward，和本章的单参数例子是同一个骨架，只是参数有几十亿个 |
+| 梯度裁剪 | [`Trainer._clip_grad_norm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2738-L2744) | 按全局梯度范数裁剪，第 19 章细讲 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 训练时用 <strong>PyTorch autograd</strong> 管理计算图，手算和有限差分只用于核验小例子。这样可以在更换归一化、注意力或门控结构时保留正确的链式求导；若出现梯度异常，先检查张量形状、原地操作和图是否被意外断开。后续章节的架构选择见 [课程总览](index.md#mainline-choices)。

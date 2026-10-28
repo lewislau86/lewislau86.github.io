@@ -177,6 +177,23 @@ RoPE：测试准确率 1.000（1.000～1.000）
 
 RoPE 解决的是“能不能算”，不是“算得对不对”。实际的大模型想用更长的上下文，通常有两步：一是调整旋转频率，例如把 base 从 10000 调大（Llama 3 用 500000），或者用 Position Interpolation、YaRN 这类方法把长位置“压缩”回训练见过的角度范围；二是用一些长文本继续训练，让模型真正见过这些距离。宣称支持 128K 上下文的模型，也都是在这么长的数据上训练或微调过的。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+RoPE 在真实代码里分成“算角度”和“转 q、k”两步。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 预先算好每个位置的 cos、sin | [`LlamaRotaryEmbedding`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L72-L116) | `inv_freq` 就是本章的 θ_i = base^(-2i/d)；base 由配置 `rope_theta` 给出 |
+| 把维度分成两半 | [`rotate_half`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L119-L123) | 把前一半和后一半配成一对，本章是相邻两维配一对；两种都对，但加载权重时必须一致（见本章常见误区） |
+| 旋转 q 和 k | [`apply_rotary_pos_emb`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L127-L149) | 只转 q、k，不转 v，和本章一样 |
+| 扩展上下文：YaRN | [`_compute_yarn_parameters`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/modeling_rope_utils.py#L345-L483) | 本章第 6 节提到的调整旋转频率的方法之一 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 在每一层注意力里对 $q$、$k$ 使用 **RoPE**，不再在输入处加可学习的位置向量；$v$ 不旋转。它让分数只依赖相对距离，不受固定表长的限制，也是目前多数开源解码器模型（Llama、Qwen、DeepSeek 等）的做法。超过训练长度时，RoPE 只保证能运行，不保证效果：上下文要变长，就调整旋转频率并在长文本上继续训练，然后在目标长度上重新评估。[RoFormer 论文](https://arxiv.org/abs/2104.09864)

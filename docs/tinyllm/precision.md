@@ -168,6 +168,23 @@ Apple silicon 上有两条独立路径：PyTorch 的 `device="mps"` 仍使用 Py
 
 读表时分清三类“稳定”：数值稳定关注 `inf/NaN` 与误差；训练稳定关注梯度、损失和参数更新能否持续；泛化关注模型在未见数据上的表现。三者相关，但各自要单独检查。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+真实代码里有好几处故意转成 FP32 计算，正对应本章讲的数值风险。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| RMSNorm 在 FP32 里算 | [`LlamaRMSNorm.forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L61-L66) | `hidden_states.to(torch.float32)` 后再求均方根，算完转回原精度 |
+| softmax 在 FP32 里算 | [`eager_attention_forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L180-L202) | `softmax(..., dtype=torch.float32)` 再转回 `query.dtype` |
+| 损失在 FP32 里算 | [`ForCausalLMLoss`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/loss/loss_utils.py#L51-L73) | 第一行就是 `logits = logits.float()` |
+| 混合精度的上下文 | [`Trainer.autocast_smart_context_manager`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2203-L2208) | 按训练参数打开 `autocast` |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 **硬件和 PyTorch 算子支持时，训练优先试 BF16 autocast。**

@@ -81,6 +81,7 @@ def corpus_problems() -> list[str]:
     problems = []
     if hashlib.sha256(raw).hexdigest() != manifest["sha256"]:
         problems.append(f"{manifest['file']} 与 manifest.json 的 sha256 不一致，请运行 python scripts/prepare-tinyllm-corpus.py")
+    first = [json.loads(l)["text"] for l in raw.decode("utf-8").splitlines()]
     snippet = (ROOT / "scripts/snippets/corpus-loader.py").read_text(encoding="utf-8")
     snippet = snippet[snippet.index("# region corpus"):].replace("\r\n", "\n")
     for script in CODE.glob("*.py"):
@@ -89,6 +90,9 @@ def corpus_problems() -> list[str]:
             block = text[text.index("# region corpus"):text.index("# endregion corpus") + len("# endregion corpus")] + "\n"
             if block != snippet:
                 problems.append(f"{script.relative_to(ROOT)}: corpus 段与 scripts/snippets/corpus-loader.py 不一致")
+        m = re.search(r'POEMS = """\n(.*?)\n""".strip\(\)', text, re.S)   # 前几章直接写在脚本里的诗
+        if m and m.group(1).splitlines() != first[: len(m.group(1).splitlines())]:
+            problems.append(f"{script.relative_to(ROOT)}: 脚本里的 POEMS 与统一语料的前几首不一致")
         for sha in re.findall(r'CORPUS_SHA256 = "([0-9a-f]{64})"', script.read_text(encoding="utf-8")):
             if sha != manifest["sha256"]:
                 problems.append(f"{script.relative_to(ROOT)}: CORPUS_SHA256 与 manifest.json 不一致")

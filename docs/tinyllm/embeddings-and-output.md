@@ -136,6 +136,22 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 
 本章的实验验证查表、单头注意力、logits、梯度和共享参数；没有训练完整语言模型，也没有用真实记忆数据评测检索模型。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章的查表、输出层和权重共享，在真实代码里各有对应。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 词嵌入表 | [`modeling_llama.py 第 342 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L342) | `nn.Embedding(vocab_size, hidden_size)`，和本章完全一样 |
+| 输出层与权重共享 | [`LlamaForCausalLM`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L410-L480) | `lm_head` 是一个不带偏置的线性层；类属性 `_tied_weights_keys` 声明它可以和 `embed_tokens` 共享权重，是否共享由配置 `tie_word_embeddings` 决定 |
+| 语言模型损失 | [`ForCausalLMLoss`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/loss/loss_utils.py#L51-L73) | 把标签错开一位再算交叉熵，`ignore_index=-100` 的位置不计入，和本章的标签构造一致 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 <strong>输入使用可训练的 token embedding；输出 logits 投影与它共享同一张权重表。</strong>输出前保留 [最终 RMSNorm](normalization.md#tinyllm-choice)。

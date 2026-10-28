@@ -158,6 +158,20 @@ $$
 
 要真正比较架构，需要同时控制参数预算、初始化、优化器、学习率、训练步数、数据、设备和随机种子，并重复多次。门控版在同一 `m` 下参数更多，先按第 5 节对齐预算，再讨论其他因素。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章的 SwiGLU 在 Llama 里叫 MLP，三个线性层一一对应。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 门控前馈层 | [`LlamaMLP`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L152-L165) | `gate_proj` 对应本章的 `gate`、`up_proj` 对应 `value`、`down_proj` 对应 `down`；`act_fn` 由配置 `hidden_act` 决定，Llama 用 `silu` |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 <strong>默认用无偏置 SwiGLU：</strong>`SiLU(gate(x)) * value(x)` 再经 `down` 写回残差流。普通两投影 FFN 若用中间宽度 `4d`，门控版取约 `8d/3`，使两者的权重数都约为 `8d²`（第 5 节）。这样既能学习由输入决定的门控，又避免在同一 `4d` 宽度下多用一半权重、却把收益全算在激活函数头上。[GLU 变体论文](https://arxiv.org/abs/2002.05202)报告了相对 ReLU/GELU 的改进，[LLaMA](https://arxiv.org/abs/2302.13971) 也采用 SwiGLU；这些是特定规模和数据上的结果。

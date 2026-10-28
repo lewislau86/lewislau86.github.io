@@ -3,7 +3,7 @@ import DefaultTheme from 'vitepress/theme'
 import { computed } from 'vue'
 import { useData, useRoute } from 'vitepress'
 import VisitCounter from './VisitCounter.vue'
-import GiscusComments from './components/GiscusComments.vue'
+import WalineComments from './components/WalineComments.vue'
 
 const route = useRoute()
 const { frontmatter } = useData()
@@ -17,7 +17,7 @@ const showComments = computed(() =>
   <DefaultTheme.Layout>
     <template #doc-after>
       <ClientOnly>
-        <GiscusComments v-if="showComments" :key="route.path" />
+        <WalineComments v-if="showComments" :key="route.path" />
       </ClientOnly>
     </template>
     <template #layout-bottom>

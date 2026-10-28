@@ -220,6 +220,21 @@ Adam/AdamW 为每个参数保存两份同形状的移动平均，优化器状态
 
 `betas=(0.9, 0.95)` 是一些语言模型配置会尝试的设置，可以作为一个候选。调参前先用固定小数据过拟合一个 batch，确认训练循环正确，再扩大数据；这样“优化器选得不好”和“模型或数据管线有 bug”这两类问题就能分开排查。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+用 transformers 的 Trainer 训练时，优化器在这里创建。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 创建优化器 | [`Trainer.create_optimizer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1256-L1342) | 默认 AdamW；参数分成“衰减”和“不衰减”两组 |
+| 哪些参数不做权重衰减 | [`Trainer.get_decay_parameter_names`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1405-L1415) | 名字里带 `bias`、`norm` 的参数不衰减，和本章 AdamW 一节的参数分组一致 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 **默认用 AdamW。**

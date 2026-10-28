@@ -77,6 +77,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 10 章 · 初始化与残差路径](./initialization-and-residuals.md)
 - [第 11 章 · 归一化](./normalization.md)
 - [第 12 章 · 完整 TinyLLM](./tinyllm-model.md)（规划中）
+- [可选 · GPU 完整训练](./gpu-training.md)（规划中）：同一份代码放大配置，在 GPU 上训练更大的模型
 
 ### 第五部分 · 数据与训练
 

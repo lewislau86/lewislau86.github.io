@@ -164,6 +164,22 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 
 排查深层网络时，同时记下 `loss` 是否有限、每层激活 RMS、各层参数梯度范数和输入梯度范数。数值偏大或偏小，要结合宽度、深度、目标函数、归一化和学习率一起判断；出现 `NaN` 时，先定位它第一次出现的位置。实验用 `float32` 和 CPU 是为了减少环境差异，大模型的低精度与长时间训练还需要单独验证。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+真实模型的默认初始化比本章的配方简单。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 默认初始化 | [`PreTrainedModel._init_weights`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/modeling_utils.py#L2294-L2358) | 线性层和嵌入一律用均值 0、标准差 `initializer_range` 的正态分布，不按宽度调整，也不对残差输出投影额外缩小 |
+| 标准差从哪里来 | [`configuration_llama.py 第 72 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/configuration_llama.py#L72) | Llama 默认 0.02；本章第 1 节的实验说明了固定 0.02 会随宽度变化 |
+| 残差加法 | [`LlamaDecoderLayer.forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L284-L313) | `hidden_states = residual + hidden_states` 出现两次，就是本章的两条残差 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 <strong>先用宽度感知的随机初始化：</strong>普通 `nn.Linear` 的权重用 Xavier normal，token embedding 用零均值、标准差 $1/\sqrt d$ 的正态分布，偏置（若有）设为 0，RMSNorm 的缩放权重设为 1。每个 Block 有注意力和 FFN 两次残差写回；对注意力输出投影和 SwiGLU 的 `down` 投影，在 Xavier 抽样后再乘 $1/\sqrt{2L}$，其中 $L$ 是 Block 数。输出头若与 embedding 共享权重，只初始化共享张量一次。这是本课程的<strong>可测量起点</strong>：Xavier 并非专门为 SwiGLU 推导，这套配置也只是一个经得起检查的默认值。

@@ -72,6 +72,22 @@ KV cache，每步新算的 K/V 行数: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1] 合�
 - **训练时用不到 KV cache。** 训练把整段序列一次并行算完，缓存只在逐个 token 生成时才有意义。
 :::
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+KV cache 在真实代码里由缓存类管理，注意力每一层把新的 K、V 交给它。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 创建缓存 | [`modeling_llama.py 第 373 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L373) | `use_cache=True` 且没有传入缓存时新建一个 |
+| 每层写入缓存 | [`modeling_llama.py 第 251 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L251) | 拿到这一层新 token 的 K、V 后交给缓存，换回包含全部历史的 K、V |
+| 追加到末尾 | [`DynamicLayer.update`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cache_utils.py#L118-L137) | `torch.cat([self.keys, key_states], dim=-2)`：沿序列维拼接，和本章逐步缓存的写法一样 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 检查理解
 
 1. KV cache 里有没有上一步的注意力概率？新 Q 到来时哪些量重用、哪些量重算？

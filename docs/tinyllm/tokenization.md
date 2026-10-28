@@ -269,6 +269,21 @@ $$
 
 Notebook 提供 NFC、词表预算和最短切分的参考答案。验证记录：2026-10-27，Python 3.10、Tokenizers 0.23.3、Plotly 7.1.0；配套脚本从头运行，检查普通文本还原、特殊标记行为、保存加载、标签移位及四组词表预算。这些是 CPU 上的小型 tokenizer 实验，不含语言模型预训练，也不复现上述论文的性能数字。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+真实模型的分词器由 Hugging Face tokenizers 库实现，和本章训练用的是同一个库。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| Qwen2 / Qwen3 的分词器 | [`Qwen2Tokenizer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen2/tokenization_qwen2.py#L36-L98) | 字节级 BPE，后端就是本章用的 `tokenizers`；特殊 token 和对话模板也在这里定义 |
+| Qwen3.5 的分词器 | [`Qwen3_5Tokenizer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3_5/tokenization_qwen3_5.py#L28-L91) | 同样基于 `tokenizers` 后端 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 <strong>从零训练时用可逆的字节级 BPE，并保存完整的规范化、预切分、合并规则和特殊 token 配置。</strong>

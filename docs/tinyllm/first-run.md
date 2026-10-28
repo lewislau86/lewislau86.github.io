@@ -210,6 +210,23 @@ Agent 也不只查一次。遇到“帮我看看这个项目的测试为什么�
 | 只看损失曲线 | 不知道问题出在哪里 | [第 21 章 · 诊断与评估](./training-evaluation.md) |
 | 每生成一个字都把整段重算一遍 | 文本一长就很慢 | [第 25 章 · 推理效率](./inference-efficiency.md) |
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+第 1 章那个不到 100 行的模型，在真实代码里分散在几个类中，但流水线完全一样。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 整个模型：嵌入 → N 个 Block → 归一化 → 输出层 | [`LlamaForCausalLM`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L410-L480) | `self.model` 就是 `LlamaModel`，后面接 `lm_head`；传入 `labels` 时顺便算损失 |
+| 主干的前向计算 | [`LlamaModel.forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L356-L406) | 查表、逐层调用 Block、最后一次 RMSNorm；多出来的是缓存和注意力掩码的准备 |
+| 逐个生成 token | [`GenerationMixin._sample`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/generation/utils.py#L3115-L3332) | 每一步取最后一个位置的 logits、按概率抽一个、接到末尾，和第 1 章的 `generate` 一样，只是多了停止条件和缓存 |
+| 一步训练 | [`Trainer.training_step`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2023-L2100) | 前向算损失、反向求梯度；优化器的 `step()` 在外层训练循环里 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论 {#tinyllm-choice}
 
 一个语言模型的完整生命周期就是这条流水线：**文本 → 编号 → 模型 → 下一个字的分数 → 损失 → 梯度 → 更新参数**，训练好以后再用“预测一个字、接上去、再预测”的方式生成。后面所有章节都是在这条流水线的某一段上做文章。大模型和 AI 助手也没有离开这条流水线：大模型是同一个训练目标放大了规模，知识在训练结束时定格；Agent 不改模型，而是一轮轮地查资料、执行动作，把结果写回上下文，让同一个模型能回答新问题、完成多步任务。

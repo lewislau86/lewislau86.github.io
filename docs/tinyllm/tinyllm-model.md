@@ -12,6 +12,10 @@ pageClass: tinyllm-course
 正文与 notebook 尚未完成。预计覆盖：组装 Decoder-only 模型，检查参数量、前向形状和下一 token logits。
 :::
 
+::: tip 想在 GPU 上放大训练？
+学完本章后，可以走一条可选路线：同一份代码放大配置，在 GPU 上训练更大的模型，见[可选路线：GPU 完整训练](./gpu-training.md)。
+:::
+
 <TinyLLMMap active="tinyllm-model" />
 
 ## 本章主线选择（待实验验证）

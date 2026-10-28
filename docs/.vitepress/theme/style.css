@@ -35,15 +35,16 @@
   padding-top: 1.5rem;
   border-top: 1px solid var(--vp-c-divider);
 }
+
 .reader-comments h2 {
-  margin: 0;
+  margin: 0 0 0.75rem;
   font-size: 1.25rem;
 }
+
 .reader-comments p {
   color: var(--vp-c-text-2);
   line-height: 1.7;
 }
-.reader-comments-link { font-size: 0.875rem; }
 
 @media (max-width: 640px) {
   /* Keep comparison columns readable inside VitePress's scrolling tables. */

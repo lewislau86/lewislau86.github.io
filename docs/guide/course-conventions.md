@@ -60,6 +60,10 @@ pageClass: tinyllm-course        # Burn 用 burn-course，mini-redis 用 mini-re
 ## 2. ……
 ## 动手实验
 
+## 在真实模型里
+
+（TinyLLM 专用，由 scripts/tinyllm-real-model-refs.py 生成：本章零件对应的 Hugging Face transformers 源码，固定版本、精确到行）
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 ::: warning 常见误区

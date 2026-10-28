@@ -16,6 +16,7 @@
    - notebook 由脚本生成：`python scripts/build-tinyllm-code.py [章节]` 会运行脚本、生成 `docs/public/tinyllm/notebooks/<章节>.ipynb` 并保存输出，同时生成站内只读预览页 `docs/tinyllm/notebooks/<章节>.md`（网址 `/tinyllm/notebooks/<章节>`，带 Colab、下载、GitHub 链接）。不要手改 notebook 和预览页；只想刷新预览页用 `--pages`。
    - `build-tinyllm-code.py` 生成 notebook 后会自动运行 `scripts/package-tinyllm-code.py`，更新整包下载 `docs/public/tinyllm/tinyllm-code.zip`（供 [实验环境](docs/tinyllm/setup.md) 页面下载）；新增依赖时同步改 `docs/public/tinyllm/requirements.txt` 和实验环境页面。
    - 需要训练语料的章节一律用统一唐诗语料 `docs/public/tinyllm/data/tang-poems.jsonl`（由 `scripts/prepare-tinyllm-corpus.py` 生成，说明见同目录 README）：把 `scripts/snippets/corpus-loader.py` 里的 `# region corpus` 整段原样复制进脚本，用 `load_poems(n)` 取前 n 首、按 `split` 字段分训练/验证。检查脚本会核对这一段和校验值。
+   - 每章“在真实模型里”一节（`<!-- real-model:start -->` 到 `<!-- real-model:end -->`）由 `scripts/tinyllm-real-model-refs.py` 生成，指向 transformers 固定版本的源码行；新章节成文时在脚本的 SPEC 里加一项再运行，不要手改这一段。
    - 正文里提到 notebook 时链接到预览页 `[x.ipynb](/tinyllm/notebooks/x)`，不要直接链接 `.ipynb` 文件（那样浏览器只会下载）。
    - Plotly 图表在预览页里会自动导出为静态 SVG（需要 `plotly`、`kaleido>=1` 和本机 Chrome/Chromium）。
    - 改了任何 `code/*.py` 后重新生成对应 notebook，再运行 `python scripts/check-tinyllm-outputs.py`：它检查 notebook 是否和脚本一致、正文 ```text 块里的每一行是否出现在 notebook 输出里（不是程序输出的示意块，在前一行写 `<!-- output-check: skip -->`）。CI（`.github/workflows/check-code.yml`）还会用 `--check` 从头运行所有脚本。

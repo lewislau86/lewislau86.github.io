@@ -161,6 +161,23 @@ QK Norm 让训练更稳定，但也改变了注意力的表达方式。[OlmPool]
 
 上面那段代码里，放大后的原始分数绝对值最大到 228，QK Norm 之后只有 3.4，不会超过 $g=4$。[normalization.ipynb](/tinyllm/notebooks/normalization) 还有一个更小的例子：两个长度差异很大的 Q/K 向量，原始点积最大为 100，L2 归一化后最大为 1。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章的注意力在真实代码里分成两部分：投影与拆头在注意力类里，打分与加权求和在一个独立函数里。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| Q、K、V 与输出投影 | [`LlamaAttention`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L206-L270) | `q_proj`、`k_proj`、`v_proj`、`o_proj` 四个线性层，拆成多头后交给下面的函数 |
+| 缩放点积注意力 | [`eager_attention_forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L180-L202) | 分数乘 `scaling`（就是 1/√d）、加上掩码、softmax、再乘 V；实际运行时通常换成 PyTorch 的 SDPA 或 FlashAttention |
+| GQA：几个头共用一组 K、V | [`repeat_kv`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L168-L177) | 把较少的 K、V 头复制成和 Q 一样多 |
+| QK Norm | [`modeling_qwen3.py 第 229 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3/modeling_qwen3.py#L229) | Qwen3 在算分数之前，对每个头的 q、k 各做一次 RMSNorm，即本章延伸一节的 QK Norm |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 先实现带**因果掩码的缩放点积多头注意力（MHA）**，核对 Q/K/V 形状、mask 和 softmax；实际计算交给 `F.scaled_dot_product_attention`。模型需要更低 KV cache 占用时，再用较少的 KV 头改成 **GQA**，并保持相同训练和评估口径。GQA 是推理内存与质量之间的权衡，不能只看头数判断优劣。[GQA 论文](https://arxiv.org/abs/2305.13245)

@@ -183,6 +183,21 @@ Pre-Norm 残差 Block 有一个很好用的性质：它从不覆盖 `x`，只往
 
 这种“在中间读一下”的方法叫 logit lens。它只是用最后的输出层去近似解读中间状态，中间各层并不是为了被这样读而训练的，所以读数只能当作参考。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章的 Pre-Norm 残差 Block 在 Llama 里几乎逐行对应。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 一个 Block | [`LlamaDecoderLayer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L273-L313) | `residual = hidden_states` → `input_layernorm` → 注意力 → 加回；再 `post_attention_layernorm` → MLP → 加回，就是本章的两行 |
+| 叠起来 | [`LlamaModel.forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L356-L406) | 逐层调用 `decoder_layer`，最后再做一次 `self.norm`，和本章的 `TinyLLM.forward` 一样 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的 Block 采用 **Pre-Norm 残差结构**：`x = x + Attention(RMSNorm(x))`，再 `x = x + SwiGLU(RMSNorm(x))`。注意力带 RoPE，前馈层是无偏置的 SwiGLU，中间宽度约 $8d/3$。整个模型就是：词嵌入 → N 个这样的 Block → 最后一个 RMSNorm → 与嵌入共享权重的输出层。在本章的实验里（默认初始化、最多 8 层），只有它能随层数增加继续降低训练损失；能不能叠得更深、该怎么初始化，要看第 10、11 章和[第 22 章](./large-model-stability.md)。每个 Block 约 $12d^2$ 个参数。初始化细节见[第 10 章](./initialization-and-residuals.md)，归一化的选择见[第 11 章](./normalization.md)，完整模型在[第 12 章](./tinyllm-model.md)组装。[Pre-LN 梯度分析](https://arxiv.org/abs/2002.04745)

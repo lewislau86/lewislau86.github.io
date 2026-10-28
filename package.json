@@ -13,5 +13,8 @@
   },
   "overrides": {
     "vite": "6.4.4"
+  },
+  "dependencies": {
+    "@waline/client": "^3.16.1"
   }
 }

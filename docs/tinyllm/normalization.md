@@ -166,6 +166,22 @@ notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第
 | DyT | 用带参数的 tanh 代替归一化层 | 替代方案，不计算统计量 | [DyT 论文](https://arxiv.org/abs/2503.10622) |
 | BatchNorm | 跨 batch 统计 | 依赖批次统计，不适合逐 token 自回归 | [PyTorch 归一化层](https://docs.pytorch.org/docs/stable/nn.html#normalization-layers) |
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+RMSNorm 在真实代码里只有十几行。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| RMSNorm | [`LlamaRMSNorm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L52-L69) | 先转成 FP32 求均方根、归一化，再转回原来的精度乘 `weight`；没有减均值，也没有偏置 |
+| 放在哪里 | [`LlamaDecoderLayer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L273-L313) | `input_layernorm`、`post_attention_layernorm` 两处都在子层之前（Pre-Norm），`LlamaModel` 末尾还有一次 `norm` |
+| QK Norm | [`modeling_qwen3.py 第 229 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3/modeling_qwen3.py#L229) | Qwen3 额外对每个头的 q、k 做 RMSNorm |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 **每个注意力和前馈子层的输入处用 RMSNorm（Pre-Norm），所有 Block 之后、输出层之前再用一次 RMSNorm。**
