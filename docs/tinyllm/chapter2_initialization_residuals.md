@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 3 章：初始化与残差路径](./initialization-and-residuals.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 9 章：初始化与残差路径](./initialization-and-residuals.md)。

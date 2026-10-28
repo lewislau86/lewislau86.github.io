@@ -1,17 +1,17 @@
 ---
-title: "第 5 章：激活函数与门控前馈层"
+title: "第 7 章：激活函数与门控前馈层"
 description: "两个线性层之间为什么要有激活函数；ReLU、GELU、SiLU 的区别；SwiGLU 门控前馈层怎样搭、参数量怎样算。"
 pageClass: tinyllm-course
 ---
 
-# 第 5 章：激活函数与门控前馈层
+# 第 7 章：激活函数与门控前馈层
 
-[课程总览](./index.md) · [上一章](./normalization.md) · [下一章](./tokenization.md)
+[课程总览](./index.md) · [上一章](./position-encoding.md) · [下一章](./transformer-block.md)
 
 ::: tip 本章学习目标
 能用一行矩阵乘法说明非线性为什么必要；能比较 ReLU、GELU、SiLU 的函数曲线与导数曲线；能写出 SwiGLU 前馈层，并手算它与普通 FFN 在相同参数预算下的中间宽度。
 
-**前置：** [第 3 章](./initialization-and-residuals.md)的残差子层，[第 4 章](./normalization.md)的 RMSNorm 与 Pre-Norm。
+**前置：** [第 2 章](./tensors-and-autograd.md)的矩阵乘法，[第 4 章](./embeddings-and-output.md)的隐藏向量形状 `[batch, seq, d]`。
 
 **实践方式：** [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn)（也可以直接运行 <a href="/tinyllm/code/activations-and-ffn.py" download>activations-and-ffn.py</a>），CPU 即可，图表使用 Plotly。
 :::
@@ -20,7 +20,9 @@ pageClass: tinyllm-course
 
 ## 问题：两个线性层，只学会了一条直线
 
-[第 4 章](./normalization.md)把 Block 写成 `x + ffn(norm(x))`，但 `ffn` 里面是什么还没有讲。最朴素的想法是放两个线性层：先把宽度放大，再投影回来。
+注意力（[第 5 章](./self-attention.md)）负责让每个 token 去看前面的字，把需要的信息取回来。取回来之后，每个 token 还要自己“消化”一下：把手里的特征重新组合，算出新的特征。这一步交给**前馈层**（FFN），它对每个 token 单独计算，Block 里大约三分之二的参数都在这里。
+
+最朴素的想法是放两个线性层：先把宽度放大，再投影回来。
 
 做个小实验：用一个 $1\to32\to1$ 的两层网络拟合区间 $[-\pi,\pi]$ 上的 $\sin x$，Adam、学习率 0.01、训练 1500 步。一个版本两层之间什么都不加，另一个版本在中间加一个 GELU。先猜：中间有 32 个隐藏单元，不加激活的版本能拟合出正弦曲线吗？
 
@@ -129,21 +131,21 @@ $g$ 与 $v$ 的形状都是 `[batch, seq, m]`，$\odot$ 是同一 token、同一
 
 左边是普通 FFN：$2\times d\times4d=8d^2$。右边是 SwiGLU：令 $3dm=8d^2$，得 $m=8d/3$，也就是普通版中间宽度的 $2/3$，实际再按硬件或实现需要取整。图中用 $d=12$ 手算：普通版 $m=48$，权重 $2\times12\times48=1152$；门控版 $m=32$，权重 $3\times12\times32=1152$，两边相等。
 
-加入偏置时，普通版额外有 $m+d$ 个参数，门控版额外有 $2m+d$ 个；本章示例统一设 `bias=False`，让比较更清楚。参数量对齐之后，计算时间和显存仍会有差别：门控版多一次投影和一次逐元素乘法，实际速度还取决于算子融合、批量、设备、dtype 和需要保存的中间张量。前馈层的宽度也影响残差分支的输出尺度，初始化要和[第 3 章](./initialization-and-residuals.md)一起检查。
+加入偏置时，普通版额外有 $m+d$ 个参数，门控版额外有 $2m+d$ 个；本章示例统一设 `bias=False`，让比较更清楚。参数量对齐之后，计算时间和显存仍会有差别：门控版多一次投影和一次逐元素乘法，实际速度还取决于算子融合、批量、设备、dtype 和需要保存的中间张量。前馈层的宽度也影响残差分支的输出尺度，初始化要和[第 9 章](./initialization-and-residuals.md)一起检查。
 
 ## 6. 放进 Pre-Norm Block，接上残差
 
-[第 3 章](./initialization-and-residuals.md)里 Block 的第二个子层是
+前馈层不会单独使用。[第 8 章](./transformer-block.md)会把它和注意力一起装进 Block，它在 Block 里的样子是
 
 $$
 y=u+\operatorname{FFN}(\operatorname{Norm}_2(u)),
 $$
 
-其中 $u$ 是注意力残差之后的隐藏状态。RMSNorm 负责把输入调回统一尺寸，SwiGLU 提供非线性和门控，残差加法保留直通路径。注意力留到第 9 章，这里先实现这个<strong>前馈半块</strong>：
+其中 $u$ 是注意力处理之后的隐藏状态。这里先把另外两个零件当成黑盒：`Norm` 把输入调回统一尺寸，“$u+$”这一步叫残差连接，保留一条直通路径；它们为什么必不可少，要等到第 8 章把 Block 叠深、发现训不动之后，在[第 9 章](./initialization-and-residuals.md)和[第 10 章](./normalization.md)讲清楚。下面先实现这个<strong>前馈半块</strong>：
 
 <<< @/public/tinyllm/code/activations-and-ffn.py#prenorm-ffn
 
-三个部件各管一件事：删掉 `x + ...`，它仍有非线性，但不再是残差子层；把 `norm` 挪到加法之后，就变成 Post-Norm 位置；把 SiLU 换成 ReLU 或 GELU，只改变激活，Pre-Norm 与残差的结构不变。这里用 `nn.RMSNorm` 与[第 4 章](./normalization.md)的主线一致，LayerNorm 也能放在同一位置。
+三个部件各管一件事：删掉 `x + ...`，它仍有非线性，但不再是残差子层；把 `norm` 挪到加法之后，就变成 Post-Norm 位置；把 SiLU 换成 ReLU 或 GELU，只改变激活，Pre-Norm 与残差的结构不变。这里用的 `nn.RMSNorm` 是 TinyLLM 的主线选择，第 10 章会和 LayerNorm 一起比较。
 
 ## 7. 动手实验：曲线、梯度、参数与简单拟合
 
@@ -216,4 +218,4 @@ $$
 - [Vaswani 等：Transformer 前馈层](https://arxiv.org/abs/1706.03762)
 - [LLaMA，Touvron 等，2023](https://arxiv.org/abs/2302.13971)
 
-到这里，Block 里除注意力以外的零件都讲完了。下一部分从文本入口开始构造语言模型：[第 6 章：文本与词元化](./tokenization.md)。
+到这里，Block 里的两种子层都有了：注意力负责 token 之间交换信息，前馈层负责每个 token 自己加工。下一章把它们装进 Block 并叠起来：[第 8 章：Transformer Block](./transformer-block.md)（规划中）；已完成的下一章是[第 9 章：初始化与残差路径](./initialization-and-residuals.md)。

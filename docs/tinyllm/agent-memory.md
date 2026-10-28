@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 
 模型刚回答完一个问题，用户隔天再问“我上次决定用什么方案”，模型参数没有因为那次对话自动更新，昨天的 KV cache 通常也已经释放。若 Agent 想找回这个决定，就需要在模型外保存信息，在新一轮对话中把相关证据重新交给模型。这就是本章所说的<strong>外部记忆</strong>。
 
-模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 7 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 22 章](inference-efficiency.md)。
+模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 4 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 22 章](inference-efficiency.md)。
 
 ## 四种常被叫作“记忆”的东西 {#four-kinds-of-memory}
 
@@ -49,7 +49,7 @@ pageClass: tinyllm-course
 
 ## 两种 embedding：模型内部的词嵌入与检索向量 {#two-kinds-of-embedding}
 
-[第 7 章](./embeddings-and-output.md)学的 $E_i$ 是语言模型内部、按 token ID 读取的参数表。Agent 的记忆检索常把<strong>一段完整文本</strong>编码成一个向量，用相似度查找历史内容；检索出的文本进入当前提示词，再经过 tokenizer 和模型内部嵌入层。它一般属于独立的检索系统，不会因为语言模型在本章调用 `backward()` 而自动更新。
+[第 4 章](./embeddings-and-output.md)学的 $E_i$ 是语言模型内部、按 token ID 读取的参数表。Agent 的记忆检索常把<strong>一段完整文本</strong>编码成一个向量，用相似度查找历史内容；检索出的文本进入当前提示词，再经过 tokenizer 和模型内部嵌入层。它一般属于独立的检索系统，不会因为语言模型在本章调用 `backward()` 而自动更新。
 
 | 问题 | 模型内部嵌入 | Agent 记忆检索向量 |
 | --- | --- | --- |

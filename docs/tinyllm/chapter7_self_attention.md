@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 9 章：自注意力](./self-attention.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 5 章：自注意力](./self-attention.md)。

@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## DeepNorm：为极深网络改写残差块 {#deepnorm}
 
-[第 4 章](./normalization.md)的 Post-Norm 把相加结果再归一化，直通路径要穿过归一化层；网络一深，训练初期的更新容易过大。DeepNet 论文提出的 DeepNorm 保留 Post-Norm 的位置，同时改两件事：**放大残差直通支、缩小子层权重的初始化**。
+[第 10 章](./normalization.md)的 Post-Norm 把相加结果再归一化，直通路径要穿过归一化层；网络一深，训练初期的更新容易过大。DeepNet 论文提出的 DeepNorm 保留 Post-Norm 的位置，同时改两件事：**放大残差直通支、缩小子层权重的初始化**。
 
 $$
 x_{\mathrm{next}}=\mathrm{LayerNorm}(\alpha x+F(x))

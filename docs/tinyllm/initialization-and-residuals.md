@@ -1,17 +1,17 @@
 ---
-title: "第 3 章：初始化与残差路径"
+title: "第 9 章：初始化与残差路径"
 description: "参数从哪里开始：Xavier/He 初始化怎样按宽度选尺度；残差连接怎样给深层网络留一条直通路径。"
 pageClass: tinyllm-course
 ---
 
-# 第 3 章：初始化与残差路径
+# 第 9 章：初始化与残差路径
 
-[课程总览](./index.md) · [上一章](./tensors-and-autograd.md) · [下一章](./normalization.md)
+[课程总览](./index.md) · [上一章](./transformer-block.md) · [下一章](./normalization.md)
 
 ::: tip 本章学习目标
 能根据权重形状找出 `fan_in`、`fan_out`，并估算一个线性层输出的尺度；能写出残差子层的前向式和反向梯度；能用每层激活 RMS 和梯度范数判断一个多层网络在起点是否异常。
 
-**前置：** [第 2 章](./tensors-and-autograd.md)的张量形状与自动求导。
+**前置：** [第 2 章](./tensors-and-autograd.md)的张量形状与自动求导；知道 Block 由注意力和前馈层两个子层组成（[第 5 章](./self-attention.md)、[第 7 章](./activations-and-ffn.md)、[第 8 章](./transformer-block.md)）。
 
 **实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)（也可以直接运行 <a href="/tinyllm/code/initialization-and-residuals.py" download>initialization-and-residuals.py</a>），CPU 即可，图表使用 Plotly。
 :::
@@ -19,6 +19,8 @@ pageClass: tinyllm-course
 <TinyLLMMap active="initialization-and-residuals" />
 
 ## 问题：随手设的权重，输出会随宽度变大
+
+零件都齐了：注意力、前馈层，装进 Block 后可以一层层往上叠。可是叠得越深，越容易出现一种情况：损失不动，或者一开始就变成 `nan`。问题往往在训练开始之前就埋下了，第一个嫌疑是参数的起点。
 
 [第 2 章](./tensors-and-autograd.md)的参数是用 `torch.randn` 随手造出来的，每个数的标准差都是 1。现在把这种权重放进一个更宽的线性层 $y=xW$：输入 $x$ 的标准差为 1，权重是 $n_{\mathrm{in}}\times n_{\mathrm{in}}$ 的方阵。
 
@@ -103,7 +105,7 @@ $$
 
 实验设置：32 层，宽度 $d=64$，每个子层 $F$ 都是 `tanh(Linear(x))`，用 Xavier 初始化；batch 为 256，损失取最后一层输出经一个固定随机投影后的均值。比较四种连法，记录每层输出的 RMS（左）和损失对每层输出的梯度范数（右）。这里只做初始化时的一次前向和反向，不训练。
 
-其中两种连法用到 $\operatorname{Norm}$，暂时把它理解为“把每个 token 向量调回统一尺寸的一步”，具体公式见[第 4 章](./normalization.md)：
+其中两种连法用到 $\operatorname{Norm}$，暂时把它理解为“把每个 token 向量调回统一尺寸的一步”，具体公式见[第 10 章](./normalization.md)：
 
 $$
 \begin{aligned}
@@ -136,7 +138,7 @@ $$
 
 从 $x$ 到 $u$ 再到 $y$，有一条只经过两个加号的直通路径；两个子层各自往残差流上写一笔更新。在 Pre-LN 中，加法的输出直接往下传，局部直通路径就是 $x\mapsto x$。在 Post-LN 中，加法结果还要再经过归一化，反向的直通路径也要穿过归一化的雅可比。原始 Transformer 采用 Post-LN，许多后续的 Decoder-only 模型采用 Pre-LN；两者还牵涉最终归一化、学习率和初始化等配置，比较时要整套考虑。
 
-归一化和残差各管一件事：归一化决定子层输入的尺寸，残差决定两条路径怎样相加，一个 Block 里两者同时存在。[第 5 章](./activations-and-ffn.md)会展开 $M$，[第 9 章](./self-attention.md)展开 $A$。
+归一化和残差各管一件事：归一化决定子层输入的尺寸，残差决定两条路径怎样相加，一个 Block 里两者同时存在。$M$ 就是[第 7 章](./activations-and-ffn.md)的前馈层，$A$ 是[第 5 章](./self-attention.md)的注意力。
 
 ## 7. 深度增加时，残差分支的尺度
 
@@ -222,4 +224,4 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 - [Xiong 等：Pre-LN/Post-LN 分析](https://arxiv.org/abs/2002.04745)
 - [nanoGPT `model.py`](https://github.com/karpathy/nanoGPT/blob/master/model.py)
 
-下一章回答“每个子层的输入怎样保持统一尺寸”：[第 4 章：归一化](./normalization.md)。
+下一章回答“每个子层的输入怎样保持统一尺寸”：[第 10 章：归一化](./normalization.md)。

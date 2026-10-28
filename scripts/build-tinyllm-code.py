@@ -39,7 +39,10 @@ CODE = ROOT / "docs/public/tinyllm/code"
 NOTEBOOKS = ROOT / "docs/public/tinyllm/notebooks"
 REGION = re.compile(r"^# ?(end)?region [\w*-]+$")
 # 脚本运行后需要保留的产物：(章节, 文件名) → 目标路径
-ARTIFACTS = {("first-run", "first_run_log.json"): ROOT / "scripts/data/tinyllm-first-run-log.json"}
+ARTIFACTS = {
+    ("first-run", "first_run_log.json"): ROOT / "scripts/data/tinyllm-first-run-log.json",
+    ("self-attention", "attention_ablation.json"): ROOT / "scripts/data/tinyllm-attention-ablation.json",
+}
 
 
 def run_script(path: Path, workdir: Path) -> None:

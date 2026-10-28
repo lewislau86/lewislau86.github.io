@@ -79,7 +79,7 @@ text = train_text + val_text
 print("诗的数量：", len(lines), "  训练字符数：", len(train_text), "  验证字符数：", len(val_text))
 
 # %% [markdown]
-# ## 2. 把文字变成编号（第 6 章会换成 BPE 分词器）
+# ## 2. 把文字变成编号（第 3 章会换成 BPE 分词器）
 #
 # 最简单的分词器：每个不同的字符分配一个编号。换行符也是一个“字”，
 # 模型靠它学会一首诗在哪里结束。
@@ -130,7 +130,7 @@ print("y[0] =", decode(y[0].tolist()).replace("\n", "⏎"))
 
 # %%
 # region model
-class CausalSelfAttention(nn.Module):          # 自注意力：第 9 章
+class CausalSelfAttention(nn.Module):          # 自注意力：第 5 章
     def __init__(self, d, n_heads):
         super().__init__()
         self.n_heads = n_heads
@@ -145,7 +145,7 @@ class CausalSelfAttention(nn.Module):          # 自注意力：第 9 章
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
-class SwiGLU(nn.Module):                        # 门控前馈层：第 5 章
+class SwiGLU(nn.Module):                        # 门控前馈层：第 7 章
     def __init__(self, d, hidden):
         super().__init__()
         self.gate = nn.Linear(d, hidden, bias=False)
@@ -156,16 +156,16 @@ class SwiGLU(nn.Module):                        # 门控前馈层：第 5 章
         return self.down(F.silu(self.gate(x)) * self.value(x))
 
 
-class Block(nn.Module):                         # Transformer Block：第 10 章
+class Block(nn.Module):                         # Transformer Block：第 8 章
     def __init__(self, d, n_heads):
         super().__init__()
-        self.norm1 = nn.RMSNorm(d)              # 归一化：第 4 章
+        self.norm1 = nn.RMSNorm(d)              # 归一化：第 10 章
         self.attn = CausalSelfAttention(d, n_heads)
         self.norm2 = nn.RMSNorm(d)
         self.ffn = SwiGLU(d, 8 * d // 3)
 
     def forward(self, x):
-        x = x + self.attn(self.norm1(x))        # 残差：第 3 章
+        x = x + self.attn(self.norm1(x))        # 残差：第 9 章
         x = x + self.ffn(self.norm2(x))
         return x
 
@@ -173,13 +173,13 @@ class Block(nn.Module):                         # Transformer Block：第 10 章
 class TinyLLM(nn.Module):                       # 完整模型：第 11 章
     def __init__(self, vocab_size, d=96, n_layers=3, n_heads=4, block_size=block_size):
         super().__init__()
-        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 7 章
-        self.pos = nn.Embedding(block_size, d)  # 位置：第 8 章会换成 RoPE
+        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 4 章
+        self.pos = nn.Embedding(block_size, d)  # 位置：第 6 章会换成 RoPE
         self.blocks = nn.ModuleList(Block(d, n_heads) for _ in range(n_layers))
         self.norm = nn.RMSNorm(d)               # 最终归一化
         self.head = nn.Linear(d, vocab_size, bias=False)
-        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 7 章
-        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 3 章
+        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 4 章
+        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 9 章
         nn.init.normal_(self.pos.weight, std=d ** -0.5)
 
     def forward(self, idx):

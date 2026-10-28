@@ -17,8 +17,10 @@ pageClass: tinyllm-course
 如果你刚学完大学基础数学与 Python，按顺序读即可：
 
 1. **先读[第 1 章](./first-run.md)，把整条流水线跑起来。** 半分钟训练一个会背唐诗的小模型，看到损失怎样下降、输出怎样从乱码变成诗句。这一章不讲原理，只建立整体印象。
-2. **再读第 2～5 章，学会让网络“可训练”。** 张量与梯度，然后是深层网络必备的三件工具：初始化与残差、归一化、门控前馈层。
-3. **然后沿第三、四部分把模型搭完整、训练好。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
+2. **再读[第 2 章](./tensors-and-autograd.md)，备好工具。** 张量、形状和自动求导，后面每一章都要用。
+3. **然后顺着总图从上往下搭模型（第 3～8 章）。** 文字变编号、编号变向量、注意力让向量互相看见、前馈层各自加工，最后装进 Block。
+4. **把 Block 叠深，它会训不动；第 9～11 章修好它。** 残差、初始化、归一化三件工具让深层网络稳定，再组装出完整的 TinyLLM。
+5. **之后是数据与训练（第 12～20 章）、生成与扩展（第 21～27 章）。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
 
 不要求现在就认识每个名词。遇到 MoE、μP 等，先知道它们是后续专题即可。
 
@@ -28,11 +30,12 @@ pageClass: tinyllm-course
 | --- | --- | --- | --- |
 | 第 1 章 | [先跑通一个最小 TinyLLM](./first-run.md) | 39 首唐诗、不到 100 行代码，训练一个能“写诗”的小模型，看损失曲线与过拟合 | [first-run.ipynb](/tinyllm/notebooks/first-run) |
 | 第 2 章 | [张量与自动求导](./tensors-and-autograd.md) | 张量形状、广播、矩阵乘法、计算图与一次手算梯度 | [tensors-and-autograd.ipynb](/tinyllm/notebooks/tensors-and-autograd) |
-| 第 3 章 | [初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) |
-| 第 4 章 | [归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [normalization.ipynb](/tinyllm/notebooks/normalization) |
-| 第 5 章 | [激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) |
-| 第 6 章 | [文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [tokenization.ipynb](/tinyllm/notebooks/tokenization) |
-| 第 7 章 | [词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、Q/K/V 与 KV cache、权重共享 | [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output) |
+| 第 3 章 | [文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [tokenization.ipynb](/tinyllm/notebooks/tokenization) |
+| 第 4 章 | [词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、权重共享、Q/K/V 预览 | [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output) |
+| 第 5 章 | [自注意力](./self-attention.md) | Q/K/V、缩放点积、因果掩码、多头注意力；去掉注意力的对照实验与长度平方的代价 | [self-attention.ipynb](/tinyllm/notebooks/self-attention) |
+| 第 7 章 | [激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) |
+| 第 9 章 | [初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) |
+| 第 10 章 | [归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [normalization.ipynb](/tinyllm/notebooks/normalization) |
 | 第 14 章 | [优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [optimizers.ipynb](/tinyllm/notebooks/optimizers) |
 | 第 17 章 | [数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [precision.ipynb](/tinyllm/notebooks/precision) |
 
@@ -44,27 +47,32 @@ pageClass: tinyllm-course
 
 - [第 1 章 · 先跑通一个最小 TinyLLM](./first-run.md)
 
-### 第二部分 · 可训练的网络
+### 第二部分 · 工具
 
-张量与梯度，以及让深层网络能稳定训练的三件工具：初始化与残差、归一化、前馈层。
+张量、形状和自动求导：后面每一章都要用到的基本功。
 
 - [第 2 章 · 张量与自动求导](./tensors-and-autograd.md)
-- [第 3 章 · 初始化与残差路径](./initialization-and-residuals.md)
-- [第 4 章 · 归一化](./normalization.md)
-- [第 5 章 · 激活函数与门控前馈层](./activations-and-ffn.md)
 
-### 第三部分 · 构造语言模型
+### 第三部分 · 沿数据流搭模型
 
-从文本入口一路搭到完整的 Decoder-only 模型。
+顺着总图从上往下：文字变编号、编号变向量、注意力让向量互相看见、前馈层各自加工，最后装进 Block。
 
-- [第 6 章 · 文本与词元化](./tokenization.md)
-- [第 7 章 · 词嵌入与输出层](./embeddings-and-output.md)
-- [第 8 章 · 位置表示](./position-encoding.md)（规划中）
-- [第 9 章 · 自注意力](./self-attention.md)（规划中）
-- [第 10 章 · Transformer Block](./transformer-block.md)（规划中）
+- [第 3 章 · 文本与词元化](./tokenization.md)
+- [第 4 章 · 词嵌入与输出层](./embeddings-and-output.md)
+- [第 5 章 · 自注意力](./self-attention.md)
+- [第 6 章 · 位置表示](./position-encoding.md)（规划中）
+- [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md)
+- [第 8 章 · Transformer Block](./transformer-block.md)（规划中）
+
+### 第四部分 · 让深层网络训得动
+
+Block 一叠深就训不动。残差、初始化、归一化三件工具解决这个问题，再组装出完整的 TinyLLM。
+
+- [第 9 章 · 初始化与残差路径](./initialization-and-residuals.md)
+- [第 10 章 · 归一化](./normalization.md)
 - [第 11 章 · 完整 TinyLLM](./tinyllm-model.md)（规划中）
 
-### 第四部分 · 数据与训练
+### 第五部分 · 数据与训练
 
 数据、目标函数、优化器、学习率、精度与训练诊断。
 
@@ -78,7 +86,7 @@ pageClass: tinyllm-course
 - [第 19 章 · 训练循环与检查点](./training-loop.md)（规划中）
 - [第 20 章 · 训练诊断与评估](./training-evaluation.md)（规划中）
 
-### 第五部分 · 生成与扩展
+### 第六部分 · 生成与扩展
 
 生成、推理效率、微调与扩展专题。
 
@@ -101,14 +109,14 @@ pageClass: tinyllm-course
 | --- | --- | --- |
 | [1 先跑通](./first-run.md) | 一个文件跑通字符级小模型：字符编号、可学习位置向量、3 层 Pre-RMSNorm Block、AdamW | 先看到完整流水线和损失曲线，再逐章替换成正式方案；它只用于建立整体印象，不是后续章节的基线配置。 |
 | [2 自动求导](./tensors-and-autograd.md) | 用 PyTorch autograd 训练，手算小例子核验 | 保留正确的计算图；手写反传用于理解和梯度检查。 |
-| [3 初始化与残差](./initialization-and-residuals.md) | 线性层先用 Xavier normal，嵌入用标准差 `1/√d` 的零均值正态；注意力输出和 FFN 输出投影再乘 `1/√(2L)`；采用 Pre-Norm 与两次残差相加 | 随机权重打破对称，较小的初始残差更新抑制深度累积；这是教学起点，仍需结合激活 RMS 与梯度诊断。 |
-| [4 归一化](./normalization.md) | 每个注意力/前馈子层前用 RMSNorm，末尾再用一次 RMSNorm | 控制每个 token 的尺度，计算较简洁；若注意力分数失控，再评估 QK Norm；极深 Post-Norm 结构另研究 DeepNorm。 |
-| [5 激活与 FFN](./activations-and-ffn.md) | 无偏置 SwiGLU：SiLU 门控，门控宽度先取约 `8d/3` | 相近参数预算下比较门控与普通 `4d` FFN；若追求最少算子或复现旧架构，可选 GELU/ReLU 普通 FFN。 |
-| [6 词元化](./tokenization.md) | 训练可逆的字节级 BPE，固定特殊 token 协议 | 未见字符可退回字节；词表大小需按语种、语料和序列长度权衡。 |
-| [7 嵌入与输出](./embeddings-and-output.md) | 可学习 token embedding；教学小模型先共享输入嵌入与输出权重 | 减少词表相关参数；若预算充足或共享约束影响效果，再试独立输出层。 |
-| [8 位置表示](./position-encoding.md) | 对 Q/K 使用 RoPE | 把位置信息放进注意力计算；超过训练上下文不能只靠 RoPE 自动保证质量，须专门验证或扩展训练。 |
-| [9 自注意力](./self-attention.md) | 因果掩码的缩放点积注意力；先实现 MHA，再按推理预算切换 GQA | MHA 便于核对形状，GQA 可减少 KV cache；两者的头数与质量需一起验证。 |
-| [10 Transformer Block](./transformer-block.md) | 注意力和 SwiGLU 各有一次 Pre-RMSNorm 与残差加法 | 保留直接的残差梯度路径；复杂的额外归一化只在诊断有需求时加入。 |
+| [3 词元化](./tokenization.md) | 训练可逆的字节级 BPE，固定特殊 token 协议 | 未见字符可退回字节；词表大小需按语种、语料和序列长度权衡。 |
+| [4 嵌入与输出](./embeddings-and-output.md) | 可学习 token embedding；教学小模型先共享输入嵌入与输出权重 | 减少词表相关参数；若预算充足或共享约束影响效果，再试独立输出层。 |
+| [5 自注意力](./self-attention.md) | 因果掩码的缩放点积注意力；先实现 MHA，再按推理预算切换 GQA | MHA 便于核对形状，GQA 可减少 KV cache；两者的头数与质量需一起验证。 |
+| [6 位置表示](./position-encoding.md) | 对 Q/K 使用 RoPE | 把位置信息放进注意力计算；超过训练上下文不能只靠 RoPE 自动保证质量，须专门验证或扩展训练。 |
+| [7 激活与 FFN](./activations-and-ffn.md) | 无偏置 SwiGLU：SiLU 门控，门控宽度先取约 `8d/3` | 相近参数预算下比较门控与普通 `4d` FFN；若追求最少算子或复现旧架构，可选 GELU/ReLU 普通 FFN。 |
+| [8 Transformer Block](./transformer-block.md) | 注意力和 SwiGLU 各有一次 Pre-RMSNorm 与残差加法 | 保留直接的残差梯度路径；复杂的额外归一化只在诊断有需求时加入。 |
+| [9 初始化与残差](./initialization-and-residuals.md) | 线性层先用 Xavier normal，嵌入用标准差 `1/√d` 的零均值正态；注意力输出和 FFN 输出投影再乘 `1/√(2L)`；采用 Pre-Norm 与两次残差相加 | 随机权重打破对称，较小的初始残差更新抑制深度累积；这是教学起点，仍需结合激活 RMS 与梯度诊断。 |
+| [10 归一化](./normalization.md) | 每个注意力/前馈子层前用 RMSNorm，末尾再用一次 RMSNorm | 控制每个 token 的尺度，计算较简洁；若注意力分数失控，再评估 QK Norm；极深 Post-Norm 结构另研究 DeepNorm。 |
 | [11 完整模型](./tinyllm-model.md) | 稠密 Decoder-only Transformer，最后 RMSNorm 接词表 logits | 先形成可训练、可生成的闭环；MoE 等结构留到有明确规模和吞吐需求时。 |
 | [12 数据](./data-pipeline.md) | 先清洗、去重，再按文档或来源划分训练/验证集并检查跨集合近重复 | 避免同源内容跨集合泄漏；混合比例取决于任务与语料质量。 |
 | [13 损失](./language-model-loss.md) | 下一个 token 的交叉熵，只统计有效目标 token | 与自回归生成目标一致；有 padding 或 SFT 模板时显式掩码。 |

@@ -166,7 +166,7 @@ Transformer 常见的做法是：矩阵权重使用 weight decay，偏置和归�
 
 <<< @/public/tinyllm/code/optimizers.py#param-groups
 
-`parameter.ndim == 1` 是常见的工程规则，用来覆盖 LayerNorm/RMSNorm 的缩放参数（[第 4 章](./normalization.md)的 $\gamma$）；具体项目也可能采用别的约定。建好之后检查一遍，确认参数没有漏掉或重复：
+`parameter.ndim == 1` 是常见的工程规则，用来覆盖 LayerNorm/RMSNorm 的缩放参数（[第 10 章](./normalization.md)的 $\gamma$）；具体项目也可能采用别的约定。建好之后检查一遍，确认参数没有漏掉或重复：
 
 <<< @/public/tinyllm/code/optimizers.py#check-groups
 

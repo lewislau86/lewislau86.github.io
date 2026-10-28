@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 7 章：词嵌入与输出层](./embeddings-and-output.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 4 章：词嵌入与输出层](./embeddings-and-output.md)。

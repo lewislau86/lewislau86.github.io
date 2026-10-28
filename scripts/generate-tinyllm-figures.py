@@ -180,7 +180,7 @@ def gradient_step():
               "损失曲线 (3w-1)^2 上，w=2 处切线斜率为 30；以学习率 0.01 更新到 w=1.7，损失从 25 降到 16.81。")
 
 
-# ---------- 第 4 章：归一化 ----------
+# ---------- 第 10 章：归一化 ----------
 
 def norm_motivation():
     """没有归一化时，残差流尺度随层数漂移；Pre-Norm 让每个子层看到的输入 RMS 保持为 1。"""
@@ -334,7 +334,7 @@ def first_run_loss():
               f"训练损失从约 {loss[0]:.1f} 迅速降到约 {smooth[-1]:.2f}；验证损失只在开头略降，随后升到约 {log['val_loss'][-1]:.1f}，高于乱猜水平，说明模型在背诵训练集。")
 
 
-# ---------- 第 3、5、6、7、14、17 章共用工具 ----------
+# ---------- 第 9、7、3、4、14、17 章共用工具 ----------
 
 PURPLE = "#7c3aed"
 MONO = '"Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace'
@@ -359,7 +359,7 @@ def load(name):
     return json.loads(src.read_text(encoding="utf-8"))
 
 
-# ---------- 第 3 章：初始化与残差 ----------
+# ---------- 第 9 章：初始化与残差 ----------
 
 def init_fan_in():
     d = load("tinyllm-init-fan-in.json")
@@ -421,7 +421,7 @@ def residual_path():
         "输入 x 经过子层 F 后与 x 本身相加得到 y；反向时梯度 g 一路原样传回 x，另一路经过 F 的雅可比，两路相加。", 480, body)
 
 
-# ---------- 第 5 章：激活与门控前馈层 ----------
+# ---------- 第 7 章：激活与门控前馈层 ----------
 
 def activation_fit():
     d = load("tinyllm-activation-fit.json")
@@ -470,7 +470,7 @@ def swiglu_vs_ffn():
         "普通 FFN 先把 d 维升到 4d，过激活函数后降回 d，权重 8d²；SwiGLU 用 gate 与 value 两条投影升到 m 维，gate 经过 SiLU 后与 value 逐元素相乘，再降回 d，中间宽度取 8d/3 时权重也是 8d²。", 470, body)
 
 
-# ---------- 第 6 章：词元化 ----------
+# ---------- 第 3 章：词元化 ----------
 
 def utf8_lengths():
     samples = [("A", "A"), ("猫", "猫"), ("é", "é（一个码点）"), ("é", "e + 组合重音"), ("👩‍💻", "👩‍💻 组合 emoji")]
@@ -566,7 +566,7 @@ def label_shift():
         "两条样本补齐到同样长度后，input_ids 取前 n-1 位，labels 取后 n-1 位；attention_mask 中 1 表示有效、0 表示补齐；补齐位置的标签写成 -100，不参与损失，EOS 保留为最后一个目标。", 495, body)
 
 
-# ---------- 第 7 章：词嵌入与输出层 ----------
+# ---------- 第 4 章：词嵌入与输出层 ----------
 
 def embedding_lookup():
     vocab = ["<pad>", "<eos>", "我", "在", "学习", "数学"]
@@ -983,6 +983,86 @@ def vjp_matmul():
         "前向 y = x @ W；反向已知 g = ∂L/∂y，直接算 dL/dW = xᵀg 和 dL/dx = gWᵀ，两次矩阵乘法的计算量与前向同一量级。若先构造完整雅可比矩阵 dy/dW，在 d_in = d_out = 4096 时就有约 687 亿个数，FP32 下约 275 GB。", 475, body)
 
 
+# ---------- 第 5 章：自注意力 ----------
+
+def _grid(x0, y0, mat, cell, color, fmt="{:.2f}", masked=None, label=None, row_labels=None, col_labels=None):
+    out = ""
+    if label:
+        out += text(x0 + cell * mat.shape[1] / 2, y0 - 34, label, 15, color, "bold")
+    if col_labels:
+        for j, c in enumerate(col_labels):
+            out += text(x0 + j * cell + cell / 2, y0 - 8, c, 12.5, GRAY)
+    for i in range(mat.shape[0]):
+        if row_labels:
+            out += text(x0 - 8, y0 + i * cell + cell / 2 + 5, row_labels[i], 12.5, GRAY, anchor="end")
+        for j in range(mat.shape[1]):
+            off = masked is not None and masked[i, j]
+            fill = "#f1f5f9" if off else SOFT.get(color, "#ffffff")
+            out += f'<rect x="{x0 + j * cell}" y="{y0 + i * cell}" width="{cell - 3}" height="{cell - 3}" rx="5" fill="{fill}" stroke="{GRAY if off else color}" stroke-width="1.3"/>'
+            val = "-∞" if (off and fmt == "{:.2f}" and not np.isfinite(mat[i, j])) else ("0" if off else fmt.format(mat[i, j]))
+            out += text(x0 + j * cell + (cell - 3) / 2, y0 + i * cell + cell / 2 + 4, val, 14, GRAY if off else INK, "bold" if not off else "normal")
+    return out
+
+
+def attention_steps():
+    Q = np.array([[1, 0], [0, 1], [1, 1]], float)
+    K = Q.copy()
+    V = np.array([[1, 0], [0, 2], [3, 3]], float)
+    scores = Q @ K.T / np.sqrt(2)
+    fut = np.triu(np.ones((3, 3), bool), 1)
+    masked = np.where(fut, -np.inf, scores)
+    w = np.exp(masked - masked.max(1, keepdims=True))
+    w = w / w.sum(1, keepdims=True)
+    out = w @ V
+    names = ["我", "在", "学习"]
+    body = text(480, 36, "一次因果注意力：打分 → 遮住未来 → softmax → 按权重取 V", 21, weight="bold")
+    cell = 52
+    body += _grid(70, 110, scores, cell, BLUE, label="① 分数 Q·K^T / √2", row_labels=names, col_labels=names)
+    body += arrow(232, 185, 262, 185, GRAY)
+    body += _grid(300, 110, masked, cell, ORANGE, masked=fut, label="② 遮住未来", row_labels=names, col_labels=names)
+    body += arrow(462, 185, 492, 185, GRAY)
+    body += _grid(530, 110, w, cell, TEAL, masked=fut, label="③ softmax 权重", row_labels=names, col_labels=names)
+    body += arrow(692, 185, 722, 185, GRAY)
+    body += _grid(770, 110, out, cell, PURPLE, label="④ 输出 = 权重 @ V", row_labels=names, col_labels=["d0", "d1"])
+    body += text(480, 300, "每一行是一个位置：它给自己和前面每个位置打分，归一化成权重，再按权重把各位置的 V 加起来。", 14.5, GRAY)
+    body += text(480, 326, "“学习”这一行：分数 0.71、0.71、1.41 → 权重 0.25、0.25、0.50 → 输出 0.25·v0 + 0.25·v1 + 0.50·v2。", 14.5, GRAY)
+    body += text(480, 352, "“我”这一行只看得见自己，权重是 1，输出就是它自己的 V。", 14.5, GRAY)
+    svg("attention-steps.svg", "一次因果注意力的四个步骤",
+        "三个位置“我、在、学习”：先算 Q 与 K 的点积除以根号 2 得到分数；把对角线以上的未来位置改成负无穷；按行 softmax 得到权重，“学习”这一行是 0.25、0.25、0.50；最后用权重对 V 加权求和得到输出，“我”只看见自己，输出等于自己的 V。", 375, body)
+
+
+def multihead_shapes():
+    body = text(480, 36, "多头注意力的形状变化：拆开、各算各的、再拼回去", 21, weight="bold")
+    steps = [("x", "[B, T, D]", GRAY), ("qkv(x) 拆成 Q、K、V", "各 [B, T, D]", BLUE),
+             ("view：最后一维切成 H 份", "[B, T, H, D/H]", BLUE), ("transpose(1, 2)：头提到前面", "[B, H, T, D/H]", ORANGE),
+             ("每个头各做一次因果注意力", "[B, H, T, D/H]", TEAL), ("transpose 回来再 reshape", "[B, T, D]", PURPLE),
+             ("proj：各头结果混合一次", "[B, T, D]", PURPLE)]
+    for i, (what, shape, c) in enumerate(steps):
+        y = 64 + i * 56
+        body += cbox(140, y, 420, 44, c) + text(350, y + 28, what, 15, INK, "bold")
+        body += mtext(700, y + 28, shape, 17, c, "bold")
+        if i:
+            body += arrow(350, y - 12, 350, y - 2, GRAY, 2)
+    body += text(480, 470, "D = 8、H = 2 时：每个头只看 4 维，两个头可以各自关注不同的关系，计算量和一个 8 维的头相同。", 14.5, GRAY)
+    svg("multihead-shapes.svg", "多头注意力的形状变化",
+        "输入 x 的形状是 B、T、D；线性层算出 Q、K、V；把最后一维切成 H 份并转置成 B、H、T、D/H；每个头各做一次因果注意力；再转置、reshape 拼回 B、T、D，最后经过输出投影。", 495, body)
+
+
+def attention_ablation():
+    d = load("tinyllm-attention-ablation.json")
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for (name, r), color in zip(d.items(), [TEAL, RED]):
+        loss = np.array(r["loss"])
+        smooth = np.convolve(loss, np.ones(15) / 15, mode="valid")
+        ax.plot(np.arange(len(smooth)) + 7, smooth, color=color, lw=2.4, label=f"{name}（最后 50 步平均 {loss[-50:].mean():.2f}）")
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("训练损失（15 步滑动平均）")
+    ax.legend(loc="upper right", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "attention-ablation.svg", "有无注意力的训练损失",
+              "同一份唐诗语料、同一个模型、同样 600 步：有注意力时训练损失降到约 0.11；把注意力去掉后，每个位置只能看到自己，损失停在约 1.6。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -1025,10 +1105,10 @@ def main():
     norm_geometry()
     pre_post_norm()
     first_run_loss()
-    # 第 3、5、6、7、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
+    # 第 9、7、3、4、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
-               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul):
+               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation):
         fn()
     print("figures written to", OUT)
 

@@ -6,7 +6,7 @@ pageClass: tinyllm-course
 
 # 第 2 章：张量与自动求导
 
-[课程总览](./index.md) · [上一章](./first-run.md) · [下一章](./initialization-and-residuals.md)
+[课程总览](./index.md) · [上一章](./first-run.md) · [下一章](./tokenization.md)
 
 ::: tip 本章学习目标
 能读出 `[batch, seq, hidden]` 形状每一轴的含义，判断两个形状能否广播；能手算一个单参数例子的梯度，并解释 `loss.backward()` 和 `optimizer.step()` 各做了什么；说清楚为什么参数再多，一次反向传播也能拿到全部梯度。
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 <TinyLLMMap active="tensors-and-autograd" />
 
-本文中的“token”暂时理解为文本中的一个编号，就像第 1 章里每个字的编号；分词的细节留到[第 6 章](./tokenization.md)。
+本文中的“token”暂时理解为文本中的一个编号，就像第 1 章里每个字的编号；分词的细节留到[第 3 章](./tokenization.md)。
 
 ## 从一批 token 到隐藏向量
 
@@ -42,7 +42,7 @@ token 编号只是索引，不能直接告诉模型“这个词有什么特征�
 
 ![两张 3 行 4 列的表分别代表两条样本，每行是一个 token 的 4 个特征；第 0 张表第 1 行被高亮，值为 4、5、6、7](/tinyllm/figures/tensor-shape.svg)
 
-看张量时再留意三个属性：`ndim` 是轴数，`dtype` 是每个数的类型，`device` 是它存放和计算的位置。上面的 `token_ids` 是整数；`hidden` 是浮点数。可训练参数通常也是浮点数。`torch.tensor(...)` 用现有数据创建张量，`torch.zeros(...)` 创建全零张量，`torch.randn(...)` 创建随机张量；模型参数该怎样初始化要在 [第 3 章](initialization-and-residuals.md) 再讨论。
+看张量时再留意三个属性：`ndim` 是轴数，`dtype` 是每个数的类型，`device` 是它存放和计算的位置。上面的 `token_ids` 是整数；`hidden` 是浮点数。可训练参数通常也是浮点数。`torch.tensor(...)` 用现有数据创建张量，`torch.zeros(...)` 创建全零张量，`torch.randn(...)` 创建随机张量；模型参数该怎样初始化要在 [第 9 章](initialization-and-residuals.md) 再讨论。
 
 ## 改变形状，还是交换轴？
 
@@ -180,7 +180,7 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 
 前面的主线足够理解本章。配套 notebook 还安排了几组实验，帮助你读后面的模型代码：
 
-1. <strong>轴交换。</strong>注意力里的 Q、K 通常有 `[batch, heads, seq, head_dim]` 四个轴。`q @ k.transpose(-2, -1)` 交换 K 的最后两轴，得到 `[batch, heads, query_len, key_len]` 的分数。先能解释前三轴为何保留，再读这行代码；完整注意力机制留到 第 9 章。
+1. <strong>轴交换。</strong>注意力里的 Q、K 通常有 `[batch, heads, seq, head_dim]` 四个轴。`q @ k.transpose(-2, -1)` 交换 K 的最后两轴，得到 `[batch, heads, query_len, key_len]` 的分数。先能解释前三轴为何保留，再读这行代码；完整注意力机制留到 第 5 章。
 2. <strong>梯度核对。</strong>把 $w$ 分别改为 $w+h$ 和 $w-h$，用 $[L(w+h)-L(w-h)]/(2h)$ 估计梯度。这叫中心差分，是近似值；在适当的 $h$ 和 `float64` 下，应接近手算与自动求导得到的 30。
 3. <strong>停止记录梯度。</strong>`no_grad()` 阻止代码块中的新运算进入求导图；`detach()` 使已有结果脱离原图；`model.eval()` 只改变某些层（如 Dropout）的运行方式，本身不会关闭梯度记录。
 4. <strong>计算设备。</strong>CPU 足够运行本章。若把模型放在 CUDA 或 MPS 上，输入也要放在同一设备。notebook 的可选实验只检查小型前向和反向能否运行。MLX 是另一套框架，`mx.grad` 与 PyTorch 的 `backward()` 不能混用。
@@ -236,4 +236,4 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 - [PyTorch《通过实例学习 PyTorch》：张量与自动求导](https://docs.pytorch.ac.cn/tutorials/beginner/pytorch_with_examples.html)（本章沿用它的学习顺序，换成 TinyLLM 的形状和可手算的例子）
 - [PyTorch 广播规则](https://docs.pytorch.org/docs/stable/notes/broadcasting.html) · [自动求导入门](https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html)
 
-下一章看参数从哪里开始、信号怎样穿过更深的网络：[第 3 章：初始化与残差路径](./initialization-and-residuals.md)。
+工具备齐了。下一章开始沿着总图从上往下搭模型，第一步是把文字变成编号：[第 3 章：文本与词元化](./tokenization.md)。

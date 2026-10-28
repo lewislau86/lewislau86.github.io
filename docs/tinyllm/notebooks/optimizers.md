@@ -119,7 +119,7 @@ print("更新后的参数:", [round(p.item(), 4) for p in model.parameters()])
 ```
 
 ```text
-更新后的参数: [2.6217, 0.7567]
+更新后的参数: [2.2352, 1.5297]
 ```
 
 ::: v-pre

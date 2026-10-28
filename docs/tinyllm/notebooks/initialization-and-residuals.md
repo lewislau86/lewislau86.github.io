@@ -1,5 +1,5 @@
 ---
-title: "第 3 章：初始化与残差路径（notebook 在线查看）"
+title: "第 9 章：初始化与残差路径（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 3 章：初始化与残差路径
+# 第 9 章：初始化与残差路径
 
 配套教案：https://lewislau86.github.io/tinyllm/initialization-and-residuals
 
@@ -233,6 +233,9 @@ for depth in [4, 16, 32]:
 depth= 4 seed= 7 final_RMS=1.387 input_grad_RMS=0.01559
 depth= 4 seed=11 final_RMS=1.385 input_grad_RMS=0.01647
 depth= 4 seed=19 final_RMS=1.463 input_grad_RMS=0.01789
+```
+
+```text
 depth=16 seed= 7 final_RMS=1.446 input_grad_RMS=0.01732
 depth=16 seed=11 final_RMS=1.340 input_grad_RMS=0.01626
 depth=16 seed=19 final_RMS=1.402 input_grad_RMS=0.01604

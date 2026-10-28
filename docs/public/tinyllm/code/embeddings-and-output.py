@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 7 章：词嵌入与输出层
+# # 第 4 章：词嵌入与输出层
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/embeddings-and-output
 #
@@ -163,26 +163,6 @@ assert torch.allclose(weights[0, 1:], torch.zeros(2))
 # endregion qkv
 print("嵌入/位置后:", x.shape, "Q/K/V:", q.shape, k.shape, v.shape)
 print("注意力权重:\n", weights)
-
-# %% [markdown]
-# ## 6. KV cache 是计算复用
-#
-# 逐步生成时保留旧 K/V；每个新位置重新计算 Q 与所有 K 的分数。下面比较一次性因果注意力和逐步缓存的结果。
-
-# %%
-# region kv-cache
-cached_k, cached_v, incremental = [], [], []
-for t in range(len(x)):
-    q_t = q_proj(x[t:t+1])
-    cached_k.append(k_proj(x[t:t+1]))
-    cached_v.append(v_proj(x[t:t+1]))
-    all_k, all_v = torch.cat(cached_k), torch.cat(cached_v)
-    attention_t = (q_t @ all_k.T / math.sqrt(4)).softmax(dim=-1)
-    incremental.append(attention_t @ all_v)
-assert torch.allclose(torch.cat(incremental), context, atol=1e-6)
-# endregion kv-cache
-print("全量与逐步 KV 复用最大误差:", (torch.cat(incremental) - context).abs().max().item())
-print("缓存位置数:", len(cached_k), "；缓存的是 K/V，不是注意力分数")
 
 # %% [markdown]
 # 同一个词元的静态查表向量、当前层的 K、检索模型的整段文本向量分别有不同用途。缓存中的 K/V 依赖层、位置与本次前缀，不能当作跨会话语义索引。

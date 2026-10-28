@@ -1,12 +1,12 @@
 ---
-title: "第 6 章：文本与词元化"
+title: "第 3 章：文本与词元化"
 description: "文字怎样变成整数编号：Unicode 与字节、BPE 的训练与编码、特殊 token 协议，以及词表大小的取舍。"
 pageClass: tinyllm-course
 ---
 
-# 第 6 章：文本与词元化
+# 第 3 章：文本与词元化
 
-[课程总览](./index.md) · [上一章](./activations-and-ffn.md) · [下一章](./embeddings-and-output.md)
+[课程总览](./index.md) · [上一章](./tensors-and-autograd.md) · [下一章](./embeddings-and-output.md)
 
 ::: tip 本章学习目标
 区分字形、码点、字节与 token 四种长度；手推几步 BPE 合并；训练一个能还原原文的小分词器，并说明特殊 token、补齐与训练标签怎样配合。
@@ -32,7 +32,7 @@ $$
 \text{文本}\ \longrightarrow\ (t_1,\ldots,t_n)\ \longrightarrow\ (E[t_1],\ldots,E[t_n]).
 $$
 
-若词表有 $V$ 个条目、每个向量有 $d$ 个分量，$E$ 的形状就是 $[V,d]$。<strong>Tokenizer 决定“哪个片段对应哪一行”，模型训练决定“这一行的向量是什么”。</strong>后者在 [第 7 章：词嵌入与输出层](embeddings-and-output.md) 展开。
+若词表有 $V$ 个条目、每个向量有 $d$ 个分量，$E$ 的形状就是 $[V,d]$。<strong>Tokenizer 决定“哪个片段对应哪一行”，模型训练决定“这一行的向量是什么”。</strong>后者在 [第 4 章：词嵌入与输出层](embeddings-and-output.md) 展开。
 
 | 名称 | 含义 | 一个可能的例子 |
 | --- | --- | --- |
@@ -179,7 +179,7 @@ python -m pip install tokenizers==0.23.3 plotly==7.1.0
 这里出现了三种“遮住”，各管一件事：
 
 - <strong>padding attention mask</strong> 告诉注意力哪些位置是补齐的；本例 1 表示有效、0 表示补齐。
-- <strong>causal mask</strong> 让每个位置只看自己和之前的位置，在注意力层里构造（[第 9 章](self-attention.md)），本段代码没有实现。
+- <strong>causal mask</strong> 让每个位置只看自己和之前的位置，在注意力层里构造（[第 5 章](self-attention.md)），本段代码没有实现。
 - <strong>loss mask</strong> 决定哪些目标参与损失。本例用 `-100` 表示忽略，后续损失函数要设同样的 `ignore_index`。
 
 当 PAD 与 EOS 共用同一个 ID 时，按 `label == pad_id` 删除目标会把 EOS 一起删掉；应按真实长度或补齐掩码判断，像上面的代码那样。
@@ -340,4 +340,4 @@ Notebook 提供 NFC、词表预算和最短切分的参考答案。验证记录�
 - [TokEval，COLM 2026](https://arxiv.org/abs/2608.18062)
 - [Byte Latent Transformer，2024](https://arxiv.org/abs/2412.09871)
 
-下一章把这些编号接到词嵌入矩阵，再从向量变回词表上的分数：[第 7 章：词嵌入与输出层](./embeddings-and-output.md)。
+下一章把这些编号接到词嵌入矩阵，再从向量变回词表上的分数：[第 4 章：词嵌入与输出层](./embeddings-and-output.md)。

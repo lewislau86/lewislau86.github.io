@@ -6,7 +6,7 @@ pageClass: tinyllm-course
 
 # 第 11 章：完整 TinyLLM
 
-[课程总览](./index.md) · [上一章](./transformer-block.md) · [下一章](./data-pipeline.md)
+[课程总览](./index.md) · [上一章](./normalization.md) · [下一章](./data-pipeline.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：组装 Decoder-only 模型，检查参数量、前向形状和下一 token logits。

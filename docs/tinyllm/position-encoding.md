@@ -1,12 +1,12 @@
 ---
-title: "第 8 章：位置表示"
+title: "第 6 章：位置表示"
 description: "模型怎样知道字的先后顺序：绝对位置编码与 RoPE。"
 pageClass: tinyllm-course
 ---
 
-# 第 8 章：位置表示
+# 第 6 章：位置表示
 
-[课程总览](./index.md) · [上一章](./embeddings-and-output.md) · [下一章](./self-attention.md)
+[课程总览](./index.md) · [上一章](./self-attention.md) · [下一章](./activations-and-ffn.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：绝对位置编码、RoPE，位置作用于注意力的哪个环节。

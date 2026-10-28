@@ -12,7 +12,7 @@ next: false
 ::: tip 本章学习目标
 区分“范围太窄导致溢出/下溢”和“刻度太粗导致舍入”，并能用 `torch.finfo` 查出三种格式的界限；说明输入、中间累加和输出为何可能使用不同精度；读懂 `torch.autocast` 的基本用法，知道什么时候需要 `GradScaler`。
 
-**前置：** 张量与矩阵乘法；[第 4 章](./normalization.md)的归一化。
+**前置：** 张量与矩阵乘法；[第 10 章](./normalization.md)的归一化。
 
 **实践方式：** [precision.ipynb](/tinyllm/notebooks/precision)（也可以直接运行 <a href="/tinyllm/code/precision.py" download>precision.py</a>），基础实验只需 CPU；有 CUDA、MPS 或 MLX 时可运行加速实验。
 :::
@@ -87,7 +87,7 @@ $$
 \mathrm{softmax}(x_i)=\frac{\exp(x_i-m)}{\sum_j\exp(x_j-m)},\qquad m=\max_j x_j.
 $$
 
-这里的“稳定”指<strong>改写计算路径，让中间值保持在可表示范围内</strong>，浮点格式本身的位数没有变。PyTorch 的 `torch.softmax` 内部已经这样做；教学实验里的“直接 `exp`”只用来展示风险。结果有限之后，仍要和高精度参考比较误差。减最大值解决的是指数溢出；注意力分数差距过大时，softmax 输出虽然有限，概率仍可能贴近 0 或 1（饱和），这要靠[第 9 章](self-attention.md#qk-norm)的缩放和 QK Norm 处理。[PyTorch 数值精度说明](https://docs.pytorch.org/docs/stable/notes/numerical_accuracy.html)
+这里的“稳定”指<strong>改写计算路径，让中间值保持在可表示范围内</strong>，浮点格式本身的位数没有变。PyTorch 的 `torch.softmax` 内部已经这样做；教学实验里的“直接 `exp`”只用来展示风险。结果有限之后，仍要和高精度参考比较误差。减最大值解决的是指数溢出；注意力分数差距过大时，softmax 输出虽然有限，概率仍可能贴近 0 或 1（饱和），这要靠[第 5 章](self-attention.md#qk-norm)的缩放和 QK Norm 处理。[PyTorch 数值精度说明](https://docs.pytorch.org/docs/stable/notes/numerical_accuracy.html)
 
 ## 4. 输入、累加、输出是三个不同环节
 
@@ -159,9 +159,9 @@ Apple silicon 上有两条独立路径：PyTorch 的 `device="mps"` 仍使用 Py
 
 | 位置与现象                 | 精度问题是什么                                                            | 对应章节要讲什么                                                                                                                                                              |
 | --------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 初始化和深层残差：激活逐层变大或变小    | FP16 中间结果可能溢出或下溢；即使保持有限，也可能有舍入误差                                   | [第 3 章](initialization-and-residuals.md)与[第 25 章](large-model-stability.md)分别讲初始化/残差缩放及更深网络的稳定结构；本章提供判断数值范围的方法。                                                                                                     |
-| 归一化：计算均值、方差或均方根       | 平方、求和、减均值也受 dtype 影响；归一化只控制所在位置及后续的尺度                             | [第 4 章](normalization.md) 讲算法和位置；本章解释 FP16/BF16 的表示范围与中间精度。                                    |
-| 注意力：Q/K 点积进入 softmax  | 点积可能过大；即使减最大值防止 `exp` 溢出，分数差距很大时概率仍可接近 0/1                         | 第 9 章讲缩放点积、mask 和 softmax；[第 9 章的 QK Norm](self-attention.md#qk-norm) 讲怎样在点积前控制 Q/K 尺度。 |
+| 初始化和深层残差：激活逐层变大或变小    | FP16 中间结果可能溢出或下溢；即使保持有限，也可能有舍入误差                                   | [第 9 章](initialization-and-residuals.md)与[第 25 章](large-model-stability.md)分别讲初始化/残差缩放及更深网络的稳定结构；本章提供判断数值范围的方法。                                                                                                     |
+| 归一化：计算均值、方差或均方根       | 平方、求和、减均值也受 dtype 影响；归一化只控制所在位置及后续的尺度                             | [第 10 章](normalization.md) 讲算法和位置；本章解释 FP16/BF16 的表示范围与中间精度。                                    |
+| 注意力：Q/K 点积进入 softmax  | 点积可能过大；即使减最大值防止 `exp` 溢出，分数差距很大时概率仍可接近 0/1                         | 第 5 章讲缩放点积、mask 和 softmax；[第 5 章的 QK Norm](self-attention.md#qk-norm) 讲怎样在点积前控制 Q/K 尺度。 |
 | 语言模型损失：用 logits 计算交叉熵 | 先算概率、再取对数可能产生 `log(0)`；稳定的 log-sum-exp 计算路径更合适                   | 第 13 章讲交叉熵和 loss mask；本章的 softmax 实验提供数值直觉。                                                                                                                      |
 | 反向传播：梯度很小或很大          | FP16 小梯度可能下溢；大梯度或中间反向值可能溢出。Loss Scaling 主要处理前者，梯度裁剪用于限制梯度范数，两者目的不同 | 第 18 章讲 `GradScaler`、裁剪与梯度累积；本章只讲浮点格式为何会遇到这些问题。                                                                                                                  |
 | 优化器与训练循环：更新量很小        | 低精度舍入可能使很小的更新难以反映在参数中；前向的 `NaN/inf` 也会传到损失和梯度                      | [第 14 章](optimizers.md)讲参数更新，第 19 章讲 autocast、backward 和 step 的调用顺序，第 20 章讲监测 loss、梯度与非有限值。                                                                             |

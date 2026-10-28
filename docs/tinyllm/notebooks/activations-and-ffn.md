@@ -1,5 +1,5 @@
 ---
-title: "第 5 章：激活函数与门控前馈层（notebook 在线查看）"
+title: "第 7 章：激活函数与门控前馈层（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 5 章：激活函数与门控前馈层
+# 第 7 章：激活函数与门控前馈层
 
 配套教案：https://lewislau86.github.io/tinyllm/activations-and-ffn
 
@@ -174,9 +174,6 @@ assert plain(x12).shape == gated(x12).shape == x12.shape
 ```text
 torch.Size([2, 3, 8])
 plain up: (2, 3, 48) output: (2, 3, 12)
-```
-
-```text
 gate/value: (2, 3, 32) (2, 3, 32) output: (2, 3, 12)
 ```
 

@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 3 章：初始化与残差路径
+# # 第 9 章：初始化与残差路径
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/initialization-and-residuals
 #

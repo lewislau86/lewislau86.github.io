@@ -23,43 +23,53 @@
     ]
   },
   {
-    "text": "第二部分 · 可训练的网络",
+    "text": "第二部分 · 工具",
     "collapsed": false,
     "items": [
       {
         "text": "第 2 章 · 张量与自动求导",
         "link": "/tinyllm/tensors-and-autograd"
+      }
+    ]
+  },
+  {
+    "text": "第三部分 · 沿数据流搭模型",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 3 章 · 文本与词元化",
+        "link": "/tinyllm/tokenization"
       },
       {
-        "text": "第 3 章 · 初始化与残差路径",
-        "link": "/tinyllm/initialization-and-residuals"
+        "text": "第 4 章 · 词嵌入与输出层",
+        "link": "/tinyllm/embeddings-and-output"
       },
       {
-        "text": "第 4 章 · 归一化",
-        "link": "/tinyllm/normalization"
+        "text": "第 5 章 · 自注意力",
+        "link": "/tinyllm/self-attention"
       },
       {
-        "text": "第 5 章 · 激活函数与门控前馈层",
+        "text": "第 7 章 · 激活函数与门控前馈层",
         "link": "/tinyllm/activations-and-ffn"
       }
     ]
   },
   {
-    "text": "第三部分 · 构造语言模型",
+    "text": "第四部分 · 让深层网络训得动",
     "collapsed": false,
     "items": [
       {
-        "text": "第 6 章 · 文本与词元化",
-        "link": "/tinyllm/tokenization"
+        "text": "第 9 章 · 初始化与残差路径",
+        "link": "/tinyllm/initialization-and-residuals"
       },
       {
-        "text": "第 7 章 · 词嵌入与输出层",
-        "link": "/tinyllm/embeddings-and-output"
+        "text": "第 10 章 · 归一化",
+        "link": "/tinyllm/normalization"
       }
     ]
   },
   {
-    "text": "第四部分 · 数据与训练",
+    "text": "第五部分 · 数据与训练",
     "collapsed": false,
     "items": [
       {
@@ -77,15 +87,11 @@
     "collapsed": true,
     "items": [
       {
-        "text": "第 8 章 · 位置表示",
+        "text": "第 6 章 · 位置表示",
         "link": "/tinyllm/position-encoding"
       },
       {
-        "text": "第 9 章 · 自注意力",
-        "link": "/tinyllm/self-attention"
-      },
-      {
-        "text": "第 10 章 · Transformer Block",
+        "text": "第 8 章 · Transformer Block",
         "link": "/tinyllm/transformer-block"
       },
       {

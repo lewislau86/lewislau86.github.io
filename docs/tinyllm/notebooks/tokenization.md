@@ -1,5 +1,5 @@
 ---
-title: "第 6 章：文本与词元化（notebook 在线查看）"
+title: "第 3 章：文本与词元化（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 6 章：文本与词元化
+# 第 3 章：文本与词元化
 
 配套教案：https://lewislau86.github.io/tinyllm/tokenization
 

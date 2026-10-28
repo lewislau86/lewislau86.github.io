@@ -1,17 +1,17 @@
 ---
-title: "第 4 章：归一化"
+title: "第 10 章：归一化"
 description: "每个 token 的向量为什么要先“量一量尺寸”再送进子层；LayerNorm、RMSNorm、ScaleNorm 怎样算，放在 Block 的哪里。"
 pageClass: tinyllm-course
 ---
 
-# 第 4 章：归一化
+# 第 10 章：归一化
 
-[课程总览](./index.md) · [上一章](./initialization-and-residuals.md) · [下一章](./activations-and-ffn.md)
+[课程总览](./index.md) · [上一章](./initialization-and-residuals.md) · [下一章](./tinyllm-model.md)
 
 ::: tip 本章学习目标
 对形状为 `[batch, seq, d]` 的隐藏状态，说清楚归一化沿哪一维计算；能手算 LayerNorm、RMSNorm 的输出；能画出 Pre-Norm 与 Post-Norm 的数据流，并解释 TinyLLM 为什么选 Pre-Norm + RMSNorm。
 
-**前置：** [第 2 章](./tensors-and-autograd.md)的张量形状，[第 3 章](./initialization-and-residuals.md)的残差连接。
+**前置：** [第 2 章](./tensors-and-autograd.md)的张量形状，[第 9 章](./initialization-and-residuals.md)的残差连接。
 
 **实践方式：** [normalization.ipynb](/tinyllm/notebooks/normalization)（也可以直接运行 <a href="/tinyllm/code/normalization.py" download>normalization.py</a>），CPU 即可，不需要训练模型。
 :::
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## 问题：信号越往深处走，尺寸越难控制
 
-[第 3 章](./initialization-and-residuals.md)把 Block 写成“旧状态 + 子层更新”。每经过一层，残差流就多加一份更新。下面的实验把 32 个随机初始化的子层叠起来，记录每一层**子层实际收到的输入**有多大（用均方根 RMS 衡量）：
+[第 9 章](./initialization-and-residuals.md)把 Block 写成“旧状态 + 子层更新”。每经过一层，残差流就多加一份更新。下面的实验把 32 个随机初始化的子层叠起来，记录每一层**子层实际收到的输入**有多大（用均方根 RMS 衡量）：
 
 ![32 层随机残差网络中各层子层输入的 RMS：不做归一化时随层数指数增长到约 100；Pre-Norm 时子层输入始终约为 1，残差流本身缓慢增长](/tinyllm/figures/norm-motivation.svg)
 
@@ -151,7 +151,7 @@ Pre-Norm 有一个副作用：残差流本身从不被归一化，会随层数�
 | 平移与缩放 | `x`、`x+c`、`a*x` | 正数缩放 $a$ 对三者都几乎没有影响；平移只有 LayerNorm 不受影响 |
 | 教学版实现 | 自己写的 LayerNorm/RMSNorm | 输出和梯度与 `nn.LayerNorm`、`nn.RMSNorm` 一致 |
 
-notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第 9 章](./self-attention.md#qk-norm)和[第 25 章](./large-model-stability.md#deepnorm)；有 Apple 芯片的读者可选运行最后的 MLX 对照。
+notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第 5 章](./self-attention.md#qk-norm)和[第 25 章](./large-model-stability.md#deepnorm)；有 Apple 芯片的读者可选运行最后的 MLX 对照。
 
 ## 8. 延伸：其他与归一化有关的方法
 
@@ -159,7 +159,7 @@ notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第
 
 | 方法 | 管什么 | 和本章的关系 | 详见 |
 | --- | --- | --- | --- |
-| QK Norm | 注意力内部 Q、K 的尺度 | 可与 RMSNorm 同时使用（Qwen3、Gemma 3、OLMo 2） | [第 9 章](./self-attention.md#qk-norm) |
+| QK Norm | 注意力内部 Q、K 的尺度 | 可与 RMSNorm 同时使用（Qwen3、Gemma 3、OLMo 2） | [第 5 章](./self-attention.md#qk-norm) |
 | DeepNorm | 极深网络的残差系数与初始化 | 是一整套结构方案，不是换一层 | [第 25 章](./large-model-stability.md#deepnorm) |
 | pRMSNorm | 只用部分维度估计 RMS | RMSNorm 的近似变体 | [RMSNorm 论文](https://arxiv.org/abs/1910.07467) |
 | NormFormer、Sandwich Norm | 增加归一化的位置 | 位置变体 | [NormFormer](https://arxiv.org/abs/2110.09456) |
@@ -172,7 +172,7 @@ notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第
 
 理由：Pre-Norm 保留一条不经处理的残差直通路径，训练更平稳；RMSNorm 只控制尺度，公式简单，[LLaMA](https://arxiv.org/abs/2302.13971) 等公开模型采用同样的组合。
 
-什么时候改：复现使用 LayerNorm 的模型（如 GPT-2）时，照原模型来；训练中注意力分数失控时，在注意力里加 QK Norm（第 9 章）；网络非常深时，再整套评估 DeepNorm（第 25 章）。加载预训练权重时，不能只因“RMSNorm 更常用”就替换原模型的归一化层。
+什么时候改：复现使用 LayerNorm 的模型（如 GPT-2）时，照原模型来；训练中注意力分数失控时，在注意力里加 QK Norm（第 5 章）；网络非常深时，再整套评估 DeepNorm（第 25 章）。加载预训练权重时，不能只因“RMSNorm 更常用”就替换原模型的归一化层。
 
 ::: warning 常见误区
 - **`F.normalize` 一定要写 `dim=-1`。** 它默认 `dim=1`，对 `[batch, seq, d]` 会沿 seq 归一化，结果完全不对。
@@ -225,4 +225,4 @@ notebook 后半部分还有 QK Norm 和 DeepNorm 的单元格，分别对应[第
 - [LLaMA，Touvron 等，2023](https://arxiv.org/abs/2302.13971) · [Gemma 2，2024](https://arxiv.org/abs/2408.00118) · [Qwen3，2025](https://arxiv.org/abs/2505.09388)
 - [PyTorch LayerNorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.LayerNorm.html) · [RMSNorm](https://docs.pytorch.org/docs/stable/generated/torch.nn.RMSNorm.html) · [`F.normalize`](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.normalize.html)
 
-下一章把子层里的前馈层拆开：[第 5 章：激活函数与门控前馈层](./activations-and-ffn.md)。
+到这里，让深层网络训得动的三件工具都齐了：残差、初始化、归一化。下一章把所有零件组装成完整的 TinyLLM：[第 11 章：完整 TinyLLM](./tinyllm-model.md)（规划中）；已完成的后续章节是[第 14 章：优化器](./optimizers.md)。

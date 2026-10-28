@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 5 章：激活函数与门控前馈层
+# # 第 7 章：激活函数与门控前馈层
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/activations-and-ffn
 #
