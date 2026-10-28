@@ -9,6 +9,7 @@ import RopeSlider from './components/RopeSlider.vue'
 import OptimizerRace from './components/OptimizerRace.vue'
 import BackpropFlow from './components/BackpropFlow.vue'
 import KVCacheRace from './components/KVCacheRace.vue'
+import ResidualStreamLens from './components/ResidualStreamLens.vue'
 import './style.css'
 
 export default {
@@ -26,5 +27,6 @@ export default {
     app.component('OptimizerRace', OptimizerRace)         // 第 14 章
     app.component('BackpropFlow', BackpropFlow)           // 第 2 章
     app.component('KVCacheRace', KVCacheRace)             // 第 24 章
+    app.component('ResidualStreamLens', ResidualStreamLens) // 第 8 章
   }
 } satisfies Theme

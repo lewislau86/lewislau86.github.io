@@ -35,6 +35,7 @@ pageClass: tinyllm-course
 | [第 5 章 · 自注意力](./self-attention.md) | Q/K/V、缩放点积、因果掩码、多头注意力；去掉注意力的对照实验与长度平方的代价 | [查看](/tinyllm/notebooks/self-attention) |
 | [第 6 章 · 位置表示](./position-encoding.md) | 注意力为什么分不出先后；可学习绝对位置、正弦编码、RoPE；背诗与数位置两个对照实验，超过训练长度时的表现 | [查看](/tinyllm/notebooks/position-encoding) |
 | [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [查看](/tinyllm/notebooks/activations-and-ffn) |
+| [第 8 章 · Transformer Block](./transformer-block.md) | 直接堆叠为什么越深越训不动；Pre-Norm 残差 Block、约 12d² 的参数量；逐层读出残差流里的预测 | [查看](/tinyllm/notebooks/transformer-block) |
 | [第 9 章 · 初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [查看](/tinyllm/notebooks/initialization-and-residuals) |
 | [第 10 章 · 归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [查看](/tinyllm/notebooks/normalization) |
 | [第 14 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [查看](/tinyllm/notebooks/optimizers) |
@@ -63,7 +64,7 @@ pageClass: tinyllm-course
 - [第 5 章 · 自注意力](./self-attention.md)
 - [第 6 章 · 位置表示](./position-encoding.md)
 - [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md)
-- [第 8 章 · Transformer Block](./transformer-block.md)（规划中）
+- [第 8 章 · Transformer Block](./transformer-block.md)
 
 ### 第四部分 · 让深层网络训得动
 

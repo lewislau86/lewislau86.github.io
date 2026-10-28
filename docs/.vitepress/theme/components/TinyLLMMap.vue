@@ -9,7 +9,7 @@ const props = defineProps<{ active?: string; caption?: boolean }>()
 
 const done = new Set([
   'first-run', 'tensors-and-autograd', 'initialization-and-residuals', 'normalization',
-  'activations-and-ffn', 'tokenization', 'self-attention', 'position-encoding', 'embeddings-and-output', 'optimizers', 'precision'
+  'activations-and-ffn', 'transformer-block', 'tokenization', 'self-attention', 'position-encoding', 'embeddings-and-output', 'optimizers', 'precision'
 ])
 
 type Node = { id: string; label: string; ch: number; slug: string; x: number; y: number; w: number; h: number }

@@ -55,6 +55,10 @@
       {
         "text": "第 7 章 · 激活函数与门控前馈层",
         "link": "/tinyllm/activations-and-ffn"
+      },
+      {
+        "text": "第 8 章 · Transformer Block",
+        "link": "/tinyllm/transformer-block"
       }
     ]
   },
@@ -90,10 +94,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 8 章 · Transformer Block",
-        "link": "/tinyllm/transformer-block"
-      },
       {
         "text": "第 11 章 · 完整 TinyLLM",
         "link": "/tinyllm/tinyllm-model"

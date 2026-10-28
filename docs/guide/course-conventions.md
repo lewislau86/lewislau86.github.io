@@ -147,6 +147,7 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 | 第 2 章 | `<BackpropFlow />` | `tinyllm-autograd-chain.json`（tensors-and-autograd.py） |
 | 第 5 章 | `<AttentionStepper />` | `tinyllm-attention-steps.json`（self-attention.py） |
 | 第 6 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
+| 第 8 章 | `<ResidualStreamLens />` | `tinyllm-block-depth.json`（transformer-block.py） |
 | 第 14 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
 | 第 24 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
 

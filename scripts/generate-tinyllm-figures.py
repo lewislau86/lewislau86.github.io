@@ -1063,6 +1063,93 @@ def attention_ablation():
               "同一份唐诗语料、同一个模型、同样 600 步：有注意力时训练损失降到约 0.11；把注意力去掉后，每个位置只能看到自己，损失停在约 1.6。")
 
 
+# ---------- 第 8 章：Transformer Block ----------
+
+def block_anatomy():
+    d = load("tinyllm-block-depth.json")["params"]
+    body = text(480, 38, "同样两个子层，两种装法", 22, weight="bold")
+    # 左：直接堆叠
+    cx = 220
+    body += text(cx, 80, "直接堆叠", 19, RED, "bold")
+    body += mtext(cx, 112, "x  [B, T, d]", 16)
+    body += arrow(cx, 120, cx, 146)
+    body += cbox(cx - 120, 148, 240, 58, BLUE) + text(cx, 172, "注意力", 18, BLUE, "bold") + text(cx, 195, "token 之间交换信息", 14, GRAY)
+    body += arrow(cx, 206, cx, 236)
+    body += cbox(cx - 120, 238, 240, 58, TEAL) + text(cx, 262, "SwiGLU 前馈层", 18, TEAL, "bold") + text(cx, 285, "每个 token 自己加工", 14, GRAY)
+    body += arrow(cx, 296, cx, 322)
+    body += mtext(cx, 342, "out  [B, T, d]", 16)
+    body += text(cx, 392, "x 被整个替换掉：", 15, RED)
+    body += text(cx, 416, "下一层只能看到这一层的输出", 15, RED)
+    # 右：Pre-Norm 残差
+    sx, bx = 560, 760          # 残差流的 x 坐标、子层的中心
+    body += text(680, 80, "Pre-Norm 残差 Block（TinyLLM 采用）", 19, TEAL, "bold")
+    body += mtext(sx, 112, "x  [B, T, d]", 16)
+    body += f'<path d="M{sx} 122 V500" stroke="{INK}" stroke-width="6" fill="none" opacity="0.18"/>'
+    body += text(sx - 16, 320, "残差流", 15, GRAY, anchor="end")
+    for k, (y, name, color, role, n) in enumerate([(150, "注意力", BLUE, "token 之间交换信息", d["attn"]),
+                                                   (330, "SwiGLU", TEAL, "每个 token 自己加工", d["ffn"])]):
+        body += path(f"M{sx} {y + 6} H{bx - 112}", GRAY, 2)
+        body += cbox(bx - 110, y - 16, 110, 40, PURPLE) + text(bx - 55, y + 10, "RMSNorm", 15, PURPLE, "bold")
+        body += arrow(bx, y + 24, bx, y + 44, GRAY, 2)
+        body += cbox(bx - 125, y + 46, 250, 56, color) + text(bx, y + 70, f"{name} · {n:,} 个参数", 16, color, "bold") + text(bx, y + 92, role, 13.5, GRAY)
+        body += path(f"M{bx} {y + 102} V{y + 128} H{sx + 20}", color, 2.5)
+        body += circle(sx, y + 128, 16) + text(sx, y + 135, "+", 22, weight="bold")
+    body += arrow(sx, 474, sx, 500, GRAY)
+    body += mtext(sx, 522, "out  [B, T, d]", 16)
+    body += text(650, 500, "子层只读一份归一化后的副本，结果加回 x", 14, TEAL, anchor="start")
+    body += text(650, 522, f"d = {d['d']}；两个 RMSNorm 共 {d['norm']} 个参数", 14, GRAY, anchor="start")
+    body += f'<line x1="440" y1="66" x2="440" y2="440" stroke="#e2e8f0" stroke-width="2"/>'
+    svg("block-anatomy.svg", "Transformer Block 的两种装法",
+        f"左：直接堆叠，x 先过注意力再过 SwiGLU，输出整个替换 x。右：Pre-Norm 残差 Block，x 沿残差流一路向下，两次分出副本经 RMSNorm 进入注意力或 SwiGLU，结果加回残差流；d=64 时注意力 {d['attn']:,} 个参数，SwiGLU {d['ffn']:,} 个，两个 RMSNorm {d['norm']} 个。", 545, body)
+
+
+def block_depth():
+    d = load("tinyllm-block-depth.json")
+    runs, sig = list(d["runs"].values()), d["signal"]
+    fig, axes = plt.subplots(1, 3, figsize=(13, 4.4), layout="constrained")
+    styles = {"直接堆叠": RED, "Pre-Norm 残差": TEAL}
+
+    def band(vals):
+        m = np.array([np.mean(v) for v in vals])
+        return m, [m - np.array([min(v) for v in vals]), np.array([max(v) for v in vals]) - m]
+
+    for kind, color in styles.items():
+        rs = [r for r in runs if r["kind"] == kind]
+        L = np.array([r["layers"] for r in rs], float)
+        m, e = band([r["train"] for r in rs])
+        axes[0].errorbar(L, m, yerr=e, fmt="o-", color=color, lw=2.2, capsize=4, label=f"{kind}·训练")
+        m, e = band([r["val"] for r in rs])
+        axes[0].errorbar(L, m, yerr=e, fmt="s--", color=color, lw=1.6, capsize=4, alpha=0.75, label=f"{kind}·验证")
+        g = [max(r["grad0"][1], 1e-12) for r in rs]
+        lo = [max(r["grad0"][0], 1e-12) for r in rs]
+        hi = [max(r["grad0"][-1], 1e-12) for r in rs]
+        axes[1].errorbar(L, g, yerr=[np.array(g) - lo, np.array(hi) - g], fmt="o-", color=color, lw=2.2, capsize=4, label=kind)
+        for l, r in zip(L, rs):
+            if r["grad0"][-1] == 0:
+                axes[1].annotate("= 0", (l, 1e-12), textcoords="offset points", xytext=(0, 8), ha="center", color=color, fontsize=11)
+        s_ = np.exp(np.mean(np.log(np.maximum(np.array(sig[kind]), 1e-30)), axis=0))
+        axes[2].semilogy(range(len(s_)), s_, "o-", color=color, lw=2.2, label=kind)
+    axes[0].axhline(d["uniform"], color=GRAY, ls=":", lw=1.2)
+    axes[0].text(8.2, d["uniform"] - 0.45, f"完全乱猜 {d['uniform']:.2f}", ha="right", color=GRAY, fontsize=10.5)
+    axes[0].set(xlabel="Block 层数", ylabel="损失（3 个种子的平均，竖线为范围）", xticks=[1, 2, 4, 8], ylim=(0, 7.8))
+    axes[0].set_title("训练 150 步：训练损失与验证损失", fontsize=13)
+    axes[0].legend(fontsize=9, framealpha=0.95, loc="center right")
+    axes[1].set_yscale("log")
+    axes[1].set(xlabel="Block 层数", ylabel="第 1 个 Block 的梯度（第一步）", xticks=[1, 2, 4, 8], ylim=(1e-13, 10))
+    axes[1].set_title("梯度传不回第 1 层", fontsize=13)
+    axes[1].legend(fontsize=10, framealpha=0.95, loc="center right")
+    axes[2].set(xlabel="穿过的 Block 数（训练前）", ylabel="token 向量的 RMS", ylim=(1e-31, 10))
+    axes[2].text(4.2, 1e-29, "低于 1e-30 的点画在底部，\n实际已下溢为 0", fontsize=10.5, color=RED)
+    axes[2].set_title("信号每过一层至少缩小上千倍", fontsize=13)
+    axes[2].legend(fontsize=10, framealpha=0.95, loc="center right")
+    for ax in axes:
+        ax.grid(alpha=0.25)
+    r = {k: v for k, v in d["runs"].items()}
+    mean = lambda v: sum(v) / len(v)
+    save_plot(fig, "block-depth.svg", "直接堆叠与 Pre-Norm 残差 Block 的叠深对照",
+              f"三个随机种子、同一组 batch、各训练 150 步。左：直接堆叠 1、2 层训练损失 {mean(r['直接堆叠 1']['train']):.2f}、{mean(r['直接堆叠 2']['train']):.2f}，4 层和 8 层停在完全乱猜的 {d['uniform']:.2f}；Pre-Norm 残差从 {mean(r['Pre-Norm 残差 1']['train']):.2f} 降到 {mean(r['Pre-Norm 残差 8']['train']):.2f}；所有模型在 4 首没训练过的诗上的验证损失都在 6.3 到 7.1 之间，不低于乱猜。中：第一步时第 1 个 Block 的梯度，直接堆叠 2 层只剩约 2e-7，4 层以上为 0；Pre-Norm 在 0.6 到 0.8 之间。右：训练前信号穿过 8 个 Block，直接堆叠每层至少缩小上千倍，第 4 层后下溢为 0；Pre-Norm 从 0.1 缓慢增长到 0.8。")
+
+
 # ---------- 第 6 章：位置表示 ----------
 
 def position_methods():
@@ -1244,7 +1331,7 @@ def main():
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
                float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
-               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation):
+               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth):
         fn()
     print("figures written to", OUT)
 
