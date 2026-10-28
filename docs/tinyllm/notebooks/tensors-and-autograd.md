@@ -344,12 +344,92 @@ print("清空后:", w_acc.grad)
 ```
 
 ::: v-pre
+## 从 1 个参数到 13 万个：自动求导真正省下了什么
+
+一次 `backward()` 就给出所有参数的梯度。下面先用一个 13 万参数的小网络确认这一点，
+再在一个 144 个参数的网络上，用“逐个参数做差分”的笨办法对照：差分要多少次前向，结果是否一致。
+:::
+
+<p class="nb-label">In [14]</p>
+
+```python
+torch.manual_seed(0)
+mlp = nn.Sequential(nn.Linear(256, 256), nn.Tanh(), nn.Linear(256, 256))
+inputs = torch.randn(32, 256)
+n_params = sum(p.numel() for p in mlp.parameters())
+
+loss = mlp(inputs).square().mean()   # 一次前向，得到一个数
+loss.backward()                      # 一次反向，所有参数的梯度都有了
+n_grads = sum(p.grad.numel() for p in mlp.parameters())
+print("参数个数:", n_params, " 拿到梯度的个数:", n_grads)  # 131584 131584
+assert n_params == n_grads == 131584
+```
+
+```text
+参数个数: 131584  拿到梯度的个数: 131584
+```
+
+<p class="nb-label">In [15]</p>
+
+```python
+small = nn.Sequential(nn.Linear(8, 8), nn.Tanh(), nn.Linear(8, 8)).double()
+xs = torch.randn(32, 8, dtype=torch.float64)
+small_loss = lambda: small(xs).square().mean()
+small_loss().backward()              # autograd：一次反向拿到全部 144 个梯度
+
+calls, max_err, h = 0, 0.0, 1e-6
+with torch.no_grad():
+    base = small_loss(); calls += 1
+    for p in small.parameters():     # 笨办法：每个参数挪一点点，重新算一次损失
+        flat, grad = p.view(-1), p.grad.view(-1)
+        for i in range(flat.numel()):
+            old = flat[i].item()
+            flat[i] = old + h
+            numeric = (small_loss() - base).item() / h; calls += 1
+            flat[i] = old
+            max_err = max(max_err, abs(numeric - grad[i].item()))
+print("差分做了", calls, "次前向；与 autograd 的最大差:", f"{max_err:.1e}")
+assert calls == 145 and max_err < 1e-4
+```
+
+```text
+差分做了 145 次前向；与 autograd 的最大差: 1.3e-07
+```
+
+::: v-pre
+### 反向传播不构造雅可比矩阵
+
+对 `y = x @ W`，给定上游梯度 `g = dL/dy`，PyTorch 直接算 `dL/dW = xᵀ g`，
+不会先把 `dy/dW` 这个四维的雅可比矩阵存下来。
+:::
+
+<p class="nb-label">In [16]</p>
+
+```python
+x_small = torch.randn(2, 3)
+W_small = torch.randn(3, 4, requires_grad=True)
+g = torch.randn(2, 4)                       # 假设上游传回来的 dL/dy
+y_small = x_small @ W_small
+y_small.backward(g)                         # 只传入 g：PyTorch 算的是“g 乘雅可比”
+print(torch.allclose(W_small.grad, x_small.T @ g))   # True：dL/dW 就是 xᵀ @ g
+
+J = torch.autograd.functional.jacobian(lambda w: x_small @ w, W_small.detach())
+print("完整雅可比的形状:", tuple(J.shape), " 元素个数:", J.numel(), " W 本身:", W_small.numel())
+assert J.shape == (2, 4, 3, 4) and J.numel() == 96
+```
+
+```text
+True
+完整雅可比的形状: (2, 4, 3, 4)  元素个数: 96  W 本身: 12
+```
+
+::: v-pre
 ### `no_grad`、`detach` 与 `eval`
 
 `no_grad` 停止记录新运算；`detach` 从旧图分离结果；`eval()` 仅切换模块行为，不关掉自动求导。
 :::
 
-<p class="nb-label">In [14]</p>
+<p class="nb-label">In [17]</p>
 
 ```python
 z = w * x
@@ -376,7 +456,7 @@ detach: False eval 后仍追踪: True
 用 `float64` 和中心差分核对 `w=2` 时的导数。差分是近似值，容许很小误差。
 :::
 
-<p class="nb-label">In [15]</p>
+<p class="nb-label">In [18]</p>
 
 ```python
 w64 = torch.tensor(2.0, dtype=torch.float64, requires_grad=True)
@@ -400,7 +480,7 @@ assert abs(finite_diff.item() - 30.0) < 1e-6
 同一设备上的 `Linear` 与输入可以计算。这里逐一测试 CPU、可用的 CUDA/MPS；结果只说明这个小算子可运行，不代表所有算子兼容或性能更好。
 :::
 
-<p class="nb-label">In [16]</p>
+<p class="nb-label">In [19]</p>
 
 ```python
 devices = [torch.device("cpu")]
@@ -427,7 +507,7 @@ cpu 输出: (2, 3, 2) 权重梯度: (2, 4)
 MLX 不是 PyTorch 的 `device`。此格只在安装 MLX 的环境运行；使用 `mx.grad`，不调用 `.backward()`。未安装时会明确报告跳过。
 :::
 
-<p class="nb-label">In [17]</p>
+<p class="nb-label">In [20]</p>
 
 ```python
 try:

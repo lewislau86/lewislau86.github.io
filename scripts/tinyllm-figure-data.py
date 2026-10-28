@@ -167,7 +167,55 @@ def float_spacing():
     save("tinyllm-float-spacing.json", out)
 
 
+# ---------- 第 2 章：自动求导的代价 ----------
+
+def autograd_cost():
+    """参数量 N 从几十到两百万：一次 backward 相当于几次前向？逐个参数做差分需要几次？"""
+    import time
+
+    def timeit(fn, repeat=7):
+        best = []
+        for _ in range(repeat):
+            t0 = time.perf_counter()
+            fn()
+            best.append(time.perf_counter() - t0)
+        best.sort()
+        return best[len(best) // 2]
+
+    torch.manual_seed(0)
+    rows = []
+    for d in [4, 8, 16, 32, 64, 128, 256, 512, 1024]:
+        model = nn.Sequential(nn.Linear(d, d), nn.Tanh(), nn.Linear(d, d))
+        x = torch.randn(32, d)
+        loss_fn = lambda: model(x).square().mean()
+        n = sum(p.numel() for p in model.parameters())
+        with torch.no_grad():
+            t_fwd = timeit(lambda: loss_fn())
+
+        def fwd_bwd():
+            model.zero_grad(set_to_none=True)
+            loss_fn().backward()
+        t_bwd = timeit(fwd_bwd)
+        row = {"d": d, "params": n, "forward_s": t_fwd, "forward_backward_s": t_bwd}
+        if n <= 2200:  # 小模型真的逐个参数做一遍前向差分，验证“需要 N+1 次前向”
+            def finite_diff():
+                with torch.no_grad():
+                    base = loss_fn()
+                    for p in model.parameters():
+                        flat = p.view(-1)
+                        for i in range(flat.numel()):
+                            old = flat[i].item()
+                            flat[i] = old + 1e-3
+                            loss_fn()
+                            flat[i] = old
+                    return base
+            row["finite_diff_s"] = timeit(finite_diff, repeat=3)
+        rows.append(row)
+    save("tinyllm-autograd-cost.json", {"model": "Linear(d,d) → Tanh → Linear(d,d)，batch 32，CPU", "rows": rows})
+
+
 if __name__ == "__main__":
+    autograd_cost()
     init_fan_in()
     residual_depth()
     activation_fit()

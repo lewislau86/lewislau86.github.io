@@ -934,6 +934,55 @@ def modern_block():
         "左：GPT-1 由 12 个相同的 Block 组成，每个 Block 是完整注意力加稠密前馈层。右：2026 年的典型做法每 4 层为一组，前 3 层用便宜的线性注意力、第 4 层用完整注意力，每层后接 MoE 前馈层；MoE 由很多小专家组成，路由器为每个 token 只挑少数几个，另有所有 token 共用的共享专家。", 515, body)
 
 
+def autograd_cost():
+    d = load("tinyllm-autograd-cost.json")
+    rows = d["rows"]
+    n = np.array([r["params"] for r in rows], dtype=float)
+    bwd = np.array([r["forward_backward_s"] / r["forward_s"] for r in rows])
+    fd_rows = [r for r in rows if "finite_diff_s" in r]
+    fig, ax = plt.subplots(figsize=(10, 4.8), layout="constrained")
+    grid = np.logspace(1, 6.5, 50)
+    ax.loglog(grid, grid + 1, color=ORANGE, lw=2, ls="--", label="逐个参数做差分：需要 N + 1 次前向")
+    ax.loglog([r["params"] for r in fd_rows], [r["finite_diff_s"] / r["forward_s"] for r in fd_rows],
+              "o", color=ORANGE, ms=7, label="差分实测（小模型真的跑了一遍）")
+    ax.loglog(n, bwd, "o-", color=TEAL, lw=2.4, ms=6, label="一次 forward + backward 实测")
+    tiny = 388128
+    ax.scatter([tiny], [tiny + 1], color=RED, zorder=5, s=50)
+    ax.annotate("第 1 章的 TinyLLM：39 万个参数\n差分要做约 39 万次前向", xy=(tiny, tiny), xytext=(2.5e3, 4e5),
+                arrowprops={"arrowstyle": "->", "color": RED}, color=RED, fontsize=11)
+    ax.annotate(f"backward 始终只相当于 {bwd.min():.0f}～{bwd.max():.0f} 次前向\n（越大的模型越接近 3 次）", xy=(n[-1], bwd[-1]),
+                xytext=(2e4, 40), arrowprops={"arrowstyle": "->", "color": TEAL}, color=TEAL, fontsize=11)
+    ax.set_xlabel("参数个数 N")
+    ax.set_ylabel("耗时相当于几次前向计算")
+    ax.set_ylim(1, 1e7)
+    ax.legend(loc="upper left", fontsize=10.5, framealpha=0.95)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "autograd-cost.svg", "求全部梯度的代价：数值差分与反向传播",
+              f"参数从 40 个增加到约 210 万个：逐个参数做差分需要 N+1 次前向，随参数量线性增长，第 1 章 39 万参数的模型要约 39 万次；一次前向加反向传播实测始终只相当于 {bwd.min():.0f} 到 {bwd.max():.0f} 次前向，与参数量无关。")
+
+
+def vjp_matmul():
+    body = text(480, 40, "反向传播不构造雅可比矩阵，只做和前向同样大小的矩阵乘法", 21, weight="bold")
+    body += cbox(30, 75, 430, 175, BLUE)
+    body += text(245, 103, "前向：y = x @ W", 18, BLUE, "bold")
+    body += mtext(245, 140, "x [T, d_in]  @  W [d_in, d_out]", 15, INK)
+    body += mtext(245, 170, "→  y [T, d_out]  →  ...  →  L（一个数）", 15, INK)
+    body += text(245, 215, "计算量：T × d_in × d_out 次乘加", 15, GRAY)
+    body += cbox(500, 75, 430, 175, TEAL)
+    body += text(715, 103, "反向：已知 g = dL/dy  [T, d_out]", 17, TEAL, "bold")
+    body += mtext(715, 140, "dL/dW = x^T @ g   [d_in, d_out]", 15, INK, "bold")
+    body += mtext(715, 170, "dL/dx = g @ W^T   [T, d_in]", 15, INK, "bold")
+    body += text(715, 215, "两次矩阵乘法，计算量和前向同一量级", 15, GRAY)
+    body += path("M462 160 H496", GRAY)
+    body += cbox(30, 280, 900, 130, RED)
+    body += text(480, 310, "如果先把完整的雅可比矩阵 dy/dW 算出来，再乘 g，会怎样？", 17, RED, "bold")
+    body += mtext(480, 345, "dy/dW: [T*d_out, d_in*d_out]", 16, INK)
+    body += text(480, 380, "取 T = 1、d_in = d_out = 4096（7B 级模型里一个投影矩阵的大小）：约 687 亿个数，FP32 下约 275 GB", 15.5, INK)
+    body += text(480, 450, "PyTorch 的每个算子都直接实现“g 乘雅可比”这一步（向量-雅可比积，VJP），所以从来不需要把雅可比矩阵存下来。", 15, GRAY)
+    svg("vjp-matmul.svg", "矩阵乘法的反向传播",
+        "前向 y = x @ W；反向已知 g = ∂L/∂y，直接算 dL/dW = xᵀg 和 dL/dx = gWᵀ，两次矩阵乘法的计算量与前向同一量级。若先构造完整雅可比矩阵 dy/dW，在 d_in = d_out = 4096 时就有约 687 亿个数，FP32 下约 275 GB。", 475, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -979,7 +1028,7 @@ def main():
     # 第 3、5、6、7、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
-               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block):
+               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul):
         fn()
     print("figures written to", OUT)
 

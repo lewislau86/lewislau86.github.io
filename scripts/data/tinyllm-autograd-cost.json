@@ -1,0 +1,63 @@
+{
+ "model": "Linear(d,d) → Tanh → Linear(d,d)，batch 32，CPU",
+ "rows": [
+  {
+   "d": 4,
+   "params": 40,
+   "forward_s": 3.480600003058498e-05,
+   "forward_backward_s": 0.00020307599999114245,
+   "finite_diff_s": 0.0023842079999667476
+  },
+  {
+   "d": 8,
+   "params": 144,
+   "forward_s": 3.728100000444101e-05,
+   "forward_backward_s": 0.0002419200000076671,
+   "finite_diff_s": 0.0068691429999603315
+  },
+  {
+   "d": 16,
+   "params": 544,
+   "forward_s": 2.997699999696124e-05,
+   "forward_backward_s": 0.0002188760000194634,
+   "finite_diff_s": 0.022391549000019495
+  },
+  {
+   "d": 32,
+   "params": 2112,
+   "forward_s": 4.7921000032147276e-05,
+   "forward_backward_s": 0.00024289100002761188,
+   "finite_diff_s": 0.09120765599999459
+  },
+  {
+   "d": 64,
+   "params": 8320,
+   "forward_s": 4.024600002594525e-05,
+   "forward_backward_s": 0.00022680099999661252
+  },
+  {
+   "d": 128,
+   "params": 33024,
+   "forward_s": 9.206499998981599e-05,
+   "forward_backward_s": 0.00028445000003785026
+  },
+  {
+   "d": 256,
+   "params": 131584,
+   "forward_s": 0.00019157400004132796,
+   "forward_backward_s": 0.000620488999970803
+  },
+  {
+   "d": 512,
+   "params": 525312,
+   "forward_s": 0.0006049200000006749,
+   "forward_backward_s": 0.0017529010000316703
+  },
+  {
+   "d": 1024,
+   "params": 2099200,
+   "forward_s": 0.0029264309999916804,
+   "forward_backward_s": 0.010346270000013646
+  }
+ ]
+}
