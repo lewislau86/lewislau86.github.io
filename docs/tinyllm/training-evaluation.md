@@ -6,7 +6,7 @@ pageClass: tinyllm-course
 
 # 第 20 章：训练诊断与评估
 
-[课程总览](./index.md) · [上一章](./training-loop.md) · [下一章](./generation.md)
+[课程总览](./index.md) · [上一章](./training-loop.md) · [下一章](./large-model-stability.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：先过拟合一个小 batch，再观察 loss、梯度、验证集困惑度和生成样例。

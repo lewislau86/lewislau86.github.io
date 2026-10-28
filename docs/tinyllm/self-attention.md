@@ -115,7 +115,7 @@ T = 128,000  分数矩阵    2097.15 GB
 这还只是一层。现实中有几种办法分头应对：
 
 - **不存这张表**：FlashAttention 一块一块地算，算完就丢，内存不再随 $T^2$ 增长；但计算量仍然是 $T^2$。`F.scaled_dot_product_attention` 在条件满足时会自动用上。
-- **生成时不重算前文**：每生成一个字，旧位置的 K、V 不会变，可以存起来复用，这就是 KV cache，见[第 22 章](./inference-efficiency.md#kv-cache)。缓存要占显存，GQA 让几个头共用一组 K、V 来省这部分显存。
+- **生成时不重算前文**：每生成一个字，旧位置的 K、V 不会变，可以存起来复用，这就是 KV cache，见[第 24 章](./inference-efficiency.md#kv-cache)。缓存要占显存，GQA 让几个头共用一组 K、V 来省这部分显存。
 - **换一种注意力**：[第 1 章](./first-run.md)对比表里的 Kimi K3、Qwen3.5 把大部分层换成线性注意力，把前文压成固定大小的状态，只留四分之一的层做完整注意力。
 
 ## 7. 延伸：QK Norm {#qk-norm}

@@ -164,6 +164,8 @@ $$
 
 <strong>何时改选？</strong>复现 GPT 风格模型时，用 GELU 普通 FFN；需要最简单的算子和教学对照时，用 ReLU 普通 FFN。模型能否稳定训练，还取决于[初始化与残差](./initialization-and-residuals.md)、[归一化](./normalization.md)、优化器和学习率。notebook 保留了参数匹配的普通 FFN 作对照。
 
+<strong>模型做大以后：</strong>前馈层占了 Block 里大部分参数。很多大模型（例如 DeepSeek、Kimi）把这一层换成很多个小前馈层（“专家”），每个 token 只交给其中一两个，这就是 MoE。TinyLLM 主线先保持一个稠密的 SwiGLU；等训练和评估的工具都齐了，[第 22 章](./mixture-of-experts.md)再把它换成 MoE，和主线做对照实验。
+
 ::: warning 常见误区
 - **把普通 FFN 的 `GELU` 换成 `SiLU` 还不是 SwiGLU。** SwiGLU 的关键是 gate、value 两条投影逐元素相乘，一共三个投影。
 - **SwiGLU 的“门”是逐特征的乘法。** 它和注意力的 Q/K/V、MoE 的专家路由都无关。

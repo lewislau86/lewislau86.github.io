@@ -255,7 +255,7 @@ $$
 
 <strong>延伸阅读：BLT。</strong>[Byte Latent Transformer（BLT，2024 年提出）](https://arxiv.org/abs/2412.09871) 是更早的另一条路线：直接从字节出发，动态组织成 patch，并在不同层级分配计算。它改变的是模型架构与训练方式，远比把 BPE 换成 `text.encode("utf-8")` 复杂。
 
-对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 22 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 27 章](agent-memory.md) 的另一项评测。
+对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 24 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 29 章](agent-memory.md) 的另一项评测。
 
 ## 10. 动手检查与练习
 

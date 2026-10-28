@@ -127,31 +127,39 @@
         "link": "/tinyllm/training-evaluation"
       },
       {
-        "text": "第 21 章 · 自回归生成",
-        "link": "/tinyllm/generation"
-      },
-      {
-        "text": "第 22 章 · 推理效率",
-        "link": "/tinyllm/inference-efficiency"
-      },
-      {
-        "text": "第 23 章 · 指令微调",
-        "link": "/tinyllm/instruction-finetuning"
-      },
-      {
-        "text": "第 24 章 · 参数高效与稀疏结构",
-        "link": "/tinyllm/peft-and-sparsity"
-      },
-      {
-        "text": "第 25 章 · 大规模训练稳定性",
+        "text": "第 21 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
       },
       {
-        "text": "第 26 章 · 扩展专题",
-        "link": "/tinyllm/advanced-topics"
+        "text": "第 22 章 · 稀疏专家（MoE）",
+        "link": "/tinyllm/mixture-of-experts"
       },
       {
-        "text": "第 27 章 · Agent 记忆与检索",
+        "text": "第 23 章 · 自回归生成",
+        "link": "/tinyllm/generation"
+      },
+      {
+        "text": "第 24 章 · 推理效率",
+        "link": "/tinyllm/inference-efficiency"
+      },
+      {
+        "text": "第 25 章 · 量化",
+        "link": "/tinyllm/quantization"
+      },
+      {
+        "text": "第 26 章 · 指令微调",
+        "link": "/tinyllm/instruction-finetuning"
+      },
+      {
+        "text": "第 27 章 · 参数高效微调（LoRA）",
+        "link": "/tinyllm/lora-finetuning"
+      },
+      {
+        "text": "第 28 章 · 偏好对齐与强化学习",
+        "link": "/tinyllm/preference-alignment"
+      },
+      {
+        "text": "第 29 章 · Agent 记忆与检索",
         "link": "/tinyllm/agent-memory"
       }
     ]

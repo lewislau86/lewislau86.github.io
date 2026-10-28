@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 22 章：推理效率](./inference-efficiency.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 24 章：推理效率](./inference-efficiency.md)。

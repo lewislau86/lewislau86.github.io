@@ -22,7 +22,7 @@ const nodes: Node[] = [
   { id: 'ffn', label: 'SwiGLU 前馈层', ch: 7, slug: 'activations-and-ffn', x: 160, y: 382, w: 200, h: 36 },
   { id: 'nf', label: '最终 RMSNorm', ch: 10, slug: 'normalization', x: 140, y: 494, w: 240, h: 34 },
   { id: 'out', label: '输出层：向量 → logits', ch: 4, slug: 'embeddings-and-output', x: 140, y: 546, w: 240, h: 36 },
-  { id: 'gen', label: '逐个生成 token', ch: 21, slug: 'generation', x: 140, y: 604, w: 240, h: 34 },
+  { id: 'gen', label: '逐个生成 token', ch: 23, slug: 'generation', x: 140, y: 604, w: 240, h: 34 },
   { id: 'loss', label: '交叉熵损失', ch: 13, slug: 'language-model-loss', x: 470, y: 546, w: 190, h: 34 },
   { id: 'grad', label: 'backward 求梯度', ch: 2, slug: 'tensors-and-autograd', x: 470, y: 494, w: 190, h: 34 },
   { id: 'opt', label: '优化器更新参数', ch: 14, slug: 'optimizers', x: 470, y: 442, w: 190, h: 34 },

@@ -1,15 +1,15 @@
 ---
-title: "第 25 章：大规模训练稳定性"
+title: "第 21 章：大规模训练稳定性"
 description: "μP、DeepNorm 与残差缩放：网络变深变宽时怎样保持训练稳定。"
 pageClass: tinyllm-course
 ---
 
-# 第 25 章：大规模训练稳定性
+# 第 21 章：大规模训练稳定性
 
-[课程总览](./index.md) · [上一章](./peft-and-sparsity.md) · [下一章](./advanced-topics.md)
+[课程总览](./index.md) · [上一章](./training-evaluation.md) · [下一章](./mixture-of-experts.md)
 
 ::: info 本章状态：规划中
-正文与实验尚未完成。计划覆盖 μP、DeepNorm/残差缩放、深度与宽度扩展。下面的 DeepNorm 一节已经成文（从原归一化章节移入）。
+正文与实验尚未完成。计划覆盖 μP、DeepNorm/残差缩放、深度与宽度扩展，以及数据并行、张量并行等分布式训练的基本思路。下面的 DeepNorm 一节已经成文（从原归一化章节移入）。
 :::
 
 <TinyLLMMap active="large-model-stability" />

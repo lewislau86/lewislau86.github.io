@@ -1,12 +1,12 @@
 ---
-title: "第 21 章：自回归生成"
+title: "第 23 章：自回归生成"
 description: "逐 token 解码、温度、top-k、top-p、停止条件与重复问题。"
 pageClass: tinyllm-course
 ---
 
-# 第 21 章：自回归生成
+# 第 23 章：自回归生成
 
-[课程总览](./index.md) · [上一章](./training-evaluation.md) · [下一章](./inference-efficiency.md)
+[课程总览](./index.md) · [上一章](./mixture-of-experts.md) · [下一章](./inference-efficiency.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：逐 token 解码、温度、top-k、top-p、停止条件与重复问题。

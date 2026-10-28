@@ -1,5 +1,5 @@
 ---
-title: "第 22 章：推理效率（已成文部分：KV cache）（notebook 在线查看）"
+title: "第 24 章：推理效率（已成文部分：KV cache）（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 22 章：推理效率（已成文部分：KV cache）
+# 第 24 章：推理效率（已成文部分：KV cache）
 
 配套教案：https://lewislau86.github.io/tinyllm/inference-efficiency
 
