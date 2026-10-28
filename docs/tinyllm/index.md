@@ -33,6 +33,7 @@ pageClass: tinyllm-course
 | 第 3 章 | [文本与词元化](./tokenization.md) | Unicode 与字节、BPE 训练与编码、特殊 token、词表实验 | [tokenization.ipynb](/tinyllm/notebooks/tokenization) |
 | 第 4 章 | [词嵌入与输出层](./embeddings-and-output.md) | 查表、logits、交叉熵梯度、权重共享、Q/K/V 预览 | [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output) |
 | 第 5 章 | [自注意力](./self-attention.md) | Q/K/V、缩放点积、因果掩码、多头注意力；去掉注意力的对照实验与长度平方的代价 | [self-attention.ipynb](/tinyllm/notebooks/self-attention) |
+| 第 6 章 | [位置表示](./position-encoding.md) | 注意力为什么分不出先后；可学习绝对位置、正弦编码、RoPE；背诗与数位置两个对照实验，超过训练长度时的表现 | [position-encoding.ipynb](/tinyllm/notebooks/position-encoding) |
 | 第 7 章 | [激活函数与门控前馈层](./activations-and-ffn.md) | ReLU/GELU/SiLU、SwiGLU 门控前馈层与参数量 | [activations-and-ffn.ipynb](/tinyllm/notebooks/activations-and-ffn) |
 | 第 9 章 | [初始化与残差路径](./initialization-and-residuals.md) | Xavier/He 初始化、残差直通路径、深度诊断 | [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) |
 | 第 10 章 | [归一化](./normalization.md) | LayerNorm、RMSNorm、ScaleNorm；Pre-Norm 与 Post-Norm | [normalization.ipynb](/tinyllm/notebooks/normalization) |
@@ -60,7 +61,7 @@ pageClass: tinyllm-course
 - [第 3 章 · 文本与词元化](./tokenization.md)
 - [第 4 章 · 词嵌入与输出层](./embeddings-and-output.md)
 - [第 5 章 · 自注意力](./self-attention.md)
-- [第 6 章 · 位置表示](./position-encoding.md)（规划中）
+- [第 6 章 · 位置表示](./position-encoding.md)
 - [第 7 章 · 激活函数与门控前馈层](./activations-and-ffn.md)
 - [第 8 章 · Transformer Block](./transformer-block.md)（规划中）
 

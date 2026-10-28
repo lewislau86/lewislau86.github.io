@@ -42,6 +42,7 @@ REGION = re.compile(r"^# ?(end)?region [\w*-]+$")
 ARTIFACTS = {
     ("first-run", "first_run_log.json"): ROOT / "scripts/data/tinyllm-first-run-log.json",
     ("self-attention", "attention_ablation.json"): ROOT / "scripts/data/tinyllm-attention-ablation.json",
+    ("position-encoding", "position_ablation.json"): ROOT / "scripts/data/tinyllm-position-ablation.json",
 }
 
 
@@ -59,6 +60,7 @@ def run_script(path: Path, workdir: Path) -> None:
 
 
 def to_notebook(path: Path, workdir: Path, target: Path) -> None:
+    print(f"[run] {path.name}（以 notebook 方式执行）")
     import nbformat
     from nbclient import NotebookClient
 
@@ -249,14 +251,15 @@ def main() -> None:
     for path in scripts:
         with tempfile.TemporaryDirectory() as tmp:
             workdir = Path(tmp)
-            run_script(path, workdir)
             if check_only:
+                run_script(path, workdir)
                 continue
+            # 生成 notebook 时会把脚本完整执行一遍，等同于运行检查，不再单独多跑一次
+            to_notebook(path, workdir, NOTEBOOKS / f"{path.stem}.ipynb")
             for (chapter, name), dest in ARTIFACTS.items():
                 if chapter == path.stem and (workdir / name).exists():
                     shutil.copyfile(workdir / name, dest)
                     print(f"[data] {dest.relative_to(ROOT)}")
-            to_notebook(path, workdir, NOTEBOOKS / f"{path.stem}.ipynb")
             render_page(NOTEBOOKS / f"{path.stem}.ipynb")
 
 

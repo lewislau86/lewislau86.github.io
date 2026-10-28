@@ -220,4 +220,4 @@ QK Norm 让训练更稳定，但也改变了注意力的表达方式。[OlmPool]
 - [GQA，Ainslie 等，2023](https://arxiv.org/abs/2305.13245)
 - [Query-Key Normalization for Transformers，Henry 等，2020](https://aclanthology.org/2020.findings-emnlp.379/) · [OlmPool 架构研究](https://allenai.org/papers/olmpool) · [Qwen3 技术报告](https://arxiv.org/abs/2505.09388)
 
-注意力本身只看“谁和谁匹配”，不看先后：把输入的顺序打乱，每个位置取回的信息不会变，模型分不出“我在学习”和“学习在我”。下一章讲怎样把位置信息放进去，[第 6 章：位置表示](./position-encoding.md)（规划中）；已完成的下一章是[第 7 章：激活函数与门控前馈层](./activations-and-ffn.md)。
+注意力本身只看“谁和谁匹配”，不看先后：把输入的顺序打乱，每个位置取回的信息不会变，模型分不出“我在学习”和“学习在我”。下一章讲怎样把位置信息放进去：[第 6 章：位置表示](./position-encoding.md)。

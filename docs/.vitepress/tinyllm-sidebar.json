@@ -49,6 +49,10 @@
         "link": "/tinyllm/self-attention"
       },
       {
+        "text": "第 6 章 · 位置表示",
+        "link": "/tinyllm/position-encoding"
+      },
+      {
         "text": "第 7 章 · 激活函数与门控前馈层",
         "link": "/tinyllm/activations-and-ffn"
       }
@@ -86,10 +90,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 6 章 · 位置表示",
-        "link": "/tinyllm/position-encoding"
-      },
       {
         "text": "第 8 章 · Transformer Block",
         "link": "/tinyllm/transformer-block"

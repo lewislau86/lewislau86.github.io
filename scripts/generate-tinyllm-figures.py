@@ -1063,6 +1063,141 @@ def attention_ablation():
               "同一份唐诗语料、同一个模型、同样 600 步：有注意力时训练损失降到约 0.11；把注意力去掉后，每个位置只能看到自己，损失停在约 1.6。")
 
 
+# ---------- 第 6 章：位置表示 ----------
+
+def position_methods():
+    body = text(480, 36, "把位置放进模型的三种做法", 21, weight="bold")
+    cols = [(170, "可学习绝对位置", BLUE, ["位置 0、1、2… 各查一行", "可训练的向量表", "加到词向量上，只加一次"], "表有几行，就只能处理几个位置"),
+            (480, "正弦位置编码", TEAL, ["位置 m 的向量由 sin/cos", "按固定公式算出", "加到词向量上，只加一次"], "不用训练，任意位置都能算"),
+            (790, "RoPE 旋转位置", ORANGE, ["不加任何向量", "在每一层注意力里", "把 q、k 按位置转一个角度"], "点积只依赖两者相隔几个位置")]
+    for x, title, c, lines, note in cols:
+        body += cbox(x - 135, 64, 270, 46, c, width=2.5) + text(x, 94, title, 18, c, "bold")
+        body += box(x - 135, 124, 270, 112)
+        for i, line in enumerate(lines):
+            body += text(x, 154 + i * 30, line, 15)
+        body += text(x, 266, note, 14.5, GRAY)
+    # 简图：输入相加 vs 注意力内部旋转
+    for x, c in ((170, BLUE), (480, TEAL)):
+        body += cbox(x - 110, 296, 100, 40, GRAY) + text(x - 60, 321, "词向量", 14)
+        body += cbox(x + 10, 296, 100, 40, c) + text(x + 60, 321, "位置向量", 14)
+        body += circle(x, 376, 15) + text(x, 382, "+", 20, weight="bold")
+        body += path(f"M{x - 60} 336 L{x - 12} 366", GRAY, 2) + path(f"M{x + 60} 336 L{x + 12} 366", GRAY, 2)
+        body += arrow(x, 391, x, 418, GRAY, 2) + text(x, 440, "进入第 1 层", 14, GRAY)
+    x = 790
+    body += cbox(x - 125, 296, 250, 40, GRAY) + mtext(x, 321, "q = W_q·h,  k = W_k·h", 15)
+    body += arrow(x, 336, x, 362, GRAY, 2)
+    body += cbox(x - 125, 364, 250, 40, ORANGE) + text(x, 389, "q 转 m·θ，k 转 n·θ", 15, ORANGE, "bold")
+    body += arrow(x, 404, x, 418, GRAY, 2) + text(x, 440, "每一层、每个头都做", 14, GRAY)
+    svg("position-methods.svg", "把位置放进模型的三种做法",
+        "可学习绝对位置为每个位置查一行可训练向量，加到词向量上，只能处理表里有的位置；正弦位置编码用固定公式算出位置向量再相加，不用训练；RoPE 不加向量，而是在每一层注意力里把 q 和 k 按位置旋转，点积只依赖两者的相对距离。", 465, body)
+
+
+def _rope_np(x, positions, base=10000.0):
+    d = x.shape[-1]
+    theta = base ** (-np.arange(0, d, 2) / d)
+    ang = np.asarray(positions, float)[:, None] * theta
+    x1, x2 = x[..., 0::2], x[..., 1::2]
+    out = np.empty_like(x)
+    out[..., 0::2] = x1 * np.cos(ang) - x2 * np.sin(ang)
+    out[..., 1::2] = x1 * np.sin(ang) + x2 * np.cos(ang)
+    return out
+
+
+def sinusoidal_heatmap():
+    T, d = 64, 32
+    pos = np.arange(T)[:, None]
+    freq = 10000.0 ** (-np.arange(0, d, 2) / d)
+    pe = np.zeros((T, d))
+    pe[:, 0::2], pe[:, 1::2] = np.sin(pos * freq), np.cos(pos * freq)
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11, 4.2), layout="constrained", gridspec_kw={"width_ratios": [1.25, 1]})
+    im = ax.imshow(pe.T, aspect="auto", cmap="RdBu_r", vmin=-1, vmax=1)
+    ax.set_xlabel("位置 m")
+    ax.set_ylabel("维度 i")
+    ax.set_title("正弦位置编码（64 个位置 × 32 维）", fontsize=14)
+    fig.colorbar(im, ax=ax, shrink=0.85)
+    for i, c in ((0, RED), (8, ORANGE), (20, TEAL)):
+        ax2.plot(np.arange(T), pe[:, i], color=c, lw=2.2, label=f"维度 {i}（每 {2 * np.pi / freq[i // 2]:.0f} 个位置转一圈）")
+    ax2.set_xlabel("位置 m")
+    ax2.set_ylim(-1.25, 1.6)
+    ax2.legend(loc="upper right", fontsize=10.5, framealpha=0.95)
+    ax2.set_title("同一个位置，不同维度转得快慢不同", fontsize=14)
+    ax2.grid(alpha=0.25)
+    save_plot(fig, "sinusoidal-heatmap.svg", "正弦位置编码",
+              "左图是 64 个位置、32 维的正弦位置编码，低维度变化快、高维度变化慢；右图画出三个维度随位置的变化：维度 0 约 6 个位置一圈，维度 8 约 63 个位置一圈，维度 20 变化很慢。")
+
+
+def rope_rotation():
+    rng = np.random.default_rng(0)
+    q, k = np.array([1.2, 0.0]), 1.2 * np.array([np.cos(1.92), np.sin(1.92)])
+    theta = 0.5
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4.2), layout="constrained")
+
+    def rot(v, a):
+        return np.array([v[0] * np.cos(a) - v[1] * np.sin(a), v[0] * np.sin(a) + v[1] * np.cos(a)])
+
+    for ax, (m, n) in zip(axes[:2], ((2, 0), (6, 4))):
+        qm, kn = rot(q, m * theta), rot(k, n * theta)
+        ax.add_patch(plt.Circle((0, 0), 1.27, fill=False, color="#cbd5e1", lw=1, ls="--"))
+        a0 = np.arctan2(qm[1], qm[0])
+        a1 = a0 + (np.arctan2(kn[1], kn[0]) - a0 + np.pi) % (2 * np.pi) - np.pi   # 走较短的那一侧
+        arc = np.linspace(a0, a1, 30)
+        ax.plot(0.45 * np.cos(arc), 0.45 * np.sin(arc), color=GRAY, lw=1.6)
+        mid = (a0 + a1) / 2
+        ax.text(0.68 * np.cos(mid), 0.68 * np.sin(mid), "夹角\n不变", color=GRAY, ha="center", va="center", fontsize=11)
+        for v, c, lab in ((qm, BLUE, f"位置 {m} 的 q\n转了 {m}θ"), (kn, ORANGE, f"位置 {n} 的 k\n转了 {n}θ")):
+            ax.annotate("", xy=v, xytext=(0, 0), arrowprops=dict(arrowstyle="-|>", color=c, lw=2.6))
+            u = v / np.linalg.norm(v)
+            ax.text(*(u * 1.62), lab, color=c, ha="center", va="center", fontsize=11.5)
+        ax.plot(0, 0, "o", color=INK, ms=3)
+        ax.set_title(f"m = {m}，n = {n}：q·k = {qm @ kn:.3f}", fontsize=14)
+        ax.set_xlim(-2.1, 2.1), ax.set_ylim(-2.1, 2.1), ax.set_aspect("equal"), ax.axis("off")
+    # 右：真实 64 维向量，分数只依赖 m − n
+    d = 64
+    qv, kv = rng.normal(size=d), rng.normal(size=d)
+    offs = np.arange(0, 40)
+    ax = axes[2]
+    for start, c, mk in ((0, BLUE, "o"), (20, ORANGE, "x"), (60, TEAL, "+")):
+        s = [(_rope_np(qv[None], [start + o]) @ _rope_np(kv[None], [start]).T).item() / np.sqrt(d) for o in offs]
+        ax.plot(offs, s, color=c, lw=1.6, marker=mk, ms=5, label=f"k 在位置 {start}")
+    ax.set_xlabel("相隔的位置数 m − n")
+    ax.set_ylabel("q·k / √d")
+    ax.set_title("64 维：三条曲线完全重合", fontsize=14)
+    ax.legend(fontsize=10.5, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "rope-rotation.svg", "RoPE：按位置旋转 q 和 k",
+              "左边两幅是同一对二维向量：位置 2 和 0、位置 6 和 4 时 q、k 都被转了不同角度，但两者夹角相同，点积也相同；右图是 64 维随机向量，把 k 放在位置 0、20、60，分数随相隔距离变化的三条曲线完全重合。")
+
+
+def position_ablation():
+    d = load("tinyllm-position-ablation.json")
+    ex = d["extrapolate"]
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1.2, 1]})
+    for (name, r), color in zip(d["runs"].items(), [RED, BLUE, ORANGE]):
+        loss = np.array(r["loss"])
+        smooth = np.convolve(loss, np.ones(15) / 15, mode="valid")
+        ax.plot(np.arange(len(smooth)) + 7, smooth, color=color, lw=2.2, label=f"{name}（最后 50 步 {loss[-50:].mean():.2f}）")
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("训练损失（15 步滑动平均）")
+    ax.set_title("实验一：背唐诗，最后降到同一个水平", fontsize=14)
+    ax.legend(loc="upper right", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    labels = ["没有位置\n长度 24", "可学习绝对\n长度 24", "RoPE\n长度 24", "RoPE\n长度 48", "RoPE\n长度 96"]
+    vals = [ex["task"]["none"], ex["task"]["learned"], ex["task"]["rope"], ex["task_rope_long"]["48"], ex["task_rope_long"]["96"]]
+    colors = [RED, BLUE, ORANGE, "#f59e0b", "#fcd34d"]
+    bars = ax2.bar(range(5), vals, color=colors, width=0.62)
+    for b, v in zip(bars, vals):
+        ax2.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.2f}", ha="center", fontsize=12)
+    ax2.axhline(1 / 32, color=GRAY, lw=1, ls="--")
+    ax2.text(4.4, 1 / 32 + 0.02, "瞎猜 1/32", ha="right", fontsize=10.5, color=GRAY)
+    ax2.set_xticks(range(5), labels, fontsize=10.5)
+    ax2.set_ylim(0, 1.12)
+    ax2.set_ylabel("准确率")
+    ax2.set_title("实验二：输出往前数第 3 个符号", fontsize=14)
+    ax2.grid(alpha=0.25, axis="y")
+    save_plot(fig, "position-ablation.svg", "位置表示的两个对照实验",
+              f"左图：唐诗语料上三种做法训练 400 步，损失几乎一样。右图：输出往前数第 3 个符号的任务，没有位置时准确率 {vals[0]:.2f}，可学习绝对位置和 RoPE 都是 1.00；RoPE 在长度 48 上 {vals[3]:.2f}，长度 96 上 {vals[4]:.2f}。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -1108,7 +1243,8 @@ def main():
     # 第 9、7、3、4、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
-               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation):
+               float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
+               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation):
         fn()
     print("figures written to", OUT)
 
