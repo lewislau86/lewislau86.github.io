@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 6 章：位置表示
+# # 第 7 章：位置表示
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/position-encoding
 #
@@ -20,7 +20,7 @@ print("PyTorch", torch.__version__)
 # %% [markdown]
 # ## 1. 没有位置信息时，注意力分不出先后
 #
-# 用第 5 章的因果注意力处理两句话：“我 在 学习”和“在 我 学习”。
+# 用第 6 章的因果注意力处理两句话：“我 在 学习”和“在 我 学习”。
 # 最后一个位置都是“学习”，它能看见的都是同样三个字，只是先后不同。
 
 # %%
@@ -138,7 +138,8 @@ assert not torch.allclose(a[0, -1], b[0, -1], atol=1e-6)
 # %% [markdown]
 # ## 5. 对照实验一：背唐诗
 #
-# 用第 1 章同一份唐诗和同一个模型，各训练 400 步，只换位置表示的方式：没有位置 / 可学习绝对位置 / RoPE。
+# 用第 1 章同一份唐诗，前 35 首训练、最后 4 首验证。三个模型按同一组预先抽好的 batch 各训练 400 步（单个种子），
+# 只换位置表示的方式：没有位置 / 可学习绝对位置 / RoPE。
 
 # %%
 POEMS = """
@@ -186,15 +187,27 @@ text = "\n".join(POEMS.splitlines()) + "\n"
 chars = sorted(set(text))
 stoi = {ch: i for i, ch in enumerate(chars)}
 itos = {i: ch for ch, i in stoi.items()}
-data = torch.tensor([stoi[c] for c in text], dtype=torch.long)
 vocab_size, block_size = len(chars), 24
 
+# region poem-data
+lines = POEMS.splitlines()
+encode = lambda t: torch.tensor([stoi[c] for c in t], dtype=torch.long)
+train_data = encode("\n".join(lines[:-4]) + "\n")     # 前 35 首训练
+val_data = encode("\n".join(lines[-4:]) + "\n")       # 最后 4 首只用来验证
+g = torch.Generator().manual_seed(1234)               # 单独的发生器：三个模型按同一组 batch 训练
+poem_plan = torch.randint(len(train_data) - block_size - 1, (400, 32), generator=g)
 
-def get_batch(T=block_size, batch_size=32):
-    starts = torch.randint(len(data) - T - 1, (batch_size,))
+def windows(data, starts, T=block_size):
     x = torch.stack([data[s : s + T] for s in starts])
     y = torch.stack([data[s + 1 : s + T + 1] for s in starts])
     return x, y
+
+@torch.no_grad()
+def corpus_loss(model, data, T):
+    """在 data 上按固定步长切出所有长度为 T 的窗口，算平均损失（不抽样，结果确定）。"""
+    x, y = windows(data, torch.arange(0, len(data) - T - 1, 4), T)
+    return F.cross_entropy(model(x).reshape(-1, vocab_size), y.reshape(-1)).item()
+# endregion poem-data
 
 
 class SwiGLU(nn.Module):
@@ -270,23 +283,15 @@ def generate(model, prompt, max_new_tokens=48, temperature=0.8):
     return "".join(itos[i] for i in idx[0].tolist()).strip()
 
 
-@torch.no_grad()
-def eval_loss(model, T, n=20):
-    torch.manual_seed(123)
-    losses = [F.cross_entropy(model(x).reshape(-1, vocab_size), y.reshape(-1)).item()
-              for x, y in (get_batch(T) for _ in range(n))]
-    return sum(losses) / n
-
-
 # region poem-ablation
 results, models = {}, {}
 for kind, name in [("none", "没有位置"), ("learned", "可学习绝对位置"), ("rope", "RoPE")]:
-    torch.manual_seed(0)
+    torch.manual_seed(0)                              # 种子只决定初始参数
     model = TinyLLM(kind)
     opt = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.01)
     history = []
     for step in range(400):
-        xb, yb = get_batch()
+        xb, yb = windows(train_data, poem_plan[step])  # 第 step 步：三个模型用同一个 batch
         loss = F.cross_entropy(model(xb).reshape(-1, vocab_size), yb.reshape(-1))
         opt.zero_grad(set_to_none=True)
         loss.backward()
@@ -294,46 +299,52 @@ for kind, name in [("none", "没有位置"), ("learned", "可学习绝对位置"
         history.append(loss.item())
     torch.manual_seed(1)
     sample = generate(model, "床前")
-    results[name] = {"loss": history, "final": sum(history[-50:]) / 50, "sample": sample}
+    results[name] = {"loss": history, "train": corpus_loss(model, train_data, 24),
+                     "val": corpus_loss(model, val_data, 24), "sample": sample}
     models[kind] = model
-    print(f"{name}：最后 50 步平均训练损失 {results[name]['final']:.3f}")
+    print(f"{name}：训练集损失 {results[name]['train']:.3f}  验证集损失 {results[name]['val']:.3f}")
 # endregion poem-ablation
 
 # %% [markdown]
 # ## 6. 对照实验二：一个必须知道“隔了几个字”的任务
 #
 # 输入一串随机符号，每个位置的目标是“往前数第 3 个符号”。这个任务和语义无关，只考位置。
+# 三种做法各用 3 个种子；训练数据由固定的发生器生成，测试用另外生成的 256 条新序列。
 
 # %%
 # region offset-task
 V_TASK = 32
-def offset_batch(T=24, batch_size=64):
-    x = torch.randint(0, V_TASK, (batch_size, T))
+def offset_batch(T=24, batch_size=64, generator=None):
+    x = torch.randint(0, V_TASK, (batch_size, T), generator=generator)
     y = torch.roll(x, shifts=3, dims=1)             # 目标：往前数第 3 个符号
     y[:, :3] = -100                                 # 前 3 个位置没有答案，不计损失
     return x, y
 
 @torch.no_grad()
 def offset_accuracy(model, T):
-    torch.manual_seed(5)
-    x, y = offset_batch(T, batch_size=256)
+    x, y = offset_batch(T, 256, torch.Generator().manual_seed(5))   # 测试集：训练时没出现过的新序列
     pred, mask = model(x).argmax(-1), y != -100
     return (pred[mask] == y[mask]).float().mean().item()
 
 vocab_size = V_TASK                                 # 这个任务用 32 个符号的小词表
-task_models = {}
+task_models, task_acc = {}, {}
 for kind, name in [("none", "没有位置"), ("learned", "可学习绝对位置"), ("rope", "RoPE")]:
-    torch.manual_seed(0)
-    model = TinyLLM(kind, d=32, n_layers=2, n_heads=4)
-    opt = torch.optim.AdamW(model.parameters(), lr=3e-3)
-    for step in range(300):
-        x, y = offset_batch()
-        loss = F.cross_entropy(model(x).reshape(-1, V_TASK), y.reshape(-1), ignore_index=-100)
-        opt.zero_grad(set_to_none=True)
-        loss.backward()
-        opt.step()
-    task_models[kind] = model
-    print(f"{name}：长度 24 上的准确率 {offset_accuracy(model, 24):.3f}")
+    task_models[kind], task_acc[kind] = [], []
+    for seed in (0, 1, 2):
+        torch.manual_seed(seed)                     # 种子只决定初始参数
+        model = TinyLLM(kind, d=32, n_layers=2, n_heads=4)
+        opt = torch.optim.AdamW(model.parameters(), lr=3e-3)
+        g_task = torch.Generator().manual_seed(2024)  # 训练数据：所有模型看到同一串 batch
+        for step in range(300):
+            x, y = offset_batch(generator=g_task)
+            loss = F.cross_entropy(model(x).reshape(-1, V_TASK), y.reshape(-1), ignore_index=-100)
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            opt.step()
+        task_models[kind].append(model)
+        task_acc[kind].append(offset_accuracy(model, 24))
+    acc = task_acc[kind]
+    print(f"{name}：测试准确率 {sum(acc) / 3:.3f}（{min(acc):.3f}～{max(acc):.3f}）")
 # endregion offset-task
 vocab_size = len(chars)                             # 换回唐诗的词表
 
@@ -341,19 +352,19 @@ vocab_size = len(chars)                             # 换回唐诗的词表
 # ## 7. 比训练时更长：RoPE 能直接用吗？
 #
 # 训练时每段只有 24 个位置。可学习绝对位置的表只有 24 行，更长的输入根本跑不了；
-# RoPE 可以对任何位置算出旋转角度。分别在位置任务和唐诗上，把长度加到训练时的 2 倍、4 倍。
+# RoPE 可以对任何位置算出旋转角度。位置任务在测试集上把长度加到 2 倍、4 倍；唐诗在训练语料上加到 2 倍（这里只看长度的影响，不看泛化）。
 
 # %%
 # region extrapolate
-for T in (24, 48, 96):
-    print(f"位置任务，RoPE，长度 {T}：准确率 {offset_accuracy(task_models['rope'], T):.3f}")
+long_acc = {T: [offset_accuracy(m, T) for m in task_models["rope"]] for T in (24, 48, 96)}
+for T, acc in long_acc.items():
+    print(f"位置任务（测试集），RoPE，长度 {T}：准确率 {sum(acc) / 3:.3f}（{min(acc):.3f}～{max(acc):.3f}）")
 rope_model = models["rope"]
-print(f"RoPE 模型，长度 24（训练长度）：损失 {eval_loss(rope_model, 24):.3f}")
-print(f"RoPE 模型，长度 48（训练长度的两倍）：损失 {eval_loss(rope_model, 48):.3f}")
+t24, t48 = corpus_loss(rope_model, train_data, 24), corpus_loss(rope_model, train_data, 48)
+print(f"唐诗（训练语料），RoPE，长度 24（训练长度）：损失 {t24:.3f}")
+print(f"唐诗（训练语料），RoPE，长度 48（训练长度的两倍）：损失 {t48:.3f}")
 # endregion extrapolate
-extrap = {"t24": eval_loss(rope_model, 24), "t48": eval_loss(rope_model, 48),
-          "task": {k: offset_accuracy(m, 24) for k, m in task_models.items()},
-          "task_rope_long": {T: offset_accuracy(task_models["rope"], T) for T in (24, 48, 96)}}
+extrap = {"t24": t24, "t48": t48, "task": task_acc, "task_rope_long": long_acc}
 
 # %% [markdown]
 # ## 8. 保存对照实验的记录（可选）
@@ -361,7 +372,7 @@ extrap = {"t24": eval_loss(rope_model, 24), "t48": eval_loss(rope_model, 48),
 # %%
 import json
 with open("position_ablation.json", "w", encoding="utf-8") as f:
-    json.dump({"runs": {k: {"loss": v["loss"], "sample": v["sample"]} for k, v in results.items()},
+    json.dump({"runs": {k: {"loss": v["loss"], "train": v["train"], "val": v["val"], "sample": v["sample"]} for k, v in results.items()},
                "extrapolate": extrap}, f, ensure_ascii=False)
 with open("rope_demo.json", "w", encoding="utf-8") as f:
     json.dump(rope_demo, f)

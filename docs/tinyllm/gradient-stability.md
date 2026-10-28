@@ -1,10 +1,10 @@
 ---
-title: "第 18 章：梯度稳定与累积"
+title: "第 19 章：梯度稳定与累积"
 description: "梯度裁剪、FP16 Loss Scaling、梯度累积与梯度监测。"
 pageClass: tinyllm-course
 ---
 
-# 第 18 章：梯度稳定与累积
+# 第 19 章：梯度稳定与累积
 
 [课程总览](./index.md) · [上一章](./precision.md) · [下一章](./training-loop.md)
 

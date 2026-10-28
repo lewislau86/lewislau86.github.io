@@ -1,10 +1,10 @@
 ---
-title: "第 12 章：语料与数据管线"
+title: "第 13 章：语料与数据管线"
 description: "清洗、去重、划分训练与验证集、batching，以及数据泄漏检查。"
 pageClass: tinyllm-course
 ---
 
-# 第 12 章：语料与数据管线
+# 第 13 章：语料与数据管线
 
 [课程总览](./index.md) · [上一章](./tinyllm-model.md) · [下一章](./language-model-loss.md)
 

@@ -1,17 +1,17 @@
 ---
-title: "第 5 章：自注意力"
+title: "第 6 章：自注意力"
 description: "让每个 token 去看前面的字：Q/K/V、缩放点积、因果掩码、多头注意力，以及注意力为什么必不可少、代价在哪里。"
 pageClass: tinyllm-course
 ---
 
-# 第 5 章：自注意力
+# 第 6 章：自注意力
 
 [课程总览](./index.md) · [上一章](./embeddings-and-output.md) · [下一章](./position-encoding.md)
 
 ::: tip 本章学习目标
 能手算一次三个位置的因果注意力（打分、遮住未来、softmax、加权求和）；能说出 Q、K、V 各自的作用；能写出多头注意力，并核对每一步张量形状；能解释注意力的代价为什么随上下文长度平方增长。
 
-**前置：** [第 2 章](./tensors-and-autograd.md)的矩阵乘法与 `transpose`；[第 4 章](./embeddings-and-output.md)的词嵌入。
+**前置：** [第 2 章](./tensors-and-autograd.md)的矩阵乘法与 `transpose`；[第 5 章](./embeddings-and-output.md)的词嵌入。
 
 **实践方式：** [self-attention.ipynb](/tinyllm/notebooks/self-attention)（也可以直接运行 <a href="/tinyllm/code/self-attention.py" download>self-attention.py</a>），CPU 约一分钟。
 :::
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## 问题：查完表，每个字还是孤立的
 
-[第 4 章](./embeddings-and-output.md)把“我 在 学习”变成了三个向量。可是查表只认 ID：不管“学习”前面是“我”还是“数学”，它查到的都是同一行。
+[第 5 章](./embeddings-and-output.md)把“我 在 学习”变成了三个向量。可是查表只认 ID：不管“学习”前面是“我”还是“数学”，它查到的都是同一行。
 
 ::: info 本章代码从哪里来
 本章所有代码都在一个文件里：<a href="/tinyllm/code/self-attention.py" download>self-attention.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/self-attention.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python self-attention.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/self-attention)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/self-attention.ipynb)。
@@ -50,7 +50,7 @@ $$
 
 看“学习”这一行（第 3 行）：$q=[1,1]$ 和三个 $k$ 的点积分别是 1、1、2，除以 $\sqrt 2$ 得到 0.71、0.71、1.41；softmax 之后是 0.25、0.25、0.50；输出就是 $0.25\,v_0+0.25\,v_1+0.50\,v_2=[1.76,\ 2.01]$。
 
-**为什么要除以 $\sqrt d$？** 两个 $d$ 维随机向量的点积，方差大约随 $d$ 线性增长。$d$ 一大，分数就动辄几十，softmax 会把几乎全部权重压到一个位置上，其余位置的梯度接近 0。除以 $\sqrt d$ 把分数拉回差不多的尺度，这一点和[第 9 章](./initialization-and-residuals.md)讲的“按宽度选初始化尺度”是同一个道理。
+**为什么要除以 $\sqrt d$？** 两个 $d$ 维随机向量的点积，方差大约随 $d$ 线性增长。$d$ 一大，分数就动辄几十，softmax 会把几乎全部权重压到一个位置上，其余位置的梯度接近 0。除以 $\sqrt d$ 把分数拉回差不多的尺度，这一点和[第 10 章](./initialization-and-residuals.md)讲的“按宽度选初始化尺度”是同一个道理。
 
 ## 2. 因果掩码：只许看自己和前面
 
@@ -95,8 +95,8 @@ $$
 两条曲线开头几乎重合，100 步以后就分开了。有注意力的模型损失降到约 0.11，能把整首诗背出来；没有注意力的模型停在约 1.6，因为它只知道“当前这个字后面常跟什么字”。以“床前”开头各生成一次：
 
 ```text
-有注意力：  床前明月光，疑是地上霜。举头望明月，低头思故乡。
-没有注意力：床前，清晨入旧年绿树村边。征。随风潜入大荒城。
+有注意力：最后 50 步平均训练损失 0.115，以“床前”开头生成：床前明月光，疑是地上霜。举头望明月，低头思故乡。
+没有注意力：最后 50 步平均训练损失 1.589，以“床前”开头生成：床前，清晨入旧年绿树村边。征。随风潜入大荒城。
 ```
 
 没有注意力的那句，两个字两个字地看都像唐诗（“绿树”“村边”“随风潜入”），但五个字一顿的节奏、前后的意思全乱了：它根本不知道前面写过什么。**注意力是模型里唯一让不同位置交换信息的地方**；前馈层、归一化都只对每个位置单独计算。
@@ -117,7 +117,7 @@ T = 128,000  分数矩阵    2097.15 GB
 这还只是一层。现实中有几种办法分头应对：
 
 - **不存这张表**：FlashAttention 一块一块地算，算完就丢，内存不再随 $T^2$ 增长；但计算量仍然是 $T^2$。`F.scaled_dot_product_attention` 在条件满足时会自动用上。
-- **生成时不重算前文**：每生成一个字，旧位置的 K、V 不会变，可以存起来复用，这就是 KV cache，见[第 24 章](./inference-efficiency.md#kv-cache)。缓存要占显存，GQA 让几个头共用一组 K、V 来省这部分显存。
+- **生成时不重算前文**：每生成一个字，旧位置的 K、V 不会变，可以存起来复用，这就是 KV cache，见[第 25 章](./inference-efficiency.md#kv-cache)。缓存要占显存，GQA 让几个头共用一组 K、V 来省这部分显存。
 - **换一种注意力**：[第 1 章](./first-run.md)对比表里的 Kimi K3、Qwen3.5 把大部分层换成线性注意力，把前文压成固定大小的状态，只留四分之一的层做完整注意力。
 
 ## 7. 延伸：QK Norm {#qk-norm}
@@ -126,7 +126,7 @@ T = 128,000  分数矩阵    2097.15 GB
 
 注意力分数由 Q 与 K 的点积得到，再经过 softmax 变成权重。如果 Q、K 的长度在训练中越变越大，点积也会跟着变大，softmax 就会“饱和”：某一个 key 的权重接近 1，其余接近 0，梯度也随之变得极小或剧烈波动。QK Norm 在点积**之前**分别把 Q、K 的尺度控制住。
 
-它和[第 10 章](./normalization.md)的 RMSNorm 管的是不同的地方：RMSNorm 处理进入子层前的隐藏状态，QK Norm 处理注意力**内部**的 Q 和 K。两者可以同时存在，Qwen3、Gemma 3、OLMo 2 都是这样做的。
+它和[第 11 章](./normalization.md)的 RMSNorm 管的是不同的地方：RMSNorm 处理进入子层前的隐藏状态，QK Norm 处理注意力**内部**的 Q 和 K。两者可以同时存在，Qwen3、Gemma 3、OLMo 2 都是这样做的。
 
 ### 原始做法：逐头 L2 归一化
 
@@ -222,4 +222,4 @@ QK Norm 让训练更稳定，但也改变了注意力的表达方式。[OlmPool]
 - [GQA，Ainslie 等，2023](https://arxiv.org/abs/2305.13245)
 - [Query-Key Normalization for Transformers，Henry 等，2020](https://aclanthology.org/2020.findings-emnlp.379/) · [OlmPool 架构研究](https://allenai.org/papers/olmpool) · [Qwen3 技术报告](https://arxiv.org/abs/2505.09388)
 
-注意力本身只看“谁和谁匹配”，不看先后：把输入的顺序打乱，每个位置取回的信息不会变，模型分不出“我在学习”和“学习在我”。下一章讲怎样把位置信息放进去：[第 6 章：位置表示](./position-encoding.md)。
+注意力本身只看“谁和谁匹配”，不看先后：把输入的顺序打乱，每个位置取回的信息不会变，模型分不出“我在学习”和“学习在我”。下一章讲怎样把位置信息放进去：[第 7 章：位置表示](./position-encoding.md)。

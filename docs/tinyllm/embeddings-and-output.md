@@ -1,17 +1,17 @@
 ---
-title: "第 4 章：词嵌入与输出层"
+title: "第 5 章：词嵌入与输出层"
 description: "token ID 怎样查表变成向量，向量怎样变回词表上的分数；Q/K/V 从哪里来；为什么输入输出可以共用一张表。"
 pageClass: tinyllm-course
 ---
 
-# 第 4 章：词嵌入与输出层
+# 第 5 章：词嵌入与输出层
 
 [课程总览](./index.md) · [上一章](./tokenization.md) · [下一章](./self-attention.md)
 
 ::: tip 本章学习目标
 说清 `[batch, seq] → [batch, seq, d] → [batch, seq, V]` 的形状变化；解释 logits、交叉熵梯度与权重共享；区分模型内部的词嵌入与检索用的文本向量。
 
-**前置：** [第 3 章](./tokenization.md)的 token ID；[第 2 章](./tensors-and-autograd.md)的矩阵乘法与梯度。
+**前置：** [第 4 章](./tokenization.md)的 token ID；[第 2 章](./tensors-and-autograd.md)的矩阵乘法与梯度。
 
 **实践方式：** [embeddings-and-output.ipynb](/tinyllm/notebooks/embeddings-and-output)（也可以直接运行 <a href="/tinyllm/code/embeddings-and-output.py" download>embeddings-and-output.py</a>），固定的六项教学词表和 PyTorch，CPU 即可，不下载模型或语料。先猜形状和结果，再运行每一格核对；这里的数字只为看清机制，不代表训练好的语言能力。
 :::
@@ -34,7 +34,7 @@ pageClass: tinyllm-course
 
 图左边是整张嵌入表，每一行属于一个词表条目；右边是查表结果。ID 2、3、4 就是三个行号，`nn.Embedding` 按行号把这三行原样取出、按输入顺序排好，于是 `[3]` 个 ID 变成 `[3, 4]` 的向量。整批输入 `[batch, seq]` 也是同样的逐个取行，结果是 `[batch, seq, d]`。[PyTorch `nn.Embedding`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html) 做的正是这种按索引取行的操作。
 
-两条样本都以“我”开头，所以它们取到同一行向量。这里的“相同”仅限<strong>查表刚结束时</strong>：嵌入表只认 ID，不知道“我”处在句首，也不记得前一轮对话。位置信息在 [第 6 章](position-encoding.md) 加入，词与词怎样相互影响在 [第 5 章](self-attention.md) 讲解，经过它们之后两个位置的隐藏状态就会各不相同。
+两条样本都以“我”开头，所以它们取到同一行向量。这里的“相同”仅限<strong>查表刚结束时</strong>：嵌入表只认 ID，不知道“我”处在句首，也不记得前一轮对话。位置信息在 [第 7 章](position-encoding.md) 加入，词与词怎样相互影响在 [第 6 章](self-attention.md) 讲解，经过它们之后两个位置的隐藏状态就会各不相同。
 
 查表也可以看成矩阵乘法：先构造长度为 $V$、只有第 $i$ 项为 1 的 one-hot 向量，再乘 $E$，结果就是 $E_i$。两种写法数值相同，查表省去了构造庞大 one-hot 张量的开销：
 
@@ -44,7 +44,7 @@ pageClass: tinyllm-course
 
 ## 2. 向量怎样变回词表上的分数
 
-Transformer 接收嵌入向量，输出每个位置的隐藏状态 $H$，形状仍为 `[batch, seq, d]`。完整的 Transformer Block 要到第 8 章才构造；现在用 `vectors` 暂代 $H$，只检查输出端的形状。输出层把每个 $d$ 维向量映射成 $V$ 个分数：
+Transformer 接收嵌入向量，输出每个位置的隐藏状态 $H$，形状仍为 `[batch, seq, d]`。完整的 Transformer Block 要到第 9 章才构造；现在用 `vectors` 暂代 $H$，只检查输出端的形状。输出层把每个 $d$ 维向量映射成 $V$ 个分数：
 
 $$
 z_{b,t,j}=H_{b,t}\cdot W_j+b_j,\qquad
@@ -55,11 +55,11 @@ $j$ 遍历词表，$z_{b,t,j}$ 是位置 $(b,t)$ 对候选 token $j$ 的 <strong
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#logits
 
-`softmax(dim=-1)` 在六个候选之间归一化，每个位置得到一个概率分布。每个位置的分布都是对<strong>下一个</strong> token 的预测。`argmax` 取最高分的 ID；实际生成还可能按温度、top-k 或 top-p 采样，见 [第 23 章](generation.md)。
+`softmax(dim=-1)` 在六个候选之间归一化，每个位置得到一个概率分布。每个位置的分布都是对<strong>下一个</strong> token 的预测。`argmax` 取最高分的 ID；实际生成还可能按温度、top-k 或 top-p 采样，见 [第 24 章](generation.md)。
 
 ## 3. 让一次预测真正产生梯度
 
-用一条完整的教学序列 `我 在 学习 <eos>`：输入前三项 `[2,3,4]`，目标是后移一位的 `[3,4,1]`。看见“我”预测“在”，看见“我 在”预测“学习”，看见“我 在 学习”预测结束，和第 3 章构造的标签一样。这个训练目标在 [第 13 章](language-model-loss.md) 进一步展开。
+用一条完整的教学序列 `我 在 学习 <eos>`：输入前三项 `[2,3,4]`，目标是后移一位的 `[3,4,1]`。看见“我”预测“在”，看见“我 在”预测“学习”，看见“我 在 学习”预测结束，和第 4 章构造的标签一样。这个训练目标在 [第 14 章](language-model-loss.md) 进一步展开。
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#loss
 
@@ -94,11 +94,11 @@ $$
 
 共享之后，第 3 节“只有出现过的行才有输入梯度”的规律就要改写：输出分类的梯度落在所有行上，并与输入查表的梯度汇合，所以没有出现在输入中的行也会获得梯度。Notebook 会用 `F.linear(hidden, embedding.weight)` 对照共享层的结果，并在反向传播后检查这一点。
 
-共享有两个前提。一是形状：输出端的隐藏维数要等于嵌入维数，否则需要额外投影。二是 ID 映射：tokenizer 与模型要用同一份词表。更换词表或重排 ID 会改变每一行的意义，输入和输出两端都要处理；只在固定词表上改变切分算法，矩阵可以保留，但模型看到的序列分布会变，见 [第 3 章](tokenization.md)。
+共享有两个前提。一是形状：输出端的隐藏维数要等于嵌入维数，否则需要额外投影。二是 ID 映射：tokenizer 与模型要用同一份词表。更换词表或重排 ID 会改变每一行的意义，输入和输出两端都要处理；只在固定词表上改变切分算法，矩阵可以保留，但模型看到的序列分布会变，见 [第 4 章](tokenization.md)。
 
 ## 5. 嵌入之后：Q、K、V 从哪里来
 
-输入和输出两端已经接通。中间的注意力层怎样使用这些向量？这里先看一个单头的预览，完整机制留到第 5 章。先给每个位置的输入加入位置信息，得到 $X$；当前层再用三组<strong>不同的可训练投影</strong>得到查询、键和值：
+输入和输出两端已经接通。中间的注意力层怎样使用这些向量？这里先看一个单头的预览，完整机制留到第 6 章。先给每个位置的输入加入位置信息，得到 $X$；当前层再用三组<strong>不同的可训练投影</strong>得到查询、键和值：
 
 $$
 Q=XW_Q,\qquad K=XW_K,\qquad V=XW_V,\qquad
@@ -111,11 +111,11 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#qkv
 
-注意力用 Q/K 的点积做匹配，匹配范围是<strong>本次前向中的 token 位置</strong>。K 的行数随位置数增长，V 参与加权求和；某一层的 K 是逐 token 的中间特征，没有经过文本级聚合，也没有为检索任务训练，所以它和第 6 节要讲的“文本向量”是两种东西。[第 5 章](self-attention.md) 会继续展开多头、缩放和掩码。生成文本时，旧位置的 K、V 还可以存起来反复使用，这就是 KV cache，它只在推理阶段用得上，放在[第 24 章](./inference-efficiency.md#kv-cache)细讲。
+注意力用 Q/K 的点积做匹配，匹配范围是<strong>本次前向中的 token 位置</strong>。K 的行数随位置数增长，V 参与加权求和；某一层的 K 是逐 token 的中间特征，没有经过文本级聚合，也没有为检索任务训练，所以它和第 6 节要讲的“文本向量”是两种东西。[第 6 章](self-attention.md) 会继续展开多头、缩放和掩码。生成文本时，旧位置的 K、V 还可以存起来反复使用，这就是 KV cache，它只在推理阶段用得上，放在[第 25 章](./inference-efficiency.md#kv-cache)细讲。
 
 ## 6. 一个同名词：Agent 的记忆 embedding
 
-本章的 $E_i$ 是语言模型**内部**、按 token ID 读取的参数表。Agent 做记忆检索时也说“embedding”，那通常是另一个专门训练的文本编码模型，把**一整段文本**编码成一个向量，用来按相似度找回历史内容；找回的仍是原始文本，它要重新放进提示词、经过分词器和本章的嵌入层才能被模型使用。两者的输入、训练目标和生命周期都不同，详细对比和检索模型的用法见[第 30 章](./agent-memory.md#two-kinds-of-embedding)。
+本章的 $E_i$ 是语言模型**内部**、按 token ID 读取的参数表。Agent 做记忆检索时也说“embedding”，那通常是另一个专门训练的文本编码模型，把**一整段文本**编码成一个向量，用来按相似度找回历史内容；找回的仍是原始文本，它要重新放进提示词、经过分词器和本章的嵌入层才能被模型使用。两者的输入、训练目标和生命周期都不同，详细对比和检索模型的用法见[第 31 章](./agent-memory.md#two-kinds-of-embedding)。
 
 ## 7. 动手实验
 
@@ -132,7 +132,7 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 运行后，再想一想下面两个问题：
 
 1. 对同一段文本，只改变 tokenizer 的 ID 映射，为什么旧嵌入表要跟着重建？
-2. 把一条历史消息存在向量索引，与把它的 K/V 留在缓存里（KV cache 见[第 24 章](./inference-efficiency.md#kv-cache)），分别能回答什么问题？
+2. 把一条历史消息存在向量索引，与把它的 K/V 留在缓存里（KV cache 见[第 25 章](./inference-efficiency.md#kv-cache)），分别能回答什么问题？
 
 本章的实验验证查表、单头注意力、logits、梯度和共享参数；没有训练完整语言模型，也没有用真实记忆数据评测检索模型。
 
@@ -142,7 +142,7 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 
 理由：小模型里 $V\times d$ 的词表矩阵占参数的比例很大，共享能省下一整份；两端每一行对应同一个词表条目，共享在形状和语义上都自然。这是教学预算下的选择，各个 LLM 的做法并不统一。
 
-什么时候改：若词表输出能力或模型配置需要独立的输出头，就解耦两端，并比较验证损失。若保持共享，第 9 章的初始化对这张张量只执行一次。
+什么时候改：若词表输出能力或模型配置需要独立的输出头，就解耦两端，并比较验证损失。若保持共享，第 10 章的初始化对这张张量只执行一次。
 
 ::: warning 常见误区
 - **ID 的数值大小与语义无关。** 2 和 3 相邻只是行号相邻；初始化时的随机向量也还没有学到词义。
@@ -192,4 +192,4 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 - [Using the Output Embedding to Improve Language Models，Press 与 Wolf，2016](https://arxiv.org/abs/1608.05859)
 - [Hugging Face：注意力与缓存说明](https://huggingface.co/docs/transformers/main/cache_explanation)
 
-现在每个字都还是一个孤立的向量，“学习”并不知道前面是“我”。下一章让这些向量互相看见：[第 5 章：自注意力](./self-attention.md)。
+现在每个字都还是一个孤立的向量，“学习”并不知道前面是“我”。下一章让这些向量互相看见：[第 6 章：自注意力](./self-attention.md)。

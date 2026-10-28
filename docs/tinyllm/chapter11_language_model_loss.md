@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 13 章：语言模型目标函数](./language-model-loss.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 14 章：语言模型目标函数](./language-model-loss.md)。

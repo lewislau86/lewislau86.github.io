@@ -49,6 +49,7 @@ ARTIFACTS = {
     ("tensors-and-autograd", "autograd_chain.json"): ROOT / "scripts/data/tinyllm-autograd-chain.json",
     ("inference-efficiency", "kv_cache_counts.json"): ROOT / "scripts/data/tinyllm-kv-cache-counts.json",
     ("transformer-block", "block_depth.json"): ROOT / "scripts/data/tinyllm-block-depth.json",
+    ("architecture-evolution", "architecture_cost.json"): ROOT / "scripts/data/tinyllm-architecture-cost.json",
 }
 
 
@@ -65,11 +66,8 @@ def run_script(path: Path, workdir: Path) -> None:
         print("      " + line)
 
 
-def to_notebook(path: Path, workdir: Path, target: Path) -> None:
-    print(f"[run] {path.name}（以 notebook 方式执行）")
-    import nbformat
-    from nbclient import NotebookClient
-
+def split_cells(path: Path) -> list[tuple[str, str]]:
+    """把章节脚本按 `# %%` 切成 notebook 单元：[("markdown" 或 "code", 内容)]。检查脚本也用它判断 notebook 是否过期。"""
     source = path.read_text(encoding="utf-8")
     source = "\n".join(line for line in source.splitlines() if not REGION.match(line.strip()))
     cells = []
@@ -77,9 +75,19 @@ def to_notebook(path: Path, workdir: Path, target: Path) -> None:
         if chunk.startswith(" [markdown]"):
             body = chunk[len(" [markdown]"):].strip("\n")
             md = "\n".join(l[2:] if l.startswith("# ") else l.lstrip("#") for l in body.splitlines())
-            cells.append(nbformat.v4.new_markdown_cell(md.strip()))
+            cells.append(("markdown", md.strip()))
         else:
-            cells.append(nbformat.v4.new_code_cell(chunk.strip("\n")))
+            cells.append(("code", chunk.strip("\n")))
+    return cells
+
+
+def to_notebook(path: Path, workdir: Path, target: Path) -> None:
+    print(f"[run] {path.name}（以 notebook 方式执行）")
+    import nbformat
+    from nbclient import NotebookClient
+
+    cells = [nbformat.v4.new_markdown_cell(src) if kind == "markdown" else nbformat.v4.new_code_cell(src)
+             for kind, src in split_cells(path)]
     nb = nbformat.v4.new_notebook(cells=cells)
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
     nb.metadata["language_info"] = {"name": "python"}

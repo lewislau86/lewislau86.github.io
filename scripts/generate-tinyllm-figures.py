@@ -180,7 +180,7 @@ def gradient_step():
               "损失曲线 (3w-1)^2 上，w=2 处切线斜率为 30；以学习率 0.01 更新到 w=1.7，损失从 25 降到 16.81。")
 
 
-# ---------- 第 10 章：归一化 ----------
+# ---------- 第 11 章：归一化 ----------
 
 def norm_motivation():
     """没有归一化时，残差流尺度随层数漂移；Pre-Norm 让每个子层看到的输入 RMS 保持为 1。"""
@@ -334,7 +334,7 @@ def first_run_loss():
               f"训练损失从约 {loss[0]:.1f} 迅速降到约 {smooth[-1]:.2f}；验证损失只在开头略降，随后升到约 {log['val_loss'][-1]:.1f}，高于乱猜水平，说明模型在背诵训练集。")
 
 
-# ---------- 第 9、7、3、4、14、17 章共用工具 ----------
+# ---------- 第 10、8、4、5、15、18 章共用工具 ----------
 
 PURPLE = "#7c3aed"
 MONO = '"Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace'
@@ -359,7 +359,7 @@ def load(name):
     return json.loads(src.read_text(encoding="utf-8"))
 
 
-# ---------- 第 9 章：初始化与残差 ----------
+# ---------- 第 10 章：初始化与残差 ----------
 
 def init_fan_in():
     d = load("tinyllm-init-fan-in.json")
@@ -421,7 +421,7 @@ def residual_path():
         "输入 x 经过子层 F 后与 x 本身相加得到 y；反向时梯度 g 一路原样传回 x，另一路经过 F 的雅可比，两路相加。", 480, body)
 
 
-# ---------- 第 7 章：激活与门控前馈层 ----------
+# ---------- 第 8 章：激活与门控前馈层 ----------
 
 def activation_fit():
     d = load("tinyllm-activation-fit.json")
@@ -470,7 +470,7 @@ def swiglu_vs_ffn():
         "普通 FFN 先把 d 维升到 4d，过激活函数后降回 d，权重 8d²；SwiGLU 用 gate 与 value 两条投影升到 m 维，gate 经过 SiLU 后与 value 逐元素相乘，再降回 d，中间宽度取 8d/3 时权重也是 8d²。", 470, body)
 
 
-# ---------- 第 3 章：词元化 ----------
+# ---------- 第 4 章：词元化 ----------
 
 def utf8_lengths():
     samples = [("A", "A"), ("猫", "猫"), ("é", "é（一个码点）"), ("é", "e + 组合重音"), ("👩‍💻", "👩‍💻 组合 emoji")]
@@ -566,7 +566,7 @@ def label_shift():
         "两条样本补齐到同样长度后，input_ids 取前 n-1 位，labels 取后 n-1 位；attention_mask 中 1 表示有效、0 表示补齐；补齐位置的标签写成 -100，不参与损失，EOS 保留为最后一个目标。", 495, body)
 
 
-# ---------- 第 4 章：词嵌入与输出层 ----------
+# ---------- 第 5 章：词嵌入与输出层 ----------
 
 def embedding_lookup():
     vocab = ["<pad>", "<eos>", "我", "在", "学习", "数学"]
@@ -652,7 +652,7 @@ def kv_cache():
         "prefill 时一次算出前两个 token 的 K、V；之后每个 decode 步只为新 token 计算一组 K、V 并接到缓存后面，新 token 的 Q 与全部 K 打分、对全部 V 加权求和。", 520, body)
 
 
-# ---------- 第 14 章：优化器 ----------
+# ---------- 第 15 章：优化器 ----------
 
 def optimizer_paths():
     d = load("tinyllm-optimizer-paths.json")
@@ -712,7 +712,7 @@ def adamw_vs_l2():
         "Adam 加 L2 把 λw 加进梯度，衰减项随后被二阶矩缩放；AdamW 用原始梯度更新一、二阶矩，参数更新后再单独减去 ηλw，让所有参数按同一比例衰减。", 425, body)
 
 
-# ---------- 第 17 章：数值精度 ----------
+# ---------- 第 18 章：数值精度 ----------
 
 def float_formats():
     body = text(480, 40, "16 位的两种分法：FP16 多给尾数，BF16 多给指数", 23, weight="bold")
@@ -934,6 +934,68 @@ def modern_block():
         "左：GPT-1 由 12 个相同的 Block 组成，每个 Block 是完整注意力加稠密前馈层。右：2026 年的典型做法每 4 层为一组，前 3 层用便宜的线性注意力、第 4 层用完整注意力，每层后接 MoE 前馈层；MoE 由很多小专家组成，路由器为每个 token 只挑少数几个，另有所有 token 共用的共享专家。", 515, body)
 
 
+# ---------- 第 3 章：架构演进 ----------
+
+def architecture_timeline():
+    body = text(480, 38, "三代架构：目标没变，零件一直在换", 22, weight="bold")
+    gens = [
+        (20, 250, "第一代 · 2017", "编码器-解码器", BLUE, "为翻译设计：读原文，写译文", [
+            ("2017", "Transformer", "注意力取代循环网络"),
+            ("", "", "位置编码标出词序"),
+            ("", "", "需要“原文 → 译文”成对数据")]),
+        (285, 330, "第二代 · 2018～2023", "只有解码器（稠密）", TEAL, "任何文本都能学：预测下一个 token", [
+            ("2018", "GPT-1", "去掉编码器"),
+            ("2019", "GPT-2", "归一化挪到子层前（Pre-Norm）"),
+            ("2020", "GPT-3", "1750 亿参数，看几个例子就会做新任务"),
+            ("2021", "RoPE", "旋转位置编码"),
+            ("2023", "LLaMA / Llama 2", "RMSNorm、SwiGLU、RoPE；GQA")]),
+        (630, 310, "第三代 · 2024～2026", "稀疏 + 混合注意力", ORANGE, "同一个目标，做大且省", [
+            ("2024", "DeepSeek-V2/V3", "MLA 压缩 KV；细粒度 MoE"),
+            ("2025", "Qwen3-Next、Kimi Linear", "线性注意力 : 完整注意力 = 3 : 1"),
+            ("2026", "Kimi K3", "2.8 万亿参数，896 个专家选 16 个，"),
+            ("", "", "100 万 token 上下文")]),
+    ]
+    for x, w, head, sub, c, goal, rows in gens:
+        body += cbox(x, 62, w, 370, c)
+        body += text(x + w / 2, 90, head, 17, c, "bold") + text(x + w / 2, 114, sub, 15, INK, "bold")
+        body += text(x + w / 2, 140, goal, 12.5, GRAY)
+        y = 176
+        for yr, name, note in rows:
+            if name:
+                body += text(x + 16, y, yr, 13, c, "bold", "start") + text(x + 58, y, name, 14, INK, "bold", "start")
+                y += 20
+            body += text(x + 58, y, note, 12.5, INK, anchor="start")
+            y += 26
+    body += arrow(272, 220, 283, 220, GRAY, 2) + arrow(617, 220, 628, 220, GRAY, 2)
+    body += text(480, 462, "TinyLLM 的主线就是第二代的“现代稠密解码器”；第三代的 MoE、KV 压缩和混合注意力在后面的专题里讲。", 14, GRAY)
+    svg("architecture-timeline.svg", "大模型架构的三代演进",
+        "第一代（2017）：为翻译设计的编码器-解码器 Transformer，用注意力取代循环网络、用位置编码标出词序，需要成对数据。第二代（2018～2023）：只有解码器，预测下一个 token；GPT-1 去掉编码器，GPT-2 把归一化挪到子层前，GPT-3 扩大到 1750 亿参数，2021 年出现 RoPE，2023 年 LLaMA 与 Llama 2 采用 RMSNorm、SwiGLU、RoPE 和 GQA。第三代（2024～2026）：稀疏加混合注意力；DeepSeek-V2/V3 用 MLA 压缩 KV 并采用细粒度 MoE，Qwen3-Next 与 Kimi Linear 把线性注意力和完整注意力按 3:1 混合，Kimi K3 有 2.8 万亿参数、896 个专家每次选 16 个、100 万 token 上下文。", 485, body)
+
+
+def architecture_cost():
+    d = load("tinyllm-architecture-cost.json")
+    T = np.array(d["T"], float)
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    w = 0.36
+    pos = np.arange(len(T))
+    b1 = ax.bar(pos - w / 2, d["full"], w, color=BLUE, label="每层都是完整注意力")
+    b2 = ax.bar(pos + w / 2, d["hybrid"], w, color=ORANGE, label="3 层线性注意力 + 1 层完整注意力")
+    for bars in (b1, b2):
+        for b in bars:
+            ax.text(b.get_x() + b.get_width() / 2, b.get_height() * 1.15, f"{b.get_height():.2f}", ha="center", fontsize=11)
+    ax.set_yscale("log")
+    ax.set_xticks(pos, [f"{int(t):,}" for t in T])
+    ax.set_xlabel("上下文长度（token）")
+    ax.set_ylabel("生成时要保存的缓存（GB，对数刻度）")
+    c = d["config"]
+    ax.set_title(f"{c['layers']} 层、每层 {c['kv_heads']} 个 KV 头、每头 {c['head_dim']} 维、BF16 的估算", fontsize=13)
+    ax.set_ylim(0.05, 600)
+    ax.legend(loc="upper left", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25, axis="y")
+    save_plot(fig, "architecture-cost.svg", "完整注意力与混合注意力的缓存大小",
+              f"按 32 层、每层 8 个 KV 头、每头 128 维、BF16 估算：每层都用完整注意力时，缓存从 4096 个 token 的 {d['full'][0]:.2f} GB 涨到 100 万个 token 的 {d['full'][-1]:.0f} GB；3 层线性注意力加 1 层完整注意力时只有约四分之一，100 万个 token 约 {d['hybrid'][-1]:.0f} GB。")
+
+
 def autograd_cost():
     d = load("tinyllm-autograd-cost.json")
     rows = d["rows"]
@@ -983,7 +1045,7 @@ def vjp_matmul():
         "前向 y = x @ W；反向已知 g = ∂L/∂y，直接算 dL/dW = xᵀg 和 dL/dx = gWᵀ，两次矩阵乘法的计算量与前向同一量级。若先构造完整雅可比矩阵 dy/dW，在 d_in = d_out = 4096 时就有约 687 亿个数，FP32 下约 275 GB。", 475, body)
 
 
-# ---------- 第 5 章：自注意力 ----------
+# ---------- 第 6 章：自注意力 ----------
 
 def _grid(x0, y0, mat, cell, color, fmt="{:.2f}", masked=None, label=None, row_labels=None, col_labels=None):
     out = ""
@@ -1063,7 +1125,7 @@ def attention_ablation():
               "同一份唐诗语料、同一个模型、同样 600 步：有注意力时训练损失降到约 0.11；把注意力去掉后，每个位置只能看到自己，损失停在约 1.6。")
 
 
-# ---------- 第 8 章：Transformer Block ----------
+# ---------- 第 9 章：Transformer Block ----------
 
 def block_anatomy():
     d = load("tinyllm-block-depth.json")["params"]
@@ -1106,51 +1168,51 @@ def block_anatomy():
 def block_depth():
     d = load("tinyllm-block-depth.json")
     runs, sig = list(d["runs"].values()), d["signal"]
-    fig, axes = plt.subplots(1, 3, figsize=(13, 4.4), layout="constrained")
-    styles = {"直接堆叠": RED, "Pre-Norm 残差": TEAL}
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8.2), layout="constrained")
+    (a_tr, a_va), (a_gr, a_sg) = axes
+    styles = {"直接堆叠": RED, "只加残差": ORANGE, "只加 Pre-Norm": PURPLE, "Pre-Norm 残差": TEAL}
+    mean = lambda v: sum(v) / len(v)
 
-    def band(vals):
-        m = np.array([np.mean(v) for v in vals])
+    def err(vals):
+        m = np.array([mean(v) for v in vals])
         return m, [m - np.array([min(v) for v in vals]), np.array([max(v) for v in vals]) - m]
 
     for kind, color in styles.items():
         rs = [r for r in runs if r["kind"] == kind]
         L = np.array([r["layers"] for r in rs], float)
-        m, e = band([r["train"] for r in rs])
-        axes[0].errorbar(L, m, yerr=e, fmt="o-", color=color, lw=2.2, capsize=4, label=f"{kind}·训练")
-        m, e = band([r["val"] for r in rs])
-        axes[0].errorbar(L, m, yerr=e, fmt="s--", color=color, lw=1.6, capsize=4, alpha=0.75, label=f"{kind}·验证")
-        g = [max(r["grad0"][1], 1e-12) for r in rs]
-        lo = [max(r["grad0"][0], 1e-12) for r in rs]
-        hi = [max(r["grad0"][-1], 1e-12) for r in rs]
-        axes[1].errorbar(L, g, yerr=[np.array(g) - lo, np.array(hi) - g], fmt="o-", color=color, lw=2.2, capsize=4, label=kind)
+        for ax, key in ((a_tr, "train"), (a_va, "val")):
+            m, e = err([r[key] for r in rs])
+            ax.errorbar(L, m, yerr=e, fmt="o-", color=color, lw=2.2, capsize=4, label=kind)
+        g = np.array([max(r["grad0"][1], 1e-12) for r in rs])
+        lo = np.array([max(r["grad0"][0], 1e-12) for r in rs]); hi = np.array([max(r["grad0"][-1], 1e-12) for r in rs])
+        a_gr.errorbar(L, g, yerr=[g - lo, hi - g], fmt="o-", color=color, lw=2.2, capsize=4, label=kind)
         for l, r in zip(L, rs):
             if r["grad0"][-1] == 0:
-                axes[1].annotate("= 0", (l, 1e-12), textcoords="offset points", xytext=(0, 8), ha="center", color=color, fontsize=11)
+                a_gr.annotate("= 0", (l, 1e-12), textcoords="offset points", xytext=(0, 8), ha="center", color=color, fontsize=11)
         s_ = np.exp(np.mean(np.log(np.maximum(np.array(sig[kind]), 1e-30)), axis=0))
-        axes[2].semilogy(range(len(s_)), s_, "o-", color=color, lw=2.2, label=kind)
-    axes[0].axhline(d["uniform"], color=GRAY, ls=":", lw=1.2)
-    axes[0].text(8.2, d["uniform"] - 0.45, f"完全乱猜 {d['uniform']:.2f}", ha="right", color=GRAY, fontsize=10.5)
-    axes[0].set(xlabel="Block 层数", ylabel="损失（3 个种子的平均，竖线为范围）", xticks=[1, 2, 4, 8], ylim=(0, 7.8))
-    axes[0].set_title("训练 150 步：训练损失与验证损失", fontsize=13)
-    axes[0].legend(fontsize=9, framealpha=0.95, loc="center right")
-    axes[1].set_yscale("log")
-    axes[1].set(xlabel="Block 层数", ylabel="第 1 个 Block 的梯度（第一步）", xticks=[1, 2, 4, 8], ylim=(1e-13, 10))
-    axes[1].set_title("梯度传不回第 1 层", fontsize=13)
-    axes[1].legend(fontsize=10, framealpha=0.95, loc="center right")
-    axes[2].set(xlabel="穿过的 Block 数（训练前）", ylabel="token 向量的 RMS", ylim=(1e-31, 10))
-    axes[2].text(4.2, 1e-29, "低于 1e-30 的点画在底部，\n实际已下溢为 0", fontsize=10.5, color=RED)
-    axes[2].set_title("信号每过一层至少缩小上千倍", fontsize=13)
-    axes[2].legend(fontsize=10, framealpha=0.95, loc="center right")
-    for ax in axes:
+        a_sg.semilogy(range(len(s_)), s_, "o-", color=color, lw=2, label=kind)
+    for ax, title in ((a_tr, "训练损失（训练 100 步，3 个种子）"), (a_va, "验证损失（4 首没训练过的诗）")):
+        ax.axhline(d["uniform"], color=GRAY, ls=":", lw=1.2)
+        ax.text(8.2, d["uniform"] + 0.12, f"完全乱猜 {d['uniform']:.2f}", ha="right", color=GRAY, fontsize=10.5)
+        ax.set(xlabel="Block 层数", ylabel="损失（平均，竖线为范围）", xticks=[1, 4, 8])
+        ax.set_title(title, fontsize=13)
+    a_tr.set_ylim(0, 7.8)
+    a_va.set_ylim(5.5, 7.8)
+    a_gr.set_yscale("log")
+    a_gr.set(xlabel="Block 层数", ylabel="第 1 个 Block 的梯度（第一步）", xticks=[1, 4, 8], ylim=(1e-13, 100))
+    a_gr.set_title("第一步时，梯度能否传回第 1 层", fontsize=13)
+    a_sg.set(xlabel="穿过的 Block 数（训练前）", ylabel="token 向量的 RMS", ylim=(1e-31, 10))
+    a_sg.text(4.3, 1e-28, "画在底部的点已下溢为 0", fontsize=10, color=RED)
+    a_sg.set_title("训练前，信号穿过 8 个 Block", fontsize=13)
+    for ax in axes.flat:
         ax.grid(alpha=0.25)
-    r = {k: v for k, v in d["runs"].items()}
-    mean = lambda v: sum(v) / len(v)
-    save_plot(fig, "block-depth.svg", "直接堆叠与 Pre-Norm 残差 Block 的叠深对照",
-              f"三个随机种子、同一组 batch、各训练 150 步。左：直接堆叠 1、2 层训练损失 {mean(r['直接堆叠 1']['train']):.2f}、{mean(r['直接堆叠 2']['train']):.2f}，4 层和 8 层停在完全乱猜的 {d['uniform']:.2f}；Pre-Norm 残差从 {mean(r['Pre-Norm 残差 1']['train']):.2f} 降到 {mean(r['Pre-Norm 残差 8']['train']):.2f}；所有模型在 4 首没训练过的诗上的验证损失都在 6.3 到 7.1 之间，不低于乱猜。中：第一步时第 1 个 Block 的梯度，直接堆叠 2 层只剩约 2e-7，4 层以上为 0；Pre-Norm 在 0.6 到 0.8 之间。右：训练前信号穿过 8 个 Block，直接堆叠每层至少缩小上千倍，第 4 层后下溢为 0；Pre-Norm 从 0.1 缓慢增长到 0.8。")
+        ax.legend(fontsize=9.5, framealpha=0.95, loc="center left" if ax is a_tr else "best")
+    r = d["runs"]
+    save_plot(fig, "block-depth.svg", "四种 Block 写法的叠深对照",
+              f"同一组 batch、3 个随机种子、各训练 100 步、PyTorch 默认初始化。训练损失：直接堆叠 1 层 {mean(r['直接堆叠 1']['train']):.2f}，4、8 层停在乱猜的 {d['uniform']:.2f}；只加残差 4.3 到 4.7；只加 Pre-Norm 1 层 {mean(r['只加 Pre-Norm 1']['train']):.2f}，4、8 层停在 5.4 左右；残差加 Pre-Norm 从 {mean(r['Pre-Norm 残差 1']['train']):.2f} 降到 {mean(r['Pre-Norm 残差 8']['train']):.2f}。验证损失全部在 6.2 到 7.4 之间，没有明显好于乱猜。第一步时第 1 个 Block 的梯度：直接堆叠 4 层以上为 0，其余三种都能传回。训练前信号：直接堆叠每层至少缩小上千倍并下溢为 0，其余三种保持在 0.1 以上。")
 
 
-# ---------- 第 6 章：位置表示 ----------
+# ---------- 第 7 章：位置表示 ----------
 
 def position_methods():
     body = text(480, 36, "把位置放进模型的三种做法", 21, weight="bold")
@@ -1265,13 +1327,15 @@ def position_ablation():
         ax.plot(np.arange(len(smooth)) + 7, smooth, color=color, lw=2.2, label=f"{name}（最后 50 步 {loss[-50:].mean():.2f}）")
     ax.set_xlabel("训练步数")
     ax.set_ylabel("训练损失（15 步滑动平均）")
-    ax.set_title("实验一：背唐诗，最后降到同一个水平", fontsize=14)
+    ax.set_title("实验一：背唐诗（训练损失，单个种子）", fontsize=13)
     ax.legend(loc="upper right", fontsize=11, framealpha=0.95)
     ax.grid(alpha=0.25)
     labels = ["没有位置\n长度 24", "可学习绝对\n长度 24", "RoPE\n长度 24", "RoPE\n长度 48", "RoPE\n长度 96"]
-    vals = [ex["task"]["none"], ex["task"]["learned"], ex["task"]["rope"], ex["task_rope_long"]["48"], ex["task_rope_long"]["96"]]
+    lists = [ex["task"]["none"], ex["task"]["learned"], ex["task"]["rope"], ex["task_rope_long"]["48"], ex["task_rope_long"]["96"]]
+    vals = [sum(v) / len(v) for v in lists]
+    errs = [[v - min(l) for v, l in zip(vals, lists)], [max(l) - v for v, l in zip(vals, lists)]]
     colors = [RED, BLUE, ORANGE, "#f59e0b", "#fcd34d"]
-    bars = ax2.bar(range(5), vals, color=colors, width=0.62)
+    bars = ax2.bar(range(5), vals, color=colors, width=0.62, yerr=errs, capsize=4, ecolor=INK)
     for b, v in zip(bars, vals):
         ax2.text(b.get_x() + b.get_width() / 2, v + 0.02, f"{v:.2f}", ha="center", fontsize=12)
     ax2.axhline(1 / 32, color=GRAY, lw=1, ls="--")
@@ -1279,10 +1343,10 @@ def position_ablation():
     ax2.set_xticks(range(5), labels, fontsize=10.5)
     ax2.set_ylim(0, 1.12)
     ax2.set_ylabel("准确率")
-    ax2.set_title("实验二：输出往前数第 3 个符号", fontsize=14)
+    ax2.set_title("实验二：往前数第 3 个符号（测试集，3 个种子）", fontsize=13)
     ax2.grid(alpha=0.25, axis="y")
     save_plot(fig, "position-ablation.svg", "位置表示的两个对照实验",
-              f"左图：唐诗语料上三种做法训练 400 步，损失几乎一样。右图：输出往前数第 3 个符号的任务，没有位置时准确率 {vals[0]:.2f}，可学习绝对位置和 RoPE 都是 1.00；RoPE 在长度 48 上 {vals[3]:.2f}，长度 96 上 {vals[4]:.2f}。")
+              f"左图：唐诗语料上三种做法按同一组 batch 训练 400 步，训练损失几乎一样。右图：输出往前数第 3 个符号的任务，在新生成的测试序列上、3 个种子平均，没有位置时准确率 {vals[0]:.2f}，可学习绝对位置和 RoPE 都是 1.00；RoPE 在长度 48 上 {vals[3]:.2f}，长度 96 上 {vals[4]:.2f}。")
 
 
 # ---------- matplotlib 公共设置 ----------
@@ -1327,11 +1391,11 @@ def main():
     norm_geometry()
     pre_post_norm()
     first_run_loss()
-    # 第 9、7、3、4、14、17 章；数据图需要先运行 scripts/tinyllm-figure-data.py
+    # 第 10、8、4、5、15、18 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
                float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
-               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth):
+               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost):
         fn()
     print("figures written to", OUT)
 

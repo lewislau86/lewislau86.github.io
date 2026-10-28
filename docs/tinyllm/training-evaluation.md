@@ -1,10 +1,10 @@
 ---
-title: "第 20 章：训练诊断与评估"
+title: "第 21 章：训练诊断与评估"
 description: "先过拟合一个小 batch，再看验证损失、困惑度与生成样例。"
 pageClass: tinyllm-course
 ---
 
-# 第 20 章：训练诊断与评估
+# 第 21 章：训练诊断与评估
 
 [课程总览](./index.md) · [上一章](./training-loop.md) · [下一章](./large-model-stability.md)
 

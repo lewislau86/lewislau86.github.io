@@ -1,10 +1,10 @@
 ---
-title: "第 11 章：完整 TinyLLM"
+title: "第 12 章：完整 TinyLLM"
 description: "把所有零件组装成完整的 Decoder-only 模型，核对参数量与前向形状。"
 pageClass: tinyllm-course
 ---
 
-# 第 11 章：完整 TinyLLM
+# 第 12 章：完整 TinyLLM
 
 [课程总览](./index.md) · [上一章](./normalization.md) · [下一章](./data-pipeline.md)
 

@@ -1,5 +1,5 @@
 ---
-title: "第 9 章：初始化与残差路径（notebook 在线查看）"
+title: "第 10 章：初始化与残差路径（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 9 章：初始化与残差路径
+# 第 10 章：初始化与残差路径
 
 配套教案：https://lewislau86.github.io/tinyllm/initialization-and-residuals
 

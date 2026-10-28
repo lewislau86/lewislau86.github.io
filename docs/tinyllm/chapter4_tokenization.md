@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 3 章：文本与词元化](./tokenization.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 4 章：文本与词元化](./tokenization.md)。

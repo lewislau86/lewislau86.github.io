@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 14 章：优化器
+# # 第 15 章：优化器
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/optimizers
 #

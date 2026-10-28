@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 21 章：大规模训练稳定性](./large-model-stability.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 22 章：大规模训练稳定性](./large-model-stability.md)。

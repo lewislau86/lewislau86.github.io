@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 8 章：Transformer Block](./transformer-block.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 9 章：Transformer Block](./transformer-block.md)。

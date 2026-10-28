@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 30 章：Agent 记忆与检索](./agent-memory.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 31 章：Agent 记忆与检索](./agent-memory.md)。

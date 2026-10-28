@@ -1,12 +1,12 @@
 # %% [markdown]
-# # 第 24 章：推理效率（已成文部分：KV cache）
+# # 第 25 章：推理效率（已成文部分：KV cache）
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/inference-efficiency
 #
 # 从上到下运行即可（`python inference-efficiency.py`），CPU 上不到一秒。只需要安装 PyTorch。
 # 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 # 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
-# 本章还在规划中，目前只有“KV cache 保存的是什么”一节；例子沿用第 4 章的六项教学词表。
+# 本章还在规划中，目前只有“KV cache 保存的是什么”一节；例子沿用第 5 章的六项教学词表。
 
 # %%
 import math
@@ -23,7 +23,7 @@ from torch import nn
 # %%
 # region setup
 torch.manual_seed(7)
-embedding = nn.Embedding(6, 4)              # 第 4 章的六项教学词表
+embedding = nn.Embedding(6, 4)              # 第 5 章的六项教学词表
 position = nn.Embedding(3, 4)               # 教学用的绝对位置向量
 x = embedding(torch.tensor([2, 3, 4])) + position(torch.arange(3))  # “我 在 学习” → [3, 4]
 

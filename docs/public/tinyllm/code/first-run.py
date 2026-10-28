@@ -79,7 +79,7 @@ text = train_text + val_text
 print("诗的数量：", len(lines), "  训练字符数：", len(train_text), "  验证字符数：", len(val_text))
 
 # %% [markdown]
-# ## 2. 把文字变成编号（第 3 章会换成 BPE 分词器）
+# ## 2. 把文字变成编号（第 4 章会换成 BPE 分词器）
 #
 # 最简单的分词器：每个不同的字符分配一个编号。换行符也是一个“字”，
 # 模型靠它学会一首诗在哪里结束。
@@ -101,7 +101,7 @@ print("“床前明月光” →", encode("床前明月光"))
 assert decode(encode("床前明月光")) == "床前明月光"
 
 # %% [markdown]
-# ## 3. 训练样本：用前面的字预测下一个字（第 13 章展开）
+# ## 3. 训练样本：用前面的字预测下一个字（第 14 章展开）
 #
 # 从语料中随机截取长度为 `block_size` 的片段 x，把它整体后移一位得到 y。
 # 位置 t 的目标就是 x 中第 t+1 个字。
@@ -130,7 +130,7 @@ print("y[0] =", decode(y[0].tolist()).replace("\n", "⏎"))
 
 # %%
 # region model
-class CausalSelfAttention(nn.Module):          # 自注意力：第 5 章
+class CausalSelfAttention(nn.Module):          # 自注意力：第 6 章
     def __init__(self, d, n_heads):
         super().__init__()
         self.n_heads = n_heads
@@ -145,7 +145,7 @@ class CausalSelfAttention(nn.Module):          # 自注意力：第 5 章
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
-class SwiGLU(nn.Module):                        # 门控前馈层：第 7 章
+class SwiGLU(nn.Module):                        # 门控前馈层：第 8 章
     def __init__(self, d, hidden):
         super().__init__()
         self.gate = nn.Linear(d, hidden, bias=False)
@@ -156,30 +156,30 @@ class SwiGLU(nn.Module):                        # 门控前馈层：第 7 章
         return self.down(F.silu(self.gate(x)) * self.value(x))
 
 
-class Block(nn.Module):                         # Transformer Block：第 8 章
+class Block(nn.Module):                         # Transformer Block：第 9 章
     def __init__(self, d, n_heads):
         super().__init__()
-        self.norm1 = nn.RMSNorm(d)              # 归一化：第 10 章
+        self.norm1 = nn.RMSNorm(d)              # 归一化：第 11 章
         self.attn = CausalSelfAttention(d, n_heads)
         self.norm2 = nn.RMSNorm(d)
         self.ffn = SwiGLU(d, 8 * d // 3)
 
     def forward(self, x):
-        x = x + self.attn(self.norm1(x))        # 残差：第 9 章
+        x = x + self.attn(self.norm1(x))        # 残差：第 10 章
         x = x + self.ffn(self.norm2(x))
         return x
 
 
-class TinyLLM(nn.Module):                       # 完整模型：第 11 章
+class TinyLLM(nn.Module):                       # 完整模型：第 12 章
     def __init__(self, vocab_size, d=96, n_layers=3, n_heads=4, block_size=block_size):
         super().__init__()
-        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 4 章
-        self.pos = nn.Embedding(block_size, d)  # 位置：第 6 章会换成 RoPE
+        self.tok = nn.Embedding(vocab_size, d)  # 词嵌入：第 5 章
+        self.pos = nn.Embedding(block_size, d)  # 位置：第 7 章会换成 RoPE
         self.blocks = nn.ModuleList(Block(d, n_heads) for _ in range(n_layers))
         self.norm = nn.RMSNorm(d)               # 最终归一化
         self.head = nn.Linear(d, vocab_size, bias=False)
-        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 4 章
-        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 9 章
+        self.head.weight = self.tok.weight      # 输入输出共享一张表：第 5 章
+        nn.init.normal_(self.tok.weight, std=d ** -0.5)   # 初始化：第 10 章
         nn.init.normal_(self.pos.weight, std=d ** -0.5)
 
     def forward(self, idx):
@@ -198,7 +198,7 @@ print("参数量：", sum(p.numel() for p in model.parameters()))
 # ## 5. 训练之前：先让它“写”一首
 #
 # 采样函数每次把当前文字送进模型，取最后一个位置的 logits，
-# 按概率抽一个字接在后面（第 23 章细讲温度与采样）。
+# 按概率抽一个字接在后面（第 24 章细讲温度与采样）。
 
 # %%
 # region generate
@@ -257,7 +257,7 @@ generation_trace = {"vocab_size": vocab_size, "temperature": 0.8, "before": reco
 print("训练前记录了", len(generation_trace["before"]["steps"]), "步")
 
 # %% [markdown]
-# ## 6. 训练循环（第 2、14、19 章）
+# ## 6. 训练循环（第 2、15、20 章）
 #
 # 每一步都是同一个骨架：前向得到 logits → 交叉熵损失 → backward 求梯度 → 优化器更新。
 # 每隔 10 步再在没训练过的 4 首诗上算一次损失（验证损失），只看不更新。
@@ -300,7 +300,7 @@ for step in range(steps + 1):
 # ## 7. 训练之后：再写几首
 #
 # 语料只有几十首诗，模型会大段背诵原句，也会把不同诗句拼在一起。
-# 训练损失一路下降，验证损失只在最开始短暂下降，随后一路上升：这就是过拟合，第 12、16、20 章会处理。
+# 训练损失一路下降，验证损失只在最开始短暂下降，随后一路上升：这就是过拟合，第 13、17、21 章会处理。
 
 # %%
 torch.manual_seed(1)

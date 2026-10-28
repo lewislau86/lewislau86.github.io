@@ -1,5 +1,5 @@
 ---
-title: "第 5 章：自注意力（notebook 在线查看）"
+title: "第 6 章：自注意力（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 5 章：自注意力
+# 第 6 章：自注意力
 
 配套教案：https://lewislau86.github.io/tinyllm/self-attention
 
@@ -46,13 +46,13 @@ PyTorch 2.14.1+cpu
 ::: v-pre
 ## 1. 查完表，每个字还是孤立的
 
-第 4 章的嵌入层只按 ID 取一行：同一个字出现在哪句话里，查到的向量都一样。
+第 5 章的嵌入层只按 ID 取一行：同一个字出现在哪句话里，查到的向量都一样。
 :::
 
 <p class="nb-label">In [2]</p>
 
 ```python
-embedding = nn.Embedding(6, 4)                      # 第 4 章的六项教学词表
+embedding = nn.Embedding(6, 4)                      # 第 5 章的六项教学词表
 a = embedding(torch.tensor([2, 3, 4]))              # “我 在 学习”
 b = embedding(torch.tensor([5, 3, 4]))              # “数学 在 学习”
 print(torch.equal(a[2], b[2]))                      # True：两句话里的“学习”一模一样

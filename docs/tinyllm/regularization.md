@@ -1,10 +1,10 @@
 ---
-title: "第 16 章：正则化与泛化"
+title: "第 17 章：正则化与泛化"
 description: "Weight Decay、Dropout、Label Smoothing、Early Stopping 与训练/验证损失。"
 pageClass: tinyllm-course
 ---
 
-# 第 16 章：正则化与泛化
+# 第 17 章：正则化与泛化
 
 [课程总览](./index.md) · [上一章](./learning-rate.md) · [下一章](./precision.md)
 

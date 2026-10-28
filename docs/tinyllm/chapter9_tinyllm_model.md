@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 11 章：完整 TinyLLM](./tinyllm-model.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 12 章：完整 TinyLLM](./tinyllm-model.md)。

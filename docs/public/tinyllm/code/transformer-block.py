@@ -1,9 +1,9 @@
 # %% [markdown]
-# # 第 8 章：Transformer Block
+# # 第 9 章：Transformer Block
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/transformer-block
 #
-# 从上到下运行即可（`python transformer-block.py`），CPU 上约两分钟（要训练 25 个小模型）。只需要安装 PyTorch。
+# 从上到下运行即可（`python transformer-block.py`），CPU 上约两分半（要训练 37 个小模型）。只需要安装 PyTorch。
 # 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 # 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 
@@ -21,11 +21,11 @@ print("PyTorch", torch.__version__)
 # %% [markdown]
 # ## 1. 三个零件：注意力（带 RoPE）、SwiGLU 前馈层
 #
-# 第 5、6、7 章分别写过，这里原样搬过来。注意力让 token 之间交换信息，前馈层让每个 token 自己加工。
+# 第 6、7、8 章分别写过，这里原样搬过来。注意力让 token 之间交换信息，前馈层让每个 token 自己加工。
 
 # %%
 # region parts
-def rope(x, base=10000.0):                     # 第 6 章：按位置旋转 q、k
+def rope(x, base=10000.0):                     # 第 7 章：按位置旋转 q、k
     T, d = x.shape[-2], x.shape[-1]
     theta = base ** (-torch.arange(0, d, 2).float() / d)
     angle = torch.arange(T).float()[:, None] * theta
@@ -34,7 +34,7 @@ def rope(x, base=10000.0):                     # 第 6 章：按位置旋转 q�
     return torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1).flatten(-2)
 
 
-class Attention(nn.Module):                    # 第 5 章：多头因果注意力
+class Attention(nn.Module):                    # 第 6 章：多头因果注意力
     def __init__(self, d, n_heads):
         super().__init__()
         self.h = n_heads
@@ -48,7 +48,7 @@ class Attention(nn.Module):                    # 第 5 章：多头因果注意�
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
-class SwiGLU(nn.Module):                       # 第 7 章：门控前馈层
+class SwiGLU(nn.Module):                       # 第 8 章：门控前馈层
     def __init__(self, d):
         super().__init__()
         hidden = 8 * d // 3
@@ -89,7 +89,7 @@ print("叠 3 个 Block 之后:", tuple(stack(x).shape))
 # %% [markdown]
 # ## 3. 正式的 Block：加上残差和 Pre-Norm
 #
-# 每个子层前先做一次 RMSNorm，子层的结果加回原来的 x（残差）。它们为什么必不可少，第 9、10 章细讲。
+# 每个子层前先做一次 RMSNorm，子层的结果加回原来的 x（残差）。它们为什么必不可少，第 10、11 章细讲。
 
 # %%
 # region block
@@ -106,6 +106,32 @@ class Block(nn.Module):
         return x
 # endregion block
 
+# %% [markdown]
+# 为了分清残差和 Pre-Norm 各起什么作用，再准备两个只加其中一样的对照版本。
+
+# %%
+# region ablation-blocks
+class ResidualOnly(nn.Module):                 # 只加残差，不做归一化
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.attn, self.ffn = Attention(d, n_heads), SwiGLU(d)
+
+    def forward(self, x):
+        x = x + self.attn(x)
+        return x + self.ffn(x)
+
+
+class NormOnly(nn.Module):                     # 只在子层前归一化，不加残差
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.norm1, self.norm2 = nn.RMSNorm(d), nn.RMSNorm(d)
+        self.attn, self.ffn = Attention(d, n_heads), SwiGLU(d)
+
+    def forward(self, x):
+        x = self.attn(self.norm1(x))
+        return self.ffn(self.norm2(x))
+# endregion ablation-blocks
+
 # %%
 # region params
 d = 64
@@ -117,11 +143,12 @@ print(f"一个 Block 合计 {total:,}，约等于 12·d² = {12 * d * d:,}")
 # endregion params
 
 # %% [markdown]
-# ## 4. 叠起来训练：两种 Block，1 到 8 层
+# ## 4. 叠起来训练：四种写法，1 到 8 层
 #
 # 用第 1 章的唐诗，前 35 首训练、最后 4 首验证。模型只差在 Block 的写法和层数：输入嵌入 → N 个 Block → 最后的 RMSNorm → 输出层。
-# 所有模型按同一组预先抽好的 batch 训练 150 步；每种设置用 3 个随机种子（只影响初始参数），报告平均值和范围。
-# 线性层都用 PyTorch 的默认初始化，还没有用第 9 章的初始化配方。
+# 四种写法（直接堆叠 / 只加残差 / 只加 Pre-Norm / 两者都加）× 1、4、8 层，所有模型按同一组预先抽好的 batch 训练 100 步；
+# 每种设置用 3 个随机种子（只影响初始参数），报告平均值和范围。
+# 线性层都用 PyTorch 的默认初始化，还没有用第 10 章的初始化配方。
 
 # %%
 POEMS = """
@@ -176,7 +203,7 @@ encode = lambda t: torch.tensor([stoi[c] for c in t], dtype=torch.long)
 train_data = encode("\n".join(lines[:-4]) + "\n")       # 前 35 首训练
 val_data = encode("\n".join(lines[-4:]) + "\n")         # 最后 4 首只用来验证（和第 1 章一样）
 
-steps, batch_size = 150, 32
+steps, batch_size = 100, 32
 g = torch.Generator().manual_seed(1234)                 # 单独的随机数发生器，只管抽 batch
 train_starts = torch.randint(len(train_data) - block_size - 1, (steps, batch_size), generator=g)
 val_starts = torch.arange(0, len(val_data) - block_size - 1, 4)
@@ -197,7 +224,7 @@ class TinyLLM(nn.Module):
         self.blocks = nn.ModuleList(block_cls(d, n_heads) for _ in range(n_layers))
         self.norm = nn.RMSNorm(d)
         self.head = nn.Linear(d, vocab_size, bias=False)
-        self.head.weight = self.tok.weight             # 输入输出共享一张表（第 4 章）
+        self.head.weight = self.tok.weight             # 输入输出共享一张表（第 5 章）
         nn.init.normal_(self.tok.weight, std=d ** -0.5)
 
     def forward(self, idx):
@@ -231,10 +258,11 @@ def val_loss(model):
     return F.cross_entropy(model(xb).reshape(-1, vocab_size), yb.reshape(-1)).item()
 
 runs = {}
-for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)]:
-    for n_layers in (1, 2, 4, 8):
+KINDS = [("直接堆叠", NaiveBlock), ("只加残差", ResidualOnly), ("只加 Pre-Norm", NormOnly), ("Pre-Norm 残差", Block)]
+for kind, block_cls in KINDS:
+    for n_layers in (1, 4, 8):
         results = [train(block_cls, n_layers, seed) for seed in (0, 1, 2)]
-        tr = [sum(h[-30:]) / 30 for _, h, _ in results]
+        tr = [sum(h[-20:]) / 20 for _, h, _ in results]
         va = [val_loss(m) for m, _, _ in results]
         gr = sorted(g0 for *_, g0 in results)
         runs[f"{kind} {n_layers}"] = {"kind": kind, "layers": n_layers, "train": tr, "val": va, "grad0": gr,
@@ -251,7 +279,7 @@ print(f"完全乱猜的损失 ln({vocab_size}) = {math.log(vocab_size):.3f}")
 # region signal
 xb, _ = batch_at(train_data, train_starts[0])
 signal = {}
-for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)]:
+for kind, block_cls in KINDS:
     signal[kind] = []
     for seed in (0, 1, 2):
         torch.manual_seed(seed)
@@ -274,7 +302,7 @@ for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)
 
 # %%
 # region lens
-model, _, _ = train(Block, 4, seed=0, n_steps=300)   # 多训练一会儿再读：4 层 Pre-Norm，300 步
+model, _, _ = train(Block, 4, seed=0, n_steps=300)   # 多训练一会儿再读：4 层 Pre-Norm，同一组 batch 用三遍
 
 @torch.no_grad()
 def read_stream(prompt, k=5):

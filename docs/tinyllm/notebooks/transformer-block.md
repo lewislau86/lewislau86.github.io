@@ -1,5 +1,5 @@
 ---
-title: "第 8 章：Transformer Block（notebook 在线查看）"
+title: "第 9 章：Transformer Block（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,11 +16,11 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 8 章：Transformer Block
+# 第 9 章：Transformer Block
 
 配套教案：https://lewislau86.github.io/tinyllm/transformer-block
 
-从上到下运行即可（`python transformer-block.py`），CPU 上约两分钟（要训练 25 个小模型）。只需要安装 PyTorch。
+从上到下运行即可（`python transformer-block.py`），CPU 上约两分半（要训练 37 个小模型）。只需要安装 PyTorch。
 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 :::
@@ -46,13 +46,13 @@ PyTorch 2.14.1+cpu
 ::: v-pre
 ## 1. 三个零件：注意力（带 RoPE）、SwiGLU 前馈层
 
-第 5、6、7 章分别写过，这里原样搬过来。注意力让 token 之间交换信息，前馈层让每个 token 自己加工。
+第 6、7、8 章分别写过，这里原样搬过来。注意力让 token 之间交换信息，前馈层让每个 token 自己加工。
 :::
 
 <p class="nb-label">In [2]</p>
 
 ```python
-def rope(x, base=10000.0):                     # 第 6 章：按位置旋转 q、k
+def rope(x, base=10000.0):                     # 第 7 章：按位置旋转 q、k
     T, d = x.shape[-2], x.shape[-1]
     theta = base ** (-torch.arange(0, d, 2).float() / d)
     angle = torch.arange(T).float()[:, None] * theta
@@ -61,7 +61,7 @@ def rope(x, base=10000.0):                     # 第 6 章：按位置旋转 q�
     return torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1).flatten(-2)
 
 
-class Attention(nn.Module):                    # 第 5 章：多头因果注意力
+class Attention(nn.Module):                    # 第 6 章：多头因果注意力
     def __init__(self, d, n_heads):
         super().__init__()
         self.h = n_heads
@@ -75,7 +75,7 @@ class Attention(nn.Module):                    # 第 5 章：多头因果注意�
         return self.proj(y.transpose(1, 2).reshape(B, T, D))
 
 
-class SwiGLU(nn.Module):                       # 第 7 章：门控前馈层
+class SwiGLU(nn.Module):                       # 第 8 章：门控前馈层
     def __init__(self, d):
         super().__init__()
         hidden = 8 * d // 3
@@ -124,7 +124,7 @@ print("叠 3 个 Block 之后:", tuple(stack(x).shape))
 ::: v-pre
 ## 3. 正式的 Block：加上残差和 Pre-Norm
 
-每个子层前先做一次 RMSNorm，子层的结果加回原来的 x（残差）。它们为什么必不可少，第 9、10 章细讲。
+每个子层前先做一次 RMSNorm，子层的结果加回原来的 x（残差）。它们为什么必不可少，第 10、11 章细讲。
 :::
 
 <p class="nb-label">In [5]</p>
@@ -143,7 +143,35 @@ class Block(nn.Module):
         return x
 ```
 
+::: v-pre
+为了分清残差和 Pre-Norm 各起什么作用，再准备两个只加其中一样的对照版本。
+:::
+
 <p class="nb-label">In [6]</p>
+
+```python
+class ResidualOnly(nn.Module):                 # 只加残差，不做归一化
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.attn, self.ffn = Attention(d, n_heads), SwiGLU(d)
+
+    def forward(self, x):
+        x = x + self.attn(x)
+        return x + self.ffn(x)
+
+
+class NormOnly(nn.Module):                     # 只在子层前归一化，不加残差
+    def __init__(self, d, n_heads):
+        super().__init__()
+        self.norm1, self.norm2 = nn.RMSNorm(d), nn.RMSNorm(d)
+        self.attn, self.ffn = Attention(d, n_heads), SwiGLU(d)
+
+    def forward(self, x):
+        x = self.attn(self.norm1(x))
+        return self.ffn(self.norm2(x))
+```
+
+<p class="nb-label">In [7]</p>
 
 ```python
 d = 64
@@ -162,14 +190,15 @@ SwiGLU     32,640
 ```
 
 ::: v-pre
-## 4. 叠起来训练：两种 Block，1 到 8 层
+## 4. 叠起来训练：四种写法，1 到 8 层
 
 用第 1 章的唐诗，前 35 首训练、最后 4 首验证。模型只差在 Block 的写法和层数：输入嵌入 → N 个 Block → 最后的 RMSNorm → 输出层。
-所有模型按同一组预先抽好的 batch 训练 150 步；每种设置用 3 个随机种子（只影响初始参数），报告平均值和范围。
-线性层都用 PyTorch 的默认初始化，还没有用第 9 章的初始化配方。
+四种写法（直接堆叠 / 只加残差 / 只加 Pre-Norm / 两者都加）× 1、4、8 层，所有模型按同一组预先抽好的 batch 训练 100 步；
+每种设置用 3 个随机种子（只影响初始参数），报告平均值和范围。
+线性层都用 PyTorch 的默认初始化，还没有用第 10 章的初始化配方。
 :::
 
-<p class="nb-label">In [7]</p>
+<p class="nb-label">In [8]</p>
 
 ```python
 POEMS = """
@@ -223,7 +252,7 @@ encode = lambda t: torch.tensor([stoi[c] for c in t], dtype=torch.long)
 train_data = encode("\n".join(lines[:-4]) + "\n")       # 前 35 首训练
 val_data = encode("\n".join(lines[-4:]) + "\n")         # 最后 4 首只用来验证（和第 1 章一样）
 
-steps, batch_size = 150, 32
+steps, batch_size = 100, 32
 g = torch.Generator().manual_seed(1234)                 # 单独的随机数发生器，只管抽 batch
 train_starts = torch.randint(len(train_data) - block_size - 1, (steps, batch_size), generator=g)
 val_starts = torch.arange(0, len(val_data) - block_size - 1, 4)
@@ -234,7 +263,7 @@ def batch_at(data, starts):
     return x, y
 ```
 
-<p class="nb-label">In [8]</p>
+<p class="nb-label">In [9]</p>
 
 ```python
 class TinyLLM(nn.Module):
@@ -244,7 +273,7 @@ class TinyLLM(nn.Module):
         self.blocks = nn.ModuleList(block_cls(d, n_heads) for _ in range(n_layers))
         self.norm = nn.RMSNorm(d)
         self.head = nn.Linear(d, vocab_size, bias=False)
-        self.head.weight = self.tok.weight             # 输入输出共享一张表（第 4 章）
+        self.head.weight = self.tok.weight             # 输入输出共享一张表（第 5 章）
         nn.init.normal_(self.tok.weight, std=d ** -0.5)
 
     def forward(self, idx):
@@ -254,7 +283,7 @@ class TinyLLM(nn.Module):
         return self.head(self.norm(h))
 ```
 
-<p class="nb-label">In [9]</p>
+<p class="nb-label">In [10]</p>
 
 ```python
 def train(block_cls, n_layers, seed, n_steps=steps):
@@ -279,10 +308,11 @@ def val_loss(model):
     return F.cross_entropy(model(xb).reshape(-1, vocab_size), yb.reshape(-1)).item()
 
 runs = {}
-for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)]:
-    for n_layers in (1, 2, 4, 8):
+KINDS = [("直接堆叠", NaiveBlock), ("只加残差", ResidualOnly), ("只加 Pre-Norm", NormOnly), ("Pre-Norm 残差", Block)]
+for kind, block_cls in KINDS:
+    for n_layers in (1, 4, 8):
         results = [train(block_cls, n_layers, seed) for seed in (0, 1, 2)]
-        tr = [sum(h[-30:]) / 30 for _, h, _ in results]
+        tr = [sum(h[-20:]) / 20 for _, h, _ in results]
         va = [val_loss(m) for m, _, _ in results]
         gr = sorted(g0 for *_, g0 in results)
         runs[f"{kind} {n_layers}"] = {"kind": kind, "layers": n_layers, "train": tr, "val": va, "grad0": gr,
@@ -293,11 +323,7 @@ print(f"完全乱猜的损失 ln({vocab_size}) = {math.log(vocab_size):.3f}")
 ```
 
 ```text
-直接堆叠       1 层：训练 3.54（3.53～3.54）  验证 6.76（6.56～6.89）  第 1 个 Block 的梯度 9e-02
-```
-
-```text
-直接堆叠       2 层：训练 5.22（5.10～5.44）  验证 6.65（6.53～6.88）  第 1 个 Block 的梯度 2e-07
+直接堆叠       1 层：训练 4.37（4.36～4.39）  验证 6.38（6.29～6.47）  第 1 个 Block 的梯度 9e-02
 ```
 
 ```text
@@ -309,19 +335,39 @@ print(f"完全乱猜的损失 ln({vocab_size}) = {math.log(vocab_size):.3f}")
 ```
 
 ```text
-Pre-Norm 残差 1 层：训练 1.25（1.23～1.26）  验证 6.87（6.81～6.91）  第 1 个 Block 的梯度 6e-01
+只加残差       1 层：训练 4.71（4.69～4.73）  验证 7.36（7.32～7.42）  第 1 个 Block 的梯度 1e-01
 ```
 
 ```text
-Pre-Norm 残差 2 层：训练 0.79（0.78～0.82）  验证 6.96（6.78～7.16）  第 1 个 Block 的梯度 7e-01
+只加残差       4 层：训练 4.64（4.59～4.69）  验证 6.54（6.41～6.71）  第 1 个 Block 的梯度 2e-01
 ```
 
 ```text
-Pre-Norm 残差 4 层：训练 0.66（0.64～0.68）  验证 7.09（6.96～7.25）  第 1 个 Block 的梯度 8e-01
+只加残差       8 层：训练 4.33（4.32～4.35）  验证 6.20（6.03～6.39）  第 1 个 Block 的梯度 2e-01
 ```
 
 ```text
-Pre-Norm 残差 8 层：训练 0.57（0.56～0.58）  验证 6.90（6.79～6.98）  第 1 个 Block 的梯度 7e-01
+只加 Pre-Norm 1 层：训练 2.68（2.65～2.70）  验证 6.61（6.54～6.69）  第 1 个 Block 的梯度 1e+00
+```
+
+```text
+只加 Pre-Norm 4 层：训练 5.44（5.43～5.46）  验证 6.46（6.45～6.47）  第 1 个 Block 的梯度 3e+00
+```
+
+```text
+只加 Pre-Norm 8 层：训练 5.48（5.48～5.48）  验证 6.44（6.43～6.45）  第 1 个 Block 的梯度 9e+00
+```
+
+```text
+Pre-Norm 残差 1 层：训练 2.34（2.33～2.35）  验证 6.59（6.52～6.63）  第 1 个 Block 的梯度 6e-01
+```
+
+```text
+Pre-Norm 残差 4 层：训练 1.75（1.72～1.80）  验证 6.70（6.54～6.83）  第 1 个 Block 的梯度 8e-01
+```
+
+```text
+Pre-Norm 残差 8 层：训练 1.65（1.61～1.71）  验证 6.57（6.54～6.60）  第 1 个 Block 的梯度 7e-01
 完全乱猜的损失 ln(556) = 6.321
 ```
 
@@ -329,12 +375,12 @@ Pre-Norm 残差 8 层：训练 0.57（0.56～0.58）  验证 6.90（6.79～6.98�
 直接堆叠为什么越深越糟？看一眼训练开始前，同一批输入穿过 8 个 Block 时，每个 token 向量的大小（RMS）怎样变化。
 :::
 
-<p class="nb-label">In [10]</p>
+<p class="nb-label">In [11]</p>
 
 ```python
 xb, _ = batch_at(train_data, train_starts[0])
 signal = {}
-for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)]:
+for kind, block_cls in KINDS:
     signal[kind] = []
     for seed in (0, 1, 2):
         torch.manual_seed(seed)
@@ -351,6 +397,14 @@ for kind, block_cls in [("直接堆叠", NaiveBlock), ("Pre-Norm 残差", Block)
 
 ```text
 直接堆叠       1e-01 4e-05 8e-11 4e-22 0e+00 0e+00 0e+00 0e+00 0e+00 （种子 0）
+只加残差       1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 （种子 0）
+```
+
+```text
+只加 Pre-Norm 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 1e-01 （种子 0）
+```
+
+```text
 Pre-Norm 残差 1e-01 2e-01 3e-01 4e-01 5e-01 6e-01 7e-01 8e-01 8e-01 （种子 0）
 ```
 
@@ -361,10 +415,10 @@ Pre-Norm Block 从不覆盖 x，只往上加。所以可以在任何一层之后
 看模型此刻会猜哪个字。下面用 4 层的 Pre-Norm 模型，读出每个子层之后的预测。
 :::
 
-<p class="nb-label">In [11]</p>
+<p class="nb-label">In [12]</p>
 
 ```python
-model, _, _ = train(Block, 4, seed=0, n_steps=300)   # 多训练一会儿再读：4 层 Pre-Norm，300 步
+model, _, _ = train(Block, 4, seed=0, n_steps=300)   # 多训练一会儿再读：4 层 Pre-Norm，同一组 batch 用三遍
 
 @torch.no_grad()
 def read_stream(prompt, k=5):
@@ -397,14 +451,14 @@ assert read_stream("举头望明月，低头思故")[-1]["top"][0][0] == "乡"
 ```
 
 ```text
-嵌入         故100% 海0% 雨0%
+嵌入         故100% 雨0% 海0%
 第 1 层 注意力  故98% 圆0% 辛0%
-第 1 层 前馈   乡13% 开3% 眠3%
-第 2 层 注意力  乡26% 故3% 阳2%
-第 2 层 前馈   乡64% 三2% 晓1%
-第 3 层 注意力  乡68% 三2% 晓1%
-第 3 层 前馈   乡81% 三1% 人1%
-第 4 层 注意力  乡85% 不1% 三1%
+第 1 层 前馈   乡10% 开4% 眠3%
+第 2 层 注意力  乡23% 阳2% 开2%
+第 2 层 前馈   乡53% 三4% 晓2%
+第 3 层 注意力  乡55% 三4% 晓2%
+第 3 层 前馈   乡71% 三3% 不1%
+第 4 层 注意力  乡76% 三2% 不1%
 第 4 层 前馈   乡97% 人0% 归0%
 ```
 
@@ -414,7 +468,7 @@ assert read_stream("举头望明月，低头思故")[-1]["top"][0][0] == "乡"
 网站上的对照实验图和残差流动画就是用这份记录画的。
 :::
 
-<p class="nb-label">In [12]</p>
+<p class="nb-label">In [13]</p>
 
 ```python
 import json

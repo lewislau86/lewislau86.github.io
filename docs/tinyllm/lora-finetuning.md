@@ -1,10 +1,10 @@
 ---
-title: "第 27 章：参数高效微调（LoRA）"
+title: "第 28 章：参数高效微调（LoRA）"
 description: "冻结原模型，只训练低秩增量：LoRA 节省了什么、没有节省什么。"
 pageClass: tinyllm-course
 ---
 
-# 第 27 章：参数高效微调（LoRA）
+# 第 28 章：参数高效微调（LoRA）
 
 [课程总览](./index.md) · [上一章](./instruction-finetuning.md) · [下一章](./rlhf.md)
 
@@ -16,4 +16,4 @@ pageClass: tinyllm-course
 
 ## 本章主线选择（待实验验证）
 
-TinyLLM 小模型先用<strong>全参数微调</strong>建立质量和显存基线；只有微调显存或优化器状态成为约束时，才试 LoRA。LoRA 主要减少可训练参数和对应的优化器状态，并不减少基础权重的推理存储；合并增量后推理速度与原模型相同。MoE 属于模型结构，见[第 22 章](./mixture-of-experts.md)。[LoRA 论文](https://arxiv.org/abs/2106.09685)
+TinyLLM 小模型先用<strong>全参数微调</strong>建立质量和显存基线；只有微调显存或优化器状态成为约束时，才试 LoRA。LoRA 主要减少可训练参数和对应的优化器状态，并不减少基础权重的推理存储；合并增量后推理速度与原模型相同。MoE 属于模型结构，见[第 23 章](./mixture-of-experts.md)。[LoRA 论文](https://arxiv.org/abs/2106.09685)

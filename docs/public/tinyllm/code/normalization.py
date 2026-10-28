@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 10 章：归一化
+# # 第 11 章：归一化
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/normalization
 #
@@ -152,7 +152,7 @@ print('dim=-1 时各 token 的 L2:', right.norm(p=2, dim=-1))
 # %% [markdown]
 # ## 4. QK Norm：注意力内部的归一化
 #
-# 对应第 5 章《自注意力》中的 **QK Norm** 一节。核心目标是控制 Q/K 点积形成的 attention logits，减少 softmax 过度饱和及相关训练不稳定风险。现代模型还分为拆头前对整条 Q/K 投影归一化的 layerwise 版本（OLMo 2/3）和拆头后逐头归一化的 headwise 版本（Qwen 3、Gemma 3、Marin 32B）；下面实验只演示原论文的逐头 L2 形式，并非所有模型的 QK Norm 实现。Q/K 形状为 `[batch, heads, seq_len, head_dim]`；`F.normalize(..., dim=-1)` 处理每个头的向量。先计算原始 `q @ k.transpose(-2, -1)`，再观察归一化后的 logits 和 softmax。`transpose(-2, -1)` 只交换 key 的 `seq_len` 与 `head_dim`，保留 batch/head 维度：`[B,H,S_k,D] → [B,H,D,S_k]`；因此分数形状为 `[B,H,S_q,S_k]`。softmax 要沿最后一维 `S_k` 计算，即每个 query 对所有 key 的概率。
+# 对应第 6 章《自注意力》中的 **QK Norm** 一节。核心目标是控制 Q/K 点积形成的 attention logits，减少 softmax 过度饱和及相关训练不稳定风险。现代模型还分为拆头前对整条 Q/K 投影归一化的 layerwise 版本（OLMo 2/3）和拆头后逐头归一化的 headwise 版本（Qwen 3、Gemma 3、Marin 32B）；下面实验只演示原论文的逐头 L2 形式，并非所有模型的 QK Norm 实现。Q/K 形状为 `[batch, heads, seq_len, head_dim]`；`F.normalize(..., dim=-1)` 处理每个头的向量。先计算原始 `q @ k.transpose(-2, -1)`，再观察归一化后的 logits 和 softmax。`transpose(-2, -1)` 只交换 key 的 `seq_len` 与 `head_dim`，保留 batch/head 维度：`[B,H,S_k,D] → [B,H,D,S_k]`；因此分数形状为 `[B,H,S_q,S_k]`。softmax 要沿最后一维 `S_k` 计算，即每个 query 对所有 key 的概率。
 
 # %%
 q = torch.tensor([[[[10., 0.], [0., 1.]]]])
@@ -186,7 +186,7 @@ print('与手算概率一致:', torch.allclose(attention_out, norm_scores.softma
 # %% [markdown]
 # ## 5. DeepNorm：残差路径与初始化配合
 #
-# 对应第 21 章《大规模训练稳定性》中的 **DeepNorm** 一节。这里仅观察 `LayerNorm(alpha*x + branch)` 中 `alpha` 对数据的影响。`alpha=1.5` 是**演示值，不是论文系数**。完整 DeepNorm 必须按模型深度和编码器/解码器结构选择系数，并使用配套的权重初始化；PyTorch 没有独立 `nn.DeepNorm` 标准模块。
+# 对应第 22 章《大规模训练稳定性》中的 **DeepNorm** 一节。这里仅观察 `LayerNorm(alpha*x + branch)` 中 `alpha` 对数据的影响。`alpha=1.5` 是**演示值，不是论文系数**。完整 DeepNorm 必须按模型深度和编码器/解码器结构选择系数，并使用配套的权重初始化；PyTorch 没有独立 `nn.DeepNorm` 标准模块。
 
 # %%
 residual_x = torch.tensor([[[1., 2., 3., 4.]]])
@@ -248,7 +248,7 @@ for name, operation in [*modules.items(), ('ScaleNorm', scale_norm)]:
 # %% [markdown]
 # ### Pre-Norm Block：两次归一化、两次残差
 #
-# 一个 Block 有注意力和前馈两个子层。这里先用占位子层把数据流跑通：注意力在第 5 章实现，前馈层在第 7 章实现。
+# 一个 Block 有注意力和前馈两个子层。这里先用占位子层把数据流跑通：注意力在第 6 章实现，前馈层在第 8 章实现。
 
 # %%
 # region block
@@ -256,8 +256,8 @@ class Block(nn.Module):
     def __init__(self, d):
         super().__init__()
         self.norm1, self.norm2 = nn.RMSNorm(d), nn.RMSNorm(d)
-        self.attn = nn.Linear(d, d)          # 占位：真正的注意力见第 5 章
-        self.ffn = nn.Sequential(nn.Linear(d, 4 * d), nn.GELU(), nn.Linear(4 * d, d))  # 第 7 章
+        self.attn = nn.Linear(d, d)          # 占位：真正的注意力见第 6 章
+        self.ffn = nn.Sequential(nn.Linear(d, 4 * d), nn.GELU(), nn.Linear(4 * d, d))  # 第 8 章
 
     def forward(self, x):
         x = x + self.attn(self.norm1(x))     # Pre-Norm：先归一化，再进子层，再加回

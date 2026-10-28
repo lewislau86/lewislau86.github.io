@@ -23,12 +23,16 @@
     ]
   },
   {
-    "text": "第二部分 · 工具",
+    "text": "第二部分 · 背景知识",
     "collapsed": false,
     "items": [
       {
         "text": "第 2 章 · 张量与自动求导",
         "link": "/tinyllm/tensors-and-autograd"
+      },
+      {
+        "text": "第 3 章 · 架构演进：从 Transformer 到 GPT 再到今天",
+        "link": "/tinyllm/architecture-evolution"
       }
     ]
   },
@@ -37,27 +41,27 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 3 章 · 文本与词元化",
+        "text": "第 4 章 · 文本与词元化",
         "link": "/tinyllm/tokenization"
       },
       {
-        "text": "第 4 章 · 词嵌入与输出层",
+        "text": "第 5 章 · 词嵌入与输出层",
         "link": "/tinyllm/embeddings-and-output"
       },
       {
-        "text": "第 5 章 · 自注意力",
+        "text": "第 6 章 · 自注意力",
         "link": "/tinyllm/self-attention"
       },
       {
-        "text": "第 6 章 · 位置表示",
+        "text": "第 7 章 · 位置表示",
         "link": "/tinyllm/position-encoding"
       },
       {
-        "text": "第 7 章 · 激活函数与门控前馈层",
+        "text": "第 8 章 · 激活函数与门控前馈层",
         "link": "/tinyllm/activations-and-ffn"
       },
       {
-        "text": "第 8 章 · Transformer Block",
+        "text": "第 9 章 · Transformer Block",
         "link": "/tinyllm/transformer-block"
       }
     ]
@@ -67,11 +71,11 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 9 章 · 初始化与残差路径",
+        "text": "第 10 章 · 初始化与残差路径",
         "link": "/tinyllm/initialization-and-residuals"
       },
       {
-        "text": "第 10 章 · 归一化",
+        "text": "第 11 章 · 归一化",
         "link": "/tinyllm/normalization"
       }
     ]
@@ -81,11 +85,11 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 14 章 · 优化器",
+        "text": "第 15 章 · 优化器",
         "link": "/tinyllm/optimizers"
       },
       {
-        "text": "第 17 章 · 数值精度与混合精度",
+        "text": "第 18 章 · 数值精度与混合精度",
         "link": "/tinyllm/precision"
       }
     ]
@@ -95,75 +99,75 @@
     "collapsed": true,
     "items": [
       {
-        "text": "第 11 章 · 完整 TinyLLM",
+        "text": "第 12 章 · 完整 TinyLLM",
         "link": "/tinyllm/tinyllm-model"
       },
       {
-        "text": "第 12 章 · 语料与数据管线",
+        "text": "第 13 章 · 语料与数据管线",
         "link": "/tinyllm/data-pipeline"
       },
       {
-        "text": "第 13 章 · 语言模型目标函数",
+        "text": "第 14 章 · 语言模型目标函数",
         "link": "/tinyllm/language-model-loss"
       },
       {
-        "text": "第 15 章 · 学习率策略",
+        "text": "第 16 章 · 学习率策略",
         "link": "/tinyllm/learning-rate"
       },
       {
-        "text": "第 16 章 · 正则化与泛化",
+        "text": "第 17 章 · 正则化与泛化",
         "link": "/tinyllm/regularization"
       },
       {
-        "text": "第 18 章 · 梯度稳定与累积",
+        "text": "第 19 章 · 梯度稳定与累积",
         "link": "/tinyllm/gradient-stability"
       },
       {
-        "text": "第 19 章 · 训练循环与检查点",
+        "text": "第 20 章 · 训练循环与检查点",
         "link": "/tinyllm/training-loop"
       },
       {
-        "text": "第 20 章 · 训练诊断与评估",
+        "text": "第 21 章 · 训练诊断与评估",
         "link": "/tinyllm/training-evaluation"
       },
       {
-        "text": "第 21 章 · 大规模训练稳定性",
+        "text": "第 22 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
       },
       {
-        "text": "第 22 章 · 稀疏专家（MoE）",
+        "text": "第 23 章 · 稀疏专家（MoE）",
         "link": "/tinyllm/mixture-of-experts"
       },
       {
-        "text": "第 23 章 · 自回归生成",
+        "text": "第 24 章 · 自回归生成",
         "link": "/tinyllm/generation"
       },
       {
-        "text": "第 24 章 · 推理效率",
+        "text": "第 25 章 · 推理效率",
         "link": "/tinyllm/inference-efficiency"
       },
       {
-        "text": "第 25 章 · 量化",
+        "text": "第 26 章 · 量化",
         "link": "/tinyllm/quantization"
       },
       {
-        "text": "第 26 章 · 指令微调",
+        "text": "第 27 章 · 指令微调",
         "link": "/tinyllm/instruction-finetuning"
       },
       {
-        "text": "第 27 章 · 参数高效微调（LoRA）",
+        "text": "第 28 章 · 参数高效微调（LoRA）",
         "link": "/tinyllm/lora-finetuning"
       },
       {
-        "text": "第 28 章 · RLHF：奖励模型与 PPO",
+        "text": "第 29 章 · RLHF：奖励模型与 PPO",
         "link": "/tinyllm/rlhf"
       },
       {
-        "text": "第 29 章 · DPO 与 GRPO",
+        "text": "第 30 章 · DPO 与 GRPO",
         "link": "/tinyllm/preference-alignment"
       },
       {
-        "text": "第 30 章 · Agent 记忆与检索",
+        "text": "第 31 章 · Agent 记忆与检索",
         "link": "/tinyllm/agent-memory"
       }
     ]

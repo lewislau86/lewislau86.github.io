@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 17 章：数值精度与混合精度
+# # 第 18 章：数值精度与混合精度
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/precision
 #

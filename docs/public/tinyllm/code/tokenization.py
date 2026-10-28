@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 3 章：文本与词元化
+# # 第 4 章：文本与词元化
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/tokenization
 #

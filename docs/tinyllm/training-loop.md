@@ -1,10 +1,10 @@
 ---
-title: "第 19 章：训练循环与检查点"
+title: "第 20 章：训练循环与检查点"
 description: "DataLoader、前向反向、优化器与调度器的调用顺序，随机种子与检查点。"
 pageClass: tinyllm-course
 ---
 
-# 第 19 章：训练循环与检查点
+# 第 20 章：训练循环与检查点
 
 [课程总览](./index.md) · [上一章](./gradient-stability.md) · [下一章](./training-evaluation.md)
 

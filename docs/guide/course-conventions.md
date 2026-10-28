@@ -145,11 +145,11 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 | --- | --- | --- |
 | 第 1 章 | `<NextTokenPlayer stage="before" />`、`stage="after"` | `tinyllm-first-run-generation.json`（first-run.py） |
 | 第 2 章 | `<BackpropFlow />` | `tinyllm-autograd-chain.json`（tensors-and-autograd.py） |
-| 第 5 章 | `<AttentionStepper />` | `tinyllm-attention-steps.json`（self-attention.py） |
-| 第 6 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
-| 第 8 章 | `<ResidualStreamLens />` | `tinyllm-block-depth.json`（transformer-block.py） |
-| 第 14 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
-| 第 24 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
+| 第 6 章 | `<AttentionStepper />` | `tinyllm-attention-steps.json`（self-attention.py） |
+| 第 7 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
+| 第 9 章 | `<ResidualStreamLens />` | `tinyllm-block-depth.json`（transformer-block.py） |
+| 第 15 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
+| 第 25 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
 
 做法约定：
 
@@ -178,6 +178,14 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 - notebook 由脚本生成，不要手改：脚本里 `# %%` 开始一个代码格，`# %% [markdown]` 开始一个说明格。运行 `python scripts/build-tinyllm-code.py <章节>` 会执行脚本、生成 `docs/public/tinyllm/notebooks/<文件名>.ipynb` 并保存输出；`--check` 只运行、不写文件。同时会生成站内只读预览页 `docs/tinyllm/notebooks/<文件名>.md`（网址 `/tinyllm/notebooks/<文件名>`），显示全部代码和保存的输出，并提供“在 Colab 中运行”“下载 .ipynb / .py”“在 GitHub 上查看”链接；正文提到 notebook 时链接到这个预览页，而不是 `.ipynb` 文件本身。只刷新预览页用 `--pages`。notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
 - Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。mini-redis 的 zip 由 `scripts/package-mini-redis.py` 从源码快照生成，只含代码与实验，教程正文以网站为准。
 - 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
+
+### 对照实验的写法
+
+- **控制变量。** 被比较的模型按同一组预先生成的 batch 训练：用单独的 `torch.Generator` 生成 batch 计划，第几步就用第几个 batch；随机种子只决定初始参数，避免不同结构初始化时消耗的随机数改变 batch 顺序。
+- **多种子。** 用来下结论的对比至少跑 3 个种子，报告平均和范围；受运行时间限制只能跑一个种子时，正文写明“单个种子”，不解读很小的差别。
+- **标清指标口径。** 训练集损失、验证集损失（训练时没用过的数据）、合成任务测试集（新生成的数据）分开写；在训练语料上的评估只能说明“背没背下来”或某个因素（如长度）的影响，不当作泛化结果。
+- **写明实验边界。** 例如“用 PyTorch 默认初始化，不是最终配方”“最多测到 8 层、100 步”。结论只说到实验条件支持的程度；同时改了两样东西时，要么补单独改一样的对照组，要么写明只验证了组合。
+- **核对。** 正文 ```text 块里引用的输出由 `scripts/check-tinyllm-outputs.py` 与 notebook 逐行核对；不是程序输出的示意块，在前一行写 `<!-- output-check: skip -->`。
 
 ## 8. 调整顺序与旧地址跳转
 

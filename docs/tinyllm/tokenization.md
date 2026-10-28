@@ -1,12 +1,12 @@
 ---
-title: "第 3 章：文本与词元化"
+title: "第 4 章：文本与词元化"
 description: "文字怎样变成整数编号：Unicode 与字节、BPE 的训练与编码、特殊 token 协议，以及词表大小的取舍。"
 pageClass: tinyllm-course
 ---
 
-# 第 3 章：文本与词元化
+# 第 4 章：文本与词元化
 
-[课程总览](./index.md) · [上一章](./tensors-and-autograd.md) · [下一章](./embeddings-and-output.md)
+[课程总览](./index.md) · [上一章](./architecture-evolution.md) · [下一章](./embeddings-and-output.md)
 
 ::: tip 本章学习目标
 区分字形、码点、字节与 token 四种长度；手推几步 BPE 合并；训练一个能还原原文的小分词器，并说明特殊 token、补齐与训练标签怎样配合。
@@ -32,7 +32,7 @@ $$
 \text{文本}\ \longrightarrow\ (t_1,\ldots,t_n)\ \longrightarrow\ (E[t_1],\ldots,E[t_n]).
 $$
 
-若词表有 $V$ 个条目、每个向量有 $d$ 个分量，$E$ 的形状就是 $[V,d]$。<strong>Tokenizer 决定“哪个片段对应哪一行”，模型训练决定“这一行的向量是什么”。</strong>后者在 [第 4 章：词嵌入与输出层](embeddings-and-output.md) 展开。
+若词表有 $V$ 个条目、每个向量有 $d$ 个分量，$E$ 的形状就是 $[V,d]$。<strong>Tokenizer 决定“哪个片段对应哪一行”，模型训练决定“这一行的向量是什么”。</strong>后者在 [第 5 章：词嵌入与输出层](embeddings-and-output.md) 展开。
 
 | 名称 | 含义 | 一个可能的例子 |
 | --- | --- | --- |
@@ -179,12 +179,12 @@ python -m pip install tokenizers==0.23.3 plotly==7.1.0
 这里出现了三种“遮住”，各管一件事：
 
 - <strong>padding attention mask</strong> 告诉注意力哪些位置是补齐的；本例 1 表示有效、0 表示补齐。
-- <strong>causal mask</strong> 让每个位置只看自己和之前的位置，在注意力层里构造（[第 5 章](self-attention.md)），本段代码没有实现。
+- <strong>causal mask</strong> 让每个位置只看自己和之前的位置，在注意力层里构造（[第 6 章](self-attention.md)），本段代码没有实现。
 - <strong>loss mask</strong> 决定哪些目标参与损失。本例用 `-100` 表示忽略，后续损失函数要设同样的 `ignore_index`。
 
 当 PAD 与 EOS 共用同一个 ID 时，按 `label == pad_id` 删除目标会把 EOS 一起删掉；应按真实长度或补齐掩码判断，像上面的代码那样。
 
-本例是<strong>手动移位</strong>的教学实现。有些模型接口会在内部移位，这时应按接口要求提供未移位的标签，避免错开两次。拼接多篇文档时，还要决定后一篇能否关注前一篇：插入 EOS 只是标出边界，注意力隔离需要另外的掩码。这些在 [第 12 章](data-pipeline.md) 和 [第 13 章](language-model-loss.md) 继续展开。
+本例是<strong>手动移位</strong>的教学实现。有些模型接口会在内部移位，这时应按接口要求提供未移位的标签，避免错开两次。拼接多篇文档时，还要决定后一篇能否关注前一篇：插入 EOS 只是标出边界，注意力隔离需要另外的掩码。这些在 [第 13 章](data-pipeline.md) 和 [第 14 章](language-model-loss.md) 继续展开。
 
 ## 7. 保存整套规则，测量词表预算
 
@@ -255,7 +255,7 @@ $$
 
 <strong>延伸阅读：BLT。</strong>[Byte Latent Transformer（BLT，2024 年提出）](https://arxiv.org/abs/2412.09871) 是更早的另一条路线：直接从字节出发，动态组织成 patch，并在不同层级分配计算。它改变的是模型架构与训练方式，远比把 BPE 换成 `text.encode("utf-8")` 复杂。
 
-对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 24 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 30 章](agent-memory.md) 的另一项评测。
+对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 25 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 31 章](agent-memory.md) 的另一项评测。
 
 ## 10. 动手检查与练习
 
@@ -340,4 +340,4 @@ Notebook 提供 NFC、词表预算和最短切分的参考答案。验证记录�
 - [TokEval，COLM 2026](https://arxiv.org/abs/2608.18062)
 - [Byte Latent Transformer，2024](https://arxiv.org/abs/2412.09871)
 
-下一章把这些编号接到词嵌入矩阵，再从向量变回词表上的分数：[第 4 章：词嵌入与输出层](./embeddings-and-output.md)。
+下一章把这些编号接到词嵌入矩阵，再从向量变回词表上的分数：[第 5 章：词嵌入与输出层](./embeddings-and-output.md)。

@@ -1,5 +1,5 @@
 ---
-title: "第 4 章：词嵌入与输出层（notebook 在线查看）"
+title: "第 5 章：词嵌入与输出层（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 4 章：词嵌入与输出层
+# 第 5 章：词嵌入与输出层
 
 配套教案：https://lewislau86.github.io/tinyllm/embeddings-and-output
 
@@ -255,7 +255,7 @@ print("注意力权重:\n", weights)
 ::: v-pre
 ## 7. Agent 检索向量的边界
 
-真实文本 embedding 模型把整段文本编码成可跨请求比较的向量，常有池化与检索训练目标。下面仅用手工词项特征示意接口；它不是 Hugging Face 模型，也不代表语义检索质量。检索模型的用法见第 30 章。
+真实文本 embedding 模型把整段文本编码成可跨请求比较的向量，常有池化与检索训练目标。下面仅用手工词项特征示意接口；它不是 Hugging Face 模型，也不代表语义检索质量。检索模型的用法见第 31 章。
 :::
 
 <p class="nb-label">In [10]</p>
@@ -277,7 +277,7 @@ assert max(scored)[1] == memories[0]
 ```
 
 ::: v-pre
-检索向量用于找回原文。原文再经过 tokenizer、词嵌入和 Q/K/V；它不会直接塞进 `nn.Embedding`。真实记忆还需处理时间、来源、更新与删除，见第 30 章。
+检索向量用于找回原文。原文再经过 tokenizer、词嵌入和 Q/K/V；它不会直接塞进 `nn.Embedding`。真实记忆还需处理时间、来源、更新与删除，见第 31 章。
 :::
 
 ::: v-pre

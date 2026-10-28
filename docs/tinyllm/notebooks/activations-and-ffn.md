@@ -1,5 +1,5 @@
 ---
-title: "第 7 章：激活函数与门控前馈层（notebook 在线查看）"
+title: "第 8 章：激活函数与门控前馈层（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 7 章：激活函数与门控前馈层
+# 第 8 章：激活函数与门控前馈层
 
 配套教案：https://lewislau86.github.io/tinyllm/activations-and-ffn
 

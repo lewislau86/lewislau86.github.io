@@ -1,10 +1,10 @@
 ---
-title: "第 21 章：大规模训练稳定性"
+title: "第 22 章：大规模训练稳定性"
 description: "μP、DeepNorm 与残差缩放：网络变深变宽时怎样保持训练稳定。"
 pageClass: tinyllm-course
 ---
 
-# 第 21 章：大规模训练稳定性
+# 第 22 章：大规模训练稳定性
 
 [课程总览](./index.md) · [上一章](./training-evaluation.md) · [下一章](./mixture-of-experts.md)
 
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## DeepNorm：为极深网络改写残差块 {#deepnorm}
 
-[第 10 章](./normalization.md)的 Post-Norm 把相加结果再归一化，直通路径要穿过归一化层；网络一深，训练初期的更新容易过大。DeepNet 论文提出的 DeepNorm 保留 Post-Norm 的位置，同时改两件事：**放大残差直通支、缩小子层权重的初始化**。
+[第 11 章](./normalization.md)的 Post-Norm 把相加结果再归一化，直通路径要穿过归一化层；网络一深，训练初期的更新容易过大。DeepNet 论文提出的 DeepNorm 保留 Post-Norm 的位置，同时改两件事：**放大残差直通支、缩小子层权重的初始化**。
 
 $$
 x_{\mathrm{next}}=\mathrm{LayerNorm}(\alpha x+F(x))

@@ -8,26 +8,26 @@ import { withBase } from 'vitepress'
 const props = defineProps<{ active?: string; caption?: boolean }>()
 
 const done = new Set([
-  'first-run', 'tensors-and-autograd', 'initialization-and-residuals', 'normalization',
+  'first-run', 'tensors-and-autograd', 'architecture-evolution', 'initialization-and-residuals', 'normalization',
   'activations-and-ffn', 'transformer-block', 'tokenization', 'self-attention', 'position-encoding', 'embeddings-and-output', 'optimizers', 'precision'
 ])
 
 type Node = { id: string; label: string; ch: number; slug: string; x: number; y: number; w: number; h: number }
 const nodes: Node[] = [
-  { id: 'tok', label: '分词器：文本 → token ID', ch: 3, slug: 'tokenization', x: 140, y: 52, w: 240, h: 36 },
-  { id: 'emb', label: '词嵌入：ID → 向量', ch: 4, slug: 'embeddings-and-output', x: 140, y: 108, w: 240, h: 36 },
-  { id: 'n1', label: 'RMSNorm', ch: 10, slug: 'normalization', x: 160, y: 196, w: 200, h: 32 },
-  { id: 'att', label: '因果自注意力', ch: 5, slug: 'self-attention', x: 160, y: 244, w: 200, h: 36 },
-  { id: 'pos', label: '位置 RoPE', ch: 6, slug: 'position-encoding', x: 400, y: 244, w: 120, h: 36 },
-  { id: 'n2', label: 'RMSNorm', ch: 10, slug: 'normalization', x: 160, y: 334, w: 200, h: 32 },
-  { id: 'ffn', label: 'SwiGLU 前馈层', ch: 7, slug: 'activations-and-ffn', x: 160, y: 382, w: 200, h: 36 },
-  { id: 'nf', label: '最终 RMSNorm', ch: 10, slug: 'normalization', x: 140, y: 494, w: 240, h: 34 },
-  { id: 'out', label: '输出层：向量 → logits', ch: 4, slug: 'embeddings-and-output', x: 140, y: 546, w: 240, h: 36 },
-  { id: 'gen', label: '逐个生成 token', ch: 23, slug: 'generation', x: 140, y: 604, w: 240, h: 34 },
-  { id: 'loss', label: '交叉熵损失', ch: 13, slug: 'language-model-loss', x: 470, y: 546, w: 190, h: 34 },
+  { id: 'tok', label: '分词器：文本 → token ID', ch: 4, slug: 'tokenization', x: 140, y: 52, w: 240, h: 36 },
+  { id: 'emb', label: '词嵌入：ID → 向量', ch: 5, slug: 'embeddings-and-output', x: 140, y: 108, w: 240, h: 36 },
+  { id: 'n1', label: 'RMSNorm', ch: 11, slug: 'normalization', x: 160, y: 196, w: 200, h: 32 },
+  { id: 'att', label: '因果自注意力', ch: 6, slug: 'self-attention', x: 160, y: 244, w: 200, h: 36 },
+  { id: 'pos', label: '位置 RoPE', ch: 7, slug: 'position-encoding', x: 400, y: 244, w: 120, h: 36 },
+  { id: 'n2', label: 'RMSNorm', ch: 11, slug: 'normalization', x: 160, y: 334, w: 200, h: 32 },
+  { id: 'ffn', label: 'SwiGLU 前馈层', ch: 8, slug: 'activations-and-ffn', x: 160, y: 382, w: 200, h: 36 },
+  { id: 'nf', label: '最终 RMSNorm', ch: 11, slug: 'normalization', x: 140, y: 494, w: 240, h: 34 },
+  { id: 'out', label: '输出层：向量 → logits', ch: 5, slug: 'embeddings-and-output', x: 140, y: 546, w: 240, h: 36 },
+  { id: 'gen', label: '逐个生成 token', ch: 24, slug: 'generation', x: 140, y: 604, w: 240, h: 34 },
+  { id: 'loss', label: '交叉熵损失', ch: 14, slug: 'language-model-loss', x: 470, y: 546, w: 190, h: 34 },
   { id: 'grad', label: 'backward 求梯度', ch: 2, slug: 'tensors-and-autograd', x: 470, y: 494, w: 190, h: 34 },
-  { id: 'opt', label: '优化器更新参数', ch: 14, slug: 'optimizers', x: 470, y: 442, w: 190, h: 34 },
-  { id: 'prec', label: '数值精度 / 混合精度', ch: 17, slug: 'precision', x: 470, y: 390, w: 190, h: 34 }
+  { id: 'opt', label: '优化器更新参数', ch: 15, slug: 'optimizers', x: 470, y: 442, w: 190, h: 34 },
+  { id: 'prec', label: '数值精度 / 混合精度', ch: 18, slug: 'precision', x: 470, y: 390, w: 190, h: 34 }
 ]
 
 const activeSet = computed(() => new Set((props.active ?? '').split(',').map(s => s.trim()).filter(Boolean)))
@@ -60,7 +60,7 @@ useSvgLinkPrefetchFix(svgRoot)
       <a :href="href('transformer-block')">
         <rect x="120" y="172" width="280" height="290" rx="12" :class="['tm-block', { active: blockActive, planned: !done.has('transformer-block') }]" />
         <text x="408" y="186" class="tm-block-label">Transformer Block</text>
-        <text x="408" y="202" class="tm-block-label">× N · 第 8 章</text>
+        <text x="408" y="202" class="tm-block-label">× N · 第 9 章</text>
       </a>
 
       <!-- 主干与残差 -->
@@ -79,7 +79,7 @@ useSvgLinkPrefetchFix(svgRoot)
         <text x="260" y="317" text-anchor="middle" class="tm-add-text">+</text>
         <circle cx="260" cy="442" r="12" :class="['tm-add', { active: residualActive }]" />
         <text x="260" y="447" text-anchor="middle" class="tm-add-text">+</text>
-        <text x="135" y="380" text-anchor="middle" class="tm-side-label" transform="rotate(-90 135 380)">残差 · 第 9 章</text>
+        <text x="135" y="380" text-anchor="middle" class="tm-side-label" transform="rotate(-90 135 380)">残差 · 第 10 章</text>
       </a>
 
       <line x1="400" y1="262" x2="362" y2="262" class="tm-edge" marker-end="url(#tm-arrow)" />

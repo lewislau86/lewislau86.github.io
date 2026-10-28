@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 12 章：语料与数据管线](./data-pipeline.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 13 章：语料与数据管线](./data-pipeline.md)。

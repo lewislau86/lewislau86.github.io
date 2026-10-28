@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 14 章：优化器](./optimizers.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 15 章：优化器](./optimizers.md)。
