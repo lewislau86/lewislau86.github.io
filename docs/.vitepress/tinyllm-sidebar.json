@@ -9,10 +9,16 @@
       {
         "text": "课程总览",
         "link": "/tinyllm/"
-      },
+      }
+    ]
+  },
+  {
+    "text": "快速体验",
+    "collapsed": false,
+    "items": [
       {
-        "text": "30 分钟快速体验",
-        "link": "/tinyllm/#quickstart"
+        "text": "30 分钟快速体验：把零件逐个打开",
+        "link": "/tinyllm/quickstart"
       },
       {
         "text": "实验环境：安装与代码下载",
