@@ -1,0 +1,11 @@
+{
+  "name": "lewis-waline-comments",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "@waline/vercel": "1.43.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
