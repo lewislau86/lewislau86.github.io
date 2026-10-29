@@ -339,6 +339,75 @@ def quickstart_loss():
               f"随后升到 {log['val_loss'][-1]:.2f}，超过乱猜的 {log['uniform']:.2f}。两条曲线一分开，模型就从学诗变成了背诗。")
 
 
+def quickstart_flow():
+    """快速体验的八步串成一条链路：上排前向，下排反向与更新，⑦ 绕回开头，⑧ 训练完沿顶部弧线生成。
+    数字取自 quickstart.py 的真实输出（见 docs/tinyllm/quickstart.md）。"""
+    body = text(480, 36, "八步在同一条链路上：前向算出损失，反向更新参数，重复之后拿来写诗", 21, weight="bold")
+    # 上排：前向（w=130，间隔 22）
+    top, h, w = 120, 100, 130
+    xs = [35, 187, 339, 491, 643, 795]
+    row1 = [
+        (GRAY, "文字", "“床前明月光”", ""),
+        (BLUE, "① 分词", "每个字一个编号", "(1, 5)"),
+        (BLUE, "② 词嵌入", "编号当行号查表", "(1, 5, 96)"),
+        (BLUE, "④ 加位置", "每个位置一行向量", "+ (5, 96)"),
+        (BLUE, "③ 注意力", "因果掩码只看左边", "3 层 Block"),
+        (BLUE, "输出层", "给每个字打分", "(1, 5, 1458)"),
+    ]
+    body += box(327, 108, 610, 124, "none", GRAY, dash=True)
+    for x, (color, title, sub, shape) in zip(xs, row1):
+        cx = x + w / 2
+        body += cbox(x, top, w, h, color)
+        if shape:
+            body += text(cx, top + 30, title, 16, INK, "bold")
+            body += text(cx, top + 56, sub, 13, color)
+            body += mtext(cx, top + 82, shape, 14, color)
+        else:
+            body += text(cx, top + 42, title, 16, INK, "bold")
+            body += text(cx, top + 70, sub, 15, INK)
+    for a, b in zip(xs, xs[1:]):
+        body += arrow(a + w + 2, top + h / 2, b - 3, top + h / 2, GRAY, 2.5)
+    body += text(632, 254, "虚线框里是被训练的参数，共 474,720 个", 13.5, GRAY)
+
+    # 下排：从右往左，损失 → 梯度 → 更新
+    y2, w2 = 330, 170
+    row2 = [
+        (755, ORANGE, "⑤ 损失", "交叉熵 7.70", "乱猜水位 ln 1458 = 7.29"),
+        (560, RED, "⑥ 反向传播", "backward() 算梯度", "24 个张量，总范数 3.6"),
+        (365, TEAL, "更新参数", "AdamW 挪一小步", "同一批数据：7.70 → 7.04"),
+    ]
+    for x, color, title, sub, note in row2:
+        cx = x + w2 / 2
+        body += cbox(x, y2, w2, h, color)
+        body += text(cx, y2 + 30, title, 16, INK, "bold")
+        body += text(cx, y2 + 56, sub, 13.5, color)
+        body += text(cx, y2 + 80, note, 13, color)
+    body += path(f"M860 {top + h + 2}L860 {y2 - 3}", ORANGE, 2.5)
+    body += text(848, 290, "和正确答案比", 13, ORANGE, anchor="end")
+    body += arrow(753, y2 + h / 2, 733, y2 + h / 2, RED, 2.5)
+    body += arrow(558, y2 + h / 2, 538, y2 + h / 2, TEAL, 2.5)
+    body += path(f"M450 {y2 - 2}L450 238", TEAL, 2.5, dash=True)
+    body += text(462, 300, "改参数", 13, TEAL, anchor="start")
+
+    # ⑦：换一批数据绕回开头
+    body += path(f"M363 {y2 + h / 2}L130 {y2 + h / 2}C100 {y2 + h / 2} 100 {y2 + h / 2 - 20} 100 {y2 + h / 2 - 40}L100 {top + h + 3}", TEAL, 2.5)
+    body += text(235, y2 + h / 2 - 32, "⑦ 换一批诗句再走一遍", 14, TEAL, "bold")
+    body += text(235, y2 + h / 2 + 24, "共 1000 步", 13.5, TEAL)
+
+    # ⑧：训练完，沿顶部弧线把抽到的字接回文字末尾
+    body += path(f"M860 {top - 2}C860 52 100 52 100 {top - 3}", PURPLE, 2.5, dash=True)
+    body += text(480, 94, "⑧ 训练完：按最后一个位置的分数抽一个字，接到文字末尾，重复 40 次", 14, PURPLE, "bold")
+
+    body += text(480, 478, "⑦ 跑完：训练损失 7.33 → 0.27；验证损失第 100 步最低 6.32，之后升到 8.78——模型从“学”变成了“背”。", 14.5, INK)
+    body += text(480, 506, "圆圈编号是本页的步骤号；④ 画在 ③ 前面，是因为数据先加上位置、再进注意力。", 13.5, GRAY)
+    svg("quickstart-flow.svg", "快速体验的八步流程",
+        "上排是前向：文字“床前明月光”经①分词变成 5 个编号，②查词嵌入表得到 (1,5,96) 的向量，④加上位置向量，③经过 3 层带因果掩码的注意力 Block，"
+        "输出层给词表里 1458 个字各打一个分。下排从右往左：⑤用交叉熵和正确答案比，随机参数下是 7.70，乱猜水位 7.29；"
+        "⑥反向传播给 24 个参数张量算出梯度；AdamW 更新参数后同一批数据的损失降到 7.04。⑦换一批数据绕回开头，共重复 1000 步，"
+        "训练损失降到 0.27，验证损失在第 100 步最低 6.32 后升到 8.78。⑧训练完后，按最后一个位置的分数抽一个字接回文字末尾，重复 40 次写出诗句。",
+        530, body)
+
+
 def first_run_loss():
     src = DATA / "tinyllm-first-run-log.json"
     if not src.exists():
@@ -1420,6 +1489,7 @@ def main():
     pre_post_norm()
     first_run_loss()
     quickstart_loss()
+    quickstart_flow()
     # 第 10、8、4、5、15、18 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
