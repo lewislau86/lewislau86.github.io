@@ -1,0 +1,23 @@
+{
+  "file": "data/tang-song-poems.jsonl",
+  "bytes": 89702194,
+  "sha256": "23ce7f9b6139ceb95f901f3667e3401a3ce9e9f96140acc0b295e1ee7a24fd96",
+  "poems": 296659,
+  "chars": 17260353,
+  "vocab": 10319,
+  "splits": {
+    "train": 266957,
+    "val": 14768,
+    "test": 14934
+  },
+  "sources": {
+    "全唐诗": 50286,
+    "全宋诗": 246373
+  },
+  "source": {
+    "repo": "https://github.com/chinese-poetry/chinese-poetry",
+    "commit": "b8594f81a89752241442f2ce267d6f66f96704ee",
+    "license": "MIT"
+  },
+  "generator": "scripts/prepare-tinyllm-large-corpus.py"
+}

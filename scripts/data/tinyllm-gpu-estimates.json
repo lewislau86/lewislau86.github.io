@@ -1,9 +1,18 @@
 {
-  "vocab": 5703,
-  "corpus_tokens": 767823,
+  "corpora": {
+    "统一唐诗语料": {
+      "vocab": 5703,
+      "tokens": 767823
+    },
+    "唐宋诗大语料": {
+      "vocab": 10320,
+      "tokens": 17557012
+    }
+  },
   "configs": [
     {
       "name": "CPU 基线（第 12 章）",
+      "vocab": 5703,
       "d": 256,
       "layers": 6,
       "heads": 8,
@@ -14,10 +23,14 @@
       "activation_gb": 0.4,
       "total_gb": 0.5,
       "tokens_per_step": 4096,
-      "pflops_per_epoch": 0.03
+      "corpus_tokens": 767823,
+      "tokens_per_param": 0.12,
+      "pflops_per_epoch": 0.03,
+      "corpus": "统一唐诗语料"
     },
     {
       "name": "GPU 小",
+      "vocab": 5703,
       "d": 512,
       "layers": 8,
       "heads": 8,
@@ -28,10 +41,32 @@
       "activation_gb": 3.03,
       "total_gb": 3.48,
       "tokens_per_step": 16384,
-      "pflops_per_epoch": 0.13
+      "corpus_tokens": 767823,
+      "tokens_per_param": 0.03,
+      "pflops_per_epoch": 0.13,
+      "corpus": "统一唐诗语料"
+    },
+    {
+      "name": "GPU 小",
+      "vocab": 10320,
+      "d": 512,
+      "layers": 8,
+      "heads": 8,
+      "context": 512,
+      "batch": 32,
+      "params": 30454272,
+      "train_state_gb": 0.49,
+      "activation_gb": 3.63,
+      "total_gb": 4.12,
+      "tokens_per_step": 16384,
+      "corpus_tokens": 17557012,
+      "tokens_per_param": 0.58,
+      "pflops_per_epoch": 3.21,
+      "corpus": "唐宋诗大语料"
     },
     {
       "name": "GPU 中（约 GPT-2 small）",
+      "vocab": 5703,
       "d": 768,
       "layers": 12,
       "heads": 12,
@@ -42,7 +77,28 @@
       "activation_gb": 5.88,
       "total_gb": 7.31,
       "tokens_per_step": 16384,
-      "pflops_per_epoch": 0.41
+      "corpus_tokens": 767823,
+      "tokens_per_param": 0.01,
+      "pflops_per_epoch": 0.41,
+      "corpus": "统一唐诗语料"
+    },
+    {
+      "name": "GPU 中（约 GPT-2 small）",
+      "vocab": 10320,
+      "d": 768,
+      "layers": 12,
+      "heads": 12,
+      "context": 1024,
+      "batch": 16,
+      "params": 92879616,
+      "train_state_gb": 1.49,
+      "activation_gb": 6.49,
+      "total_gb": 7.97,
+      "tokens_per_step": 16384,
+      "corpus_tokens": 17557012,
+      "tokens_per_param": 0.19,
+      "pflops_per_epoch": 9.78,
+      "corpus": "唐宋诗大语料"
     }
   ]
 }

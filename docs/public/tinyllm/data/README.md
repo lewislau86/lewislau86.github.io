@@ -46,3 +46,7 @@ python scripts/prepare-tinyllm-corpus.py
 ```
 
 脚本会下载固定版本的源数据（约 24 MB，缓存在 `.cache/`），繁体转简体、筛选、去重、排序、划分，结果逐字节可复现。
+
+## 更大的语料
+
+可选路线“GPU 完整训练”另用一份唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），太大不放进仓库，由 `scripts/prepare-tinyllm-large-corpus.py` 在本机生成，校验值见同目录的 `manifest-large.json`。
