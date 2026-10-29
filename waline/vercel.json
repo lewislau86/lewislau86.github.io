@@ -7,7 +7,7 @@
     "NODE_OPTIONS": "--experimental-require-module",
     "SITE_NAME": "Lewis 的知识库",
     "SITE_URL": "https://lewislau86.github.io",
-    "SECURE_DOMAINS": "lewislau86.github.io",
+    "SECURE_DOMAINS": "lewislau86.github.io,lewis-waline-comments.vercel.app",
     "COMMENT_AUDIT": "true",
     "IPQPS": "60"
   },
