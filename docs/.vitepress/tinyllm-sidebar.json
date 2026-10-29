@@ -11,6 +11,10 @@
         "link": "/tinyllm/"
       },
       {
+        "text": "30 分钟快速体验",
+        "link": "/tinyllm/#quickstart"
+      },
+      {
         "text": "实验环境：安装与代码下载",
         "link": "/tinyllm/setup"
       }
