@@ -239,15 +239,19 @@ print("同一批数据，更新后损失：", round(loss_after.item(), 4))
 # %%
 # region step7
 steps = 1000
+log = {"loss": [], "val_step": [], "val_loss": [], "uniform": math.log(vocab_size)}   # 供网站画损失曲线
 for step in range(steps + 1):
     xb, yb = get_batch(train_data)
     loss = lm_loss(xb, yb)
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+    log["loss"].append(loss.item())
     if step % 100 == 0:
         with torch.no_grad():
             v = sum(lm_loss(*get_batch(val_data)).item() for _ in range(4)) / 4
+        log["val_step"].append(step)
+        log["val_loss"].append(v)
         print(f"step {step:3d}  训练损失 {loss.item():.3f}  验证损失 {v:.3f}")
 # endregion step7
 
@@ -276,6 +280,11 @@ def generate(prompt, max_new_tokens=40, temperature=0.8):
 torch.manual_seed(1)
 for prompt in ["春", "床前", "孤舟"]:
     print(generate(prompt))
+
+# %%
+import json
+with open("quickstart_log.json", "w", encoding="utf-8") as f:
+    json.dump(log, f)
 
 # %% [markdown]
 # 八步走完。想深挖哪一步，就去读对应的那一章；想从头看一遍完整流水线，读第 1 章。

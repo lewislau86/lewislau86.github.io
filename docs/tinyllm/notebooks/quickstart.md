@@ -326,15 +326,19 @@ print("同一批数据，更新后损失：", round(loss_after.item(), 4))
 
 ```python
 steps = 1000
+log = {"loss": [], "val_step": [], "val_loss": [], "uniform": math.log(vocab_size)}   # 供网站画损失曲线
 for step in range(steps + 1):
     xb, yb = get_batch(train_data)
     loss = lm_loss(xb, yb)
     optimizer.zero_grad(set_to_none=True)
     loss.backward()
     optimizer.step()
+    log["loss"].append(loss.item())
     if step % 100 == 0:
         with torch.no_grad():
             v = sum(lm_loss(*get_batch(val_data)).item() for _ in range(4)) / 4
+        log["val_step"].append(step)
+        log["val_loss"].append(v)
         print(f"step {step:3d}  训练损失 {loss.item():.3f}  验证损失 {v:.3f}")
 ```
 
@@ -414,6 +418,14 @@ for prompt in ["春", "床前", "孤舟"]:
 春尽，所得是沾衣。
 床前。思苦文星动，乡遥钓渚闲。明年见名姓，唯我独何颜。
 孤舟何渺然。
+```
+
+<p class="nb-label">In [10]</p>
+
+```python
+import json
+with open("quickstart_log.json", "w", encoding="utf-8") as f:
+    json.dump(log, f)
 ```
 
 ::: v-pre

@@ -311,6 +311,34 @@ def pre_post_norm():
 
 # ---------- 第 1 章：先跑通 ----------
 
+def quickstart_loss():
+    src = DATA / "tinyllm-quickstart-log.json"
+    if not src.exists():
+        print("skip quickstart-loss.svg: run scripts/build-tinyllm-code.py quickstart to create", src)
+        return
+    log = json.loads(src.read_text(encoding="utf-8"))
+    loss = np.array(log["loss"])
+    smooth = np.convolve(loss, np.ones(15) / 15, mode="valid")
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(loss, color="#cbd5e1", lw=0.8, label="训练损失（每一步）")
+    ax.plot(np.arange(len(smooth)) + 7, smooth, color=BLUE, lw=2.4, label="训练损失（15 步滑动平均）")
+    ax.plot(log["val_step"], log["val_loss"], color=RED, lw=2.2, marker="o", ms=4, label="验证损失（没训练过的 5 首诗）")
+    ax.axhline(log["uniform"], color=ORANGE, ls="--", lw=1.6)
+    ax.text(len(loss) * 0.52, log["uniform"] - 0.45, f"完全乱猜：ln(词表大小) ≈ {log['uniform']:.2f}", color=ORANGE, fontsize=12)
+    best = int(np.argmin(log["val_loss"]))
+    ax.annotate(f"验证损失最低 {log['val_loss'][best]:.2f}（第 {log['val_step'][best]} 步）\n过了这里，模型开始背训练集",
+                xy=(log["val_step"][best], log["val_loss"][best]), xytext=(log["val_step"][best] + 190, log["val_loss"][best] - 1.3),
+                color=RED, fontsize=12, arrowprops=dict(arrowstyle="->", color=RED, lw=1.4))
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("交叉熵损失")
+    ax.set_ylim(0, max(max(log["val_loss"]), loss[0]) + 0.6)
+    ax.legend(loc="center right", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "quickstart-loss.svg", "快速体验：一千步训练里的训练损失与验证损失",
+              f"训练损失从约 {loss[0]:.1f} 一路降到约 {smooth[-1]:.2f}；验证损失在第 {log['val_step'][best]} 步见底（{log['val_loss'][best]:.2f}），"
+              f"随后升到 {log['val_loss'][-1]:.2f}，超过乱猜的 {log['uniform']:.2f}。两条曲线一分开，模型就从学诗变成了背诗。")
+
+
 def first_run_loss():
     src = DATA / "tinyllm-first-run-log.json"
     if not src.exists():
@@ -1391,6 +1419,7 @@ def main():
     norm_geometry()
     pre_post_norm()
     first_run_loss()
+    quickstart_loss()
     # 第 10、8、4、5、15、18 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
