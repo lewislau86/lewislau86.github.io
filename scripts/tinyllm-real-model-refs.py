@@ -110,6 +110,16 @@ SPEC = {
         ("损失在 FP32 里算", "loss/loss_utils.py", "ForCausalLMLoss", "第一行就是 `logits = logits.float()`"),
         ("混合精度的上下文", "trainer.py", "Trainer.autocast_smart_context_manager", "按训练参数打开 `autocast`"),
     ]),
+    "generation": ("本章的采样步骤在 transformers 里由 `generate()` 调度，真正的取样发生在 `_sample` 里：", [
+        ("生成入口", "generation/utils.py", "GenerationMixin.generate", "准备输入、准备缓存、进入循环；本章的 `generate` 就是这个循环的最小版本"),
+        ("一步一步生成", "generation/utils.py", "GenerationMixin._sample", "每步前向、取最后一个位置的 logits、调处理器改打分、抽样、拼接，和本章的四步一样"),
+        ("温度", "generation/logits_process.py", "TemperatureLogitsWarper", "`scores / self.temperature` 之后再 softmax，就是本章第 1 节除一下"),
+        ("重复惩罚", "generation/logits_process.py", "RepetitionPenaltyLogitsProcessor", "正负 logits 分开处理：正的除以 penalty、负的乘 penalty，和本章第 8 节逐行对应"),
+        ("top-k", "generation/logits_process.py", "TopKLogitsWarper", "取 topk 后把其余位置填成 `-inf`，即本章的 `masked_fill`"),
+        ("top-p", "generation/logits_process.py", "TopPLogitsWarper", "排序、累加，把累计概率超过 p 的部分填成 `-inf`，和本章 `truncate` 同一个算法"),
+        ("约束解码", "generation/logits_process.py", "PrefixConstrainedLogitsProcessor", "按已生成的前缀查允许列表并填 `-inf`，正是本章第 9 节的做法"),
+        ("固定随机数流", "trainer_utils.py", "set_seed", "同时设置 Python、NumPy 与 torch 的随机种子；本章把 `torch.Generator` 直接传给 `multinomial`，作用相同"),
+    ]),
     "inference-efficiency": ("KV cache 在真实代码里由缓存类管理，注意力每一层把新的 K、V 交给它：", [
         ("创建缓存", LLAMA, ("grep", r"past_key_values = DynamicCache\(config=self\.config\)"), "`use_cache=True` 且没有传入缓存时新建一个"),
         ("每层写入缓存", LLAMA, ("grep", r"key_states, value_states = past_key_values\.update"), "拿到这一层新 token 的 K、V 后交给缓存，换回包含全部历史的 K、V"),

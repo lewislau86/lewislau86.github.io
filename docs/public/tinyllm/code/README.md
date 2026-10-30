@@ -19,13 +19,14 @@
 | 第 13 章 TinyLLM 在 GPU 上完整实现 | [gpu-training.py](gpu-training.py) | [打开](https://lewislau86.github.io/tinyllm/gpu-training) |
 | 第 16 章 优化器 | [optimizers.py](optimizers.py) | [打开](https://lewislau86.github.io/tinyllm/optimizers) |
 | 第 19 章 数值精度与混合精度 | [precision.py](precision.py) | [打开](https://lewislau86.github.io/tinyllm/precision) |
-| 第 26 章 推理效率（KV cache 一节） | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
+| 第 25 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
+| 第 26 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
 
 ## 怎么运行
 
 安装步骤、整包下载和常见问题见 [实验环境：安装与代码下载](https://lewislau86.github.io/tinyllm/setup)。
 
-每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、12、13 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`。
+每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、12、13、25 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`；第 25 章需要 `tokenizers`。
 
 ## 和网站的关系
 

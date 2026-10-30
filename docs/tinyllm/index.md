@@ -26,7 +26,7 @@ pageClass: tinyllm-course
 2. **再读第 2、3 章，补两样背景。** [第 2 章](./tensors-and-autograd.md)备好工具：张量、形状和自动求导，后面每一章都要用；[第 3 章](./architecture-evolution.md)讲架构的来历：从翻译用的 Transformer，到只有解码器的 GPT，再到今天的稀疏混合架构，TinyLLM 的每个零件都能在这里找到出处。
 3. **然后顺着总图从上往下搭模型（第 4～9 章）。** 文字变编号、编号变向量、注意力让向量互相看见、前馈层各自加工，最后装进 Block。
 4. **把 Block 叠深，它会训不动；第 10～12 章修好它。** 残差、初始化、归一化三件工具让深层网络稳定，再组装出完整的 TinyLLM；第 13 章把同一份代码搬到 GPU 上放大训练。
-5. **之后是数据与训练（第 14～24 章），再到推理（第 25～28 章）、后训练（第 29～32 章）和应用（第 33 章）。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
+5. **之后是数据与训练（第 14～24 章），再到推理（第 25～32 章）、后训练（第 33～36 章）和应用（第 37 章）。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
 
 不要求现在就认识每个名词。遇到 MoE、μP 等，先知道它们是后续专题即可。
 
@@ -49,6 +49,8 @@ pageClass: tinyllm-course
 | [第 13 章 · TinyLLM 在 GPU 上完整实现](./gpu-training.md) | 模型代码不变，换配置和训练循环：显存估算、BF16、梯度累积、学习率调度、检查点；点出 GPU 上的七个优化点 | [查看](/tinyllm/notebooks/gpu-training) |
 | [第 16 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [查看](/tinyllm/notebooks/optimizers) |
 | [第 19 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
+| [第 25 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
+| [第 26 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
 
 ## 课程路线 {#roadmap}
 
@@ -103,34 +105,38 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 
 ### 第六部分 · 推理
 
-模型训好以后怎样用、怎样用得省：逐字生成、推理效率、量化，以及把这些拼起来的推理优化。
+模型训好以后怎样用、怎样用得省。前五章只看一个请求：每一步怎样选字，怎样不重算前文，注意力内核为什么快，怎样少搬字节，怎样少走几步。后三章处理很多请求同时来的情况：怎样排进同一批，显存里的 KV 怎样分配和复用，最后把各项优化逐一对照，并接上服务。
 
-- [第 25 章 · 自回归生成](./generation.md)（规划中）
-- [第 26 章 · 推理效率](./inference-efficiency.md)（规划中）
-- [第 27 章 · 量化](./quantization.md)（规划中）
-- [第 28 章 · 推理优化](./inference-optimization.md)（规划中）
+- [第 25 章 · 自回归生成](./generation.md)
+- [第 26 章 · 推理效率：prefill、decode 与 KV cache](./inference-efficiency.md)
+- [第 27 章 · 注意力内核与算子融合](./attention-kernels.md)（规划中）
+- [第 28 章 · 量化](./quantization.md)（规划中）
+- [第 29 章 · 投机解码](./speculative-decoding.md)（规划中）
+- [第 30 章 · 批处理与调度](./batching.md)（规划中）
+- [第 31 章 · KV 显存管理：分页与前缀缓存](./kv-memory.md)（规划中）
+- [第 32 章 · 推理优化：逐项对照与推理服务](./inference-optimization.md)（规划中）
 
 ### 第七部分 · 后训练
 
 在预训练模型上继续训练：指令微调、参数高效微调，再用 RLHF、DPO、GRPO 让回答符合人的偏好、学会推理。
 
-- [第 29 章 · 指令微调](./instruction-finetuning.md)（规划中）
-- [第 30 章 · 参数高效微调（LoRA）](./lora-finetuning.md)（规划中）
-- [第 31 章 · RLHF：奖励模型与 PPO](./rlhf.md)（规划中）
-- [第 32 章 · DPO 与 GRPO](./preference-alignment.md)（规划中）
+- [第 33 章 · 指令微调](./instruction-finetuning.md)（规划中）
+- [第 34 章 · 参数高效微调（LoRA）](./lora-finetuning.md)（规划中）
+- [第 35 章 · RLHF：奖励模型与 PPO](./rlhf.md)（规划中）
+- [第 36 章 · DPO 与 GRPO](./preference-alignment.md)（规划中）
 
 ### 第八部分 · 应用
 
 模型参数不动，靠往上下文里放信息让它更有用。
 
-- [第 33 章 · Agent 记忆与检索](./agent-memory.md)（规划中）
+- [第 37 章 · Agent 记忆与检索](./agent-memory.md)（规划中）
 
 ## 贯穿全书的主线选择 {#mainline-choices}
 
 每章结尾都有一节“本章结论：TinyLLM 的选择”，回答三个问题：**主线具体选什么、为什么、什么情况下换方案**。下表把它们汇总在一起。这是从零训练一个小型、稠密、Decoder-only 语言模型的教学基线，不是“所有现代大模型的唯一最优配方”；规划章节的选择还要用相同数据、参数预算和训练条件验证。
 
 <details>
-<summary>展开全书主线选择汇总表（33 行）</summary>
+<summary>展开全书主线选择汇总表（37 行）</summary>
 
 | 章节 | 主线选择 | 主要理由与调整条件 |
 | --- | --- | --- |
@@ -158,13 +164,17 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [22 评估](./training-evaluation.md) | 先过拟合小 batch，再看独立验证集交叉熵/困惑度与生成样例 | 分开排查代码连通性、泛化和生成质量；比较困惑度需同一 tokenizer 与数据口径。 |
 | [23 大规模稳定性](./large-model-stability.md) | 保留基础 Pre-Norm 配置并监测尺度；扩深/扩宽出现问题时才评估 μP、DeepNorm 等整套方案 | 这些方法涉及初始化、结构和学习率的联动，不能只替换一个常数；多卡训练时再引入数据并行等分布式方案。 |
 | [24 MoE](./mixture-of-experts.md) | 主线保持稠密；MoE 作为对照变体，用相同数据和步数从头训练，并试稀疏升级 | 同样的计算量能放下更多参数，但要处理负载均衡与路由稳定；参数规模或推理成本成为瓶颈时再切换。 |
-| [25 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
-| [26 推理](./inference-efficiency.md) | 自回归 decode 使用 KV cache，分别测 prefill 与 decode；注意力优先用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀，并让框架选择 FlashAttention 等高效内核；长上下文和并发会增加显存，必要时配合 GQA。 |
-| [27 量化](./quantization.md) | 训练沿用第 19 章的精度；部署受限时先做按通道或分组的 INT8 权重量化 | 压缩推理存储和带宽；每次量化都在同一验证集上比较困惑度与生成样例。 |
-| [28 推理优化](./inference-optimization.md) | 以第 26 章的 KV cache 为基线，依次评估连续批处理、分页 KV、投机解码和 `torch.compile` | 每项优化都用同一组请求测首字延迟、每 token 延迟和吞吐；输出必须与基线一致（或在同一验证集上质量不降），否则不算优化。 |
+| [25 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p，并固定种子 | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
+| [26 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |
+| [27 注意力内核](./attention-kernels.md) | 先写朴素注意力看清 N×N 分数表，再写分块 + online softmax 的版本，两者数值对齐 | 分块省下峰值内存、把读写留在片上；这是 FlashAttention 的核心，但真正的吞吐收益依赖 GPU 内核与编译器，CPU 上只验证等价性和内存账。 |
+| [28 量化](./quantization.md) | 训练沿用第 19 章的精度；部署受限时先做按通道或分组的 INT8 权重量化 | 压缩推理存储和带宽；每次量化都在同一验证集上比较困惑度与生成样例。 |
+| [29 投机解码](./speculative-decoding.md) | 贪心解码下用“起草 → 验证”一次接受多个 token，并要求输出与基线逐 token 一致 | 只在起草模型和目标模型接近时有效；接受率要实测，采样模式下必须用拒绝采样才不改变分布。 |
+| [30 批处理](./batching.md) | 主线先单请求；多个请求时用连续批处理按 token 步调度，并记录每个请求的等待时间 | 短请求不必等最长的那个；chunked prefill 能减少长提示词对其他请求的阻塞，代价是调度开销。 |
+| [31 KV 显存管理](./kv-memory.md) | 缓存按固定大小的块分配，用一张块表拼出逻辑序列；相同前缀的块共享 | 分页解决碎片与超配，前缀共享解决重复计算；两者都要淘汰策略，命中率必须按工作负载实测。 |
+| [32 推理优化](./inference-optimization.md) | 以第 26 章的 KV cache 为基线，逐项单独打开前面的优化并各测一次 | 每项都用同一组请求测首字延迟、每 token 延迟和吞吐；输出必须与基线一致（或在同一验证集上质量不降），几项叠加的提升不归给其中某一项。 |
 | [29 指令微调](./instruction-finetuning.md) | 在预训练模型上做 SFT，只对助手答案计算 loss | 让监督信号对应目标回答；模板和终止 token 必须与推理一致。 |
 | [30 LoRA](./lora-finetuning.md) | 小模型先全参数微调；显存受限时再用 LoRA | LoRA 节省可训练参数及优化器状态，不减少基础权重的推理存储。 |
-| [31 RLHF](./rlhf.md) | 在小任务上完整实现一遍：奖励模型 + PPO + KL 惩罚 | 理解偏好对齐的完整流程；四个模型、训练不稳，实际对齐方法见第 32 章。 |
+| [31 RLHF](./rlhf.md) | 在小任务上完整实现一遍：奖励模型 + PPO + KL 惩罚 | 理解偏好对齐的完整流程；四个模型、训练不稳，实际对齐方法见第 36 章。 |
 | [32 DPO 与 GRPO](./preference-alignment.md) | 在 SFT 模型上先用 DPO；有能自动判分的任务时再用 GRPO | DPO 不需要单独的奖励模型；对齐后同时检查目标任务和原有能力。 |
 | [33 Agent 记忆](./agent-memory.md) | 在模型外保存有来源和时间的文本事实，检索后放回上下文 | 参数和 KV cache 不会自动保存可更新的跨会话事实；按规模决定是否增加向量索引。 |
 

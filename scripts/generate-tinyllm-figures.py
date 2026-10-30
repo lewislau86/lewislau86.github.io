@@ -1524,6 +1524,207 @@ def tinyllm_model_loss():
               f"第 {log['val_step'][-1]} 步时验证损失仍在下降：这个预算下模型还没学够，也还没开始背训练集。")
 
 
+# ---------- 第 25 章：自回归生成 ----------
+
+def sampling_truncate():
+    """两组六候选概率与 generation.py 第 2 节的 peaked / flat 完全一致（softmax 后的值）。"""
+    d = load("tinyllm-sampling.json")["truncate"]
+    sharp = [0.7290, 0.2682, 0.0018, 0.0007, 0.0002, 0.0001]
+    flat = [0.2109, 0.1908, 0.1727, 0.1562, 0.1414, 0.1279]
+    base, scale, step, bw = 330, 210, 56, 42
+    body = text(480, 34, "六候选、两种分布：top-k 留几个是常数，top-p 留几个跟着分布走", 21, weight="bold")
+    for col, (name, probs, knob) in enumerate([("尖峰分布（句末标点）", sharp, d["peaked"]),
+                                               ("平坦分布（逗号之后）", flat, d["flat"])]):
+        ox = 70 + col * 460
+        body += text(ox + 190, 66, name, 17, INK, "bold")
+        for i, p in enumerate(probs):
+            h = p * scale
+            color = BLUE if i < knob["k"] else GRAY
+            fill = "#bfdbfe" if i < knob["p"] else "#e2e8f0"
+            body += f'<rect x="{ox + 30 + i * step}" y="{base - h:.1f}" width="{bw}" height="{max(h, 1.5):.1f}" rx="3" fill="{fill}" stroke="{color}" stroke-width="2"/>'
+            body += mtext(ox + 51 + i * step, base + 20, f"{p:.2f}", 12, GRAY)
+        body += f'<line x1="{ox + 18}" y1="{base}" x2="{ox + 360}" y2="{base}" stroke="#94a3b8" stroke-width="2"/>'
+        top = base - max(probs) * scale
+        body += f'<rect x="{ox + 26}" y="{top:.1f}" width="{knob["k"] * step - 14}" height="{base - top:.1f}" fill="none" stroke="{BLUE}" stroke-width="2.5" stroke-dasharray="7 5"/>'
+        body += f'<rect x="{ox + 26}" y="{top:.1f}" width="{knob["p"] * step - 14}" height="{base - top:.1f}" fill="none" stroke="{TEAL}" stroke-width="0" stroke-dasharray="2 3"/>'
+        body += text(ox + 96, top - 10, f"top-k = 3 留 {knob['k']} 个", 15, BLUE, "bold")
+        body += text(ox + 190, base + 66, f"top-p = 0.9 留 {knob['p']} 个 · top-k = 3 留 {knob['k']} 个", 15, INK, "bold")
+        body += text(ox + 190, base + 92, "框内是留下的候选，重新归一化后再抽样", 13, GRAY)
+    p_sharp2, p_flat3 = sum(sharp[:2]), sum(flat[:3])
+    body += text(480, 470, f"尖峰时前两个候选占 {p_sharp2 * 100:.1f}%，top-p 只要 2 个就够；平坦时六个各占一成多，top-p 要 6 个。", 14.5, GRAY)
+    body += text(480, 496, f"同样留 3 个：左边多留的那个概率只有 0.002，右边却砍掉了 {1 - p_flat3:.0%} 的概率质量。", 14.5, GRAY)
+    svg("sampling-truncate.svg", "top-k 与 top-p 在尖峰和平坦分布上的区别",
+        f"左：尖峰分布，前两个候选占 {p_sharp2 * 100:.1f}%，top-p(0.9) 只要 2 个，top-k=3 却留了 3 个，第三个概率只有 0.002。"
+        f"右：平坦分布，六个候选各占一成多，top-p(0.9) 要 6 个，top-k=3 只留 3 个，砍掉了 {1 - p_flat3:.0%} 的概率质量。"
+        "两图合起来说明 top-p 的集合大小随分布变化，top-k 不变。", 516, body)
+
+
+def sampling_difficulty():
+    d = load("tinyllm-sampling.json")["difficulty"]
+    labels = [f"{r['prompt'][:5]}\n{r['char']}" for r in d]
+    ent = np.array([r["entropy"] for r in d])
+    nuc = np.array([r["nucleus"] for r in d])
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    x = np.arange(len(d))
+    ax.bar(x, ent, color=BLUE, width=0.6, label="熵（nat）")
+    for xi, v in zip(x, ent):
+        ax.text(xi, v + 0.12, f"{v:.2f}", ha="center", fontsize=10, color=BLUE)
+    ax.set_ylabel("下一个字的熵（nat）", color=BLUE)
+    ax.tick_params(axis="y", colors=BLUE)
+    ax.set_xticks(x, labels, fontsize=10)
+    ax.set_ylim(0, max(ent) * 1.35)
+    ax2 = ax.twinx()
+    ax2.plot(x, nuc, color=ORANGE, lw=2.4, marker="o", ms=7, label="top-p(0.9) 需要的候选数")
+    for xi, v in zip(x, nuc):
+        ax2.text(xi, v * 1.18, f"{v}", ha="center", fontsize=10, color=ORANGE)
+    ax2.set_yscale("log")
+    ax2.set_ylabel("top-p(0.9) 需要的候选数（对数）", color=ORANGE)
+    ax2.tick_params(axis="y", colors=ORANGE)
+    ax2.set_ylim(0.7, max(nuc) * 3)
+    ax.axvline(3.5, color=GRAY, lw=1.2, ls="--")
+    ax.text(3.6, max(ent) * 1.18, "换一句提示词", fontsize=11, color=GRAY, ha="left")
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "sampling-difficulty.svg", "同一个模型，不同位置的熵与 top-p 候选数",
+              "横轴是两首诗逐字喂进模型后的位置。柱子是下一个字的熵，橙线是 top-p(0.9) 需要几个候选。"
+              "两条曲线同起同落：句末标点“晓”“人”之后熵低于 1，只要 1 到 2 个候选；逗号之后熵升到 4 以上，要四百多个候选。"
+              "固定的 top-k 不可能在这整条曲线上都合适。")
+
+
+def guided_decoding():
+    body = text(480, 36, "约束解码的一步：把不合法的 token 打分设成 −∞，再归一化、抽样", 21, weight="bold")
+    # 左：整张词表
+    body += text(170, 78, "词表 2048 个 token 的打分", 16, INK, "bold")
+    body += box(50, 92, 240, 300, "#ffffff", "#cbd5e1")
+    rows = [("单字 token（1310 个）", BLUE, 150), ("标点（2 个）", TEAL, 26), ("字节碎片与特殊 token", GRAY, 70)]
+    y = 104
+    for label, color, h in rows:
+        body += f'<rect x="62" y="{y}" width="216" height="{h}" rx="6" fill="{SOFT[color]}" stroke="{color}" stroke-width="2"/>'
+        body += text(170, y + h / 2 + 6, label, 14, color, "bold")
+        y += h + 12
+    body += text(170, 412, "softmax 之后", 14, GRAY)
+    # 中：掩码
+    body += text(480, 78, "这一步允许的集合", 16, INK, "bold")
+    body += box(370, 92, 220, 300, "#ffffff", RED, True)
+    body += f'<rect x="382" y="104" width="196" height="150" rx="6" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2"/>'
+    body += text(480, 172, "五言模板：单字", 15, BLUE, "bold")
+    body += text(480, 196, "第 7 个字符", 14, GRAY)
+    body += f'<rect x="382" y="266" width="196" height="114" rx="6" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += mtext(480, 316, "-inf", 22, RED, "bold")
+    body += text(480, 344, "句末位置换成标点集合", 13, GRAY)
+    body += arrow(346, 242, 366, 242, RED)
+    body += text(356, 228, "掩码", 13, RED)
+    # 右：结果
+    body += text(790, 78, "抽样结果", 16, INK, "bold")
+    body += box(690, 92, 200, 138, "#ffffff", TEAL)
+    body += text(790, 126, "之 看 结 庐 乌 ，", 20, TEAL, "bold")
+    body += text(790, 158, "才 子 各 相 关 ，", 20, TEAL, "bold")
+    body += text(790, 190, "龙 儿 好 复 深 。", 20, TEAL, "bold")
+    body += text(790, 214, "格式 12/12 合法", 13, GRAY)
+    body += box(690, 244, 200, 126, "#ffffff", ORANGE)
+    body += text(790, 276, "不加掩码时", 15, ORANGE, "bold")
+    body += text(790, 304, "之 看 结 庐 阜 。", 19, INK)
+    body += text(790, 334, "格式 0/12 合法", 13, GRAY)
+    body += arrow(594, 200, 686, 160, TEAL)
+    body += arrow(594, 320, 686, 300, ORANGE)
+    body += text(480, 436, "掩码只保证格式合法，不改变模型对内容的判断：右边两首都不通顺，但下面那首连句数、字数都不对。", 14.5, GRAY)
+    body += text(480, 462, "每步的代价是一次 2048 维赋值；把它写进有限状态机或文法，就能约束 JSON、正则这类更复杂的格式。", 14.5, GRAY)
+    svg("guided-decoding.svg", "约束解码如何把不合法的 token 排除掉",
+        "左：模型对整张 2048 个 token 的词表给出打分。中：五言模板只允许 1310 个单字 token；句末位置只允许两个标点。"
+        "其余位置被打分 −∞，softmax 后概率为 0。右：同一批请求，加掩码的 12 首全部符合四句五言，不加掩码的一首都不符合。"
+        "掩码保证格式，不保证内容。", 486, body)
+
+
+# ---------- 第 26 章：推理效率 ----------
+
+def _fmt_bytes(n):
+    for unit, size in (("GiB", 2 ** 30), ("MiB", 2 ** 20), ("KiB", 2 ** 10)):
+        if n >= size:
+            return f"{n / size:.2f} {unit}" if unit != "KiB" else f"{n / size:.0f} KiB"
+    return f"{n} B"
+
+
+def kv_cache_size():
+    d = load("tinyllm-inference-efficiency.json")
+    tiny = {int(k): v for k, v in d["cache_bytes"]["tiny"].items()}
+    llama = {int(k): v for k, v in d["cache_bytes"]["llama8b"].items()}
+    m = d["model"]
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.5, 1]})
+    xs = np.array(sorted(tiny))
+    ax.plot(xs, [tiny[k] / 2 ** 20 for k in xs], color=BLUE, lw=2.6, marker="o", ms=5,
+            label=f"TinyLLM（{m['layers']} 层，{m['kv_heads']} 个 KV 头，FP16）")
+    xs2 = np.array(sorted(llama))
+    ax.plot(xs2, [llama[k] / 2 ** 30 * 1024 for k in xs2], color=ORANGE, lw=2.6, marker="s", ms=5,
+            label="Llama 3 8B（32 层，8 个 KV 头，FP16）")
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log", base=2)
+    ax.set_xlabel("上下文长度（token）")
+    ax.set_ylabel("单条请求的 KV cache（MiB）")
+    ax.grid(alpha=0.25, which="both")
+    ax.legend(loc="upper left", fontsize=11, framealpha=0.95)
+    for k in (1024, 8192):
+        v = llama[k] / 2 ** 30
+        ax.annotate(f"{k} 个 token → {v:.1f} GiB", xy=(k, v * 1024), xytext=(k * 0.9, v * 1024 * 1.9),
+                    fontsize=10.5, color=ORANGE, ha="center",
+                    arrowprops=dict(arrowstyle="->", color=ORANGE, lw=1.2))
+    ax.set_title("缓存随 token 数线性增长", fontsize=13)
+
+    weights, total = 16, 80
+    ax2.bar([0], [weights], color=GRAY, width=0.55, label="权重（FP16 约 16 GiB）")
+    ax2.bar([0], [total - weights], bottom=[weights], color=ORANGE, width=0.55, label="留给 KV cache 与运行时")
+    n_seq = int((total - weights) * 2 ** 30 // (llama[8192]))
+    ax2.text(0, weights / 2, f"{weights} GiB", ha="center", va="center", color="white", fontsize=12, fontweight="bold")
+    ax2.text(0, weights + (total - weights) / 2, f"{total - weights} GiB\n≈ {n_seq} 条 8K 序列", ha="center",
+             va="center", color="white", fontsize=12, fontweight="bold")
+    ax2.set_xticks([], [])
+    ax2.set_ylabel("一张 80 GiB 卡上的显存（GiB）")
+    ax2.set_title("Llama 3 8B 的权重与缓存", fontsize=13)
+    ax2.legend(loc="upper right", fontsize=10, framealpha=0.95)
+    ax2.grid(alpha=0.2, axis="y")
+    save_plot(fig, "kv-cache-size.svg", "KV cache 的大小：随上下文线性增长，大模型上先于权重撑满显存",
+              f"左：单条请求的 KV cache 随 token 数线性增长。TinyLLM（4 层、4 个 KV 头、FP16）1024 个 token 只要 2 MiB；"
+              f"Llama 3 8B 每个 token 128 KiB，8192 个 token 就要 1 GiB，32768 个 token 4 GiB。"
+              f"右：80 GiB 的卡上权重占 16 GiB，剩下的约 64 GiB 只够 {n_seq} 条 8K 序列同时在线——"
+              "能同时服务多少用户，往往先卡在缓存而不是权重。")
+
+
+def latency_metrics():
+    d = load("tinyllm-inference-efficiency.json")
+    ttft = float(np.median(d["metrics"]["ttft"]))
+    tpot = float(np.median(d["tpot_ms"]))
+    gaps = [tpot] * 5
+    body = text(480, 36, "一次请求的延迟：TTFT、ITL、TPOT、E2EL 各覆盖哪一段", 21, weight="bold")
+    x0, y = 90, 120
+    pre_w, gap_w = 130, 62
+    body += text(x0 + pre_w / 2, y - 16, "prefill", 15, BLUE, "bold")
+    body += f'<rect x="{x0}" y="{y}" width="{pre_w}" height="58" rx="8" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2.5"/>'
+    body += text(x0 + pre_w / 2, y + 36, "一次前向", 14, BLUE)
+    for i, g in enumerate(gaps):
+        gx = x0 + pre_w + i * gap_w
+        body += f'<rect x="{gx}" y="{y}" width="{gap_w - 8}" height="58" rx="6" fill="{SOFT[TEAL]}" stroke="{TEAL}" stroke-width="2"/>'
+        body += text(gx + (gap_w - 8) / 2, y + 36, "decode", 12.5, TEAL)
+    end_x = x0 + pre_w + len(gaps) * gap_w - 8
+    body += f'<line x1="{x0}" y1="{y + 84}" x2="{end_x}" y2="{y + 84}" stroke="{ORANGE}" stroke-width="2.5"/>'
+    body += f'<line x1="{x0}" y1="{y + 76}" x2="{x0}" y2="{y + 92}" stroke="{ORANGE}" stroke-width="2.5"/>'
+    body += f'<line x1="{end_x}" y1="{y + 76}" x2="{end_x}" y2="{y + 92}" stroke="{ORANGE}" stroke-width="2.5"/>'
+    body += text((x0 + end_x) / 2, y + 112, f"E2EL ≈ {round(np.median(d['metrics']['e2e']))} ms（本例 16 个字）", 16, ORANGE, "bold")
+    body += f'<line x1="{x0}" y1="{y - 42}" x2="{x0 + pre_w}" y2="{y - 42}" stroke="{RED}" stroke-width="2.5"/>'
+    body += f'<line x1="{x0}" y1="{y - 50}" x2="{x0}" y2="{y - 34}" stroke="{RED}" stroke-width="2.5"/>'
+    body += f'<line x1="{x0 + pre_w}" y1="{y - 50}" x2="{x0 + pre_w}" y2="{y - 34}" stroke="{RED}" stroke-width="2.5"/>'
+    body += text(x0 + pre_w / 2, y - 56, f"TTFT ≈ {ttft:.1f} ms", 15, RED, "bold")
+    body += f'<line x1="{x0 + pre_w + 4}" y1="{y + 128}" x2="{x0 + pre_w + gap_w - 12}" y2="{y + 128}" stroke="{TEAL}" stroke-width="2.5"/>'
+    body += text(x0 + pre_w + gap_w / 2 + 24, y + 152, f"ITL ≈ {tpot:.1f} ms（相邻两个字之间）", 14, TEAL, anchor="start")
+    body += text(480, 316, f"TPOT = (E2EL − TTFT) / (n − 1) ≈ {tpot:.1f} ms；单条请求上平均 ITL 就等于 TPOT，多条请求上两个平均口径不同。", 14.5, GRAY)
+    body += text(480, 344, "TTFT 由 prefill 决定，ITL / TPOT 由每一步 decode 决定——优化一个不一定改善另一个，所以三个数要一起报。", 14.5, GRAY)
+    body += text(480, 368, "为了画得下，decode 只画了 5 段；实际 16 个字有 15 段 ITL。", 13, GRAY)
+    svg("latency-metrics.svg", "延迟指标的时间线：TTFT、ITL、TPOT、E2EL",
+        f"请求发出后先做 prefill（红色括号是 TTFT，本例约 {ttft:.1f} ms），之后每生成一个字做一次 decode（浅绿块，块与块之间的间隔是 ITL，约 {tpot:.1f} ms）。"
+        f"decode 段的总时间除以生成的字数减一得到 TPOT；从发出请求到最后一个字是 E2EL（橙色括号）。"
+        "三个数分别对应不同阶段，只看其中一个会误判。", 380, body)
+
+
 # ---------- 第 13 章：TinyLLM 在 GPU 上完整实现 ----------
 
 def gpu_step_anatomy():
@@ -1608,7 +1809,8 @@ def main():
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
                float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
                position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost,
-               tinyllm_model_shapes, tinyllm_model_loss, gpu_step_anatomy):
+               tinyllm_model_shapes, tinyllm_model_loss, sampling_truncate, sampling_difficulty, guided_decoding,
+               kv_cache_size, latency_metrics, gpu_step_anatomy):
         fn()
     print("figures written to", OUT)
 

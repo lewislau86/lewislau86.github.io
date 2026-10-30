@@ -1,10 +1,10 @@
 ---
-title: "第 30 章：参数高效微调（LoRA）"
+title: "第 34 章：参数高效微调（LoRA）"
 description: "冻结原模型，只训练低秩增量：LoRA 节省了什么、没有节省什么。"
 pageClass: tinyllm-course
 ---
 
-# 第 30 章：参数高效微调（LoRA）
+# 第 34 章：参数高效微调（LoRA）
 
 [课程总览](./index.md) · [上一章](./instruction-finetuning.md) · [下一章](./rlhf.md)
 
