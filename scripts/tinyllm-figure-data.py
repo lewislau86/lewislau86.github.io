@@ -93,10 +93,10 @@ def activation_fit():
     save("tinyllm-activation-fit.json", {"x": x.squeeze(1).tolist(), "y": y.squeeze(1).tolist(), **preds})
 
 
-# ---------- 第 15 章：优化器 ----------
+# ---------- 第 16 章：优化器 ----------
 
 def optimizer_curves():
-    """与第 15 章“动手”一节完全相同的实验：两层网络拟合正弦，四种优化器各 300 步。"""
+    """与第 16 章“动手”一节完全相同的实验：两层网络拟合正弦，四种优化器各 300 步。"""
     torch.manual_seed(7)
     x = torch.linspace(-math.pi, math.pi, 128).unsqueeze(1)
     y = torch.sin(x)
@@ -147,7 +147,7 @@ def optimizer_paths():
     save("tinyllm-optimizer-paths.json", {"curvature": [1, 25], "paths": paths})
 
 
-# ---------- 第 18 章：数值精度 ----------
+# ---------- 第 19 章：数值精度 ----------
 
 def float_spacing():
     """各格式在不同数量级上相邻可表示数的间距（ulp）。"""

@@ -431,7 +431,7 @@ def first_run_loss():
               f"训练损失从约 {loss[0]:.1f} 迅速降到约 {smooth[-1]:.2f}；验证损失只在开头略降，随后升到约 {log['val_loss'][-1]:.1f}，高于乱猜水平，说明模型在背诵训练集。")
 
 
-# ---------- 第 10、8、4、5、15、18 章共用工具 ----------
+# ---------- 第 10、8、4、5、16、19 章共用工具 ----------
 
 PURPLE = "#7c3aed"
 MONO = '"Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace'
@@ -749,7 +749,7 @@ def kv_cache():
         "prefill 时一次算出前两个 token 的 K、V；之后每个 decode 步只为新 token 计算一组 K、V 并接到缓存后面，新 token 的 Q 与全部 K 打分、对全部 V 加权求和。", 520, body)
 
 
-# ---------- 第 15 章：优化器 ----------
+# ---------- 第 16 章：优化器 ----------
 
 def optimizer_paths():
     d = load("tinyllm-optimizer-paths.json")
@@ -809,7 +809,7 @@ def adamw_vs_l2():
         "Adam 加 L2 把 λw 加进梯度，衰减项随后被二阶矩缩放；AdamW 用原始梯度更新一、二阶矩，参数更新后再单独减去 ηλw，让所有参数按同一比例衰减。", 425, body)
 
 
-# ---------- 第 18 章：数值精度 ----------
+# ---------- 第 19 章：数值精度 ----------
 
 def float_formats():
     body = text(480, 40, "16 位的两种分法：FP16 多给尾数，BF16 多给指数", 23, weight="bold")
@@ -1446,6 +1446,119 @@ def position_ablation():
               f"左图：唐诗语料上三种做法按同一组 batch 训练 400 步，训练损失几乎一样。右图：输出往前数第 3 个符号的任务，在新生成的测试序列上、3 个种子平均，没有位置时准确率 {vals[0]:.2f}，可学习绝对位置和 RoPE 都是 1.00；RoPE 在长度 48 上 {vals[3]:.2f}，长度 96 上 {vals[4]:.2f}。")
 
 
+# ---------- 第 12 章：完整 TinyLLM ----------
+
+def tinyllm_model_shapes():
+    log = json.loads((DATA / "tinyllm-model-log.json").read_text(encoding="utf-8"))
+    sh = log["shapes"]
+    B, T, d, V, L, H, hid = sh["batch"], sh["tokens"], sh["d_model"], sh["vocab"], sh["n_layers"], sh["n_heads"], sh["ffn_hidden"]
+    attn, ffn, norms = 4 * d * d, 3 * d * hid, 2 * d
+    blk = attn + ffn + norms
+    emb, total = V * d, V * d + L * blk + d
+    body = text(480, 38, f"完整 TinyLLM：一段 {T} 个 token 的输入走一遍（d={d}，{L} 层，词表 {V}）", 21, weight="bold")
+    cx = 250
+    body += mtext(cx, 80, f"token ID  [{B}, {T}]", 16)
+    body += arrow(cx, 88, cx, 110)
+    body += cbox(cx - 150, 112, 300, 46, BLUE) + text(cx, 141, f"词嵌入表 E：{V} × {d}", 17, BLUE, "bold")
+    body += arrow(cx, 158, cx, 180)
+    body += mtext(cx, 198, f"[{B}, {T}, {d}]", 16)
+    # Block 框
+    body += box(cx - 190, 212, 380, 236, "#ffffff", TEAL, True, 2.5)
+    body += text(cx + 178, 236, f"× {L} 层", 17, TEAL, "bold", anchor="end")
+    body += text(cx - 178, 236, "Pre-Norm Block", 15, TEAL, anchor="start")
+    for k, (y, label, sub, color) in enumerate([(254, "RMSNorm → 因果注意力", f"{H} 头 × {d // H} 维，Q/K 加 RoPE", BLUE),
+                                                (346, "RMSNorm → SwiGLU", f"{d} → {hid} → {d}", TEAL)]):
+        body += cbox(cx - 160, y, 320, 58, color) + text(cx, y + 25, label, 17, color, "bold") + text(cx, y + 47, sub, 14, GRAY)
+        body += circle(cx, y + 76, 13) + text(cx, y + 82, "+", 19, weight="bold")
+    body += text(cx + 172, 340, "残差相加", 13, GRAY, anchor="end")
+    body += arrow(cx, 448, cx, 470)
+    body += mtext(cx, 488, f"[{B}, {T}, {d}]", 16)
+    body += cbox(cx - 150, 500, 300, 40, PURPLE) + text(cx, 526, "最终 RMSNorm", 17, PURPLE, "bold")
+    body += arrow(cx, 540, cx, 560)
+    body += cbox(cx - 150, 562, 300, 44, ORANGE) + text(cx, 590, "乘 Eᵀ：输出层与嵌入共享", 17, ORANGE, "bold")
+    body += arrow(cx, 606, cx, 626)
+    body += mtext(cx, 646, f"logits  [{B}, {T}, {V}]", 16)
+    body += path(f"M{cx + 150} 135 H{cx + 205} V584 H{cx + 158}", ORANGE, 2.5, True)
+    body += text(cx + 214, 360, "同一块", 14, ORANGE, anchor="start") + text(cx + 214, 380, "权重", 14, ORANGE, anchor="start")
+    # 右侧：参数都在哪
+    x0, y0, wmax = 560, 110, 330
+    body += text(x0 + wmax / 2, 84, f"{total:,} 个参数都在哪", 18, weight="bold")
+    rows = [("嵌入表（兼输出层）", emb, BLUE), (f"{L} 个 Block 合计", L * blk, TEAL),
+            ("每个 Block：注意力 4d²", attn, BLUE), ("每个 Block：SwiGLU 3·d·8d/3", ffn, TEAL),
+            ("每个 Block：两个 RMSNorm", norms, PURPLE), ("最终 RMSNorm", d, PURPLE)]
+    for i, (name, n, color) in enumerate(rows):
+        y = y0 + i * 78 + (14 if i >= 2 else 0)
+        w = max(3, wmax * n / total)
+        body += text(x0, y, name, 15, anchor="start")
+        body += f'<rect x="{x0}" y="{y + 10}" width="{w:.1f}" height="22" rx="4" fill="{color}" opacity="0.85"/>'
+        body += text(x0 + w + 8, y + 27, f"{n:,}（{n / total:.1%}）", 14, GRAY, anchor="start")
+    body += f'<line x1="{x0}" y1="{y0 + 2 * 78 - 8}" x2="{x0 + wmax}" y2="{y0 + 2 * 78 - 8}" stroke="#e2e8f0" stroke-width="2"/>'
+    body += text(x0, 640, "条长按占全部参数的比例画", 13, GRAY, anchor="start")
+    svg("tinyllm-model-shapes.svg", "完整 TinyLLM 的数据流、形状与参数分布",
+        f"左：{T} 个 token 的 ID 查嵌入表变成 [{B}, {T}, {d}]，穿过 {L} 个 Pre-Norm Block（注意力 {H} 头、SwiGLU 中间宽度 {hid}）形状不变，"
+        f"最终 RMSNorm 后乘嵌入表的转置得到 [{B}, {T}, {V}] 的 logits。右：共 {total:,} 个参数，嵌入表 {emb:,} 个约占 {emb / total:.0%}，"
+        f"{L} 个 Block 合计 {L * blk:,} 个；每个 Block 里 SwiGLU 约是注意力的两倍。", 672, body)
+
+
+def tinyllm_model_loss():
+    log = json.loads((DATA / "tinyllm-model-log.json").read_text(encoding="utf-8"))
+    loss = np.array(log["loss"])
+    smooth = np.convolve(loss, np.ones(15) / 15, mode="valid")
+    uniform = float(np.log(log["baseline"]["vocab"]))
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(loss, color="#cbd5e1", lw=0.8, label="训练损失（每一步）")
+    ax.plot(np.arange(len(smooth)) + 7, smooth, color=BLUE, lw=2.4, label="训练损失（15 步滑动平均）")
+    ax.plot(log["val_step"], log["val_loss"], color=RED, lw=2.2, marker="o", ms=4, label="验证损失（291 首没训练过的诗，全部算一遍）")
+    ax.axhline(uniform, color=ORANGE, ls="--", lw=1.6)
+    ax.text(len(loss) * 0.55, uniform + 0.12, f"均匀乱猜：ln {log['baseline']['vocab']} ≈ {uniform:.2f}", color=ORANGE, fontsize=12)
+    ax.annotate(f"第 {log['val_step'][-1]} 步：验证 {log['val_loss'][-1]:.2f}，仍在下降",
+                xy=(log["val_step"][-1], log["val_loss"][-1]), xytext=(log["val_step"][-1] - 150, log["val_loss"][-1] + 1.4),
+                color=RED, fontsize=12, arrowprops=dict(arrowstyle="->", color=RED, lw=1.4))
+    ax.set_xlabel("训练步数（每步 32 段 × 64 个 token）")
+    ax.set_ylabel("交叉熵（nats / token）")
+    ax.set_ylim(4.5, 9.4)
+    ax.legend(loc="lower left", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "tinyllm-model-loss.svg", "完整 TinyLLM 基线的训练与验证损失",
+              f"训练损失和验证损失一起从约 {log['val_loss'][0]:.2f} 降到约 {log['val_loss'][-1]:.2f}，两条线贴在一起，"
+              f"第 {log['val_step'][-1]} 步时验证损失仍在下降：这个预算下模型还没学够，也还没开始背训练集。")
+
+
+# ---------- 第 13 章：TinyLLM 在 GPU 上完整实现 ----------
+
+def gpu_step_anatomy():
+    """一个训练步在 CPU/GPU 上依次发生什么，圆圈数字标出后面各章要做的优化点（与 gpu-training.md 的表一一对应）。"""
+    body = text(480, 38, "GPU 上的一个训练步：本章先跑通，圆圈处是后面要优化的地方", 21, weight="bold")
+    body += box(30, 64, 900, 74, "#ffffff", "#e2e8f0") + text(62, 106, "CPU", 17, GRAY, "bold")
+    body += box(30, 152, 900, 222, "#ffffff", "#e2e8f0") + text(62, 282, "GPU", 17, GRAY, "bold")
+    body += cbox(135, 80, 170, 44, ORANGE) + text(220, 108, "按计划切 batch", 16, ORANGE, "bold")
+    body += arrow(220, 124, 220, 170, ORANGE, 2.5)
+    body += text(232, 150, "拷到显存", 14, ORANGE, anchor="start")
+    gpu = [(100, 172, 240, "前向：嵌入 → Block×L → logits", BLUE, "BF16 autocast · SDPA 注意力"),
+           (360, 172, 120, "交叉熵", BLUE, "损失 ÷ accum"),
+           (500, 172, 170, "反向：求梯度", TEAL, "梯度累加到 .grad"),
+           (690, 172, 220, "裁剪 → AdamW 更新", PURPLE, "fused 内核 · 学习率调度")]
+    for x, y, w, label, color, sub in gpu:
+        body += cbox(x, y, w, 70, color) + text(x + w / 2, y + 30, label, 15, color, "bold") + text(x + w / 2, y + 54, sub, 13, GRAY)
+    body += arrow(340, 207, 358, 207) + arrow(480, 207, 498, 207) + arrow(670, 207, 688, 207)
+    body += path("M585 242 V276 H220 V246", GRAY, 2, True)
+    body += text(400, 296, "重复 accum 次（梯度累积）再更新一次", 14, GRAY)
+    body += path("M800 242 V340 H95 V102 H131", GRAY, 2, True)
+    body += text(470, 362, "下一步：loss.item() 记录日志时，CPU 要等 GPU 算完", 14, GRAY)
+    marks = [(220, 72, "①"), (206, 150, "②"), (110, 168, "③"), (330, 168, "④"), (660, 168, "⑤"), (900, 168, "⑥"), (800, 312, "⑦")]
+    for x, y, m in marks:
+        body += circle(x, y, 14, "#fef2f2", RED) + text(x, y + 6, m, 17, RED, "bold")
+    legend = ["① 数据：多进程预取、锁页内存、异步拷贝", "② 拷贝：整条 token 流常驻显存，省掉每步拷贝",
+              "③ 注意力：SDPA 选 FlashAttention 内核", "④ 编译：torch.compile 融合逐元素小算子",
+              "⑤ 显存：激活重计算，换更大的 batch", "⑥ 优化器：fused AdamW（本章已开）",
+              "⑦ 同步：日志每 N 步取一次，少让 CPU 等"]
+    for i, t in enumerate(legend):
+        body += text(60 + (i % 2) * 450, 412 + (i // 2) * 28, t, 14.5, INK, anchor="start")
+    svg("gpu-step-anatomy.svg", "GPU 上一个训练步的流程与优化点",
+        "CPU 按计划切出 batch 拷到显存；GPU 上依次做 BF16 前向、交叉熵、反向求梯度，重复 accum 次后裁剪梯度并用 AdamW 更新。"
+        "七个红色圆圈标出优化点：数据预取、减少拷贝、FlashAttention 内核、torch.compile 算子融合、激活重计算、融合优化器、减少 CPU 与 GPU 的同步。", 520, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -1490,11 +1603,12 @@ def main():
     first_run_loss()
     quickstart_loss()
     quickstart_flow()
-    # 第 10、8、4、5、15、18 章；数据图需要先运行 scripts/tinyllm-figure-data.py
+    # 第 10、8、4、5、16、19 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
                float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
-               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost):
+               position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost,
+               tinyllm_model_shapes, tinyllm_model_loss, gpu_step_anatomy):
         fn()
     print("figures written to", OUT)
 

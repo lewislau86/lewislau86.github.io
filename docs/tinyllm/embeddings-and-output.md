@@ -55,11 +55,11 @@ $j$ 遍历词表，$z_{b,t,j}$ 是位置 $(b,t)$ 对候选 token $j$ 的 <strong
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#logits
 
-`softmax(dim=-1)` 在六个候选之间归一化，每个位置得到一个概率分布。每个位置的分布都是对<strong>下一个</strong> token 的预测。`argmax` 取最高分的 ID；实际生成还可能按温度、top-k 或 top-p 采样，见 [第 24 章](generation.md)。
+`softmax(dim=-1)` 在六个候选之间归一化，每个位置得到一个概率分布。每个位置的分布都是对<strong>下一个</strong> token 的预测。`argmax` 取最高分的 ID；实际生成还可能按温度、top-k 或 top-p 采样，见 [第 25 章](generation.md)。
 
 ## 3. 让一次预测真正产生梯度
 
-用一条完整的教学序列 `我 在 学习 <eos>`：输入前三项 `[2,3,4]`，目标是后移一位的 `[3,4,1]`。看见“我”预测“在”，看见“我 在”预测“学习”，看见“我 在 学习”预测结束，和第 4 章构造的标签一样。这个训练目标在 [第 14 章](language-model-loss.md) 进一步展开。
+用一条完整的教学序列 `我 在 学习 <eos>`：输入前三项 `[2,3,4]`，目标是后移一位的 `[3,4,1]`。看见“我”预测“在”，看见“我 在”预测“学习”，看见“我 在 学习”预测结束，和第 4 章构造的标签一样。这个训练目标在 [第 15 章](language-model-loss.md) 进一步展开。
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#loss
 
@@ -111,11 +111,11 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 
 <<< @/public/tinyllm/code/embeddings-and-output.py#qkv
 
-注意力用 Q/K 的点积做匹配，匹配范围是<strong>本次前向中的 token 位置</strong>。K 的行数随位置数增长，V 参与加权求和；某一层的 K 是逐 token 的中间特征，没有经过文本级聚合，也没有为检索任务训练，所以它和第 6 节要讲的“文本向量”是两种东西。[第 6 章](self-attention.md) 会继续展开多头、缩放和掩码。生成文本时，旧位置的 K、V 还可以存起来反复使用，这就是 KV cache，它只在推理阶段用得上，放在[第 25 章](./inference-efficiency.md#kv-cache)细讲。
+注意力用 Q/K 的点积做匹配，匹配范围是<strong>本次前向中的 token 位置</strong>。K 的行数随位置数增长，V 参与加权求和；某一层的 K 是逐 token 的中间特征，没有经过文本级聚合，也没有为检索任务训练，所以它和第 6 节要讲的“文本向量”是两种东西。[第 6 章](self-attention.md) 会继续展开多头、缩放和掩码。生成文本时，旧位置的 K、V 还可以存起来反复使用，这就是 KV cache，它只在推理阶段用得上，放在[第 26 章](./inference-efficiency.md#kv-cache)细讲。
 
 ## 6. 一个同名词：Agent 的记忆 embedding
 
-本章的 $E_i$ 是语言模型**内部**、按 token ID 读取的参数表。Agent 做记忆检索时也说“embedding”，那通常是另一个专门训练的文本编码模型，把**一整段文本**编码成一个向量，用来按相似度找回历史内容；找回的仍是原始文本，它要重新放进提示词、经过分词器和本章的嵌入层才能被模型使用。两者的输入、训练目标和生命周期都不同，详细对比和检索模型的用法见[第 31 章](./agent-memory.md#two-kinds-of-embedding)。
+本章的 $E_i$ 是语言模型**内部**、按 token ID 读取的参数表。Agent 做记忆检索时也说“embedding”，那通常是另一个专门训练的文本编码模型，把**一整段文本**编码成一个向量，用来按相似度找回历史内容；找回的仍是原始文本，它要重新放进提示词、经过分词器和本章的嵌入层才能被模型使用。两者的输入、训练目标和生命周期都不同，详细对比和检索模型的用法见[第 33 章](./agent-memory.md#two-kinds-of-embedding)。
 
 ## 7. 动手实验
 
@@ -132,7 +132,7 @@ $M$ 是因果掩码，让位置 $t$ 只看见自己与之前的位置。对一�
 运行后，再想一想下面两个问题：
 
 1. 对同一段文本，只改变 tokenizer 的 ID 映射，为什么旧嵌入表要跟着重建？
-2. 把一条历史消息存在向量索引，与把它的 K/V 留在缓存里（KV cache 见[第 25 章](./inference-efficiency.md#kv-cache)），分别能回答什么问题？
+2. 把一条历史消息存在向量索引，与把它的 K/V 留在缓存里（KV cache 见[第 26 章](./inference-efficiency.md#kv-cache)），分别能回答什么问题？
 
 本章的实验验证查表、单头注意力、logits、梯度和共享参数；没有训练完整语言模型，也没有用真实记忆数据评测检索模型。
 

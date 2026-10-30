@@ -152,8 +152,8 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 | 第 6 章 | `<AttentionStepper />` | `tinyllm-attention-steps.json`（self-attention.py） |
 | 第 7 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
 | 第 9 章 | `<ResidualStreamLens />` | `tinyllm-block-depth.json`（transformer-block.py） |
-| 第 15 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
-| 第 25 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
+| 第 16 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
+| 第 26 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
 
 做法约定：
 

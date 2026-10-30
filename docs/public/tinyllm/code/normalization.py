@@ -186,7 +186,7 @@ print('与手算概率一致:', torch.allclose(attention_out, norm_scores.softma
 # %% [markdown]
 # ## 5. DeepNorm：残差路径与初始化配合
 #
-# 对应第 22 章《大规模训练稳定性》中的 **DeepNorm** 一节。这里仅观察 `LayerNorm(alpha*x + branch)` 中 `alpha` 对数据的影响。`alpha=1.5` 是**演示值，不是论文系数**。完整 DeepNorm 必须按模型深度和编码器/解码器结构选择系数，并使用配套的权重初始化；PyTorch 没有独立 `nn.DeepNorm` 标准模块。
+# 对应第 23 章《大规模训练稳定性》中的 **DeepNorm** 一节。这里仅观察 `LayerNorm(alpha*x + branch)` 中 `alpha` 对数据的影响。`alpha=1.5` 是**演示值，不是论文系数**。完整 DeepNorm 必须按模型深度和编码器/解码器结构选择系数，并使用配套的权重初始化；PyTorch 没有独立 `nn.DeepNorm` 标准模块。
 
 # %%
 residual_x = torch.tensor([[[1., 2., 3., 4.]]])

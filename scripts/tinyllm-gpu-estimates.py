@@ -1,4 +1,4 @@
-"""Estimate parameters, memory and compute for the optional “GPU 完整训练” route.
+"""Estimate parameters, memory and compute for chapter 13 “TinyLLM 在 GPU 上完整实现”.
 
 参数量由真实构建的模型数出来（在 meta 设备上构建，不占内存）；显存和计算量是公式估算，
 用来在动手之前判断“我的显卡够不够”。实测时间和显存在第 12 章完成、真正在 GPU 上跑过之后补进页面。

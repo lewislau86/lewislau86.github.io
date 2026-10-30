@@ -1,5 +1,5 @@
 ---
-title: "第 15 章：优化器（notebook 在线查看）"
+title: "第 16 章：优化器（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 15 章：优化器
+# 第 16 章：优化器
 
 配套教案：https://lewislau86.github.io/tinyllm/optimizers
 
@@ -119,7 +119,7 @@ print("更新后的参数:", [round(p.item(), 4) for p in model.parameters()])
 ```
 
 ```text
-更新后的参数: [2.2352, 1.5297]
+更新后的参数: [1.8517, 2.2967]
 ```
 
 ::: v-pre

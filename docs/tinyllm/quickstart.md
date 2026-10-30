@@ -6,16 +6,16 @@ pageClass: tinyllm-course
 
 # 30 分钟快速体验：把零件逐个打开
 
-[课程总览](./index.md)
+[课程总览](./index.md) · [上一步：实验环境](./setup.md)
 
 ::: tip 这一页要做什么
 跑一个独立的脚本，八步、每一步只回答一个问题、只打印几个数字。看懂哪一步，就去读对应的那一章。
 
-**前置：** 会运行 Python。不需要懂深度学习，不需要学过前面任何一章。
+**前置：** 先按[实验环境](./setup.md)装好 Python 和 PyTorch、下载代码（约十分钟），装好才能跑这一页的脚本。会运行 Python 即可，不需要懂深度学习，不需要学过前面任何一章。
 
 **读多少自己定：** 只想有个整体印象，走完八步就够；想深入某一块，每步末尾和[最后一节](#next-steps)都给了章节入口。
 
-**实践方式：** [quickstart.ipynb](/tinyllm/notebooks/quickstart)（也可以直接运行 <a href="/tinyllm/code/quickstart.py" download>quickstart.py</a>），CPU 约一分钟。装 PyTorch 见[实验环境](./setup.md)。
+**实践方式：** [quickstart.ipynb](/tinyllm/notebooks/quickstart)（也可以直接运行 <a href="/tinyllm/code/quickstart.py" download>quickstart.py</a>），CPU 约一分钟。
 :::
 
 完整的 TinyLLM 有三十多章，一章章读下去要花不少时间。这一页是给两种读者准备的：
@@ -33,10 +33,10 @@ pageClass: tinyllm-course
 | 2 | 一个编号怎样变成一个向量 | [第 5 章 · 词嵌入与输出层](./embeddings-and-output.md) |
 | 3 | 注意力怎样决定谁看谁 | [第 6 章 · 自注意力](./self-attention.md) |
 | 4 | 位置为什么必须单独给 | [第 7 章 · 位置表示](./position-encoding.md) |
-| 5 | “完全乱猜”的损失是多少 | [第 14 章 · 语言模型目标函数](./language-model-loss.md) |
-| 6 | 梯度怎样告诉参数往哪走 | [第 2 章](./tensors-and-autograd.md)、[第 15 章](./optimizers.md) |
-| 7 | 训一会儿损失会掉多少 | [第 1 章](./first-run.md)、[第 20 章](./training-loop.md) |
-| 8 | 训练完它写出什么 | [第 17 章](./regularization.md)、[第 21 章](./training-evaluation.md) |
+| 5 | “完全乱猜”的损失是多少 | [第 15 章 · 语言模型目标函数](./language-model-loss.md) |
+| 6 | 梯度怎样告诉参数往哪走 | [第 2 章](./tensors-and-autograd.md)、[第 16 章](./optimizers.md) |
+| 7 | 训一会儿损失会掉多少 | [第 1 章](./first-run.md)、[第 21 章](./training-loop.md) |
+| 8 | 训练完它写出什么 | [第 18 章](./regularization.md)、[第 22 章](./training-evaluation.md) |
 
 把八步画到同一张图上，它们是一条首尾相接的链路：
 
@@ -146,7 +146,7 @@ pageClass: tinyllm-course
 
 **再看形状。** 一批 32 段、每段 24 个字，`y` 是 `x` 整体后移一位，所以 24 个位置各提供一道“看前面猜下一个”的题，一批样本就是 768 道题。
 
-模型本体在这一步第一次完整出现：嵌入、三层 Block、最终归一化、输出层。每个零件都标了归第几章，现在不必逐个看懂。[第 14 章](./language-model-loss.md)专门讲这个目标函数，包括有 padding 时怎样只统计有效位置。
+模型本体在这一步第一次完整出现：嵌入、三层 Block、最终归一化、输出层。每个零件都标了归第几章，现在不必逐个看懂。[第 15 章](./language-model-loss.md)专门讲这个目标函数，包括有 padding 时怎样只统计有效位置。
 
 ## 步骤 6 · 梯度怎样告诉每个参数往哪走
 
@@ -163,9 +163,9 @@ pageClass: tinyllm-course
 
 **注意比较的是同一批数据。** 更新前 7.7012、更新后 7.0389，损失确实降了——这说明计算图是通的，梯度方向没错。如果换个批次再比，损失可能反而变高，那是新的题不一样，说明不了问题。这也是[课程规范](/guide/course-conventions#对照实验的写法)里要求“同一组预生成 batch”的原因。
 
-47 万个参数，只有 24 个张量带梯度——因为一个张量里装着成千上万个参数，`backward()` 会把它们一次算完，这正是[第 2 章](./tensors-and-autograd.md)说的“自动求导真正省下了什么”。梯度总范数是 3.6，这个数在[第 19 章](./gradient-stability.md)要用来判断要不要裁剪。
+47 万个参数，只有 24 个张量带梯度——因为一个张量里装着成千上万个参数，`backward()` 会把它们一次算完，这正是[第 2 章](./tensors-and-autograd.md)说的“自动求导真正省下了什么”。梯度总范数是 3.6，这个数在[第 20 章](./gradient-stability.md)要用来判断要不要裁剪。
 
-[第 15 章](./optimizers.md)讲 AdamW 具体怎样用这个梯度算出每一小步走多远。
+[第 16 章](./optimizers.md)讲 AdamW 具体怎样用这个梯度算出每一小步走多远。
 
 ## 步骤 7 · 训一会儿，损失会掉多少
 
@@ -193,7 +193,7 @@ step 1000  训练损失 0.271  验证损失 8.784
 
 怎么读这张图：蓝色和红色在第 100 步附近分岔，那一点就是“学”和“背”的分界。红线在 400 步前后越过橙色虚线——从那一刻起，模型对新诗的预测比完全乱猜还差，因为它把训练集记得太死，见到没见过的搭配反而更自信地猜错。
 
-把两条曲线并排看，验证损失在第 100 步前后见底（6.32），之后就开始往上走，而训练损失还在继续掉。**100 步之前模型在学写诗，之后它在背诗**。这一千步里结构没改、学习率没调，唯一变化的就是训练得太久。这就是过拟合，[第 17 章](./regularization.md)讲怎么对付它，[第 21 章](./training-evaluation.md)讲怎么早一点发现它。
+把两条曲线并排看，验证损失在第 100 步前后见底（6.32），之后就开始往上走，而训练损失还在继续掉。**100 步之前模型在学写诗，之后它在背诗**。这一千步里结构没改、学习率没调，唯一变化的就是训练得太久。这就是过拟合，[第 18 章](./regularization.md)讲怎么对付它，[第 22 章](./training-evaluation.md)讲怎么早一点发现它。
 
 验证集只有 5 首诗，这个曲线会抖；换成完整语料、留出几百首验证集，走势会平滑得多，但形状一样。
 
@@ -213,7 +213,7 @@ step 1000  训练损失 0.271  验证损失 8.784
 
 只给 200 首诗，模型就只能学到这个程度。想让它真的会写，需要更多语料、更大模型、更长训练，这就是[第 12 章](./tinyllm-model.md)往后的事。
 
-这里的采样用了温度 0.8 和随机抽样。[第 24 章](./generation.md)会讲温度和 top-p 怎样改变输出的多样性与稳定性——想每次复现同一句诗，就该改用贪心解码。
+这里的采样用了温度 0.8 和随机抽样。[第 25 章](./generation.md)会讲温度和 top-p 怎样改变输出的多样性与稳定性——想每次复现同一句诗，就该改用贪心解码。
 
 ## 八步走完之后 {#next-steps}
 
@@ -228,12 +228,12 @@ step 1000  训练损失 0.271  验证损失 8.784
 | 注意力与上下文 | [第 6 章 · 自注意力](./self-attention.md) → [第 7 章 · 位置表示](./position-encoding.md) | 缩放点积、多头、因果掩码、RoPE |
 | 把零件拼起来 | [第 8 章](./activations-and-ffn.md) → [第 9 章](./transformer-block.md) → [第 12 章](./tinyllm-model.md) | 门控前馈层、Pre-Norm Block、完整模型 |
 | 为什么会训不动 | [第 10 章](./initialization-and-residuals.md) → [第 11 章](./normalization.md) | 初始化、残差路径、RMSNorm |
-| 训练本身 | [第 15 章 · 优化器](./optimizers.md) → [第 20 章 · 训练循环](./training-loop.md) → [第 21 章 · 诊断与评估](./training-evaluation.md) | AdamW、学习率、检查点、早停 |
-| 过拟合与数据 | [第 13 章 · 语料与数据管线](./data-pipeline.md) → [第 17 章 · 正则化](./regularization.md) | 清洗去重、划分验证集、weight decay 与 dropout |
-| 模型越大越稳吗 | [第 22 章 · 大规模稳定性](./large-model-stability.md) → [第 23 章 · MoE](./mixture-of-experts.md) | μP、DeepNorm、稀疏专家 |
-| 训完怎么用 | [第 24 章 · 生成](./generation.md) → [第 25 章](./inference-efficiency.md) → [第 26 章](./quantization.md) | 温度与采样、KV cache、量化 |
-| 让它听话、会推理 | [第 27 章 · 指令微调](./instruction-finetuning.md) → [第 28 章 · LoRA](./lora-finetuning.md) → [第 30 章 · DPO 与 GRPO](./preference-alignment.md) | SFT、参数高效微调、偏好对齐 |
-| 给它接上外部记忆 | [第 31 章 · Agent 记忆与检索](./agent-memory.md) | 在模型外存事实、检索回上下文 |
+| 训练本身 | [第 16 章 · 优化器](./optimizers.md) → [第 21 章 · 训练循环](./training-loop.md) → [第 22 章 · 诊断与评估](./training-evaluation.md) | AdamW、学习率、检查点、早停 |
+| 过拟合与数据 | [第 14 章 · 语料与数据管线](./data-pipeline.md) → [第 18 章 · 正则化](./regularization.md) | 清洗去重、划分验证集、weight decay 与 dropout |
+| 模型越大越稳吗 | [第 23 章 · 大规模稳定性](./large-model-stability.md) → [第 24 章 · MoE](./mixture-of-experts.md) | μP、DeepNorm、稀疏专家 |
+| 训完怎么用 | [第 25 章 · 生成](./generation.md) → [第 26 章](./inference-efficiency.md) → [第 27 章](./quantization.md) | 温度与采样、KV cache、量化 |
+| 让它听话、会推理 | [第 29 章 · 指令微调](./instruction-finetuning.md) → [第 30 章 · LoRA](./lora-finetuning.md) → [第 32 章 · DPO 与 GRPO](./preference-alignment.md) | SFT、参数高效微调、偏好对齐 |
+| 给它接上外部记忆 | [第 33 章 · Agent 记忆与检索](./agent-memory.md) | 在模型外存事实、检索回上下文 |
 
 想按顺序系统学，回到[课程总览](./index.md)看完整路线；也可以先读[第 1 章](./first-run.md)，它用同一套零件、更少的代码，把整条流水线再走一遍，配损失曲线和逐字生成动画。
 
@@ -267,7 +267,7 @@ step 1000  训练损失 0.271  验证损失 8.784
 
    <details><summary>参考答案</summary>
 
-   从“泛化”角度会更好，从“像唐诗”角度可能略差。200 步时验证损失在最低点附近（6.5），模型还没开始死记；但它也还没学透格式，生成的诗可能更散。取哪个点取决于你要什么——这正是[第 21 章](./training-evaluation.md)讲的“早停”要权衡的事。
+   从“泛化”角度会更好，从“像唐诗”角度可能略差。200 步时验证损失在最低点附近（6.5），模型还没开始死记；但它也还没学透格式，生成的诗可能更散。取哪个点取决于你要什么——这正是[第 22 章](./training-evaluation.md)讲的“早停”要权衡的事。
 
    </details>
 

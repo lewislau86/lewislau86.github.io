@@ -128,7 +128,7 @@ $$
 
 <<< @/public/tinyllm/code/tensors-and-autograd.py#zero-grad
 
-这里得到 $2\times(1.7\times3-1)\times3=24.6$，因为参数已经改变。如果想观察 <strong>30 变 60</strong>，应在更新前连续做两次独立前向与反传。实际训练循环通常在每步开头调用 `optimizer.zero_grad(set_to_none=True)`；有意累积多个小批次的梯度是 [第 19 章](gradient-stability.md) 要讲的策略。
+这里得到 $2\times(1.7\times3-1)\times3=24.6$，因为参数已经改变。如果想观察 <strong>30 变 60</strong>，应在更新前连续做两次独立前向与反传。实际训练循环通常在每步开头调用 `optimizer.zero_grad(set_to_none=True)`；有意累积多个小批次的梯度是 [第 20 章](gradient-stability.md) 要讲的策略。
 
 ## 从 1 个参数到几十万个：自动求导真正省下了什么
 
@@ -174,7 +174,7 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 
 ### 代价：用内存换时间
 
-反向传播也有代价。往回走时要用到前向时的中间结果，比如上面的 `x.T @ g` 就需要前向时的 `x`。所以前向过程中，每一层的输出都要先存着，等反向用完才能释放。模型越深、batch 越大，这部分内存越多；训练比推理吃显存，主要就是这个原因。显存不够时可以少存一些、反向时再重算一遍（gradient checkpointing），用时间换回内存，这在[第 20 章](./training-loop.md)和[第 22 章](./large-model-stability.md)再展开。
+反向传播也有代价。往回走时要用到前向时的中间结果，比如上面的 `x.T @ g` 就需要前向时的 `x`。所以前向过程中，每一层的输出都要先存着，等反向用完才能释放。模型越深、batch 越大，这部分内存越多；训练比推理吃显存，主要就是这个原因。显存不够时可以少存一些、反向时再重算一遍（gradient checkpointing），用时间换回内存，这在[第 21 章](./training-loop.md)和[第 23 章](./large-model-stability.md)再展开。
 
 现在把全章连起来看：<strong>张量装输入 → 运算得到预测 → 与目标比较得到损失 → <code>backward()</code> 算梯度 → 更新参数 → 再次预测。</strong>语言模型的运算更复杂、参数更多，但训练的骨架就是这一串。
 
@@ -197,7 +197,7 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 | --- | --- | --- |
 | 反向传播的入口 | [`trainer.py 第 2098 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2098) | 相当于本章的 `loss.backward()`；`modeling_llama.py` 整个文件里没有一行手写的求导 |
 | 一步训练 | [`Trainer.training_step`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2023-L2100) | 前向 → 损失 → backward，和本章的单参数例子是同一个骨架，只是参数有几十亿个 |
-| 梯度裁剪 | [`Trainer._clip_grad_norm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2738-L2744) | 按全局梯度范数裁剪，第 19 章细讲 |
+| 梯度裁剪 | [`Trainer._clip_grad_norm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2738-L2744) | 按全局梯度范数裁剪，第 20 章细讲 |
 
 想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
 

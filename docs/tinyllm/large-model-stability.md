@@ -1,10 +1,10 @@
 ---
-title: "第 22 章：大规模训练稳定性"
+title: "第 23 章：大规模训练稳定性"
 description: "μP、DeepNorm 与残差缩放：网络变深变宽时怎样保持训练稳定。"
 pageClass: tinyllm-course
 ---
 
-# 第 22 章：大规模训练稳定性
+# 第 23 章：大规模训练稳定性
 
 [课程总览](./index.md) · [上一章](./training-evaluation.md) · [下一章](./mixture-of-experts.md)
 

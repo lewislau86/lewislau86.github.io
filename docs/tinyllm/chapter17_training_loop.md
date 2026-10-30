@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 20 章：训练循环与检查点](./training-loop.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 21 章：训练循环与检查点](./training-loop.md)。

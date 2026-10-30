@@ -139,7 +139,7 @@ print("换字前后，第 2 个位置的输入向量差：", [round(v, 3) for v 
 print("这个差等于两个字嵌入之差吗：", torch.allclose((h1 - h2)[0, 1], tok.weight[stoi["前"]] - tok.weight[stoi["月"]], atol=1e-6))
 
 # %% [markdown]
-# ## 步骤 5 · “完全乱猜”的损失是多少（第 14 章）
+# ## 步骤 5 · “完全乱猜”的损失是多少（第 15 章）
 #
 # 损失用交叉熵。参数随机、对每个字一视同仁时，每个字的概率约 `1/词表大小`，
 # 损失就落在 `ln(词表大小)` 附近。这是检查代码写没写错的第一个信号。
@@ -208,7 +208,7 @@ print("乱猜的理论值 ln(词表大小) =", round(math.log(vocab_size), 3))
 print("随机参数下的实测损失 =", round(sum(lm_loss(*get_batch(train_data)).item() for _ in range(8)) / 8, 3))
 
 # %% [markdown]
-# ## 步骤 6 · 梯度怎样告诉每个参数往哪走（第 2、15 章）
+# ## 步骤 6 · 梯度怎样告诉每个参数往哪走（第 2、16 章）
 #
 # `backward()` 一次就把“这次错得有多离谱”分摊到全部参数上，每个参数得到一个梯度；
 # 优化器按梯度的方向把参数挪一小步。走完这一步，同一批数据的损失会小一点。
@@ -222,7 +222,7 @@ optimizer.zero_grad(set_to_none=True)
 loss_before.backward()                                    # 求梯度：第 2 章
 grad_norm = torch.sqrt(sum((p.grad ** 2).sum() for p in model.parameters() if p.grad is not None))
 n_grads = sum(1 for p in model.parameters() if p.grad is not None)
-optimizer.step()                                          # 更新参数：第 15 章
+optimizer.step()                                          # 更新参数：第 16 章
 loss_after = lm_loss(x, y)
 # endregion step6
 
@@ -232,7 +232,7 @@ print("同一批数据，更新前损失：", round(loss_before.item(), 4))
 print("同一批数据，更新后损失：", round(loss_after.item(), 4))
 
 # %% [markdown]
-# ## 步骤 7 · 训一会儿，损失会掉下来（第 1、20 章）
+# ## 步骤 7 · 训一会儿，损失会掉下来（第 1、21 章）
 #
 # 把上一步重复几百次。每 50 步在没参加训练的验证集上再算一次损失，只看不更新。
 
@@ -256,10 +256,10 @@ for step in range(steps + 1):
 # endregion step7
 
 # %% [markdown]
-# ## 步骤 8 · 训练之后，让它写一首（第 17、21、24 章）
+# ## 步骤 8 · 训练之后，让它写一首（第 18、22、25 章）
 #
 # 把预测的字接回去，再预测下一个。语料只有几百首诗，训练损失很低、验证损失反而很高：
-# 模型把训练集背了下来，这是过拟合，第 17、21 章专门处理。
+# 模型把训练集背了下来，这是过拟合，第 18、22 章专门处理。
 
 # %%
 # region step8

@@ -1,6 +1,6 @@
 """Build the large poem corpus for the optional GPU route: data/tang-song-poems.jsonl
 
-“GPU 完整训练”路线用的大语料：《全唐诗》加《全宋诗》的全部诗作（不限五言），约 1,700 万字。
+第 13 章“TinyLLM 在 GPU 上完整实现”用的大语料：《全唐诗》加《全宋诗》的全部诗作（不限五言），约 1,700 万字。
 文件有几十 MB，不放进仓库和网站，由读者在本机用这个脚本生成；生成结果逐字节可复现，
 校验值记在 docs/public/tinyllm/data/manifest-large.json，脚本最后会自动核对。
 

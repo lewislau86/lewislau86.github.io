@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节结构。原“参数高效与稀疏结构”一章已拆分：LoRA 见[第 28 章：参数高效微调（LoRA）](./lora-finetuning.md)，MoE 见[第 23 章：稀疏专家（MoE）](./mixture-of-experts.md)。
+TinyLLM 已调整章节结构。原“参数高效与稀疏结构”一章已拆分：LoRA 见[第 30 章：参数高效微调（LoRA）](./lora-finetuning.md)，MoE 见[第 24 章：稀疏专家（MoE）](./mixture-of-experts.md)。

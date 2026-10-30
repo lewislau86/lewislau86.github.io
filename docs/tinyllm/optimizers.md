@@ -1,10 +1,10 @@
 ---
-title: "第 15 章：优化器"
+title: "第 16 章：优化器"
 description: "梯度只说明往哪边走，优化器决定每一步怎么走：SGD、Momentum、RMSProp、Adam、AdamW、Adafactor 与参数分组。"
 pageClass: tinyllm-course
 ---
 
-# 第 15 章：优化器
+# 第 16 章：优化器
 
 [课程总览](./index.md) · [上一章](./language-model-loss.md) · [下一章](./learning-rate.md)
 
@@ -208,9 +208,9 @@ Adam/AdamW 为每个参数保存两份同形状的移动平均，优化器状态
 3. `optimizer.zero_grad(set_to_none=True)` 清理旧梯度。
 4. `loss.backward()` 计算所有参数的梯度。
 5. 必要时做梯度裁剪，再调用 `optimizer.step()`。
-6. 由学习率调度器更新下一步的学习率；这部分在 [第 16 章](learning-rate.md) 展开。
+6. 由学习率调度器更新下一步的学习率；这部分在 [第 17 章](learning-rate.md) 展开。
 
-优化器在这个流程里的职责很窄：读取参数的 `.grad`，读取并更新自己的状态，然后修改参数。数据、自动求导和模型结构都由别的部分负责。混合精度下还要注意 loss scaling 和梯度裁剪的顺序，见 [第 18 章](precision.md) 与 [第 19 章](gradient-stability.md)。
+优化器在这个流程里的职责很窄：读取参数的 `.grad`，读取并更新自己的状态，然后修改参数。数据、自动求导和模型结构都由别的部分负责。混合精度下还要注意 loss scaling 和梯度裁剪的顺序，见 [第 19 章](precision.md) 与 [第 20 章](gradient-stability.md)。
 
 ### 一份 TinyLLM 配置起点
 
@@ -303,4 +303,4 @@ Adam/AdamW 为每个参数保存两份同形状的移动平均，优化器状态
 - [Decoupled Weight Decay Regularization（AdamW），Loshchilov 与 Hutter，2017](https://arxiv.org/abs/1711.05101)
 - [Adafactor，Shazeer 与 Stern，2018](https://arxiv.org/abs/1804.04235)
 
-下一章会把“每一步走多大”进一步交给学习率策略：warmup、衰减和按 step 更新的调度器（[第 16 章](./learning-rate.md)，规划中）。已完成的下一章是[第 18 章：数值精度](./precision.md)。
+下一章会把“每一步走多大”进一步交给学习率策略：warmup、衰减和按 step 更新的调度器（[第 17 章](./learning-rate.md)，规划中）。已完成的下一章是[第 19 章：数值精度](./precision.md)。

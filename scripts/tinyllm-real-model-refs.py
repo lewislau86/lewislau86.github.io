@@ -40,7 +40,7 @@ SPEC = {
     "tensors-and-autograd": ("真实模型的代码里只写前向计算，反向传播全部交给 PyTorch 的自动求导：", [
         ("反向传播的入口", "trainer.py", ("grep", r"self\.accelerator\.backward\(loss"), "相当于本章的 `loss.backward()`；`modeling_llama.py` 整个文件里没有一行手写的求导"),
         ("一步训练", "trainer.py", "Trainer.training_step", "前向 → 损失 → backward，和本章的单参数例子是同一个骨架，只是参数有几十亿个"),
-        ("梯度裁剪", "trainer.py", "Trainer._clip_grad_norm", "按全局梯度范数裁剪，第 19 章细讲"),
+        ("梯度裁剪", "trainer.py", "Trainer._clip_grad_norm", "按全局梯度范数裁剪，第 20 章细讲"),
     ]),
     "architecture-evolution": ("第二代和第三代的区别，在 transformers 里就是两个 Block 类的区别：", [
         ("第二代：现代稠密解码器的 Block", LLAMA, "LlamaDecoderLayer", "每层都是完整注意力加 SwiGLU，TinyLLM 的主线就是它"),
@@ -85,6 +85,20 @@ SPEC = {
         ("RMSNorm", LLAMA, "LlamaRMSNorm", "先转成 FP32 求均方根、归一化，再转回原来的精度乘 `weight`；没有减均值，也没有偏置"),
         ("放在哪里", LLAMA, "LlamaDecoderLayer", "`input_layernorm`、`post_attention_layernorm` 两处都在子层之前（Pre-Norm），`LlamaModel` 末尾还有一次 `norm`"),
         ("QK Norm", QWEN3, ("grep", r"self\.q_norm = Qwen3RMSNorm"), "Qwen3 额外对每个头的 q、k 做 RMSNorm"),
+    ]),
+    "tinyllm-model": ("本章拼出来的整机，在 transformers 里就是 Llama 的这几个类，结构一一对应：", [
+        ("整机：主干 + 输出层", LLAMA, "LlamaForCausalLM", "`self.model` 是主干，后面接 `lm_head`；`_tied_weights_keys` 声明 `lm_head.weight` 可以指向 `embed_tokens.weight`，和本章的权重共享是同一件事"),
+        ("主干的前向", LLAMA, "LlamaModel.forward", "查表 → 逐层调用 Block → 最后一次 `norm`；多出来的是位置编号、缓存和掩码的准备"),
+        ("一个 Block", LLAMA, "LlamaDecoderLayer.forward", "`input_layernorm` → 注意力 → 残差相加，`post_attention_layernorm` → MLP → 残差相加，和本章 `Block.forward` 两行一样"),
+        ("RoPE 的 cos/sin 表", LLAMA, "LlamaRotaryEmbedding", "按位置预先算 cos、sin，再交给每一层的注意力，对应本章的 `rope_tables`"),
+        ("默认初始化", "modeling_utils.py", "PreTrainedModel._init_weights", "线性层和嵌入都用标准差 `initializer_range`（默认 0.02）的正态分布；本章按第 10 章改用 Xavier 和 `1/√d`，两者是不同的配方"),
+    ]),
+    "gpu-training": ("用 transformers 的 Trainer 在 GPU 上训练时，本章训练循环里的几件事分别在这些地方：", [
+        ("梯度累积：什么时候才更新", "trainer.py", ("grep", r"do_sync_step = \(step \+ 1\) % self\.args\.gradient_accumulation_steps"), "每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章的 `accum` 循环一样"),
+        ("一个 micro-batch 的前向与反向", "trainer.py", "Trainer.training_step", "在 autocast 里算损失、按累积步数缩放后 backward"),
+        ("混合精度的上下文", "trainer.py", "Trainer.compute_loss_context_manager", "把 autocast 套在前向外面，对应本章的 `autocast()`"),
+        ("梯度裁剪", "trainer.py", "Trainer._clip_grad_norm", "按全局范数裁剪，和本章 `clip_grad_norm_(…, 1.0)` 相同"),
+        ("保存检查点", "trainer.py", "Trainer._save_checkpoint", "模型、优化器、调度器、随机数状态和步数一起存，比本章多存了调度器和随机数状态（第 21 章）"),
     ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),

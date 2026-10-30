@@ -1,10 +1,10 @@
 ---
-title: "第 23 章：稀疏专家（MoE）"
+title: "第 24 章：稀疏专家（MoE）"
 description: "把前馈层换成多个专家和一个路由器：同样的计算量装下更多参数，以及怎样让专家分工均衡。"
 pageClass: tinyllm-course
 ---
 
-# 第 23 章：稀疏专家（MoE）
+# 第 24 章：稀疏专家（MoE）
 
 [课程总览](./index.md) · [上一章](./large-model-stability.md) · [下一章](./generation.md)
 

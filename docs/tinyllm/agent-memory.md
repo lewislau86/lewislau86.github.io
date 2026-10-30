@@ -1,10 +1,10 @@
 ---
-title: "第 31 章：Agent 记忆与检索"
+title: "第 33 章：Agent 记忆与检索"
 description: "Agent 怎样在模型之外保存、检索并送回跨会话的事实；与参数、上下文和 KV cache 的边界。"
 pageClass: tinyllm-course
 ---
 
-# 第 31 章：Agent 记忆与检索
+# 第 33 章：Agent 记忆与检索
 
 [课程总览](./index.md) · [上一章](./preference-alignment.md)
 
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 
 模型刚回答完一个问题，用户隔天再问“我上次决定用什么方案”，模型参数没有因为那次对话自动更新，昨天的 KV cache 通常也已经释放。若 Agent 想找回这个决定，就需要在模型外保存信息，在新一轮对话中把相关证据重新交给模型。这就是本章所说的<strong>外部记忆</strong>。
 
-模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 5 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 25 章](inference-efficiency.md)。
+模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 5 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 26 章](inference-efficiency.md)。
 
 ## 四种常被叫作“记忆”的东西 {#four-kinds-of-memory}
 
@@ -29,7 +29,7 @@ pageClass: tinyllm-course
 | KV cache | 当前前缀在各注意力层算出的 K/V 张量 | 通常随生成请求结束；服务系统可在条件满足时复用前缀 | 避免每生成一个 token 就重算相同前缀的 K/V，占用推理内存 |
 | Agent 外部记忆 | 历史文本、提取的事实及来源等 | 可跨请求保存，直到更新或删除 | 检索相关内容，并把可读文本放回当前上下文 |
 
-一轮对话可能经过 <strong>外部记忆检索 → 组装上下文 → tokenizer → 模型前向计算与 KV cache → 逐 token 生成</strong>。KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使保存在向量库里，也要先检索并进入上下文，模型才能在这一轮使用。KV cache 的开销见[第 25 章](inference-efficiency.md)。
+一轮对话可能经过 <strong>外部记忆检索 → 组装上下文 → tokenizer → 模型前向计算与 KV cache → 逐 token 生成</strong>。KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使保存在向量库里，也要先检索并进入上下文，模型才能在这一轮使用。KV cache 的开销见[第 26 章](inference-efficiency.md)。
 
 ## 本章主线选择（待实验验证）
 

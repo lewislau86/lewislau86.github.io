@@ -1,10 +1,10 @@
 ---
-title: "第 16 章：学习率策略"
+title: "第 17 章：学习率策略"
 description: "Warmup、Cosine Decay 等学习率策略，以及按 step 更新的学习率曲线。"
 pageClass: tinyllm-course
 ---
 
-# 第 16 章：学习率策略
+# 第 17 章：学习率策略
 
 [课程总览](./index.md) · [上一章](./optimizers.md) · [下一章](./regularization.md)
 

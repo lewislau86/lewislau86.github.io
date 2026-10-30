@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 27 章：指令微调](./instruction-finetuning.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 29 章：指令微调](./instruction-finetuning.md)。

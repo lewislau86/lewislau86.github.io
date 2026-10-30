@@ -184,7 +184,7 @@ python -m pip install tokenizers==0.23.3 plotly==7.1.0
 
 当 PAD 与 EOS 共用同一个 ID 时，按 `label == pad_id` 删除目标会把 EOS 一起删掉；应按真实长度或补齐掩码判断，像上面的代码那样。
 
-本例是<strong>手动移位</strong>的教学实现。有些模型接口会在内部移位，这时应按接口要求提供未移位的标签，避免错开两次。拼接多篇文档时，还要决定后一篇能否关注前一篇：插入 EOS 只是标出边界，注意力隔离需要另外的掩码。这些在 [第 13 章](data-pipeline.md) 和 [第 14 章](language-model-loss.md) 继续展开。
+本例是<strong>手动移位</strong>的教学实现。有些模型接口会在内部移位，这时应按接口要求提供未移位的标签，避免错开两次。拼接多篇文档时，还要决定后一篇能否关注前一篇：插入 EOS 只是标出边界，注意力隔离需要另外的掩码。这些在 [第 14 章](data-pipeline.md) 和 [第 15 章](language-model-loss.md) 继续展开。
 
 ## 7. 保存整套规则，测量词表预算
 
@@ -255,7 +255,7 @@ $$
 
 <strong>延伸阅读：BLT。</strong>[Byte Latent Transformer（BLT，2024 年提出）](https://arxiv.org/abs/2412.09871) 是更早的另一条路线：直接从字节出发，动态组织成 patch，并在不同层级分配计算。它改变的是模型架构与训练方式，远比把 BPE 换成 `text.encode("utf-8")` 复杂。
 
-对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 25 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 31 章](agent-memory.md) 的另一项评测。
+对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 26 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 33 章](agent-memory.md) 的另一项评测。
 
 ## 10. 动手检查与练习
 

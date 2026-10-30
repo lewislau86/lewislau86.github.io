@@ -93,7 +93,7 @@ pageClass: tinyllm-course
 
 **留下的问题：** 放大以后，三笔账越来越重。
 
-- **注意力的账。** 完整注意力生成每个 token 时都要回看全部前文，要把每个旧 token 的 K、V 存着（KV cache，[第 25 章](./inference-efficiency.md)），上下文越长，缓存越大：
+- **注意力的账。** 完整注意力生成每个 token 时都要回看全部前文，要把每个旧 token 的 K、V 存着（KV cache，[第 26 章](./inference-efficiency.md)），上下文越长，缓存越大：
 
 <<< @/public/tinyllm/code/architecture-evolution.py#kv-cost
 
@@ -150,7 +150,7 @@ pageClass: tinyllm-course
 Kimi K3：总参数 2.8 万亿，每个 token 用到 1040 亿（3.7%）
 ```
 
-参数多，能装下的规律就多；每个 token 只用其中 3.7%，计算量就不会跟着参数一起暴涨。代价是要让 896 个专家分工均衡，训练更难（[第 23 章](./mixture-of-experts.md)会做实验）。
+参数多，能装下的规律就多；每个 token 只用其中 3.7%，计算量就不会跟着参数一起暴涨。代价是要让 896 个专家分工均衡，训练更难（[第 24 章](./mixture-of-experts.md)会做实验）。
 
 **③ 训练稳定性的账：改残差和优化器。** Kimi K3 的 Attention Residuals 把“每层简单地加回残差流”改成：每一层可以有选择地回看前面所有层的输出。配合专门为稀疏 MoE 设计的稳定训练方法，才撑得住这么大的规模。
 
@@ -200,7 +200,7 @@ DeepSeek V4 保留注意力，但把要回看的内容压缩；Qwen3.5 也是“
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器，因果注意力配 RoPE，Pre-Norm 的 RMSNorm，SwiGLU 前馈层。这一代的每个零件都能在 CPU 上单独做实验、看清它的作用，而且至今仍是第三代模型的骨架：Kimi K3 换掉的是注意力的种类和前馈层的密度，“只有解码器、预测下一个 token、Block 一层层叠”的整体结构没有变。第三代的零件放在后面的专题里，在主线基础上逐个替换、对照：MoE 在[第 23 章](./mixture-of-experts.md)，KV cache 和推理成本在[第 25 章](./inference-efficiency.md)，量化在[第 26 章](./quantization.md)。
+TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器，因果注意力配 RoPE，Pre-Norm 的 RMSNorm，SwiGLU 前馈层。这一代的每个零件都能在 CPU 上单独做实验、看清它的作用，而且至今仍是第三代模型的骨架：Kimi K3 换掉的是注意力的种类和前馈层的密度，“只有解码器、预测下一个 token、Block 一层层叠”的整体结构没有变。第三代的零件放在后面的专题里，在主线基础上逐个替换、对照：MoE 在[第 24 章](./mixture-of-experts.md)，KV cache 和推理成本在[第 26 章](./inference-efficiency.md)，量化在[第 27 章](./quantization.md)。
 
 ::: warning 常见误区
 - **新架构没有改变目标。** 从 GPT-1 到 Kimi K3，训练目标都是预测下一个 token；变的是怎样算得更省、做得更大。

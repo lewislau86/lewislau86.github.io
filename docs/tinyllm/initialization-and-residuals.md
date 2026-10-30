@@ -150,7 +150,7 @@ $$
 
 $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反向梯度，但也可能让分支学得太慢，所以它需要配合深度调参。
 
-另一类做法只在<strong>初始化时</strong>缩小写回残差流的输出投影，前向时不再乘系数。例如 nanoGPT 对每个 Block 中注意力和 MLP 的 `c_proj.weight` 使用 `0.02 / sqrt(2 * n_layer)` 的初始标准差，这里的 2 对应每层两条残差分支。这是特定架构的经验设计，只作用在输出投影上；[第 22 章的 DeepNorm](./large-model-stability.md#deepnorm) 是另一套完整配置。[nanoGPT 源码](https://github.com/karpathy/nanoGPT/blob/master/model.py)给出了具体实现。
+另一类做法只在<strong>初始化时</strong>缩小写回残差流的输出投影，前向时不再乘系数。例如 nanoGPT 对每个 Block 中注意力和 MLP 的 `c_proj.weight` 使用 `0.02 / sqrt(2 * n_layer)` 的初始标准差，这里的 2 对应每层两条残差分支。这是特定架构的经验设计，只作用在输出投影上；[第 23 章的 DeepNorm](./large-model-stability.md#deepnorm) 是另一套完整配置。[nanoGPT 源码](https://github.com/karpathy/nanoGPT/blob/master/model.py)给出了具体实现。
 
 ## 8. 动手实验：测量每一层，而不只看一条损失曲线
 

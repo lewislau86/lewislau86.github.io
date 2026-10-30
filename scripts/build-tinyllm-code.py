@@ -51,6 +51,7 @@ ARTIFACTS = {
     ("inference-efficiency", "kv_cache_counts.json"): ROOT / "scripts/data/tinyllm-kv-cache-counts.json",
     ("transformer-block", "block_depth.json"): ROOT / "scripts/data/tinyllm-block-depth.json",
     ("architecture-evolution", "architecture_cost.json"): ROOT / "scripts/data/tinyllm-architecture-cost.json",
+    ("tinyllm-model", "tinyllm_model_log.json"): ROOT / "scripts/data/tinyllm-model-log.json",
 }
 
 

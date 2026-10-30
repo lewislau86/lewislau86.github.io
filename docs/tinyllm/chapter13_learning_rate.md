@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-TinyLLM 已调整章节顺序。请继续阅读[第 16 章：学习率策略](./learning-rate.md)。
+TinyLLM 已调整章节顺序。请继续阅读[第 17 章：学习率策略](./learning-rate.md)。
