@@ -51,6 +51,7 @@ pageClass: tinyllm-course
 | [第 15 章 · 语言模型目标函数](./language-model-loss.md) | 拆开第 12 章的验证损失 5.579：错位出题、整首诗的概率与下溢、log-sum-exp、nats/比特/困惑度的换算；padding 与梯度累积的分母、`<eos>` 的监督；按题型拆损失、可靠性图，label smoothing 与 z-loss | [查看](/tinyllm/notebooks/language-model-loss) |
 | [第 16 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [查看](/tinyllm/notebooks/optimizers) |
 | [第 17 章 · 学习率策略](./learning-rate.md) | 学习率调度写成按优化器步调用的函数；代理模型上 17 次对照（3 个种子）：固定学习率扫描、加余弦反而变差、衰减要配更高峰值、WSD 与余弦、去掉 warmup；损失曲线的“下台阶”，与 batch 和宽度的关系 | [查看](/tinyllm/notebooks/learning-rate) |
+| [第 18 章 · 正则化与泛化](./regularization.md) | 只给 300 首诗让模型过拟合，29 次对照（3 个种子）：更多数据、提前停止、weight decay 的时间尺度 1/(lr·wd)、dropout 的三个位置与 train/eval 模式、label smoothing；用验证集挑、用测试集报；回到全部数据，同样的手段反而变差 | [查看](/tinyllm/notebooks/regularization) |
 | [第 19 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
 | [第 25 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
 | [第 26 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
@@ -98,7 +99,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 15 章 · 语言模型目标函数](./language-model-loss.md)
 - [第 16 章 · 优化器](./optimizers.md)
 - [第 17 章 · 学习率策略](./learning-rate.md)
-- [第 18 章 · 正则化与泛化](./regularization.md)（规划中）
+- [第 18 章 · 正则化与泛化](./regularization.md)
 - [第 19 章 · 数值精度与混合精度](./precision.md)
 - [第 20 章 · 梯度稳定与累积](./gradient-stability.md)（规划中）
 - [第 21 章 · 训练循环与检查点](./training-loop.md)（规划中）
@@ -160,7 +161,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [15 损失](./language-model-loss.md) | 下一个 token 的交叉熵，`F.cross_entropy` 直接吃原始 logits，按有效 token 数平均；`<eos>` 计入，`<pad>` 用 -100 屏蔽；梯度累积先求和、最后除以总有效 token 数；不用 label smoothing | 与自回归生成目标一致，分母不随 batch 切法变化；指令微调只算回答部分，模型放大、换低精度后再考虑 z-loss。 |
 | [16 优化器](./optimizers.md) | AdamW；对归一化权重及偏置关闭 weight decay | 自适应更新适合基线，衰减与梯度惩罚分离；状态内存不足再比较 Adafactor 等。 |
 | [17 学习率](./learning-rate.md) | 按优化器步调度：线性 warmup 后默认 WSD（最后约 20% 线性降到 0）；总步数确定、只训练一次时也可用 warmup + 余弦降到峰值的 10%；加衰减后重新调峰值 | 代理模型 3 个种子：衰减要配更高峰值才有好处，WSD 最好，去掉 warmup 变差；WSD 便于从检查点继续训练。换 batch 或宽度要重扫峰值。 |
-| [18 正则化](./regularization.md) | AdamW 的适度 weight decay；先不加 label smoothing，dropout 从 0 起测 | 先用验证集判断过拟合，再决定是否增加 dropout；低数据量下不能照搬大规模预训练设置。 |
+| [18 正则化](./regularization.md) | 主线预训练不加 dropout、不用 label smoothing；AdamW 对矩阵权重保留 `weight_decay=0.1`；按验证损失保留最好的检查点，测试集只报告一次 | 代理模型 3 个种子：300 首诗过 20 遍时，weight decay 3 与 dropout 0.3 明显改善，但不如把数据翻两番；全部数据只过一遍时，同样的手段都变差。数据有限、多遍训练或微调时，先加数据，再按 1/(lr·wd) 调 weight decay、试 dropout。 |
 | [19 精度](./precision.md) | 支持时用 BF16 混合精度，关键归约保持稳定实现；否则用 FP32 | BF16 指数范围较宽；缺 BF16 且需 FP16 时再配合 GradScaler。 |
 | [20 梯度](./gradient-stability.md) | 记录梯度范数并按全局范数裁剪；需要大有效 batch 时做梯度累积 | 能定位并限制异常更新；裁剪阈值和累积步数不能脱离损失归一化设置。 |
 | [21 训练循环](./training-loop.md) | 固定种子，明确 `zero_grad → forward → backward → clip → step → scheduler`，保存完整检查点 | 便于复现和中断恢复；梯度累积时只在更新步裁剪、更新学习率。 |

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="500" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">广播：一行偏置供两行结果使用</title>
+  <desc id="desc">矩阵 A 的两行为五、一和八、二。形状为一乘二的偏置 b 只有零、一这一行。两行计算都使用它，得到五、二和八、三。虚线矩阵表示计算规则上的展开，不表示一定在内存中复制了两份偏置。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#2563eb"/></marker>
+    <style>
+      text{font-family:"Microsoft YaHei","Noto Sans CJK SC",sans-serif;fill:#172b4d}
+      .title{font-size:27px;font-weight:700}
+      .label{font-size:21px;font-weight:700}
+      .body{font-size:19px}
+      .value{font-size:29px;font-weight:600;text-anchor:middle}
+      .cell{fill:#fff;stroke:#b6c8e1;stroke-width:1.5}
+      .ghost{fill:#eff6ff;stroke:#3b82f6;stroke-width:1.5;stroke-dasharray:6 4}
+      .line{fill:none;stroke:#2563eb;stroke-width:2.5;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="960" height="500" rx="18" fill="#f8fafc"/>
+  <text x="36" y="47" class="title">广播：同一组偏置参与每一行的计算</text>
+  <text x="36" y="81" class="body">C[i, j] = A[i, j] + b[0, j]　·　偏置的行下标始终为 0</text>
+  <text x="65" y="132" class="label">A：形状 [2, 2]</text>
+  <text x="354" y="132" class="label">b：形状 [1, 2]</text>
+  <text x="704" y="132" class="label">C：形状 [2, 2]</text>
+  <g>
+    <rect x="65" y="250" width="90" height="55" class="cell"/><rect x="155" y="250" width="90" height="55" class="cell"/>
+    <rect x="65" y="305" width="90" height="55" class="cell"/><rect x="155" y="305" width="90" height="55" class="cell"/>
+    <text x="110" y="287" class="value">5</text><text x="200" y="287" class="value">1</text>
+    <text x="110" y="342" class="value">8</text><text x="200" y="342" class="value">2</text>
+  </g>
+  <text x="286" y="316" font-size="38">+</text>
+  <g>
+    <rect x="354" y="161" width="100" height="52" class="cell"/><rect x="454" y="161" width="100" height="52" class="cell"/>
+    <text x="404" y="197" class="value">0</text><text x="504" y="197" class="value">1</text>
+    <path d="M454 216V238" class="line"/>
+    <rect x="354" y="250" width="100" height="55" class="ghost"/><rect x="454" y="250" width="100" height="55" class="ghost"/>
+    <rect x="354" y="305" width="100" height="55" class="ghost"/><rect x="454" y="305" width="100" height="55" class="ghost"/>
+    <text x="404" y="287" class="value">0</text><text x="504" y="287" class="value">1</text>
+    <text x="404" y="342" class="value">0</text><text x="504" y="342" class="value">1</text>
+    <text x="360" y="389" class="body" fill="#1d4ed8">虚线：逻辑上的重复使用</text>
+  </g>
+  <path d="M595 305H668" class="line"/>
+  <g>
+    <rect x="704" y="250" width="90" height="55" class="cell"/><rect x="794" y="250" width="90" height="55" class="cell"/>
+    <rect x="704" y="305" width="90" height="55" class="cell"/><rect x="794" y="305" width="90" height="55" class="cell"/>
+    <text x="749" y="287" class="value">5</text><text x="839" y="287" class="value">2</text>
+    <text x="749" y="342" class="value">8</text><text x="839" y="342" class="value">3</text>
+  </g>
+  <rect x="36" y="416" width="888" height="58" rx="10" fill="#dbeafe"/>
+  <text x="56" y="452" class="body">这是计算规则：后端可以重复读取同一行，不必先在内存中复制两份偏置。</text>
+</svg>

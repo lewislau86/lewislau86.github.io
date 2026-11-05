@@ -57,6 +57,7 @@ ARTIFACTS = {
     ("generation", "sampling.json"): ROOT / "scripts/data/tinyllm-sampling.json",
     ("language-model-loss", "language_model_loss.json"): ROOT / "scripts/data/tinyllm-language-model-loss.json",
     ("learning-rate", "learning_rate_log.json"): ROOT / "scripts/data/tinyllm-learning-rate-log.json",
+    ("regularization", "regularization_log.json"): ROOT / "scripts/data/tinyllm-regularization-log.json",
 }
 
 

@@ -12,7 +12,7 @@
     git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
         src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
         src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
-        src/transformers/optimization.py
+        src/transformers/optimization.py src/transformers/training_args.py src/transformers/trainer_callback.py
     python scripts/tinyllm-real-model-refs.py /tmp/tf
 """
 
@@ -119,6 +119,14 @@ SPEC = {
         ("WSD", "optimization.py", "_get_wsd_scheduler_lambda", "warmup、保持、衰减三段；衰减段可选线性、余弦或 1-sqrt，并可设最低学习率比例 `min_lr_ratio`"),
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
+    ]),
+    "regularization": ("transformers 里和本章有关的开关都不大：weight decay 在创建优化器时分组，dropout 写在注意力里，提前停止是一个回调：", [
+        ("哪些参数做 weight decay", "trainer.py", "Trainer.get_decay_parameter_names", "名字里带 `bias`、`norm` 的参数不衰减，其余（包括词嵌入）按 `weight_decay` 衰减，和本章 `p.dim() >= 2` 的分法结果相同"),
+        ("weight decay 的默认值", "training_args.py", ("grep", r"weight_decay: float = field"), "`TrainingArguments` 默认 `weight_decay=0.0`，要自己设；本章的实验说明合适的值和数据量、学习率、训练步数都有关"),
+        ("注意力 dropout 只在训练时打开", LLAMA, ("grep", r"dropout=0\.0 if not self\.training else self\.attention_dropout"), "评估模式下传 0，和本章 `dropout_p=... if self.training else 0.0` 一样；比例来自配置里的 `attention_dropout`"),
+        ("在注意力权重上丢弃", LLAMA, "eager_attention_forward", "softmax 之后对注意力权重做 `nn.functional.dropout`，即本章的位置 ①；`LlamaDecoderLayer` 里没有本章的 ② ③ 两处"),
+        ("提前停止", "trainer_callback.py", "EarlyStoppingCallback", "`early_stopping_patience` 次评估没有改进就停止训练；配合 `load_best_model_at_end=True` 才会在结束时换回最好的检查点"),
+        ("label smoothing", "trainer_pt_utils.py", "LabelSmoother", "`label_smoothing_factor` 不为 0 时启用；评估指标仍应看普通交叉熵（第 15 章）"),
     ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),

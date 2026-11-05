@@ -2264,6 +2264,219 @@ def lr_warmup():
               "峰值 1e-2 的 WSD：去掉 warmup 后，前一百步左右的训练损失反而更低；大约第 120 步两条线交叉，之后有 warmup 的一路领先，最终验证损失也更低（右侧菱形是 3 个种子的平均）。")
 
 
+# ---------- 第 18 章：正则化与泛化 ----------
+
+def _reg_log():
+    src = DATA / "tinyllm-regularization-log.json"
+    if not src.exists():
+        print("skip regularization figures: run scripts/build-tinyllm-code.py regularization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def reg_overfit():
+    """300 首、不加正则化（种子 0）：训练损失一路降，验证损失第 100 步见底后回升。"""
+    log = _reg_log()
+    if log is None:
+        return
+    r = log["runs"]["无正则化|0"]
+    steps, tr, va = r["step"], r["train"], r["val"]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(steps, tr, color=BLUE, lw=2.4, marker="o", ms=3.5, label="训练集（300 首，eval 模式）")
+    ax.plot(steps, va, color=RED, lw=2.4, marker="o", ms=3.5, label="验证集（291 首，训练时没见过）")
+    ax.fill_between(steps, tr, va, color=RED, alpha=0.07, lw=0)
+    b = steps.index(r["best_step"])
+    ax.scatter([steps[b]], [va[b]], s=110, facecolor="none", edgecolor=RED, lw=2, zorder=5)
+    ax.annotate(f"验证损失最低：第 {steps[b]} 步 {va[b]:.3f}", xy=(steps[b], va[b]), xytext=(steps[b] + 15, va[b] + 0.75),
+                color=RED, fontsize=12, arrowprops=dict(arrowstyle="->", color=RED, lw=1.3))
+    ax.annotate("", xy=(steps[-1] + 6, tr[-1]), xytext=(steps[-1] + 6, va[-1]),
+                arrowprops=dict(arrowstyle="<->", color=GRAY, lw=1.3))
+    ax.text(steps[-1] + 10, (tr[-1] + va[-1]) / 2, f"差\n{va[-1] - tr[-1]:.2f}", color=GRAY, fontsize=12, va="center")
+    ax.set_xlabel("训练步数（每步 16 段 × 64 个 token）")
+    ax.set_ylabel("交叉熵（nats / token）")
+    ax.set_xlim(0, steps[-1] + 30)
+    ax.legend(loc="lower left", fontsize=11)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-overfit.svg", "300 首诗上的过拟合",
+              f"不加正则化、在 300 首诗上训练（种子 0）：训练损失从 {tr[0]:.2f} 一路降到 {tr[-1]:.2f}；验证损失在第 {steps[b]} 步见底（{va[b]:.3f}），"
+              f"之后一路回升到 {va[-1]:.2f}，两者的差从 {va[0] - tr[0]:.2f} 拉大到 {va[-1] - tr[-1]:.2f}。")
+
+
+def reg_data_size():
+    """同一个模型、同样 300 步，训练集 300/600/1200/5419 首（种子 0）的验证损失。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    full = log["full"]
+    picks = [("300 首", "无正则化|0", RED), ("600 首", "600 首|0", ORANGE), ("1200 首", "1200 首|0", TEAL),
+             (f"全部 {full} 首", f"{full} 首|0", BLUE)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    notes = []
+    for label, key, color in picks:
+        r = runs[key]
+        ax.plot(r["step"], r["val"], color=color, lw=2.4, marker="o", ms=3.5, label=label)
+        b = r["step"].index(r["best_step"])
+        ax.scatter([r["step"][b]], [r["val"][b]], s=110, facecolor="none", edgecolor=color, lw=2, zorder=5)
+        notes.append(f"{label}最低 {r['val'][b]:.2f}（第 {r['best_step']} 步）")
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("验证损失（种子 0；圆圈是最低点）")
+    ax.legend(loc="lower left", fontsize=11, title="训练集", title_fontsize=11)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-data-size.svg", "训练集大小与验证损失",
+              "同一个模型、同样 300 步，只改训练集大小（种子 0）：" + "；".join(notes) +
+              "。数据越多，验证损失越低、见底越晚；全部数据在 300 步内一直在下降。")
+
+
+def reg_weight_decay():
+    """左：不同 weight decay 的验证损失（种子 0）；右：矩阵权重的 L2 范数。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    picks = [("0", "无正则化|0", GRAY), ("0.1", "weight_decay 0.1|0", BLUE), ("1", "weight_decay 1|0", TEAL),
+             ("3", "weight_decay 3|0", RED), ("10", "weight_decay 10|0", PURPLE)]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.35, 1]})
+    for label, key, color in picks:
+        r = runs[key]
+        a1.plot(r["step"], r["val"], color=color, lw=2.3, marker="o", ms=3, label=f"weight_decay={label}")
+        a2.plot(r["step"], r["norm"], color=color, lw=2.3, label=label)
+        a2.text(r["step"][-1] + 6, r["norm"][-1], f"{r['norm'][-1]:.1f}", color=color, fontsize=11, va="center")
+    a1.set_xlabel("训练步数")
+    a1.set_ylabel("验证损失（种子 0）")
+    a1.set_title("太小没作用，太大学不动", fontsize=12.5)
+    a1.legend(fontsize=10, loc="upper center")
+    a1.grid(alpha=0.25)
+    a2.set_xlabel("训练步数")
+    a2.set_ylabel("矩阵权重的 L2 范数")
+    a2.set_title("weight decay 把权重往 0 拉", fontsize=12.5)
+    a2.set_xlim(0, runs["无正则化|0"]["step"][-1] + 40)
+    a2.grid(alpha=0.25)
+    norms = "、".join(f"{label} → {runs[key]['norm'][-1]:.1f}" for label, key, _ in picks)
+    save_plot(fig, "reg-weight-decay.svg", "weight decay 的强度：验证损失与权重范数",
+              "左：300 首诗、种子 0。weight_decay=0 和 0.1 的验证损失几乎重合，第 100 步后一路回升；1 推迟并压低了回升；3 的验证损失一直在降，最好；"
+              f"10 压得太狠，最低点反而比 3 高。右：第 300 步矩阵权重的 L2 范数（{norms}）。")
+
+
+def reg_dropout():
+    """无正则化与 dropout 0.1、0.3（种子 0）：实线验证、虚线训练（eval 模式）。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    picks = [("不加 dropout", "无正则化|0", GRAY), ("dropout 0.1", "dropout 0.1|0", BLUE), ("dropout 0.3", "dropout 0.3|0", RED)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    for label, key, color in picks:
+        r = runs[key]
+        ax.plot(r["step"], r["val"], color=color, lw=2.4, marker="o", ms=3.5, label=f"{label}：验证")
+        ax.plot(r["step"], r["train"], color=color, lw=1.8, ls="--", label=f"{label}：训练（eval 模式）")
+        b = r["step"].index(r["best_step"])
+        ax.scatter([r["step"][b]], [r["val"][b]], s=110, facecolor="none", edgecolor=color, lw=2, zorder=5)
+    r0, r3 = runs["无正则化|0"], runs["dropout 0.3|0"]
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("交叉熵（种子 0；圆圈是验证最低点）")
+    ax.legend(fontsize=10.5, loc="lower left", ncol=3)
+    ax.set_ylim(2.2, 6.6)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-dropout.svg", "dropout 对训练与验证损失的影响",
+              f"300 首诗、种子 0。不加 dropout 时验证损失第 {r0['best_step']} 步见底（{r0['best_val']:.3f}）；dropout 0.3 让训练损失降得更慢，"
+              f"验证损失推迟到第 {r3['best_step']} 步才见底，最低点 {r3['best_val']:.3f} 更低，之后的回升也平缓得多。")
+
+
+def reg_compare():
+    """左：300 首上各种设置的测试损失（3 个种子，另有两个单种子的数据量参照）；右：全部数据上。"""
+    log = _reg_log()
+    if log is None:
+        return
+    s, full = log["summary"], log["full_summary"]
+    rows = [("无正则化", s["300 首"], GRAY), ("weight_decay 0.1", s["weight_decay 0.1"], BLUE),
+            ("label smoothing 0.1", s["label smoothing 0.1"], ORANGE), ("dropout 0.3", s["dropout 0.3"], PURPLE),
+            ("weight_decay 3", s["weight_decay 3"], RED), ("换成 600 首（单种子）", s["600 首"], TEAL),
+            ("换成 1200 首（单种子）", s["1200 首"], TEAL)]
+    frows = [("无正则化", full["无正则化"], GRAY), ("dropout 0.1", full["dropout 0.1"], PURPLE), ("weight_decay 3", full["weight_decay 3"], RED)]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.6), layout="constrained", gridspec_kw={"width_ratios": [1.5, 1]})
+    for ax, data in ((a1, rows), (a2, frows)):
+        for i, (name, vals, color) in enumerate(data):
+            m = sum(vals) / len(vals)
+            if len(vals) > 1:
+                ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+                ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+                ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+            else:
+                ax.scatter([m], [i], facecolor="white", edgecolor=color, s=90, marker="D", lw=2, zorder=4)
+            ax.text(max(vals) + 0.022, i, f"{m:.3f}", va="center", fontsize=11, color=color)
+        ax.set_yticks(range(len(data)), [d[0] for d in data], fontsize=11)
+        ax.invert_yaxis()
+        ax.axvline(sum(data[0][1]) / len(data[0][1]), color=GRAY, ls="--", lw=1.2)
+        ax.grid(alpha=0.25, axis="x")
+    a1.set_title("只有 300 首诗（训练集过 20 遍）", fontsize=12.5)
+    a1.set_xlabel("测试损失（验证损失最低那一步的参数）")
+    a2.set_title(f"全部 {log['full']} 首（只过约 1 遍）", fontsize=12.5)
+    a2.set_xlabel("测试损失")
+    lo, hi = a2.get_xlim()
+    a2.set_xlim(lo, hi + 0.04)
+    lo, hi = a1.get_xlim()
+    a1.set_xlim(lo, hi + 0.05)
+    mean = lambda v: sum(v) / len(v)
+    save_plot(fig, "reg-compare.svg", "正则化对照：300 首与全部数据",
+              f"左：300 首诗上，3 个种子的测试损失（菱形是平均，横条是范围）。无正则化 {mean(s['300 首']):.3f}；weight_decay 0.1 与 label smoothing 几乎没变化（都是 {mean(s['weight_decay 0.1']):.3f}）；"
+              f"dropout 0.3 降到 {mean(s['dropout 0.3']):.3f}；weight_decay 3 最好，{mean(s['weight_decay 3']):.3f}，和训练集换成 600 首（{s['600 首'][0]:.3f}，单种子）相当；换成 1200 首是 {s['1200 首'][0]:.3f}。"
+              f"右：全部数据上，无正则化 {mean(full['无正则化']):.3f} 最好，dropout 0.1 变差到 {mean(full['dropout 0.1']):.3f}，weight_decay 3 变差到 {mean(full['weight_decay 3']):.3f}。")
+
+
+def reg_dropout_positions():
+    """dropout 放在哪三个位置，以及 train / eval 两种模式。"""
+    body = text(480, 40, "TinyLLM 里的三处 dropout，以及它在训练和评估时的不同行为", 22, weight="bold")
+    sx = 150                                   # 残差流的 x
+    body += text(sx, 84, "token ID", 17)
+    body += arrow(sx, 92, sx, 112)
+    body += cbox(sx - 90, 114, 180, 40, BLUE) + text(sx, 140, "词嵌入", 17, BLUE, "bold")
+    body += arrow(sx, 154, sx, 172)
+    body += cbox(sx - 90, 174, 180, 36, RED, dash=True) + text(sx, 198, "③ Dropout", 16, RED, "bold")
+    plus2 = 562
+    body += f'<path d="M{sx} 210 V{plus2 - 15}" stroke="{INK}" stroke-width="6" fill="none" opacity="0.18"/>'
+    body += text(sx - 14, 300, "残差流", 14, GRAY, anchor="end")
+    bx = 380
+    for y, name, color, inner in [(232, "注意力", BLUE, True), (422, "SwiGLU", TEAL, False)]:
+        body += path(f"M{sx} {y + 10} H{bx - 92}", GRAY, 2)
+        body += cbox(bx - 90, y - 8, 180, 34, PURPLE) + text(bx, y + 15, "RMSNorm", 15, PURPLE, "bold")
+        body += arrow(bx, y + 26, bx, y + 40, GRAY, 2)
+        body += cbox(bx - 110, y + 42, 220, 44, color) + text(bx, y + 70, name, 17, color, "bold")
+        if inner:
+            body += text(bx + 118, y + 60, "① 注意力权重", 14, RED, "bold", "start")
+            body += text(bx + 118, y + 80, "softmax 之后随机丢掉一部分", 13, GRAY, anchor="start")
+        body += arrow(bx, y + 86, bx, y + 98, GRAY, 2)
+        body += cbox(bx - 90, y + 100, 180, 32, RED, dash=True) + text(bx, y + 122, "② Dropout", 15, RED, "bold")
+        body += path(f"M{bx} {y + 132} V{y + 140} H{sx + 20}", color, 2.5)
+        body += circle(sx, y + 140, 15) + text(sx, y + 147, "+", 21, weight="bold")
+    body += arrow(sx, plus2 + 15, sx, plus2 + 40, GRAY)
+    body += text(sx, plus2 + 62, "最终 RMSNorm → logits", 15)
+    body += f'<line x1="610" y1="70" x2="610" y2="620" stroke="#e2e8f0" stroke-width="2"/>'
+    # 右：两种模式
+    rx = 640
+    body += text(785, 92, "model.train()：每次前向重新抽一个掩码", 16, RED, "bold")
+    vals = ["x₁", "x₂", "x₃", "x₄", "x₅"]
+    keep = [True, False, True, True, False]
+    for i, (v, k) in enumerate(zip(vals, keep)):
+        x = rx + 12 + i * 56
+        body += box(x, 112, 48, 38, "#ffffff", "#94a3b8") + text(x + 24, 138, v, 17)
+        body += arrow(x + 24, 152, x + 24, 176, GRAY, 1.6)
+        body += box(x, 178, 48, 38, "#fef2f2" if not k else "#ffffff", RED if not k else "#94a3b8") + text(x + 24, 204, "×1.43" if k else "0", 15, INK if k else RED)
+    body += text(785, 244, "以概率 p 置零，留下的乘 1/(1−p)", 15)
+    body += text(785, 268, "p = 0.3 时 1/(1−p) ≈ 1.43，平均值不变", 15, GRAY)
+    body += text(785, 330, "model.eval()：原样通过", 16, TEAL, "bold")
+    for i, v in enumerate(vals):
+        x = rx + 12 + i * 56
+        body += box(x, 350, 48, 38, "#ffffff", "#94a3b8") + text(x + 24, 376, v, 17)
+        body += arrow(x + 24, 390, x + 24, 414, GRAY, 1.6)
+        body += box(x, 416, 48, 38, "#ecfdf5", TEAL) + text(x + 24, 442, v, 17)
+    body += text(785, 484, "评估、生成都要先调 model.eval()，", 15)
+    body += text(785, 508, "否则每次结果都不一样，而且偏差", 15)
+    svg("reg-dropout-positions.svg", "dropout 的位置和两种模式",
+        "左：TinyLLM 的三处 dropout。① 注意力权重在 softmax 之后随机丢掉一部分；② 注意力和 SwiGLU 的输出在加回残差流之前各过一次 dropout；"
+        "③ 词嵌入之后过一次。右：model.train() 时每个数以概率 p 置零，留下的乘 1/(1−p)，p=0.3 时约乘 1.43；model.eval() 时原样通过。", 650, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2317,7 +2530,8 @@ def main():
                kv_cache_size, latency_metrics, gpu_step_anatomy,
                data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage,
                lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator,
-               lr_schedules, lr_compare, lr_curves, lr_warmup):
+               lr_schedules, lr_compare, lr_curves, lr_warmup,
+               reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare):
         fn()
     print("figures written to", OUT)
 

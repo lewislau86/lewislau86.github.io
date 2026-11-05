@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="650" viewBox="0 0 960 650" role="img" aria-labelledby="title desc">
+  <title id="title">矩阵乘法的 2×2 小块如何复用输入</title>
+  <desc id="desc">固定输入维索引 k，从 X 读取 a 和 b，从 W 读取 c 和 d。四个值复用于 ac、ad、bc、bd，累计到输出的四个位置。逐输出独立读取需要八次输入访问；理想协作复用只需四次。此图不含完整循环和输出写回。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9z" fill="#4b647d"/></marker>
+  </defs>
+  <rect width="960" height="650" rx="18" fill="#f6f9fc"/>
+  <g font-family="Segoe UI, Microsoft YaHei, sans-serif" fill="#18334d" text-anchor="middle">
+    <text x="480" y="43" font-size="26" font-weight="700">矩阵乘法：读一次，让多个输出使用</text>
+    <text x="480" y="75" font-size="17" fill="#50667c">固定一个 k · 只画输出的一个 2×2 小块</text>
+    <g stroke="#91b0cc" stroke-width="1.5" fill="#fff">
+      <rect x="38" y="113" width="205" height="206" rx="12"/>
+      <rect x="292" y="113" width="290" height="206" rx="12"/>
+      <rect x="631" y="113" width="291" height="206" rx="12"/>
+    </g>
+    <text x="141" y="145" font-size="21" font-weight="600">从 X 取一列</text>
+    <text x="437" y="145" font-size="21" font-weight="600">从 W 取一行</text>
+    <text x="777" y="145" font-size="21" font-weight="600">贡献给四个输出</text>
+    <g stroke="#8eabd0" fill="#e9f2fd" stroke-width="1.5">
+      <rect x="104" y="166" width="74" height="54" rx="5"/>
+      <rect x="104" y="220" width="74" height="54" rx="5"/>
+      <rect x="355" y="191" width="82" height="58" rx="5"/>
+      <rect x="437" y="191" width="82" height="58" rx="5"/>
+    </g>
+    <g font-size="25" font-weight="600">
+      <text x="141" y="201">a</text><text x="141" y="255">b</text>
+      <text x="396" y="229">c</text><text x="478" y="229">d</text>
+    </g>
+    <text x="141" y="299" font-size="16">a = X[0,k] · b = X[1,k]</text>
+    <text x="437" y="299" font-size="16">c = W[k,0] · d = W[k,1]</text>
+    <g stroke="#83ae96" fill="#eaf5ee" stroke-width="1.5">
+      <rect x="675" y="165" width="101" height="58" rx="5"/>
+      <rect x="776" y="165" width="101" height="58" rx="5"/>
+      <rect x="675" y="223" width="101" height="58" rx="5"/>
+      <rect x="776" y="223" width="101" height="58" rx="5"/>
+    </g>
+    <g font-size="22" font-weight="600" fill="#255c41">
+      <text x="725" y="201">+= a×c</text><text x="826" y="201">+= a×d</text>
+      <text x="725" y="259">+= b×c</text><text x="826" y="259">+= b×d</text>
+    </g>
+    <text x="777" y="307" font-size="16">继续下一个 k，仍累加到这四格</text>
+    <g fill="none" stroke="#4b647d" stroke-width="2.5" marker-end="url(#arrow)">
+      <path d="M245 218H286"/><path d="M584 218H625"/>
+    </g>
+    <rect x="38" y="356" width="884" height="91" rx="12" fill="#e9f0f8"/>
+    <text x="480" y="390" font-size="21" font-weight="600">独立读：4 个输出 × 每个读 2 个输入 = 8 次</text>
+    <text x="480" y="422" font-size="21" font-weight="600">理想复用：先读 a、b、c、d 共 4 次，再做 4 次乘法</text>
+    <rect x="38" y="477" width="884" height="130" rx="12" fill="#fff" stroke="#c3d0dd"/>
+    <g font-size="18" fill="#405c73">
+      <text x="480" y="509">关键不是少做乘法，而是让已读入的数值被多次利用。</text>
+      <text x="480" y="542">实际内核还需安排共享存储、组内同步、边界和输出写回。</text>
+      <text x="480" y="575">图中次数是固定 k 的理想教学模型，不是 GPU 实测流量。</text>
+    </g>
+  </g>
+</svg>

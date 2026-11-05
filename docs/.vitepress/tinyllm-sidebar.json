@@ -123,6 +123,10 @@
         "link": "/tinyllm/learning-rate"
       },
       {
+        "text": "第 18 章 · 正则化与泛化",
+        "link": "/tinyllm/regularization"
+      },
+      {
         "text": "第 19 章 · 数值精度与混合精度",
         "link": "/tinyllm/precision"
       }
@@ -146,10 +150,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 18 章 · 正则化与泛化",
-        "link": "/tinyllm/regularization"
-      },
       {
         "text": "第 20 章 · 梯度稳定与累积",
         "link": "/tinyllm/gradient-stability"

@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://lewislau86.github.io/sitemap.xml

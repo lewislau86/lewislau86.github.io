@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 330" role="img" aria-labelledby="title desc">
+  <title id="title">二维张量的形状、轴与内存偏移</title>
+  <desc id="desc">形状为 2 行 3 列的张量，按行优先映射到 6 个连续内存位置；stride 为 3 和 1。</desc>
+  <rect width="820" height="330" fill="#ffffff"/>
+  <text x="24" y="30" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="16" font-weight="700" fill="#1f2933">形状 [2, 3] 与行优先内存</text>
+  <text x="24" y="52" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">形状描述每条轴的长度；stride 描述沿该轴前进一步，在内存里跳过多少个元素。</text>
+
+  <!-- tensor grid -->
+  <text x="70" y="92" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">axis 0（行）</text>
+  <text x="250" y="86" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">axis 1（列）</text>
+  <g font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" fill="#1f2933" text-anchor="middle">
+    <rect x="70" y="100" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="106" y="129">1</text>
+    <rect x="142" y="100" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="178" y="129">2</text>
+    <rect x="214" y="100" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="250" y="129">3</text>
+    <rect x="70" y="146" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="106" y="175">4</text>
+    <rect x="142" y="146" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="178" y="175">5</text>
+    <rect x="214" y="146" width="72" height="46" fill="#e3f0eb" stroke="#519a80"/><text x="250" y="175">6</text>
+  </g>
+  <text x="70" y="216" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#336b57">shape = (2, 3)</text>
+  <text x="70" y="234" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#336b57">stride = (3, 1)</text>
+
+  <!-- memory -->
+  <text x="430" y="92" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">连续内存（行优先）</text>
+  <g font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="14" fill="#1f2933" text-anchor="middle">
+    <rect x="430" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="456" y="129">1</text>
+    <rect x="482" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="508" y="129">2</text>
+    <rect x="534" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="560" y="129">3</text>
+    <rect x="586" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="612" y="129">4</text>
+    <rect x="638" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="664" y="129">5</text>
+    <rect x="690" y="100" width="52" height="46" fill="#e8eefc" stroke="#5b7fbd"/><text x="716" y="129">6</text>
+  </g>
+  <g font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#5b7fbd" text-anchor="middle">
+    <text x="456" y="166">offset 0</text><text x="508" y="166">1</text><text x="560" y="166">2</text>
+    <text x="612" y="166">3</text><text x="664" y="166">4</text><text x="716" y="166">5</text>
+  </g>
+
+  <!-- mapping arrow -->
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c98a3c"/>
+    </marker>
+  </defs>
+  <path d="M 292 123 C 340 123, 350 123, 426 123" fill="none" stroke="#c98a3c" stroke-width="1.5" marker-end="url(#a)"/>
+  <text x="352" y="112" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#c98a3c">按行展开</text>
+
+  <!-- formula -->
+  <text x="70" y="286" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#1f2933">元素 (i, j) 的偏移：offset = i × stride₀ + j × stride₁ = i × 3 + j</text>
+  <text x="70" y="308" font-family="Inter, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#52606d">同一个 shape 可以对应不同 stride；transpose 往往只改 stride，不一定搬动全部数据。</text>
+</svg>

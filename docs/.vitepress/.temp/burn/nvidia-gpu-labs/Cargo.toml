@@ -1,0 +1,13 @@
+[package]
+name = "burn-nvidia-gpu-labs"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.98"
+publish = false
+license = "Apache-2.0"
+
+# Keep the macro, compiler and runtime on the same upstream revision.
+[dependencies]
+cutile = { git = "https://github.com/NVIDIA/cuda-rust.git", rev = "fc747196f2d46dce41bd844e3f5b1c5882751f2b" }
+cuda-async = { git = "https://github.com/NVIDIA/cuda-rust.git", rev = "fc747196f2d46dce41bd844e3f5b1c5882751f2b" }
+cuda-core = { git = "https://github.com/NVIDIA/cuda-rust.git", rev = "fc747196f2d46dce41bd844e3f5b1c5882751f2b" }
