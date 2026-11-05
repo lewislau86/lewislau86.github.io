@@ -200,7 +200,7 @@ Pre-Norm 残差 Block 有一个很好用的性质：它从不覆盖 `x`，只往
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-TinyLLM 的 Block 采用 **Pre-Norm 残差结构**：`x = x + Attention(RMSNorm(x))`，再 `x = x + SwiGLU(RMSNorm(x))`。注意力带 RoPE，前馈层是无偏置的 SwiGLU，中间宽度约 $8d/3$。整个模型就是：词嵌入 → N 个这样的 Block → 最后一个 RMSNorm → 与嵌入共享权重的输出层。在本章的实验里（默认初始化、最多 8 层），只有它能随层数增加继续降低训练损失；能不能叠得更深、该怎么初始化，要看第 10、11 章和[第 23 章](./large-model-stability.md)。每个 Block 约 $12d^2$ 个参数。初始化细节见[第 10 章](./initialization-and-residuals.md)，归一化的选择见[第 11 章](./normalization.md)，完整模型在[第 12 章](./tinyllm-model.md)组装。[Pre-LN 梯度分析](https://arxiv.org/abs/2002.04745)
+TinyLLM 的 Block 采用 **Pre-Norm 残差结构**：`x = x + Attention(RMSNorm(x))`，再 `x = x + SwiGLU(RMSNorm(x))`。注意力带 RoPE，前馈层是无偏置的 SwiGLU，中间宽度约 $8d/3$。整个模型就是：词嵌入 → N 个这样的 Block → 最后一个 RMSNorm → 与嵌入共享权重的输出层。在本章的实验里（默认初始化、最多 8 层），只有它能随层数增加继续降低训练损失；能不能叠得更深、该怎么初始化，要看第 10、11 章和[第 24 章](./large-model-stability.md)。每个 Block 约 $12d^2$ 个参数。初始化细节见[第 10 章](./initialization-and-residuals.md)，归一化的选择见[第 11 章](./normalization.md)，完整模型在[第 12 章](./tinyllm-model.md)组装。[Pre-LN 梯度分析](https://arxiv.org/abs/2002.04745)
 
 ::: warning 常见误区
 - **残差不是可有可无的优化技巧。** 本章的实验里（PyTorch 默认初始化），残差和归一化都去掉，4 层以上的模型完全学不到东西；只留其中一样也不行。

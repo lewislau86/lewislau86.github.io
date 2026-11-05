@@ -1,5 +1,5 @@
 ---
-title: "第 26 章：推理效率：prefill、decode 与 KV cache（notebook 在线查看）"
+title: "第 27 章：推理效率：prefill、decode 与 KV cache（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 26 章：推理效率：prefill、decode 与 KV cache
+# 第 27 章：推理效率：prefill、decode 与 KV cache
 
 配套教案：https://lewislau86.github.io/tinyllm/inference-efficiency
 
@@ -223,7 +223,7 @@ print(f"同样一次前向：prefill 处理 {n_prefill} 个位置，decode 处�
 ```
 
 ```text
-提示词 10 个 token：prefill 一次 1.4 ms，之后每步 decode 1.2 ms
+提示词 10 个 token：prefill 一次 1.3 ms，之后每步 decode 1.2 ms
 同样一次前向：prefill 处理 10 个位置，decode 处理 1 个；摊到每个位置，decode 要贵 9 倍
 ```
 
@@ -436,7 +436,7 @@ H100 的 3.35 TB/s 是公布值；200 GB/s 是台式机内存的常见量级，�
 ::: v-pre
 Llama 3 8B 在 H100 上的上限是每秒 417 个 token，和实践中单请求 decode 的速度在同一量级。
 这项估算说明的是：**decode 的天花板由带宽决定，批处理之所以有效，就是因为一次读进权重可以同时伺候多个请求。**
-批量把这份读取代价摊薄，是[第 30 章](https://lewislau86.github.io/tinyllm/batching)的主题。
+批量把这份读取代价摊薄，是[第 31 章](https://lewislau86.github.io/tinyllm/batching)的主题。
 :::
 
 ::: v-pre
@@ -488,8 +488,8 @@ print("报两个数（中位数 + 最慢），是因为只看平均会被少数�
 ```text
 8 条请求，各生成 16 个字
 TTFT  中位 1.2 ms   最慢 1.7 ms
-TPOT  中位 1.4 ms   最慢 1.7 ms
-E2EL  中位 21.8 ms   最慢 27.3 ms
+TPOT  中位 1.3 ms   最慢 1.4 ms
+E2EL  中位 21.2 ms   最慢 22.7 ms
 报两个数（中位数 + 最慢），是因为只看平均会被少数慢请求带偏；生产上常报 P50 与 P99。
 ```
 
@@ -523,11 +523,11 @@ print(f"生成的 token 数 {sum(r['tokens'] for r in runs)}，输出吞吐 {sum
 
 ```text
 SLO 用这一批请求自己的分位数定出来，每一档的达标条数因此是固定的：
-  松（= 最慢的那条）       SLO  27.3 ms  达标 8/8 条  goodput 是吞吐的 100%
-  中（= 中位数）         SLO  21.6 ms  达标 4/8 条  goodput 是吞吐的 50%
-  紧（= 下四分位）        SLO  21.1 ms  达标 2/8 条  goodput 是吞吐的 25%
-吞吐（不看时延目标）44.5 请求/秒；goodput 依次是它的 100%、50%、25%——系统一个参数都没改，能用的部分变少了。
-生成的 token 数 128，输出吞吐 711 token/秒
+  松（= 最慢的那条）       SLO  22.7 ms  达标 8/8 条  goodput 是吞吐的 100%
+  中（= 中位数）         SLO  20.9 ms  达标 4/8 条  goodput 是吞吐的 50%
+  紧（= 下四分位）        SLO  20.5 ms  达标 2/8 条  goodput 是吞吐的 25%
+吞吐（不看时延目标）47.3 请求/秒；goodput 依次是它的 100%、50%、25%——系统一个参数都没改，能用的部分变少了。
+生成的 token 数 128，输出吞吐 757 token/秒
 ```
 
 ::: v-pre

@@ -26,7 +26,7 @@ pageClass: tinyllm-course
 2. **再读第 2、3 章，补两样背景。** [第 2 章](./tensors-and-autograd.md)备好工具：张量、形状和自动求导，后面每一章都要用；[第 3 章](./architecture-evolution.md)讲架构的来历：从翻译用的 Transformer，到只有解码器的 GPT，再到今天的稀疏混合架构，TinyLLM 的每个零件都能在这里找到出处。
 3. **然后顺着总图从上往下搭模型（第 4～9 章）。** 文字变编号、编号变向量、注意力让向量互相看见、前馈层各自加工，最后装进 Block。
 4. **把 Block 叠深，它会训不动；第 10～12 章修好它。** 残差、初始化、归一化三件工具让深层网络稳定，再组装出完整的 TinyLLM；第 13 章把同一份代码搬到 GPU 上放大训练。
-5. **之后是数据与训练（第 14～24 章），再到推理（第 25～32 章）、后训练（第 33～36 章）和应用（第 37 章）。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
+5. **之后是数据与训练（第 14～25 章），再到推理（第 26～33 章）、后训练（第 34～37 章）和应用（第 38 章）。** 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
 
 不要求现在就认识每个名词。遇到 MoE、μP 等，先知道它们是后续专题即可。
 
@@ -53,8 +53,8 @@ pageClass: tinyllm-course
 | [第 17 章 · 学习率策略](./learning-rate.md) | 学习率调度写成按优化器步调用的函数；代理模型上 17 次对照（3 个种子）：固定学习率扫描、加余弦反而变差、衰减要配更高峰值、WSD 与余弦、去掉 warmup；损失曲线的“下台阶”，与 batch 和宽度的关系 | [查看](/tinyllm/notebooks/learning-rate) |
 | [第 18 章 · 正则化与泛化](./regularization.md) | 只给 300 首诗让模型过拟合，29 次对照（3 个种子）：更多数据、提前停止、weight decay 的时间尺度 1/(lr·wd)、dropout 的三个位置与 train/eval 模式、label smoothing；用验证集挑、用测试集报；回到全部数据，同样的手段反而变差 | [查看](/tinyllm/notebooks/regularization) |
 | [第 19 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
-| [第 25 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
-| [第 26 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
+| [第 26 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
+| [第 27 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
 
 ## 课程路线 {#roadmap}
 
@@ -93,7 +93,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 
 ### 第五部分 · 数据与训练
 
-数据、目标函数、优化器、学习率、精度与训练诊断；最后把模型做大：大规模训练的稳定性与稀疏专家（MoE）。
+数据、目标函数、优化器、学习率、正则化、精度与训练诊断，再把这些超参数放在一起系统地调；最后把模型做大：大规模训练的稳定性与稀疏专家（MoE）。
 
 - [第 14 章 · 语料与数据管线](./data-pipeline.md)
 - [第 15 章 · 语言模型目标函数](./language-model-loss.md)
@@ -104,36 +104,37 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 20 章 · 梯度稳定与累积](./gradient-stability.md)（规划中）
 - [第 21 章 · 训练循环与检查点](./training-loop.md)（规划中）
 - [第 22 章 · 训练诊断与评估](./training-evaluation.md)（规划中）
-- [第 23 章 · 大规模训练稳定性](./large-model-stability.md)（规划中）
-- [第 24 章 · 稀疏专家（MoE）](./mixture-of-experts.md)（规划中）
+- [第 23 章 · 超参数与自动化调参](./hyperparameter-tuning.md)（规划中）
+- [第 24 章 · 大规模训练稳定性](./large-model-stability.md)（规划中）
+- [第 25 章 · 稀疏专家（MoE）](./mixture-of-experts.md)（规划中）
 
 ### 第六部分 · 推理
 
 模型训好以后怎样用、怎样用得省。前五章只看一个请求：每一步怎样选字，怎样不重算前文，注意力内核为什么快，怎样少搬字节，怎样少走几步。后三章处理很多请求同时来的情况：怎样排进同一批，显存里的 KV 怎样分配和复用，最后把各项优化逐一对照，并接上服务。
 
-- [第 25 章 · 自回归生成](./generation.md)
-- [第 26 章 · 推理效率：prefill、decode 与 KV cache](./inference-efficiency.md)
-- [第 27 章 · 注意力内核与算子融合](./attention-kernels.md)（规划中）
-- [第 28 章 · 量化](./quantization.md)（规划中）
-- [第 29 章 · 投机解码](./speculative-decoding.md)（规划中）
-- [第 30 章 · 批处理与调度](./batching.md)（规划中）
-- [第 31 章 · KV 显存管理：分页与前缀缓存](./kv-memory.md)（规划中）
-- [第 32 章 · 推理优化：逐项对照与推理服务](./inference-optimization.md)（规划中）
+- [第 26 章 · 自回归生成](./generation.md)
+- [第 27 章 · 推理效率：prefill、decode 与 KV cache](./inference-efficiency.md)
+- [第 28 章 · 注意力内核与算子融合](./attention-kernels.md)（规划中）
+- [第 29 章 · 量化](./quantization.md)（规划中）
+- [第 30 章 · 投机解码](./speculative-decoding.md)（规划中）
+- [第 31 章 · 批处理与调度](./batching.md)（规划中）
+- [第 32 章 · KV 显存管理：分页与前缀缓存](./kv-memory.md)（规划中）
+- [第 33 章 · 推理优化：逐项对照与推理服务](./inference-optimization.md)（规划中）
 
 ### 第七部分 · 后训练
 
 在预训练模型上继续训练：指令微调、参数高效微调，再用 RLHF、DPO、GRPO 让回答符合人的偏好、学会推理。
 
-- [第 33 章 · 指令微调](./instruction-finetuning.md)（规划中）
-- [第 34 章 · 参数高效微调（LoRA）](./lora-finetuning.md)（规划中）
-- [第 35 章 · RLHF：奖励模型与 PPO](./rlhf.md)（规划中）
-- [第 36 章 · DPO 与 GRPO](./preference-alignment.md)（规划中）
+- [第 34 章 · 指令微调](./instruction-finetuning.md)（规划中）
+- [第 35 章 · 参数高效微调（LoRA）](./lora-finetuning.md)（规划中）
+- [第 36 章 · RLHF：奖励模型与 PPO](./rlhf.md)（规划中）
+- [第 37 章 · DPO 与 GRPO](./preference-alignment.md)（规划中）
 
 ### 第八部分 · 应用
 
 模型参数不动，靠往上下文里放信息让它更有用。
 
-- [第 37 章 · Agent 记忆与检索](./agent-memory.md)（规划中）
+- [第 38 章 · Agent 记忆与检索](./agent-memory.md)（规划中）
 
 ## 贯穿全书的主线选择 {#mainline-choices}
 
@@ -155,7 +156,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [9 Transformer Block](./transformer-block.md) | 注意力和 SwiGLU 各有一次 Pre-RMSNorm 与残差加法 | 保留直接的残差梯度路径；复杂的额外归一化只在诊断有需求时加入。 |
 | [10 初始化与残差](./initialization-and-residuals.md) | 线性层先用 Xavier normal，嵌入用标准差 `1/√d` 的零均值正态；注意力输出和 FFN 输出投影再乘 `1/√(2L)`；采用 Pre-Norm 与两次残差相加 | 随机权重打破对称，较小的初始残差更新抑制深度累积；这是教学起点，仍需结合激活 RMS 与梯度诊断。 |
 | [11 归一化](./normalization.md) | 每个注意力/前馈子层前用 RMSNorm，末尾再用一次 RMSNorm | 控制每个 token 的尺度，计算较简洁；若注意力分数失控，再评估 QK Norm；极深 Post-Norm 结构另研究 DeepNorm。 |
-| [12 完整模型](./tinyllm-model.md) | 稠密 Decoder-only Transformer，最后 RMSNorm 接词表 logits | 先形成可训练、可生成的闭环；MoE 作为对照变体放在[第 24 章](./mixture-of-experts.md)。 |
+| [12 完整模型](./tinyllm-model.md) | 稠密 Decoder-only Transformer，最后 RMSNorm 接词表 logits | 先形成可训练、可生成的闭环；MoE 作为对照变体放在[第 25 章](./mixture-of-experts.md)。 |
 | [13 GPU 完整实现](./gpu-training.md) | 同一份模型代码只改配置，在 GPU 上用 BF16 autocast、SDPA 注意力和 AdamW 完整训练 | 先保证结果与 CPU 基线口径一致，再逐项打开 GPU 优化；每一项都要单独测吞吐和显存，不叠加后再归功于某一项。 |
 | [14 数据](./data-pipeline.md) | 逐条规则清洗，先归一化（繁转简）再去重，用字二元组重合度去近重复；按正文哈希固定划分，划分后再做泄漏检查；整个训练集预先分词、拼成用 `<eos>` 隔开的 token 流 | 哈希划分不随语料增减而变；不补齐、不浪费计算。长文档或多轮训练时再评估文档掩码与按轮打乱；混合比例取决于任务与语料质量。 |
 | [15 损失](./language-model-loss.md) | 下一个 token 的交叉熵，`F.cross_entropy` 直接吃原始 logits，按有效 token 数平均；`<eos>` 计入，`<pad>` 用 -100 屏蔽；梯度累积先求和、最后除以总有效 token 数；不用 label smoothing | 与自回归生成目标一致，分母不随 batch 切法变化；指令微调只算回答部分，模型放大、换低精度后再考虑 z-loss。 |
@@ -166,21 +167,22 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [20 梯度](./gradient-stability.md) | 记录梯度范数并按全局范数裁剪；需要大有效 batch 时做梯度累积 | 能定位并限制异常更新；裁剪阈值和累积步数不能脱离损失归一化设置。 |
 | [21 训练循环](./training-loop.md) | 固定种子，明确 `zero_grad → forward → backward → clip → step → scheduler`，保存完整检查点 | 便于复现和中断恢复；梯度累积时只在更新步裁剪、更新学习率。 |
 | [22 评估](./training-evaluation.md) | 先过拟合小 batch，再看独立验证集交叉熵/困惑度与生成样例 | 分开排查代码连通性、泛化和生成质量；比较困惑度需同一 tokenizer 与数据口径。 |
-| [23 大规模稳定性](./large-model-stability.md) | 保留基础 Pre-Norm 配置并监测尺度；扩深/扩宽出现问题时才评估 μP、DeepNorm 等整套方案 | 这些方法涉及初始化、结构和学习率的联动，不能只替换一个常数；多卡训练时再引入数据并行等分布式方案。 |
-| [24 MoE](./mixture-of-experts.md) | 主线保持稠密；MoE 作为对照变体，用相同数据和步数从头训练，并试稀疏升级 | 同样的计算量能放下更多参数，但要处理负载均衡与路由稳定；参数规模或推理成本成为瓶颈时再切换。 |
-| [25 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p，并固定种子 | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
-| [26 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |
-| [27 注意力内核](./attention-kernels.md) | 先写朴素注意力看清 N×N 分数表，再写分块 + online softmax 的版本，两者数值对齐 | 分块省下峰值内存、把读写留在片上；这是 FlashAttention 的核心，但真正的吞吐收益依赖 GPU 内核与编译器，CPU 上只验证等价性和内存账。 |
-| [28 量化](./quantization.md) | 训练沿用第 19 章的精度；部署受限时先做按通道或分组的 INT8 权重量化 | 压缩推理存储和带宽；每次量化都在同一验证集上比较困惑度与生成样例。 |
-| [29 投机解码](./speculative-decoding.md) | 贪心解码下用“起草 → 验证”一次接受多个 token，并要求输出与基线逐 token 一致 | 只在起草模型和目标模型接近时有效；接受率要实测，采样模式下必须用拒绝采样才不改变分布。 |
-| [30 批处理](./batching.md) | 主线先单请求；多个请求时用连续批处理按 token 步调度，并记录每个请求的等待时间 | 短请求不必等最长的那个；chunked prefill 能减少长提示词对其他请求的阻塞，代价是调度开销。 |
-| [31 KV 显存管理](./kv-memory.md) | 缓存按固定大小的块分配，用一张块表拼出逻辑序列；相同前缀的块共享 | 分页解决碎片与超配，前缀共享解决重复计算；两者都要淘汰策略，命中率必须按工作负载实测。 |
-| [32 推理优化](./inference-optimization.md) | 以第 26 章的 KV cache 为基线，逐项单独打开前面的优化并各测一次 | 每项都用同一组请求测首字延迟、每 token 延迟和吞吐；输出必须与基线一致（或在同一验证集上质量不降），几项叠加的提升不归给其中某一项。 |
-| [29 指令微调](./instruction-finetuning.md) | 在预训练模型上做 SFT，只对助手答案计算 loss | 让监督信号对应目标回答；模板和终止 token 必须与推理一致。 |
-| [30 LoRA](./lora-finetuning.md) | 小模型先全参数微调；显存受限时再用 LoRA | LoRA 节省可训练参数及优化器状态，不减少基础权重的推理存储。 |
-| [31 RLHF](./rlhf.md) | 在小任务上完整实现一遍：奖励模型 + PPO + KL 惩罚 | 理解偏好对齐的完整流程；四个模型、训练不稳，实际对齐方法见第 36 章。 |
-| [32 DPO 与 GRPO](./preference-alignment.md) | 在 SFT 模型上先用 DPO；有能自动判分的任务时再用 GRPO | DPO 不需要单独的奖励模型；对齐后同时检查目标任务和原有能力。 |
-| [33 Agent 记忆](./agent-memory.md) | 在模型外保存有来源和时间的文本事实，检索后放回上下文 | 参数和 KV cache 不会自动保存可更新的跨会话事实；按规模决定是否增加向量索引。 |
+| [23 调参](./hyperparameter-tuning.md) | 先用多个种子量出噪声底线，再按敏感度从高到低调：学习率对数网格粗扫，其余用随机搜索配合逐轮淘汰；候选共用 batch 计划，验证集挑、测试集报 | 预算集中在最敏感的超参数上；小于噪声底线的差别不算改进。代理模型上的具体数值不直接搬到大模型，只迁移规律，跨规模迁移见第 24 章。 |
+| [24 大规模稳定性](./large-model-stability.md) | 保留基础 Pre-Norm 配置并监测尺度；扩深/扩宽出现问题时才评估 μP、DeepNorm 等整套方案 | 这些方法涉及初始化、结构和学习率的联动，不能只替换一个常数；多卡训练时再引入数据并行等分布式方案。 |
+| [25 MoE](./mixture-of-experts.md) | 主线保持稠密；MoE 作为对照变体，用相同数据和步数从头训练，并试稀疏升级 | 同样的计算量能放下更多参数，但要处理负载均衡与路由稳定；参数规模或推理成本成为瓶颈时再切换。 |
+| [26 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p，并固定种子 | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
+| [27 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |
+| [28 注意力内核](./attention-kernels.md) | 先写朴素注意力看清 N×N 分数表，再写分块 + online softmax 的版本，两者数值对齐 | 分块省下峰值内存、把读写留在片上；这是 FlashAttention 的核心，但真正的吞吐收益依赖 GPU 内核与编译器，CPU 上只验证等价性和内存账。 |
+| [29 量化](./quantization.md) | 训练沿用第 19 章的精度；部署受限时先做按通道或分组的 INT8 权重量化 | 压缩推理存储和带宽；每次量化都在同一验证集上比较困惑度与生成样例。 |
+| [30 投机解码](./speculative-decoding.md) | 贪心解码下用“起草 → 验证”一次接受多个 token，并要求输出与基线逐 token 一致 | 只在起草模型和目标模型接近时有效；接受率要实测，采样模式下必须用拒绝采样才不改变分布。 |
+| [31 批处理](./batching.md) | 主线先单请求；多个请求时用连续批处理按 token 步调度，并记录每个请求的等待时间 | 短请求不必等最长的那个；chunked prefill 能减少长提示词对其他请求的阻塞，代价是调度开销。 |
+| [32 KV 显存管理](./kv-memory.md) | 缓存按固定大小的块分配，用一张块表拼出逻辑序列；相同前缀的块共享 | 分页解决碎片与超配，前缀共享解决重复计算；两者都要淘汰策略，命中率必须按工作负载实测。 |
+| [33 推理优化](./inference-optimization.md) | 以第 27 章的 KV cache 为基线，逐项单独打开前面的优化并各测一次 | 每项都用同一组请求测首字延迟、每 token 延迟和吞吐；输出必须与基线一致（或在同一验证集上质量不降），几项叠加的提升不归给其中某一项。 |
+| [34 指令微调](./instruction-finetuning.md) | 在预训练模型上做 SFT，只对助手答案计算 loss | 让监督信号对应目标回答；模板和终止 token 必须与推理一致。 |
+| [35 LoRA](./lora-finetuning.md) | 小模型先全参数微调；显存受限时再用 LoRA | LoRA 节省可训练参数及优化器状态，不减少基础权重的推理存储。 |
+| [36 RLHF](./rlhf.md) | 在小任务上完整实现一遍：奖励模型 + PPO + KL 惩罚 | 理解偏好对齐的完整流程；四个模型、训练不稳，实际对齐方法见第 37 章。 |
+| [37 DPO 与 GRPO](./preference-alignment.md) | 在 SFT 模型上先用 DPO；有能自动判分的任务时再用 GRPO | DPO 不需要单独的奖励模型；对齐后同时检查目标任务和原有能力。 |
+| [38 Agent 记忆](./agent-memory.md) | 在模型外保存有来源和时间的文本事实，检索后放回上下文 | 参数和 KV cache 不会自动保存可更新的跨会话事实；按规模决定是否增加向量索引。 |
 
 归一化、激活和位置编码的主线选择参考 [LLaMA](https://arxiv.org/abs/2302.13971) 与 [Llama 3](https://arxiv.org/abs/2407.21783) 的公开架构；门控前馈层见 [GLU 变体研究](https://arxiv.org/abs/2002.05202)，Pre-Norm 的初始化梯度分析见 [Xiong 等](https://arxiv.org/abs/2002.04745)。线性层的 Xavier 初始化见 [PyTorch 文档](https://docs.pytorch.org/docs/stable/nn.init.html)；残差投影按层数缩小借鉴 [nanoGPT 的具体实现](https://github.com/karpathy/nanoGPT/blob/master/model.py)，但这里从 Xavier 尺度出发，并非逐行复现 nanoGPT，更不是所有 LLM 共用的规则。GQA 的缓存权衡见 [GQA 论文](https://arxiv.org/abs/2305.13245)。
 

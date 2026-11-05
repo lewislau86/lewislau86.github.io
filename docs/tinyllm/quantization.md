@@ -1,10 +1,10 @@
 ---
-title: "第 28 章：量化"
+title: "第 29 章：量化"
 description: "用更少的比特存权重和 KV cache：对称与非对称量化、按通道与分组、INT8 与 INT4 的实际损失，以及激活里的离群值怎样处理。"
 pageClass: tinyllm-course
 ---
 
-# 第 28 章：量化
+# 第 29 章：量化
 
 [课程总览](./index.md) · [上一章](./attention-kernels.md) · [下一章](./speculative-decoding.md)
 
@@ -15,7 +15,7 @@ pageClass: tinyllm-course
 - **按什么单位量化。** 整个张量共用一个 $s$，还是每行一个（按通道），还是每 $g$ 个数一个（分组）；分组越小误差越低，但要多存更多缩放因子。
 - **权重压到 INT8 与 INT4。** 在训练好的 TinyLLM 上，分别量化嵌入表、注意力和前馈层的权重，比较验证集困惑度与生成样例；同时算出权重占用从多少字节变成多少字节。
 - **激活的离群值。** 权重好压缩，激活里少数特别大的值会撑坏整个量化范围；SmoothQuant 用一次等价变换把难度从激活搬到权重，只讲思路和它为什么等价。
-- **KV cache 量化。** 缓存同样可以按 token 分组量化，代价是注意力分数更粗糙；和[第 26 章](./inference-efficiency.md)的缓存字节数一起算。
+- **KV cache 量化。** 缓存同样可以按 token 分组量化，代价是注意力分数更粗糙；和[第 27 章](./inference-efficiency.md)的缓存字节数一起算。
 :::
 
 <TinyLLMMap active="quantization" />
