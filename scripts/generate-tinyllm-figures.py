@@ -2126,6 +2126,144 @@ def lm_loss_denominator():
         f"各自求和、最后除以总题数 {total}，结果和一起算完全相同。", 366, body)
 
 
+# ---------- 第 17 章：学习率策略 ----------
+
+def _lr_log():
+    src = DATA / "tinyllm-learning-rate-log.json"
+    if not src.exists():
+        print("skip learning-rate figures: run scripts/build-tinyllm-code.py learning-rate to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def lr_schedules():
+    """四种调度的形状（峰值 1e-2，数字来自 learning-rate.py）。"""
+    log = _lr_log()
+    if log is None:
+        return
+    styles = {"固定": (GRAY, "--"), "warmup+余弦": (BLUE, "-"), "WSD": (RED, "-"), "warmup+线性": (TEAL, "-")}
+    fig, ax = plt.subplots(figsize=(10, 4.0), layout="constrained")
+    for name, ys in log["schedules"].items():
+        color, ls = styles[name]
+        ax.plot(np.arange(len(ys)), np.array(ys) * 1e3, color=color, ls=ls, lw=2.4, label=name)
+    steps = log["steps"]
+    ax.axvspan(0, 30, color=ORANGE, alpha=0.08)
+    ax.text(15, 10.6, "warmup\n30 步", ha="center", color=ORANGE, fontsize=11)
+    ax.axvspan(steps * 0.8, steps, color=RED, alpha=0.06)
+    ax.text(steps * 0.9, 10.6, "WSD 的\n衰减段", ha="center", color=RED, fontsize=11)
+    ax.set_xlabel("优化器步数")
+    ax.set_ylabel("学习率（×0.001）")
+    ax.set_ylim(0, 12)
+    ax.set_xlim(0, steps)
+    ax.legend(loc="lower left", fontsize=11, ncol=2)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "lr-schedules.svg", "四种学习率调度的形状",
+              f"峰值都是 1e-2、共 {steps} 步：固定学习率是一条水平线；另外三种都先用 30 步从接近 0 线性升到峰值；"
+              "余弦随后平滑降到峰值的 10%，线性一路降到 0，WSD 保持峰值直到最后 20% 的步数才线性降到 0。")
+
+
+def lr_compare():
+    """左：固定学习率扫描（单种子）；右：各调度 3 个种子的平均与范围。"""
+    log = _lr_log()
+    if log is None:
+        return
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1.5]})
+    lrs = list(log["sweep"])
+    vals = [log["sweep"][k] for k in lrs]
+    xs = [float(k) for k in lrs]
+    a1.plot(xs, vals, color=GRAY, marker="o", ms=8, lw=2)
+    for x, v in zip(xs, vals):
+        a1.annotate(f"{v:.3f}", (x, v), textcoords="offset points", xytext=(0, 10), ha="center", fontsize=11)
+    a1.set_xscale("log")
+    a1.set_xticks(xs, ["1e-3", "3e-3", "1e-2"])
+    a1.set_xlabel("固定学习率")
+    a1.set_ylabel("最终验证损失")
+    a1.set_title("固定学习率：太小太大都不好（单种子）", fontsize=12.5)
+    a1.set_ylim(min(vals) - 0.1, max(vals) + 0.15)
+    a1.set_xlim(7e-4, 1.4e-2)
+    a1.grid(alpha=0.25)
+    rows = list(log["summary"].items())
+    colors = [GRAY, BLUE, BLUE, RED, ORANGE]
+    for i, ((name, finals), color) in enumerate(zip(rows, colors)):
+        m = sum(finals) / 3
+        a2.plot([min(finals), max(finals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+        a2.scatter(finals, [i] * 3, color=color, s=22, zorder=3)
+        a2.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+        a2.text(max(finals) + 0.012, i, f"{m:.3f}", va="center", fontsize=11, color=color)
+    a2.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=11)
+    a2.invert_yaxis()
+    a2.axvline(sum(rows[0][1]) / 3, color=GRAY, ls="--", lw=1.2)
+    a2.set_xlabel("最终验证损失（3 个种子；菱形是平均，横条是范围）")
+    a2.set_title("调度对照：衰减要配更高的峰值", fontsize=12.5)
+    a2.set_xlim(4.7, 5.08)
+    a2.grid(alpha=0.25, axis="x")
+    save_plot(fig, "lr-compare.svg", "固定学习率扫描与调度对照",
+              "左：固定学习率 1e-3、3e-3、1e-2 各训练一次，3e-3 最好，两边都更差。右：每种设置 3 个种子。"
+              f"在 3e-3 上加 warmup+余弦反而更差（{sum(rows[1][1]) / 3:.3f}）；峰值提到 1e-2 后余弦追平固定 3e-3（{sum(rows[2][1]) / 3:.3f} 对 {sum(rows[0][1]) / 3:.3f}），"
+              f"WSD 最好（{sum(rows[3][1]) / 3:.3f}），去掉 warmup 的 WSD 变差（{sum(rows[4][1]) / 3:.3f}）。")
+
+
+def lr_curves():
+    """种子 0 的验证损失曲线，下方是对应的学习率：WSD 在衰减段“下台阶”。"""
+    log = _lr_log()
+    if log is None:
+        return
+    c = log["curves"]
+    sched = log["schedules"]
+    picks = [("固定 3e-3", "constant|3e-03|0", GRAY, None), ("warmup+余弦，峰值 1e-2", "cosine|1e-02|0", BLUE, "warmup+余弦"),
+             ("WSD，峰值 1e-2", "wsd|1e-02|0", RED, "WSD")]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 5.6), layout="constrained", sharex=True, gridspec_kw={"height_ratios": [2.3, 1]})
+    steps = log["steps"]
+    for label, key, color, sname in picks:
+        a1.plot(c[key]["val_step"], c[key]["val"], color=color, lw=2.4, marker="o", ms=4.5, label=label)
+        lr = np.full(steps, 3e-3) if sname is None else np.array(sched[sname])
+        a2.plot(np.arange(steps), lr * 1e3, color=color, lw=2.2)
+    w = c["wsd|1e-02|0"]
+    a1.annotate(f"衰减段：{w['val'][-3]:.2f} → {w['val'][-1]:.2f}", xy=(w["val_step"][-1], w["val"][-1]),
+                xytext=(w["val_step"][-1] - 120, w["val"][-1] - 0.17), color=RED, fontsize=12,
+                arrowprops=dict(arrowstyle="->", color=RED, lw=1.3))
+    a1.set_ylabel("验证损失（种子 0）")
+    a1.set_ylim(4.5, 6.2)
+    a1.legend(fontsize=11, loc="upper right")
+    a1.grid(alpha=0.25)
+    a1.axvspan(steps * 0.8, steps, color=RED, alpha=0.06)
+    a2.axvspan(steps * 0.8, steps, color=RED, alpha=0.06)
+    a2.set_ylabel("学习率（×0.001）")
+    a2.set_xlabel("优化器步数")
+    a2.set_ylim(0, 11)
+    a2.grid(alpha=0.25)
+    save_plot(fig, "lr-curves.svg", "三种设置的验证损失曲线与学习率",
+              f"上：种子 0 的验证损失，每 30 步一次。WSD 在峰值 1e-2 保持时和余弦差不多，进入最后 20% 的衰减段后从 {w['val'][-3]:.2f} 降到 {w['val'][-1]:.2f}，"
+              "一下拉开差距；固定 3e-3 一直平稳下降。下：对应的学习率。")
+
+
+def lr_warmup():
+    """WSD 峰值 1e-2，有无 warmup 的训练损失（3 个种子平均，滑动平均）。"""
+    log = _lr_log()
+    if log is None:
+        return
+    c = log["curves"]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    k = 9
+    for label, kind, color in (("有 warmup（30 步）", "wsd", RED), ("无 warmup（第 1 步就用满 1e-2）", "wsd-no-warmup", ORANGE)):
+        runs = np.array([c[f"{kind}|1e-02|{s}"]["train"] for s in range(3)]).mean(0)
+        smooth = np.convolve(runs, np.ones(k) / k, mode="valid")
+        ax.plot(np.arange(len(smooth)) + k // 2, smooth, color=color, lw=2.4, label=label)
+        finals = [c[f"{kind}|1e-02|{s}"]["val"][-1] for s in range(3)]
+        ax.scatter([len(runs) + 6], [sum(finals) / 3], color=color, marker="D", s=70, zorder=4, clip_on=False)
+        ax.text(len(runs) + 12, sum(finals) / 3, f"验证 {sum(finals) / 3:.3f}", color=color, va="center", fontsize=11)
+    ax.annotate("前一百步左右：没有 warmup 的反而更低", xy=(60, 5.38), xytext=(75, 6.6), fontsize=12, color=ORANGE,
+                arrowprops=dict(arrowstyle="->", color=ORANGE, lw=1.3))
+    ax.set_xlabel("优化器步数")
+    ax.set_ylabel("训练损失（3 个种子平均，9 步滑动平均）")
+    ax.set_xlim(0, log["steps"] + 45)
+    ax.set_ylim(4.4, 7.6)
+    ax.legend(fontsize=11, loc="upper right")
+    ax.grid(alpha=0.25)
+    save_plot(fig, "lr-warmup.svg", "有无 warmup 的训练损失",
+              "峰值 1e-2 的 WSD：去掉 warmup 后，前一百步左右的训练损失反而更低；大约第 120 步两条线交叉，之后有 warmup 的一路领先，最终验证损失也更低（右侧菱形是 3 个种子的平均）。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2178,7 +2316,8 @@ def main():
                tinyllm_model_shapes, tinyllm_model_loss, sampling_truncate, sampling_difficulty, guided_decoding,
                kv_cache_size, latency_metrics, gpu_step_anatomy,
                data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage,
-               lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator):
+               lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator,
+               lr_schedules, lr_compare, lr_curves, lr_warmup):
         fn()
     print("figures written to", OUT)
 

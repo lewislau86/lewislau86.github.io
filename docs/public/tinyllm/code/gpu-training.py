@@ -298,11 +298,13 @@ step_model = torch.compile(model) if os.environ.get("TINYLLM_COMPILE") == "1" el
 def autocast():
     return torch.autocast(device_type="cuda", dtype=torch.bfloat16) if use_bf16 else contextlib.nullcontext()
 
+# region lr-at
 def lr_at(step):                                     # warmup + 余弦，第 17 章细讲
     if step < tc.warmup:
         return tc.lr * (step + 1) / tc.warmup
     progress = (step - tc.warmup) / max(1, tc.steps - tc.warmup)
     return tc.lr * (0.1 + 0.9 * 0.5 * (1 + math.cos(math.pi * progress)))
+# endregion lr-at
 # endregion setup
 print(f"参数量 {sum(p.numel() for p in model.parameters()):,}，编译：{'开' if step_model is not model else '关'}")
 

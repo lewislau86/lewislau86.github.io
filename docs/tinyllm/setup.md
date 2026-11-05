@@ -104,7 +104,7 @@ python -m pip install -r requirements.txt
 | 包 | 用在哪里 | 不装会怎样 |
 | --- | --- | --- |
 | `torch` | 所有章节 | 无法运行 |
-| `tokenizers` | 第 4、12～15、25、26 章：训练字节级 BPE | 这几章无法运行 |
+| `tokenizers` | 第 4、12～15、17、25、26 章：训练字节级 BPE | 这几章无法运行 |
 | `opencc-python-reimplemented` | 第 14 章：繁体转简体 | 第 14 章无法运行 |
 | `plotly` | 第 4、8、10、16 章的交互图表 | 这几章画图那一步报错 |
 | `jupyterlab` | 在本地打开 notebook | 不影响 `.py` 脚本，只是不能用 notebook |

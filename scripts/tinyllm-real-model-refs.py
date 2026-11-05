@@ -11,7 +11,8 @@
         src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation
     git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
         src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
-        src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data
+        src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
+        src/transformers/optimization.py
     python scripts/tinyllm-real-model-refs.py /tmp/tf
 """
 
@@ -112,6 +113,12 @@ SPEC = {
         ("分母放在哪", "loss/loss_utils.py", "fixed_cross_entropy", "传入 `num_items_in_batch` 时先按 `sum` 求和，再除以整个累积批次的有效题数，正是本章第 5 节“各自求和、最后除以总题数”的做法"),
         ("统计有效题数", "trainer.py", "Trainer._get_num_items_in_batch", "把梯度累积要用的全部 micro-batch 的标签（错位后）里不是 -100 的位置加起来，作为 `num_items_in_batch`；多卡时还会把各卡的数加总"),
         ("label smoothing", "trainer_pt_utils.py", "LabelSmoother", "`label_smoothing_factor` 不为 0 时启用：普通负对数似然和“对所有候选取平均”的那一项按 ε 混合"),
+    ]),
+    "learning-rate": ("transformers 的学习率调度都是“给步数、返回倍数”的函数，再包进 PyTorch 的 `LambdaLR`，和本章的写法一样：", [
+        ("warmup + 余弦", "optimization.py", "get_cosine_schedule_with_warmup", "先线性升到峰值，再按余弦降；默认一直降到 0，本章（和第 13 章的 `lr_at`）停在峰值的 10%"),
+        ("WSD", "optimization.py", "_get_wsd_scheduler_lambda", "warmup、保持、衰减三段；衰减段可选线性、余弦或 1-sqrt，并可设最低学习率比例 `min_lr_ratio`"),
+        ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
+        ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),
