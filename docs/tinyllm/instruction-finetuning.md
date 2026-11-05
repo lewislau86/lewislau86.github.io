@@ -1,10 +1,10 @@
 ---
-title: "第 29 章：指令微调"
+title: "第 33 章：指令微调"
 description: "在预训练模型上做监督微调：对话模板、只对答案计算 loss。"
 pageClass: tinyllm-course
 ---
 
-# 第 29 章：指令微调
+# 第 33 章：指令微调
 
 [课程总览](./index.md) · [上一章](./inference-optimization.md) · [下一章](./lora-finetuning.md)
 

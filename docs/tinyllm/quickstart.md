@@ -231,9 +231,9 @@ step 1000  训练损失 0.271  验证损失 8.784
 | 训练本身 | [第 16 章 · 优化器](./optimizers.md) → [第 21 章 · 训练循环](./training-loop.md) → [第 22 章 · 诊断与评估](./training-evaluation.md) | AdamW、学习率、检查点、早停 |
 | 过拟合与数据 | [第 14 章 · 语料与数据管线](./data-pipeline.md) → [第 18 章 · 正则化](./regularization.md) | 清洗去重、划分验证集、weight decay 与 dropout |
 | 模型越大越稳吗 | [第 23 章 · 大规模稳定性](./large-model-stability.md) → [第 24 章 · MoE](./mixture-of-experts.md) | μP、DeepNorm、稀疏专家 |
-| 训完怎么用 | [第 25 章 · 生成](./generation.md) → [第 26 章](./inference-efficiency.md) → [第 27 章](./quantization.md) | 温度与采样、KV cache、量化 |
-| 让它听话、会推理 | [第 29 章 · 指令微调](./instruction-finetuning.md) → [第 30 章 · LoRA](./lora-finetuning.md) → [第 32 章 · DPO 与 GRPO](./preference-alignment.md) | SFT、参数高效微调、偏好对齐 |
-| 给它接上外部记忆 | [第 33 章 · Agent 记忆与检索](./agent-memory.md) | 在模型外存事实、检索回上下文 |
+| 训完怎么用 | [第 25 章 · 生成](./generation.md) → [第 26 章 · 推理效率](./inference-efficiency.md) → [第 28 章 · 量化](./quantization.md) | 温度与采样、KV cache、量化 |
+| 让它听话、会推理 | [第 33 章 · 指令微调](./instruction-finetuning.md) → [第 34 章 · LoRA](./lora-finetuning.md) → [第 36 章 · DPO 与 GRPO](./preference-alignment.md) | SFT、参数高效微调、偏好对齐 |
+| 给它接上外部记忆 | [第 37 章 · Agent 记忆与检索](./agent-memory.md) | 在模型外存事实、检索回上下文 |
 
 想按顺序系统学，回到[课程总览](./index.md)看完整路线；也可以先读[第 1 章](./first-run.md)，它用同一套零件、更少的代码，把整条流水线再走一遍，配损失曲线和逐字生成动画。
 

@@ -1,10 +1,10 @@
 ---
-title: "第 33 章：Agent 记忆与检索"
+title: "第 37 章：Agent 记忆与检索"
 description: "Agent 怎样在模型之外保存、检索并送回跨会话的事实；与参数、上下文和 KV cache 的边界。"
 pageClass: tinyllm-course
 ---
 
-# 第 33 章：Agent 记忆与检索
+# 第 37 章：Agent 记忆与检索
 
 [课程总览](./index.md) · [上一章](./preference-alignment.md)
 

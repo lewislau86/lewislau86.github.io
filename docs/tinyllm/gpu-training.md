@@ -177,13 +177,13 @@ T4 不支持 BF16，脚本会自动关闭混合精度、用 FP32 训练，吞吐
 | --- | --- | --- | --- | --- |
 | ① | 数据准备 | 每步在 CPU 上切片，GPU 等着 | `DataLoader` 多进程预取、锁页内存、`non_blocking` 异步拷贝 | [第 14 章](./data-pipeline.md) |
 | ② | 主机到显存的拷贝 | 每步拷一次 batch | 整条 token 流一次性放进显存，直接在 GPU 上切片 | [第 14 章](./data-pipeline.md) |
-| ③ | 注意力内核 | `scaled_dot_product_attention`，由 PyTorch 自动选后端 | 确认走的是 FlashAttention 内核；长上下文时它决定显存和速度 | [第 26 章](./inference-efficiency.md) |
-| ④ | 逐元素小算子 | RMSNorm、RoPE、SiLU×乘各自一个内核，反复读写显存 | `torch.compile` 把它们融合成少数几个内核（`TINYLLM_COMPILE=1` 可以先试） | [第 28 章](./inference-optimization.md) |
+| ③ | 注意力内核 | `scaled_dot_product_attention`，由 PyTorch 自动选后端 | 确认走的是 FlashAttention 内核；长上下文时它决定显存和速度 | [第 27 章](./attention-kernels.md) |
+| ④ | 逐元素小算子 | RMSNorm、RoPE、SiLU×乘各自一个内核，反复读写显存 | `torch.compile` 把它们融合成少数几个内核（`TINYLLM_COMPILE=1` 可以先试） | [第 27 章](./attention-kernels.md) |
 | ⑤ | 激活显存 | 前向的中间结果全部保留到反向 | 激活重计算：反向时重算一部分，省下显存换更大的 `micro_batch` | [第 23 章](./large-model-stability.md) |
 | ⑥ | 优化器 | 已用 `fused=True` 的 AdamW | 显存紧张时换状态更小的优化器 | [第 16 章](./optimizers.md) |
 | ⑦ | CPU 与 GPU 的同步 | 每步 `loss.item()` 让 CPU 等 GPU 算完 | 日志每 N 步取一次，让 CPU 提前把下一步的命令发出去 | [第 21 章](./training-loop.md) |
 
-还有两类优化不在这张图里：一张卡放不下时的**多卡训练**（数据并行、FSDP，见[第 23 章](./large-model-stability.md)）；模型训好之后的**推理优化**（KV cache、CUDA Graph、连续批处理、投机解码，见[第 26 章](./inference-efficiency.md)和[第 28 章](./inference-optimization.md)）。尺寸上也有一个小讲究：宽度和词表取 64 的倍数（本章的 512、768、8192 都是），矩阵乘才能整齐地铺满张量核。
+还有两类优化不在这张图里：一张卡放不下时的**多卡训练**（数据并行、FSDP，见[第 23 章](./large-model-stability.md)）；模型训好之后的**推理优化**（KV cache 见[第 26 章](./inference-efficiency.md)，注意力内核见[第 27 章](./attention-kernels.md)，连续批处理见[第 30 章](./batching.md)，投机解码见[第 29 章](./speculative-decoding.md)，逐项对照见[第 32 章](./inference-optimization.md)）。尺寸上也有一个小讲究：宽度和词表取 64 的倍数（本章的 512、768、8192 都是），矩阵乘才能整齐地铺满张量核。
 
 这些优化各有一章，是因为它们都要回答同一个问题：**改了以后，结果还和原来一样吗、快了多少？** 所以本章刻意不叠加任何一项，先留下一条口径清楚的 GPU 基线。
 
