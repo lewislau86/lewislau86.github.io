@@ -1559,6 +1559,212 @@ def gpu_step_anatomy():
         "七个红色圆圈标出优化点：数据预取、减少拷贝、FlashAttention 内核、torch.compile 算子融合、激活重计算、融合优化器、减少 CPU 与 GPU 的同步。", 520, body)
 
 
+# ---------- 第 14 章：语料与数据管线 ----------
+
+def _pipeline_log():
+    src = DATA / "tinyllm-data-pipeline-log.json"
+    if not src.exists():
+        print("skip data-pipeline figures: run scripts/build-tinyllm-code.py data-pipeline to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def data_pipeline_funnel():
+    """原始样本走过清洗、繁转简、去重、划分，每一步还剩多少（数字来自 data-pipeline.py）。"""
+    log = _pipeline_log()
+    if log is None:
+        return
+    stages = log["funnel"]
+    notes = {"正文非空": "空记录", "没有缺字和校勘记号": "含 □ 或 [ ]", "只含常用汉字和，。": "生僻字、？！《》等",
+             "五言绝句或律诗": "七言、长篇、杂言", "繁转简后精确去重": "正文完全相同", "近重复去重": "重合度 ≥ 0.5"}
+    sections = {"没有缺字和校勘记号": "§2 清洗", "繁转简后精确去重": "§3 去重"}
+    body = text(480, 38, f"{stages[0][1]:,} 条原始记录，一步步走到训练集", 21, weight="bold")
+    x0, wmax, top, row = 270, 470, 70, 50
+    total = stages[0][1]
+    for i, (name, n) in enumerate(stages):
+        y = top + i * row
+        color = TEAL if i >= 5 else BLUE
+        w = max(4, wmax * n / total)
+        body += text(x0 - 14, y + 26, name, 15, anchor="end")
+        body += f'<rect x="{x0 + (wmax - w) / 2:.1f}" y="{y + 6}" width="{w:.1f}" height="28" rx="5" fill="{color}" opacity="0.85"/>'
+        body += text(x0 + wmax / 2, y + 26, f"{n:,}", 15, "#ffffff" if w > 60 else INK, "bold")
+        if i:
+            drop = stages[i - 1][1] - n
+            label = f"−{drop}：{notes[name]}" if drop else f"−0：{notes[name]}"
+            body += text(x0 + wmax + 16, y + 26, label, 13.5, GRAY, anchor="start")
+        if name in sections:
+            body += text(36, y + 26, sections[name], 13, ORANGE, "bold", anchor="start")
+    # 划分：一条堆叠条
+    y = top + len(stages) * row + 14
+    sp = log["split"]
+    n = sum(sp.values())
+    body += text(36, y + 26, "§4 划分", 13, ORANGE, "bold", anchor="start")
+    body += text(x0 - 14, y + 26, "按正文哈希划分", 15, anchor="end")
+    w_all = wmax * n / total
+    x = x0 + (wmax - w_all) / 2
+    for key, color, label in (("train", BLUE, "训练"), ("val", RED, "验证"), ("test", PURPLE, "测试")):
+        w = w_all * sp[key] / n
+        body += f'<rect x="{x:.1f}" y="{y + 6}" width="{w:.1f}" height="28" fill="{color}" opacity="0.85"/>'
+        x += w
+    body += text(x0 + wmax + 16, y + 26, f"训练 {sp['train']} · 验证 {sp['val']} · 测试 {sp['test']}", 13.5, GRAY, anchor="start")
+    y += 64
+    chips = ["§5 泄漏检查", "§7 拼成 token 流", "§8 切成 batch", "第 12 章的训练循环"]
+    cx = 120
+    for k, chip in enumerate(chips):
+        body += cbox(cx, y, 160, 38, TEAL if k < 3 else GRAY) + text(cx + 80, y + 25, chip, 14.5, TEAL if k < 3 else GRAY, "bold")
+        if k < 3:
+            body += arrow(cx + 162, y + 19, cx + 196, y + 19, TEAL, 2.5)
+        cx += 200
+    svg("data-pipeline-funnel.svg", "从原始记录到训练集的数据管线",
+        f"{total:,} 条《全唐诗》原始记录依次经过：正文非空、去掉含缺字或校勘记号的、只留常用汉字和逗号句号，剩 {stages[3][1]:,} 条；"
+        f"只留五言绝句和律诗后剩 {stages[4][1]} 首；繁转简后去掉完全相同的剩 {stages[5][1]} 首，再去掉近重复剩 {stages[6][1]} 首；"
+        f"按正文哈希划分为训练 {sp['train']}、验证 {sp['val']}、测试 {sp['test']}。之后是泄漏检查、拼成 token 流、切成 batch。",
+        y + 62, body)
+
+
+def data_pipeline_near_dup():
+    """“和最像的那首”的重合度分布：样本内部（去重用）和统一语料验证集对训练集（泄漏检查）。"""
+    log = _pipeline_log()
+    if log is None:
+        return
+    bins = np.linspace(0, 1, 21)
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.2), layout="constrained", sharey=True)
+    for ax, scores, title, color in (
+            (axes[0], log["best_scores"], f"原始样本：每首诗和前面最像的那首（{len(log['best_scores'])} 首）", BLUE),
+            (axes[1], log["val_scores"], f"统一语料：每首验证诗和训练集里最像的那首（{log['val_total']} 首）", TEAL)):
+        scores = np.array(scores)
+        ax.hist(scores[scores < 0.5], bins=bins, color=color, alpha=0.85, label="保留：不同的诗")
+        ax.hist(scores[scores >= 0.5], bins=bins, color=RED, alpha=0.85, label=f"重合度 ≥ 0.5：{int((scores >= 0.5).sum())} 首")
+        ax.axvline(0.5, color=ORANGE, ls="--", lw=1.6)
+        ax.set_yscale("log")
+        ax.set_title(title, fontsize=12.5)
+        ax.set_xlabel("重合度（共有的字二元组 ÷ 较短那首的二元组数）")
+        ax.legend(fontsize=11, loc="upper center")
+        ax.grid(alpha=0.25)
+    axes[0].set_ylabel("诗的首数（对数刻度）")
+    axes[0].text(0.52, 60, "阈值 0.5", color=ORANGE, fontsize=12)
+    save_plot(fig, "data-pipeline-near-dup.svg", "近重复的重合度分布",
+              "左：原始样本里每首诗和它前面最像的一首的重合度，绝大多数在 0.2 以下，另有一小簇在 0.7 到 1.0 之间，中间几乎是空的，阈值 0.5 落在空档里。"
+              f"右：统一语料 {log['val_total']} 首验证诗和训练集里最像的一首的重合度，同样是双峰，有 {log['leak_hits']} 首在 0.5 以上，是漏网的近重复。")
+
+
+def data_pipeline_leak():
+    """小训练集上三个评估集的损失：训练集、干净验证、近亲验证（3 个种子的平均与范围）。"""
+    log = _pipeline_log()
+    if log is None:
+        return
+    curves = log["leak_curves"]
+    every = log["leak_every"]
+    fig, ax = plt.subplots(figsize=(10, 4.6), layout="constrained")
+    styles = {"训练集": (BLUE, "训练集（模型在背的那 300 多首）"), "干净验证": (TEAL, "干净验证：和训练集毫无重合的 200 首"),
+              "近亲验证": (RED, f"近亲验证：在训练集里有近重复的 {log['leak_hits']} 首")}
+    for name, (color, label) in styles.items():
+        runs = np.array([curves[s][name] for s in curves])
+        x = np.arange(runs.shape[1]) * every
+        ax.fill_between(x, runs.min(0), runs.max(0), color=color, alpha=0.18, lw=0)
+        ax.plot(x, runs.mean(0), color=color, lw=2.4, marker="o", ms=3.5, label=label)
+    clean = np.array([curves[s]["干净验证"] for s in curves]).mean(0)
+    best = int(np.argmin(clean))
+    ax.annotate(f"干净验证最低 {clean[best]:.2f}（第 {best * every} 步）\n之后模型开始背诗", xy=(best * every, clean[best]),
+                xytext=(best * every + 15, clean[best] + 1.75), color=TEAL, fontsize=12, arrowprops=dict(arrowstyle="->", color=TEAL, lw=1.4))
+    dup = np.array([curves[s]["近亲验证"] for s in curves]).mean(0)
+    ax.annotate(f"近亲验证一路降到 {dup[-1]:.2f}：\n看起来“学会了”，其实是背过了", xy=(len(dup) * every - every, dup[-1]),
+                xytext=(len(dup) * every - 120, dup[-1] - 1.6), color=RED, fontsize=12, arrowprops=dict(arrowstyle="->", color=RED, lw=1.4))
+    ax.set_xlabel("训练步数（每步 16 段 × 64 个 token）")
+    ax.set_ylabel("交叉熵（nats / token）")
+    ax.set_ylim(0, 10)
+    ax.legend(loc="lower left", fontsize=11, framealpha=0.95)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "data-pipeline-leak.svg", "泄漏实验：干净验证与近亲验证的损失",
+              f"训练集损失一路降到约 {np.array([curves[s]['训练集'] for s in curves]).mean(0)[-1]:.2f}；干净验证在第 {best * every} 步左右见底（{clean[best]:.2f}）后回升到 {clean[-1]:.2f}，"
+              f"近亲验证却跟着训练集一路下降到 {dup[-1]:.2f}。阴影是 3 个种子的范围，很窄。")
+
+
+def data_pipeline_packing():
+    """三种组 batch 的办法：逐首补齐、按长度分桶、拼接成流（长度取自训练集前几首诗的真实 token 数）。"""
+    log = _pipeline_log()
+    if log is None:
+        return
+    lengths = log["lengths"]
+    at = 384                                                   # 训练集第 385～392 首：随手取的一段，绝句、律诗都有
+    sample = lengths[at:at + 8]
+    u = 6                                                      # 每个 token 画多宽
+    body = text(480, 36, "三种组 batch 的办法：灰色是浪费的 <pad>，红框是跨过诗边界的窗口", 21, weight="bold")
+
+    def rows(x0, y0, lens, title, waste, color):
+        out = text(x0, y0, title, 16, color, "bold", anchor="start")
+        out += text(x0, y0 + 22, f"整个训练集 32 首一批统计：{waste:.1%} 的位置是 <pad>", 13.5, GRAY, anchor="start")
+        for b, group in enumerate(lens):
+            m = max(group)
+            for r, n in enumerate(group):
+                y = y0 + 36 + b * (len(group) * 16 + 14) + r * 16
+                out += f'<rect x="{x0}" y="{y}" width="{n * u}" height="12" rx="2" fill="{color}" opacity="0.8"/>'
+                if m > n:
+                    out += f'<rect x="{x0 + n * u}" y="{y}" width="{(m - n) * u}" height="12" rx="2" fill="#cbd5e1"/>'
+        return out
+
+    random_groups = [sample[:4], sample[4:8]]
+    sorted_groups = [sorted(sample)[:4], sorted(sample)[4:]]
+    body += rows(40, 80, random_groups, "① 逐首补齐（按原顺序 4 首一批）", log["padding"]["random"], BLUE)
+    body += rows(510, 80, sorted_groups, "② 按长度分桶（先排序再分批）", log["padding"]["bucket"], TEAL)
+    # ③ 拼接成流
+    y = 300
+    body += text(40, y, "③ 拼接成流（第 12 章）：首尾相接，每首后面一个 <eos>，再切成等长窗口", 16, ORANGE, "bold", anchor="start")
+    x, unit = 40, 3.2
+    colors = [ORANGE, "#d97706"]
+    y += 18
+    stream = lengths[at:at + 9]
+    for i, n in enumerate(stream):
+        w = n * unit
+        if x + w > 920:
+            break
+        body += f'<rect x="{x:.1f}" y="{y}" width="{w - unit:.1f}" height="20" fill="{colors[i % 2]}" opacity="0.75"/>'
+        body += f'<rect x="{x + w - unit:.1f}" y="{y}" width="{unit:.1f}" height="20" fill="{INK}"/>'
+        x += w
+    end = x
+    for k, s in enumerate((10, 70, 135, 190)):
+        wx = 40 + s * unit
+        if wx + 64 * unit > end:
+            break
+        yy = y + 30 + k * 18
+        body += f'<rect x="{wx:.1f}" y="{yy}" width="{64 * unit:.1f}" height="12" rx="3" fill="none" stroke="{RED}" stroke-width="2"/>'
+    body += text(40, y + 118, "黑色细条是 <eos>。每个红框是一个 64-token 窗口，大多横跨两首诗：", 14, GRAY, anchor="start")
+    body += text(40, y + 140, "没有一个空位，但第 12 章的 batch 计划里 66% 的预测位置能“看到”上一首诗；想隔开就用文档掩码（§7）。", 14, GRAY, anchor="start")
+    svg("data-pipeline-packing.svg", "三种组 batch 的办法",
+        f"逐首补齐：每批按最长那首补齐，全训练集 32 首一批时 {log['padding']['random']:.1%} 的位置是 <pad>；"
+        f"按长度分桶：长度相近的放一批，浪费降到 {log['padding']['bucket']:.1%}；"
+        "拼接成流：所有诗首尾相接、用 <eos> 隔开，切成等长窗口，没有空位，但窗口会横跨两首诗。", y + 160, body)
+
+
+def data_pipeline_coverage():
+    """第 12 章的随机起点 vs 按轮打乱：训练流里每个 token 被当作预测目标的次数。"""
+    log = _pipeline_log()
+    if log is None:
+        return
+    cov = log["coverage"]
+    keys = [str(k) for k in range(7)]
+    labels = ["0", "1", "2", "3", "4", "5", "≥6"]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    x = np.arange(len(keys))
+    for off, name, color, label in ((-0.2, "random", BLUE, "随机起点（第 12 章）"), (0.2, "epoch", TEAL, "按轮打乱")):
+        counts = np.array([cov[name].get(k, 0) for k in keys], dtype=float)
+        share = counts / counts.sum()
+        ax.bar(x + off, share * 100, width=0.4, color=color, alpha=0.85, label=label)
+        for xi, v in zip(x + off, share):
+            if v > 0.005:
+                ax.text(xi, v * 100 + 1, f"{v:.0%}", ha="center", fontsize=11, color=color)
+    ax.set_xticks(x, labels)
+    ax.set_xlabel(f"训练流里一个 token 被当作预测目标的次数（300 步 × 32 个窗口 ≈ {cov['epochs']:.2f} 遍）")
+    ax.set_ylabel("占训练流的百分比")
+    ax.set_ylim(0, 82)
+    ax.legend(fontsize=11)
+    ax.grid(alpha=0.25, axis="y")
+    total_r = sum(cov["random"].values())
+    save_plot(fig, "data-pipeline-coverage.svg", "随机起点与按轮打乱的覆盖次数",
+              f"同样 {cov['epochs']:.2f} 遍的预算：随机起点下 {cov['random']['0'] / total_r:.1%} 的 token 一次也没被当作目标，"
+              "另有一部分被用了 6 次以上；按轮打乱时几乎每个 token 都恰好用了 2 次或 3 次。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -1608,7 +1814,8 @@ def main():
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,
                float_formats, float_spacing, autocast_flow, knowledge_sources, agent_loop, transformer_to_gpt, gpt_scale, modern_block, autograd_cost, vjp_matmul, attention_steps, multihead_shapes, attention_ablation,
                position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost,
-               tinyllm_model_shapes, tinyllm_model_loss, gpu_step_anatomy):
+               tinyllm_model_shapes, tinyllm_model_loss, gpu_step_anatomy,
+               data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage):
         fn()
     print("figures written to", OUT)
 

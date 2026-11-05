@@ -107,6 +107,10 @@
     "collapsed": false,
     "items": [
       {
+        "text": "第 14 章 · 语料与数据管线",
+        "link": "/tinyllm/data-pipeline"
+      },
+      {
         "text": "第 16 章 · 优化器",
         "link": "/tinyllm/optimizers"
       },
@@ -120,10 +124,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 14 章 · 语料与数据管线",
-        "link": "/tinyllm/data-pipeline"
-      },
       {
         "text": "第 15 章 · 语言模型目标函数",
         "link": "/tinyllm/language-model-loss"

@@ -47,6 +47,10 @@ python scripts/prepare-tinyllm-corpus.py
 
 脚本会下载固定版本的源数据（约 24 MB，缓存在 `.cache/`），繁体转简体、筛选、去重、排序、划分，结果逐字节可复现。
 
+## 原始样本（第 14 章）
+
+`poet.tang.0.json`、`poet.tang.1000.json`、`poet.tang.2000.json` 是 chinese-poetry 固定版本里《全唐诗》最前面的 3 个源文件，原样复制（共 3,002 条记录，繁体，未经任何处理），校验值见 `manifest.json` 的 `raw_sample`。第 14 章“语料与数据管线”用它们演示清洗、繁转简、去重和划分。
+
 ## 更大的语料
 
 第 13 章“TinyLLM 在 GPU 上完整实现”另用一份唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），太大不放进仓库，由 `scripts/prepare-tinyllm-large-corpus.py` 在本机生成，校验值见同目录的 `manifest-large.json`。

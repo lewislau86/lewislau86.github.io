@@ -12,6 +12,8 @@
      同一首诗的异文版本（首句、末句都相同，或与前 39 首有两句以上相同）只保留一份；
   4. 按正文的 SHA-256 固定划分：约 5% 验证集、5% 测试集，其余训练集。划分只看正文，
      和顺序无关，任取前 N 首，划分都一致。第 1 章的 39 首全部放在训练集。
+另外把《全唐诗》最前面 3 个源文件（poet.tang.0/1000/2000.json，共 3002 条）原样复制到同一目录，
+供第 14 章“语料与数据管线”演示清洗、去重和划分；校验值记在 manifest.json 的 raw_sample 里。
 
 依赖：pip install opencc-python-reimplemented（需要联网下载源数据，约 24 MB）。
 用法：python scripts/prepare-tinyllm-corpus.py
@@ -31,6 +33,7 @@ CACHE = ROOT / ".cache/chinese-poetry"
 COMMIT = "b8594f81a89752241442f2ce267d6f66f96704ee"
 RAW = f"https://raw.githubusercontent.com/chinese-poetry/chinese-poetry/{COMMIT}/"
 LINE = re.compile(r"^[一-鿿]{5}，[一-鿿]{5}。$")
+RAW_SAMPLE = [f"全唐诗/poet.tang.{i}.json" for i in (0, 1000, 2000)]   # 第 14 章用的原始样本，原样复制
 
 # 第 1 章的 39 首：用通行的教材版本（源数据里不少是异文、异体字，例如“床前看月光”“万迳人踪灭”）
 CLASSICS = """
@@ -131,14 +134,22 @@ def main() -> None:
     with OUT.open("w", encoding="utf-8", newline="\n") as f:
         for k, p in enumerate(ordered):
             f.write(json.dumps({"id": k, "split": split(p, k), **p}, ensure_ascii=False) + "\n")
+    raw_sample = {}
+    for path in RAW_SAMPLE:
+        fetch(path)
+        src = (CACHE / path.replace("/", "_")).read_bytes()
+        name = path.split("/")[-1]
+        (OUT.parent / name).write_bytes(src)
+        raw_sample[name] = {"bytes": len(src), "sha256": hashlib.sha256(src).hexdigest()}
     data = OUT.read_bytes()
-    rows = [json.loads(l) for l in data.decode("utf-8").splitlines()]
+    rows =[json.loads(l) for l in data.decode("utf-8").splitlines()]
     manifest = {
         "file": OUT.name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "poems": len(rows),
         "chars": sum(len(r["text"]) for r in rows),
         "splits": {s: sum(r["split"] == s for r in rows) for s in ("train", "val", "test")},
         "order": {"classics": len(classics), "tangshi300": len(head), "quantangshi": len(rest)},
         "source": {"repo": "https://github.com/chinese-poetry/chinese-poetry", "commit": COMMIT, "license": "MIT"},
+        "raw_sample": raw_sample,
     }
     (OUT.parent / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(manifest, ensure_ascii=False))

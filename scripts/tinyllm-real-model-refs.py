@@ -10,7 +10,8 @@
     cd /tmp/tf && git sparse-checkout set src/transformers/models/llama src/transformers/models/qwen2 \\
         src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation
     git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
-        src/transformers/modeling_rope_utils.py src/transformers/trainer.py
+        src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
+        src/transformers/trainer_pt_utils.py src/transformers/data
     python scripts/tinyllm-real-model-refs.py /tmp/tf
 """
 
@@ -99,6 +100,12 @@ SPEC = {
         ("混合精度的上下文", "trainer.py", "Trainer.compute_loss_context_manager", "把 autocast 套在前向外面，对应本章的 `autocast()`"),
         ("梯度裁剪", "trainer.py", "Trainer._clip_grad_norm", "按全局范数裁剪，和本章 `clip_grad_norm_(…, 1.0)` 相同"),
         ("保存检查点", "trainer.py", "Trainer._save_checkpoint", "模型、优化器、调度器、随机数状态和步数一起存，比本章多存了调度器和随机数状态（第 21 章）"),
+    ]),
+    "data-pipeline": ("transformers 不管清洗和去重（那是 datasets 等数据工具的事），但从样本到 batch 的几步都在这里：", [
+        ("补齐与损失掩码", "data/data_collator.py", "DataCollatorForLanguageModeling", "`mlm=False` 时就是因果语言模型：一批样本补齐到同样长度，`<pad>` 位置的标签设成 -100，不计入损失"),
+        ("不补齐、直接拼接", "data/data_collator.py", "DataCollatorWithFlattening", "把一批序列拼成一条，不加 `<pad>`；每条序列的 `position_ids` 从 0 重新数，再配合注意力内核的边界参数，效果就是本章的文档掩码"),
+        ("按长度分桶", "trainer_pt_utils.py", "get_length_grouped_indices", "先随机打乱，再在几十个 batch 组成的“大批”里按长度排序：长度相近的落进同一个 batch，又保留了随机性"),
+        ("多进程预取与锁页内存", "trainer.py", "Trainer._get_dataloader", "`num_workers`、`pin_memory`、`prefetch_factor` 原样交给 PyTorch 的 `DataLoader`，对应本章第 9 节的 GPU 做法"),
     ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),

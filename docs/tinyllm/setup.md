@@ -82,7 +82,7 @@ tinyllm-code/
 ├── requirements.txt     依赖清单
 ├── code/                每章一个 .py，例如 first-run.py
 ├── notebooks/           每章一个 .ipynb，已保存运行结果
-└── data/                统一唐诗语料 tang-poems.jsonl 及说明
+└── data/                统一唐诗语料 tang-poems.jsonl、第 14 章用的原始样本及说明
 ```
 
 用 git 的话，只把代码所在的目录取下来，不用下载整个网站：
@@ -104,11 +104,12 @@ python -m pip install -r requirements.txt
 | 包 | 用在哪里 | 不装会怎样 |
 | --- | --- | --- |
 | `torch` | 所有章节 | 无法运行 |
-| `tokenizers` | 第 4、12、13 章：训练字节级 BPE | 这几章无法运行 |
+| `tokenizers` | 第 4、12、13、14 章：训练字节级 BPE | 这几章无法运行 |
+| `opencc-python-reimplemented` | 第 14 章：繁体转简体 | 第 14 章无法运行 |
 | `plotly` | 第 4、8、10、16 章的交互图表 | 这几章画图那一步报错 |
 | `jupyterlab` | 在本地打开 notebook | 不影响 `.py` 脚本，只是不能用 notebook |
 
-本站最近一次完整运行用的是 Python 3.10.12、torch 2.14.1、tokenizers 0.23.3、plotly 7.1.0。版本更新一些通常没问题；个别随机结果的末几位可能和正文不同。
+本站最近一次完整运行用的是 Python 3.10.12、torch 2.14.1、tokenizers 0.23.3、opencc-python-reimplemented 0.1.7、plotly 7.1.0。版本更新一些通常没问题；个别随机结果的末几位可能和正文不同。
 
 ## 4. 验证：跑一下第 1 章
 
@@ -152,6 +153,7 @@ PyTorch 2.14.1+cpu
 | 第 2～8 章的小例子 | “我 在 学习”等，写在脚本里 |
 | 第 4 章 | 训练 BPE 的几段示例文本，写在脚本里 |
 | 第 12 章起 | 统一语料的更大子集，按 `split` 字段区分训练集和验证集 |
+| 第 14 章 · 语料与数据管线 | 另用《全唐诗》最前面 3 个原始源文件（`poet.tang.0.json`、`poet.tang.1000.json`、`poet.tang.2000.json`，共 3,002 条、约 1.3 MB），和 chinese-poetry 固定版本逐字节相同，放在整包的 `data/` 里，找不到时脚本从网站下载并核对校验值 |
 | 第 13 章 · TinyLLM 在 GPU 上完整实现 | 唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），在本机用 `scripts/prepare-tinyllm-large-corpus.py` 生成并自动核对校验值，见[该页](./gpu-training.md#corpora) |
 
 为什么前几章只用 39 首？那几章的实验比的是结构（有没有注意力、位置、残差），每个模型只训练几百步。在本站构建用的 2 核 CPU 上，把语料从 39 首换成 600 首，同样 600 步的训练时间只从约 23 秒增加到约 40 秒（主要是词表从 556 个字变成约 2,500 个字）；但几百步对 600 首诗来说太少，模型还只学到常用字的频率，结构之间的差别反而看不出来。语料一大，要多训练很多步才能看出“学会了”，这正是第 12 章开始的完整训练要做的事。

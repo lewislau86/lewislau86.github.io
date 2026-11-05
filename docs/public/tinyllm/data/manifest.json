@@ -18,5 +18,19 @@
     "repo": "https://github.com/chinese-poetry/chinese-poetry",
     "commit": "b8594f81a89752241442f2ce267d6f66f96704ee",
     "license": "MIT"
+  },
+  "raw_sample": {
+    "poet.tang.0.json": {
+      "bytes": 408405,
+      "sha256": "4f88f429938082523cdc72a1612bd7a7c3e3f7a33f8192c61ae51340efc3c92d"
+    },
+    "poet.tang.1000.json": {
+      "bytes": 477519,
+      "sha256": "6e703b8d8dcedbd6110f6d48d043665ca2131db2035a5bfcef5e59a19aeb6d75"
+    },
+    "poet.tang.2000.json": {
+      "bytes": 417948,
+      "sha256": "ec28efa7e2ae9cdbbba09f0ed186e32ccae47a325ad1e5816b7ad56071c1665a"
+    }
   }
 }
