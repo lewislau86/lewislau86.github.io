@@ -63,11 +63,24 @@ ARTIFACTS = {
 os.environ.setdefault("TINYLLM_DATA", str(ROOT / "docs/public/tinyllm/data/tang-poems.jsonl"))
 
 
+# 检查时用这段代码启动章节脚本：把 Plotly 的 show() 换成空操作，再按 __main__ 运行脚本。
+# 命令行下 fig.show() 默认会打开浏览器；改用 PLOTLY_RENDERER="json" 也不行，新版 Plotly 的 json 渲染器要求装 IPython。
+RUN_WITHOUT_SHOW = """
+import runpy, sys
+try:
+    import plotly.io
+    plotly.io.show = lambda *args, **kwargs: None
+except ImportError:
+    pass
+runpy.run_path(sys.argv[1], run_name="__main__")
+"""
+
+
 def run_script(path: Path, workdir: Path) -> None:
     print(f"[run] {path.name}")
-    # 脚本里的 fig.show() 在命令行下默认会打开浏览器；检查时改成只输出 JSON，不阻塞、不弹窗
-    env = dict(os.environ, PLOTLY_RENDERER="json", MPLBACKEND="Agg")
-    result = subprocess.run([sys.executable, str(path)], cwd=workdir, capture_output=True, text=True, encoding="utf-8", env=env)
+    env = dict(os.environ, MPLBACKEND="Agg")
+    result = subprocess.run([sys.executable, "-c", RUN_WITHOUT_SHOW, str(path)], cwd=workdir,
+                            capture_output=True, text=True, encoding="utf-8", env=env)
     if result.returncode != 0:
         print(result.stdout[-2000:])
         print(result.stderr[-4000:])
