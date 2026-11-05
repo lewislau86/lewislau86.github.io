@@ -48,6 +48,7 @@ pageClass: tinyllm-course
 | [第 12 章 · 完整 TinyLLM](./tinyllm-model.md) | 把 BPE、RoPE、SwiGLU、Pre-RMSNorm、初始化与权重共享装成一个模型；先估后数参数量、三项体检；固定数据划分、batch 计划与验证口径，训练出后半本书的基线 | [查看](/tinyllm/notebooks/tinyllm-model) |
 | [第 13 章 · TinyLLM 在 GPU 上完整实现](./gpu-training.md) | 模型代码不变，换配置和训练循环：显存估算、BF16、梯度累积、学习率调度、检查点；点出 GPU 上的七个优化点 | [查看](/tinyllm/notebooks/gpu-training) |
 | [第 14 章 · 语料与数据管线](./data-pipeline.md) | 跟着一首诗从原始记录走到 batch：清洗漏斗、先繁转简再去重、字二元组重合度找近重复、按哈希划分；在统一语料上查出 36 首漏网的近亲并做泄漏实验；补齐、分桶与拼接成流，batch 计划的覆盖率，喂数据的速度 | [查看](/tinyllm/notebooks/data-pipeline) |
+| [第 15 章 · 语言模型目标函数](./language-model-loss.md) | 拆开第 12 章的验证损失 5.579：错位出题、整首诗的概率与下溢、log-sum-exp、nats/比特/困惑度的换算；padding 与梯度累积的分母、`<eos>` 的监督；按题型拆损失、可靠性图，label smoothing 与 z-loss | [查看](/tinyllm/notebooks/language-model-loss) |
 | [第 16 章 · 优化器](./optimizers.md) | SGD、Momentum、Adam、AdamW、Adafactor；参数组与优化器状态 | [查看](/tinyllm/notebooks/optimizers) |
 | [第 19 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
 | [第 25 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
@@ -93,7 +94,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 数据、目标函数、优化器、学习率、精度与训练诊断；最后把模型做大：大规模训练的稳定性与稀疏专家（MoE）。
 
 - [第 14 章 · 语料与数据管线](./data-pipeline.md)
-- [第 15 章 · 语言模型目标函数](./language-model-loss.md)（规划中）
+- [第 15 章 · 语言模型目标函数](./language-model-loss.md)
 - [第 16 章 · 优化器](./optimizers.md)
 - [第 17 章 · 学习率策略](./learning-rate.md)（规划中）
 - [第 18 章 · 正则化与泛化](./regularization.md)（规划中）
@@ -155,7 +156,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [12 完整模型](./tinyllm-model.md) | 稠密 Decoder-only Transformer，最后 RMSNorm 接词表 logits | 先形成可训练、可生成的闭环；MoE 作为对照变体放在[第 24 章](./mixture-of-experts.md)。 |
 | [13 GPU 完整实现](./gpu-training.md) | 同一份模型代码只改配置，在 GPU 上用 BF16 autocast、SDPA 注意力和 AdamW 完整训练 | 先保证结果与 CPU 基线口径一致，再逐项打开 GPU 优化；每一项都要单独测吞吐和显存，不叠加后再归功于某一项。 |
 | [14 数据](./data-pipeline.md) | 逐条规则清洗，先归一化（繁转简）再去重，用字二元组重合度去近重复；按正文哈希固定划分，划分后再做泄漏检查；整个训练集预先分词、拼成用 `<eos>` 隔开的 token 流 | 哈希划分不随语料增减而变；不补齐、不浪费计算。长文档或多轮训练时再评估文档掩码与按轮打乱；混合比例取决于任务与语料质量。 |
-| [15 损失](./language-model-loss.md) | 下一个 token 的交叉熵，只统计有效目标 token | 与自回归生成目标一致；有 padding 或 SFT 模板时显式掩码。 |
+| [15 损失](./language-model-loss.md) | 下一个 token 的交叉熵，`F.cross_entropy` 直接吃原始 logits，按有效 token 数平均；`<eos>` 计入，`<pad>` 用 -100 屏蔽；梯度累积先求和、最后除以总有效 token 数；不用 label smoothing | 与自回归生成目标一致，分母不随 batch 切法变化；指令微调只算回答部分，模型放大、换低精度后再考虑 z-loss。 |
 | [16 优化器](./optimizers.md) | AdamW；对归一化权重及偏置关闭 weight decay | 自适应更新适合基线，衰减与梯度惩罚分离；状态内存不足再比较 Adafactor 等。 |
 | [17 学习率](./learning-rate.md) | 按优化器 step 短暂 warmup，随后 cosine decay | 降低初期大更新的风险，后期平滑降低步长；峰值和 warmup 长度依预算调参。 |
 | [18 正则化](./regularization.md) | AdamW 的适度 weight decay；先不加 label smoothing，dropout 从 0 起测 | 先用验证集判断过拟合，再决定是否增加 dropout；低数据量下不能照搬大规模预训练设置。 |

@@ -55,6 +55,7 @@ ARTIFACTS = {
     ("tinyllm-model", "tinyllm_model_log.json"): ROOT / "scripts/data/tinyllm-model-log.json",
     ("data-pipeline", "data_pipeline_log.json"): ROOT / "scripts/data/tinyllm-data-pipeline-log.json",
     ("generation", "sampling.json"): ROOT / "scripts/data/tinyllm-sampling.json",
+    ("language-model-loss", "language_model_loss.json"): ROOT / "scripts/data/tinyllm-language-model-loss.json",
 }
 
 

@@ -1966,6 +1966,166 @@ def data_pipeline_coverage():
               "另有一部分被用了 6 次以上；按轮打乱时几乎每个 token 都恰好用了 2 次或 3 次。")
 
 
+# ---------- 第 15 章：语言模型目标函数 ----------
+
+def _loss_log():
+    src = DATA / "tinyllm-language-model-loss.json"
+    if not src.exists():
+        print("skip language-model-loss figures: run scripts/build-tinyllm-code.py language-model-loss to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def lm_loss_poem():
+    """一首验证诗逐字的 -log p：标点几乎为 0，句首最难（数字来自 language-model-loss.py）。"""
+    log = _loss_log()
+    if log is None:
+        return
+    chars = log["chars"]
+    labels = [t for t, _ in chars]
+    vals = np.array([v for _, v in chars])
+    colors = []
+    prev = "<eos>"
+    for t, _ in chars:
+        if t in ("，", "。"):
+            colors.append(TEAL)
+        elif t == "<eos>":
+            colors.append(GRAY)
+        elif prev in ("，", "。", "<eos>"):
+            colors.append(ORANGE)
+        else:
+            colors.append(BLUE)
+        prev = t
+    fig, ax = plt.subplots(figsize=(11, 4.4), layout="constrained")
+    ax.bar(np.arange(len(vals)), np.maximum(vals, 0.12), color=colors, width=0.78)   # 接近 0 的柱子留一条细线，看得见
+    ax.set_xticks(np.arange(len(vals)), labels, fontsize=10.5)
+    ax.set_xlim(-0.7, len(vals) - 0.3)
+    ax.text(len(vals) - 0.5, 13.0, f"全诗合计 {vals.sum():.1f} nats；48 个 token，平均每个 {vals.sum() / 48:.2f}", color=RED, fontsize=12, ha="right")
+    ax.set_ylabel("−ln p(正确答案)（nats）")
+    from matplotlib.patches import Patch
+    ax.legend(handles=[Patch(color=ORANGE, label="句首的字"), Patch(color=BLUE, label="句中的字"),
+                       Patch(color=TEAL, label="标点"), Patch(color=GRAY, label="<eos>")],
+              loc="upper center", ncol=4, fontsize=11, framealpha=0.95, bbox_to_anchor=(0.5, 1.13))
+    ax.set_ylim(0, 13.8)
+    ax.grid(alpha=0.25, axis="y")
+    save_plot(fig, "lm-loss-poem.svg", "一首验证诗逐字的损失",
+              f"第一首验证诗“{log['poem'][:5]}……”的 {len(vals)} 个字（含结束符），每根柱子是模型给正确的字打的 −ln p；"
+              f"逗号、句号和结束符几乎是 0，字都在 4 到 10 之间，句首的字普遍更高；全诗合计 {vals.sum():.1f} nats。")
+
+
+def lm_loss_units():
+    """同一个验证损失的几种读法：nats、比特、每字比特、困惑度。"""
+    log = _loss_log()
+    if log is None:
+        return
+    u = log["units"]
+    nats, per_char, V = u["nats"], u["per_char"], u["vocab"]
+    bits = nats / np.log(2)
+    bpc = per_char / np.log(2)
+    body = text(480, 38, f"一个数，四种读法：第 12 章基线的验证损失 {nats:.3f}", 21, weight="bold")
+    body += cbox(340, 70, 280, 74, BLUE) + text(480, 102, f"{nats:.3f} nats / token", 22, BLUE, "bold")
+    body += text(480, 128, f"{u['tokens']:,} 道题的 −ln p 取平均", 14, GRAY)
+    items = [
+        (40, ORANGE, f"{bits:.2f} 比特 / token", "÷ ln 2：换成以 2 为底", "每个 token 平均要几个“是/否”问题"),
+        (360, TEAL, f"困惑度 {np.exp(nats):.0f}", f"e^{nats:.3f}", f"像在 {np.exp(nats):.0f} 个候选里均匀乱猜"),
+        (680, PURPLE, f"{bpc:.2f} 比特 / 字", "× 每字 0.954 个 token，再 ÷ ln 2", "换了分词器也能比较"),
+    ]
+    for x, color, head, how, mean in items:
+        body += arrow(480, 146, x + 120, 214, color, 2.5)
+        body += cbox(x, 218, 240, 96, color) + text(x + 120, 252, head, 19, color, "bold")
+        body += text(x + 120, 278, how, 13.5, GRAY) + text(x + 120, 300, mean, 13.5, INK)
+    body += box(40, 342, 880, 64, "#ffffff", "#e2e8f0")
+    body += text(480, 368, f"对照：均匀乱猜 {V} 个 token 是 ln {V} = {np.log(V):.3f} nats，困惑度 {V}；完美预测是 0 nats，困惑度 1", 15, INK)
+    body += text(480, 392, f"困惑度是“正确答案概率”的几何平均的倒数：几何平均 {np.exp(-nats):.4f}，算术平均却有 0.18", 14, GRAY)
+    svg("lm-loss-units.svg", "验证损失的几种读法",
+        f"{nats:.3f} nats/token 除以 ln2 是 {bits:.2f} 比特/token；取 e 的指数是困惑度 {np.exp(nats):.0f}，相当于在 {np.exp(nats):.0f} 个候选里均匀乱猜；"
+        f"乘以每字的 token 数再除以 ln2 是 {bpc:.2f} 比特/字。对照：均匀乱猜 {V} 个 token 的损失是 {np.log(V):.3f}。", 430, body)
+
+
+def lm_loss_breakdown():
+    """四类题目：占题目的比例 vs 占总损失的比例。"""
+    log = _loss_log()
+    if log is None:
+        return
+    rows = log["breakdown"]
+    colors = [TEAL, GRAY, ORANGE, BLUE]
+    fig, ax = plt.subplots(figsize=(10, 3.4), layout="constrained")
+    for y, idx, title in ((1, 1, "占题目的比例"), (0, 3, "占总损失的比例")):
+        left = 0.0
+        for (name, share, mean, lshare), color in zip(rows, colors):
+            v = share if idx == 1 else lshare
+            ax.barh(y, v * 100, left=left * 100, color=color, height=0.55, label=f"{name}（平均 {mean:.2f}）" if y == 1 else None)
+            if v > 0.06:
+                ax.text((left + v / 2) * 100, y, f"{v:.0%}", ha="center", va="center", color="white", fontsize=12, fontweight="bold")
+            left += v
+    ax.set_yticks([0, 1], ["占总损失", "占题目数"])
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("百分比")
+    ax.legend(loc="upper center", ncol=4, fontsize=11, bbox_to_anchor=(0.5, 1.32), framealpha=0.95)
+    save_plot(fig, "lm-loss-breakdown.svg", "四类题目占题目数与占总损失的比例",
+              f"标点占题目的 {rows[0][1]:.0%}，却只占总损失的 {rows[0][3]:.1%}；句首的字占题目的 {rows[2][1]:.0%}、占损失的 {rows[2][3]:.0%}；"
+              f"句中的字占题目的 {rows[3][1]:.0%}、占损失的 {rows[3][3]:.0%}。平均损失主要由“字”决定。")
+
+
+def lm_loss_calibration():
+    """可靠性图：模型最有把握的答案的概率 vs 实际猜中的比例。"""
+    log = _loss_log()
+    if log is None:
+        return
+    rows = np.array(log["calibration"])                      # lo, n, conf, acc
+    fig, ax = plt.subplots(figsize=(7.2, 5.4), layout="constrained")
+    ax.plot([0, 1], [0, 1], color=GRAY, ls="--", lw=1.4, label="完美校准：说多少就中多少")
+    sizes = 30 + 220 * np.sqrt(rows[:, 1] / rows[:, 1].max())
+    ax.scatter(rows[:, 2], rows[:, 3], s=sizes, color=BLUE, alpha=0.85, zorder=3, label="基线模型（点越大，题越多）")
+    ax.plot(rows[:, 2], rows[:, 3], color=BLUE, lw=1.6, alpha=0.6)
+    for lo, n, c, a in rows:
+        ax.annotate(f"{int(n)}", (c, a), textcoords="offset points", xytext=(8, -14), fontsize=10, color=GRAY)
+    mid = rows[5]
+    ax.annotate(f"说 {mid[2]:.2f}，只中 {mid[3]:.2f}", (mid[2], mid[3]), xytext=(0.55, 0.12), color=RED, fontsize=12,
+                arrowprops=dict(arrowstyle="->", color=RED, lw=1.3))
+    ax.set_xlabel("模型对最有把握的那个答案给的概率（分组平均）")
+    ax.set_ylabel("实际猜中的比例")
+    ax.set_xlim(0, 1.02)
+    ax.set_ylim(0, 1.02)
+    ax.legend(loc="upper left", fontsize=11)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "lm-loss-calibration.svg", "基线模型的可靠性图",
+              f"两端贴着对角线：把握不到 0.1 的九千多道题和把握 0.9 以上的两千道题（多是标点）都很准；中间几组落在对角线下方，"
+              f"例如平均把握 {mid[2]:.2f} 的一组只猜中 {mid[3]:.2f}，模型在这些题上过于自信。按题数加权的平均偏差 {log['ece']:.3f}。")
+
+
+def lm_loss_denominator():
+    """梯度累积时分母放在哪：各自平均再平均 vs 各自求和再除总数（真题数来自 language-model-loss.py）。"""
+    log = _loss_log()
+    if log is None:
+        return
+    acc = log["accumulation"][1]
+    counts, weights = acc["counts"], acc["weights"]
+    total = sum(counts)
+    body = text(480, 38, f"同样 8 首诗、{total} 道真题，分成 4 个 micro-batch 累积梯度：分母放在哪？", 20, weight="bold")
+    x0, unit = 60, 3.2
+    for i, c in enumerate(counts):
+        y = 76 + i * 44
+        body += text(x0, y + 22, f"micro-batch {i + 1}", 14, GRAY, anchor="start")
+        body += f'<rect x="{x0 + 110}" y="{y + 6}" width="{c * unit:.1f}" height="24" rx="4" fill="{BLUE}" opacity="0.8"/>'
+        body += text(x0 + 118 + c * unit, y + 24, f"{c} 道", 14, INK, anchor="start")
+    # 右侧两种做法
+    rx = 560
+    body += cbox(rx, 70, 370, 92, RED) + text(rx + 185, 98, "有偏：各自平均，再除以 4", 17, RED, "bold")
+    body += text(rx + 185, 122, "每道题的权重 = 1 ÷ (4 × 本组题数)", 14, INK)
+    body += text(rx + 185, 146, "权重是一起算时的 " + " / ".join(f"{w:.2f}" for w in weights) + " 倍", 13.5, GRAY)
+    body += cbox(rx, 176, 370, 92, TEAL) + text(rx + 185, 204, "正确：各自求和，最后除以总题数", 17, TEAL, "bold")
+    body += text(rx + 185, 228, f"每道题的权重 = 1 ÷ {total}", 14, INK)
+    body += text(rx + 185, 252, "和 8 首一起算的梯度完全相同", 13.5, GRAY)
+    body += box(40, 286, 880, 60, "#ffffff", "#e2e8f0")
+    body += text(480, 312, f"按长度排序后分组，短诗那两组的题被放大到 {max(weights):.2f} 倍，长诗那两组缩到 {min(weights):.2f} 倍；", 15, INK)
+    body += text(480, 334, f"梯度方向和一起算时的余弦相似度只有 {acc['cos']:.3f}。题数相同的分组（原顺序）就没有这个问题。", 15, INK)
+    svg("lm-loss-denominator.svg", "梯度累积时分母放在哪",
+        f"8 首诗按长度排序后分成 4 个 micro-batch，真题数分别为 {', '.join(map(str, counts))}。各自平均再除以 4 时，"
+        f"短诗组每道题的权重放大到 {max(weights):.2f} 倍，长诗组缩小到 {min(weights):.2f} 倍，梯度方向的余弦相似度只有 {acc['cos']:.3f}；"
+        f"各自求和、最后除以总题数 {total}，结果和一起算完全相同。", 366, body)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2017,7 +2177,8 @@ def main():
                position_methods, sinusoidal_heatmap, rope_rotation, position_ablation, block_anatomy, block_depth, architecture_timeline, architecture_cost,
                tinyllm_model_shapes, tinyllm_model_loss, sampling_truncate, sampling_difficulty, guided_decoding,
                kv_cache_size, latency_metrics, gpu_step_anatomy,
-               data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage):
+               data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage,
+               lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator):
         fn()
     print("figures written to", OUT)
 

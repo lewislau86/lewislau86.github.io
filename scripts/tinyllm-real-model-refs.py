@@ -11,7 +11,7 @@
         src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation
     git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
         src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
-        src/transformers/trainer_pt_utils.py src/transformers/data
+        src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data
     python scripts/tinyllm-real-model-refs.py /tmp/tf
 """
 
@@ -107,6 +107,12 @@ SPEC = {
         ("按长度分桶", "trainer_pt_utils.py", "get_length_grouped_indices", "先随机打乱，再在几十个 batch 组成的“大批”里按长度排序：长度相近的落进同一个 batch，又保留了随机性"),
         ("多进程预取与锁页内存", "trainer.py", "Trainer._get_dataloader", "`num_workers`、`pin_memory`、`prefetch_factor` 原样交给 PyTorch 的 `DataLoader`，对应本章第 9 节的 GPU 做法"),
     ]),
+    "language-model-loss": ("transformers 里因果语言模型的损失只有几十行，本章讲的错位、忽略位置和分母都在里面：", [
+        ("错位与忽略位置", "loss/loss_utils.py", "ForCausalLMLoss", "先 `logits.float()` 转成 FP32；把 `labels` 末尾补一个 -100 再整体左移一位，就是本章第 1 节的错位；-100 的位置不算损失"),
+        ("分母放在哪", "loss/loss_utils.py", "fixed_cross_entropy", "传入 `num_items_in_batch` 时先按 `sum` 求和，再除以整个累积批次的有效题数，正是本章第 5 节“各自求和、最后除以总题数”的做法"),
+        ("统计有效题数", "trainer.py", "Trainer._get_num_items_in_batch", "把梯度累积要用的全部 micro-batch 的标签（错位后）里不是 -100 的位置加起来，作为 `num_items_in_batch`；多卡时还会把各卡的数加总"),
+        ("label smoothing", "trainer_pt_utils.py", "LabelSmoother", "`label_smoothing_factor` 不为 0 时启用：普通负对数似然和“对所有候选取平均”的那一项按 ε 混合"),
+    ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),
         ("哪些参数不做权重衰减", "trainer.py", "Trainer.get_decay_parameter_names", "名字里带 `bias`、`norm` 的参数不衰减，和本章 AdamW 一节的参数分组一致"),
@@ -175,6 +181,7 @@ def main() -> None:
     base = Path(sys.argv[1])
     for slug in SPEC:
         md = DOCS / f"{slug}.md"
+        newline = "\r\n" if b"\r\n" in md.read_bytes() else "\n"   # 保持原文件的换行风格，避免 Windows 上整篇文件都显示为改动
         text = md.read_text(encoding="utf-8")
         block = section(slug, base)
         if START in text:
@@ -183,7 +190,7 @@ def main() -> None:
             # 放在本章结论之前；规划中的章节还没有结论，就放在检查理解之前
             anchor = text.index("\n## 本章结论") if "\n## 本章结论" in text else text.index("\n## 检查理解")
             text = text[:anchor] + "\n" + block + "\n" + text[anchor:]
-        md.write_text(text, encoding="utf-8")
+        md.write_text(text, encoding="utf-8", newline=newline)
         print(f"[real-model] {md.relative_to(ROOT)}")
 
 

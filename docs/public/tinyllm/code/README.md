@@ -18,6 +18,7 @@
 | 第 12 章 完整 TinyLLM | [tinyllm-model.py](tinyllm-model.py) | [打开](https://lewislau86.github.io/tinyllm/tinyllm-model) |
 | 第 13 章 TinyLLM 在 GPU 上完整实现 | [gpu-training.py](gpu-training.py) | [打开](https://lewislau86.github.io/tinyllm/gpu-training) |
 | 第 14 章 语料与数据管线 | [data-pipeline.py](data-pipeline.py) | [打开](https://lewislau86.github.io/tinyllm/data-pipeline) |
+| 第 15 章 语言模型目标函数 | [language-model-loss.py](language-model-loss.py) | [打开](https://lewislau86.github.io/tinyllm/language-model-loss) |
 | 第 16 章 优化器 | [optimizers.py](optimizers.py) | [打开](https://lewislau86.github.io/tinyllm/optimizers) |
 | 第 19 章 数值精度与混合精度 | [precision.py](precision.py) | [打开](https://lewislau86.github.io/tinyllm/precision) |
 | 第 25 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |

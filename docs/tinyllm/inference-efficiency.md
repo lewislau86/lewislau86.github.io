@@ -197,6 +197,8 @@ chunked prefill 的收益是**别的请求不必等这一次长前向做完**；
 2. **GQA 省多少缓存。** 把 `H`（KV 头数）改成 1，其余不变，按第 5 节的公式算上下文 64 时的缓存大小，和原来比一比。注意模型的 Q 头数没有变，所以这需要改注意力里 K、V 的投影宽度，不是只改一个常数。
 3. **SLO 与并发。** 现在的 8 条请求是串行跑的。把 batch 改成一次 4 条（一次前向处理 4 个请求），吞吐会涨、TPOT 也会涨。在什么 SLO 下，加 batch 仍然划算？
 
+<!-- real-model:start -->
+
 ## 在真实模型里
 
 KV cache 在真实代码里由缓存类管理，注意力每一层把新的 K、V 交给它。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
@@ -208,6 +210,8 @@ KV cache 在真实代码里由缓存类管理，注意力每一层把新的 K、
 | 追加到末尾 | [`DynamicLayer.update`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cache_utils.py#L118-L137) | `torch.cat([self.keys, key_states], dim=-2)`：沿序列维拼接，和本章逐步缓存的写法一样 |
 
 想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
