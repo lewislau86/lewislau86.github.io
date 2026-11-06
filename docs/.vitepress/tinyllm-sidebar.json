@@ -215,8 +215,8 @@
         "link": "/tinyllm/preference-alignment"
       },
       {
-        "text": "第 38 章 · Agent 记忆与检索",
-        "link": "/tinyllm/agent-memory"
+        "text": "第 38 章 · LLM 和 Agent 的交互",
+        "link": "/tinyllm/llm-agent-interaction"
       }
     ]
   }

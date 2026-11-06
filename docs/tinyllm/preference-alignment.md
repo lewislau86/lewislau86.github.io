@@ -6,7 +6,7 @@ pageClass: tinyllm-course
 
 # 第 37 章：DPO 与 GRPO
 
-[课程总览](./index.md) · [上一章](./rlhf.md) · [下一章](./agent-memory.md)
+[课程总览](./index.md) · [上一章](./rlhf.md) · [下一章](./llm-agent-interaction.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。预计覆盖：从 RLHF 的目标推出 DPO：为什么可以跳过奖励模型和 PPO，直接用成对偏好训练；GRPO：同一个问题采样一组回答、组内比较打分，省掉价值模型；可验证奖励（算术题答案对不对、代码能不能通过测试）与推理模型；三种方法在同一任务上的效果、显存和稳定性对比。

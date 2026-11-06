@@ -140,7 +140,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 
 模型参数不动，靠往上下文里放信息让它更有用。
 
-- [第 38 章 · Agent 记忆与检索](./agent-memory.md)（规划中）
+- [第 38 章 · LLM 和 Agent 的交互](./llm-agent-interaction.md)（规划中）
 
 ## 贯穿全书的主线选择 {#mainline-choices}
 
@@ -188,7 +188,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [35 LoRA](./lora-finetuning.md) | 小模型先全参数微调；显存受限时再用 LoRA | LoRA 节省可训练参数及优化器状态，不减少基础权重的推理存储。 |
 | [36 RLHF](./rlhf.md) | 在小任务上完整实现一遍：奖励模型 + PPO + KL 惩罚 | 理解偏好对齐的完整流程；四个模型、训练不稳，实际对齐方法见第 37 章。 |
 | [37 DPO 与 GRPO](./preference-alignment.md) | 在 SFT 模型上先用 DPO；有能自动判分的任务时再用 GRPO | DPO 不需要单独的奖励模型；对齐后同时检查目标任务和原有能力。 |
-| [38 Agent 记忆](./agent-memory.md) | 在模型外保存有来源和时间的文本事实，检索后放回上下文 | 参数和 KV cache 不会自动保存可更新的跨会话事实；按规模决定是否增加向量索引。 |
+| [38 LLM 与 Agent](./llm-agent-interaction.md) | 只通过文本消息交互：与 SFT 相同的对话模板渲染四种角色，工具调用写成一行 JSON，解析或校验失败把错误送回模型，循环设步数上限；跨会话事实带来源和时间存在模型外，检索后放回上下文 | 调工具、记事情的能力来自 Agent 和模型约定的格式；小模型能否稳定按格式调用要实测，不稳时加约束解码。参数和 KV cache 不保存可更新的跨会话事实，按规模决定是否加向量索引。 |
 
 归一化、激活和位置编码的主线选择参考 [LLaMA](https://arxiv.org/abs/2302.13971) 与 [Llama 3](https://arxiv.org/abs/2407.21783) 的公开架构；门控前馈层见 [GLU 变体研究](https://arxiv.org/abs/2002.05202)，Pre-Norm 的初始化梯度分析见 [Xiong 等](https://arxiv.org/abs/2002.04745)。线性层的 Xavier 初始化见 [PyTorch 文档](https://docs.pytorch.org/docs/stable/nn.init.html)；残差投影按层数缩小借鉴 [nanoGPT 的具体实现](https://github.com/karpathy/nanoGPT/blob/master/model.py)，但这里从 Xavier 尺度出发，并非逐行复现 nanoGPT，更不是所有 LLM 共用的规则。GQA 的缓存权衡见 [GQA 论文](https://arxiv.org/abs/2305.13245)。
 

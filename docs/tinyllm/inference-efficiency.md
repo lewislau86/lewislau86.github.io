@@ -219,7 +219,7 @@ TinyLLM 的推理分两段看：**prefill** 和 **decode**。逐 token 生成时
 
 本章固定下来的几件事：缓存字节数用 $2 \times$ 层数 $\times$ token 数 $\times$ KV 头数 $\times$ 每头维度 $\times$ 每元素字节 估，再乘并发数；注意力用 PyTorch 的缩放点积注意力接口，让框架去选高效内核（[第 28 章](./attention-kernels.md)讲它省了什么）；长提示词分块送入，并验证分块与一次算完逐元素一致。
 
-这些选择在什么情况下要换：上下文和并发变大时，缓存会成为显存瓶颈，那时要靠 GQA、KV 量化（[第 29 章](./quantization.md)）或分页管理（[第 32 章](./kv-memory.md)）；请求变多时要靠批处理摊薄权重读取（[第 31 章](./batching.md)）。缓存始终只存**本次推理的计算结果**，不是替 Agent 保存用户事实的长期记忆，后者见[第 38 章](./agent-memory.md)。
+这些选择在什么情况下要换：上下文和并发变大时，缓存会成为显存瓶颈，那时要靠 GQA、KV 量化（[第 29 章](./quantization.md)）或分页管理（[第 32 章](./kv-memory.md)）；请求变多时要靠批处理摊薄权重读取（[第 31 章](./batching.md)）。缓存始终只存**本次推理的计算结果**，不是替 Agent 保存用户事实的长期记忆，后者见[第 38 章](./llm-agent-interaction.md#external-memory)。
 
 ::: warning 常见误区
 - **KV cache 存了注意力权重。** 缓存只有各层各头的 K 和 V。权重取决于新来的 Q，每步都要重算。

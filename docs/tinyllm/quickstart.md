@@ -233,7 +233,7 @@ step 1000  训练损失 0.271  验证损失 8.784
 | 模型越大越稳吗 | [第 24 章 · 大规模稳定性](./large-model-stability.md) → [第 25 章 · MoE](./mixture-of-experts.md) | μP、DeepNorm、稀疏专家 |
 | 训完怎么用 | [第 26 章 · 生成](./generation.md) → [第 27 章 · 推理效率](./inference-efficiency.md) → [第 29 章 · 量化](./quantization.md) | 温度与采样、KV cache、量化 |
 | 让它听话、会推理 | [第 34 章 · 指令微调](./instruction-finetuning.md) → [第 35 章 · LoRA](./lora-finetuning.md) → [第 37 章 · DPO 与 GRPO](./preference-alignment.md) | SFT、参数高效微调、偏好对齐 |
-| 给它接上外部记忆 | [第 38 章 · Agent 记忆与检索](./agent-memory.md) | 在模型外存事实、检索回上下文 |
+| 让它调用工具、记住事情 | [第 38 章 · LLM 和 Agent 的交互](./llm-agent-interaction.md) | 对话模板、工具调用、Agent 循环、外部记忆 |
 
 想按顺序系统学，回到[课程总览](./index.md)看完整路线；也可以先读[第 1 章](./first-run.md)，它用同一套零件、更少的代码，把整条流水线再走一遍，配损失曲线和逐字生成动画。
 
