@@ -13,7 +13,11 @@
         src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
         src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
         src/transformers/optimization.py src/transformers/training_args.py src/transformers/trainer_callback.py
-    python scripts/tinyllm-real-model-refs.py /tmp/tf
+    python scripts/tinyllm-real-model-refs.py --check /tmp/tf   # 只检查每个名字找不找得到，不写文件
+    python scripts/tinyllm-real-model-refs.py /tmp/tf           # 生成；找不到的条目跳过，最后汇总报告
+
+找不到的条目不会中断整个脚本：其余条目照常生成，结束时列出全部问题并以状态码 1 退出。
+已经有“在真实模型里”一节的章节，如果这次有条目找不到，保留原来的一节，不用残缺的版本覆盖。
 """
 
 from pathlib import Path
@@ -120,6 +124,16 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "hyperparameter-tuning": ("transformers 的 Trainer 自带一个超参数搜索的入口，具体的搜索算法交给 Optuna、Ray Tune 等后端：", [
+        ("搜索入口", "trainer.py", "Trainer.hyperparameter_search", "每个 trial 用 `model_init` 重新造一个模型，按 `direction` 取验证指标的最小或最大；算法（TPE、随机、ASHA 等）由所选的后端决定"),
+        ("默认的搜索空间", "trainer_utils.py", "default_hp_space_optuna", "看一下默认都搜哪些量、范围多大；如果随机种子也在里面，挑出来的可能只是一次好运气（本章第 7 节）"),
+    ]),
+    "training-evaluation": ("本章埋的几个 bug，在 transformers 里分别由下面这几处代码防住；评估也有固定的入口：", [
+        ("标签错位", "loss/loss_utils.py", "ForCausalLMLoss", "把 `labels` 整体左移一位再算交叉熵；调用者只要传 `labels=input_ids`，错位由这里完成，避免了“标签没错位”"),
+        ("因果掩码", LLAMA, ("grep", r"create_causal_mask\("), "Llama 在主干的前向里构造因果掩码，再交给每一层注意力；本章“漏了因果掩码”就是少了这一步"),
+        ("评估入口", "trainer.py", "Trainer.evaluate", "在验证集上跑一遍，返回 `eval_loss` 等指标；`Trainer` 不替你算困惑度，常见的做法是自己取 `exp(eval_loss)`"),
+        ("评估循环", "trainer.py", "Trainer.evaluation_loop", "切到评估模式、关掉梯度，逐个 batch 收集损失和预测，再汇总成一个平均数"),
+    ]),
     "training-loop": ("transformers 的 Trainer 存检查点、续训的做法和本章是同一套思路，只是拆成了几个文件：", [
         ("保存检查点", "trainer.py", "Trainer._save_checkpoint", "模型、优化器、调度器、随机数状态和训练进度分别存成几个文件，放在同一个 `checkpoint-<步数>` 目录里"),
         ("训练进度", "trainer_callback.py", "TrainerState", "`global_step`、`epoch`、日志历史等，存成 `trainer_state.json`，对应本章的 `progress`"),
@@ -170,49 +184,76 @@ SPEC = {
 }
 
 
+class Missing(Exception):
+    """SPEC 里的某个文件或名字在源码里找不到。"""
+
+
 def locate(src: Path, target):
     """返回 (起始行, 结束行)。target 是“类名”“类名.方法名”“函数名”，或 ("grep", 正则) 取单行。"""
+    if not src.exists():
+        raise Missing(f"文件不存在：{src}（检查 sparse-checkout 是否包含它）")
     text = src.read_text(encoding="utf-8")
     if isinstance(target, tuple):
         for i, line in enumerate(text.splitlines(), 1):
             if re.search(target[1], line):
                 return i, i
-        raise SystemExit(f"{src}: 找不到 {target[1]}")
+        raise Missing(f"{src.name} 里找不到正则 {target[1]}")
     parts = target.split(".")
     nodes = ast.parse(text).body
     node = None
     for part in parts:
         node = next((n for n in nodes if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == part), None)
         if node is None:
-            raise SystemExit(f"{src}: 找不到 {target}")
+            raise Missing(f"{src.name} 里找不到 {target}")
         nodes = node.body
     return node.lineno, node.end_lineno
 
 
-def section(slug: str, base: Path) -> str:
+def section(slug: str, base: Path, problems: list) -> str | None:
+    """生成一章的“在真实模型里”。找不到的条目记进 problems 并跳过；一条都没找到时返回 None。"""
     intro, rows = SPEC[slug]
     out = [START, "", "## 在真实模型里", "",
            f"{intro.rstrip('：')}。下表的链接都指向 Hugging Face transformers 的固定版本 `{TAG}`，精确到行。"
            "读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。", "",
            "| 本章的零件 | 真实代码 | 对照要点 |", "| --- | --- | --- |"]
+    found = 0
     for what, file, target, note in rows:
-        start, end = locate(base / "src/transformers" / file, target)
+        try:
+            start, end = locate(base / "src/transformers" / file, target)
+        except Missing as e:
+            problems.append((slug, what, str(e)))
+            continue
+        found += 1
         name = target if isinstance(target, str) else f"{Path(file).name} 第 {start} 行"
         anchor = f"#L{start}" if start == end else f"#L{start}-L{end}"
         out.append(f"| {what} | [`{name}`]({BLOB}{file}{anchor}) | {note} |")
+    if found == 0:
+        return None
     out += ["", "想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。", "", END]
     return "\n".join(out)
 
 
 def main() -> None:
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    check = "--check" in args
+    args = [a for a in args if a != "--check"]
+    if len(args) != 1:
         raise SystemExit(__doc__)
-    base = Path(sys.argv[1])
+    base = Path(args[0])
+    problems = []
     for slug in SPEC:
         md = DOCS / f"{slug}.md"
+        before = len(problems)
+        block = section(slug, base, problems)
+        status = f"{len(SPEC[slug][1]) - (len(problems) - before)}/{len(SPEC[slug][1])} 条找到"
+        if check or block is None:
+            print(f"[{'check' if check else 'skip'}] {slug}: {status}")
+            continue
         newline = "\r\n" if b"\r\n" in md.read_bytes() else "\n"   # 保持原文件的换行风格，避免 Windows 上整篇文件都显示为改动
         text = md.read_text(encoding="utf-8")
-        block = section(slug, base)
+        if START in text and len(problems) > before:              # 已经有一节，这次又不完整：保留原样，不拿残缺的覆盖
+            print(f"[keep] {slug}: {status}，保留已有的一节")
+            continue
         if START in text:
             text = text[: text.index(START)] + block + text[text.index(END) + len(END):]
         else:
@@ -220,8 +261,12 @@ def main() -> None:
             anchor = text.index("\n## 本章结论") if "\n## 本章结论" in text else text.index("\n## 检查理解")
             text = text[:anchor] + "\n" + block + "\n" + text[anchor:]
         md.write_text(text, encoding="utf-8", newline=newline)
-        print(f"[real-model] {md.relative_to(ROOT)}")
-
+        print(f"[real-model] {md.relative_to(ROOT)}（{status}）")
+    if problems:
+        print(f"\n{len(problems)} 个条目找不到，已跳过（改 SPEC 后重新运行即可）：")
+        for slug, what, msg in problems:
+            print(f"  {slug} · {what}：{msg}")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()

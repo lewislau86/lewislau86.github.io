@@ -2794,6 +2794,304 @@ def ckpt_resume():
               f"损失降不下去（验证 {log['ablation']['缺调度器状态']['val']:.4f}）；缺数据位置、缺随机数状态时，损失从第 {r0 + 1} 步起就和参照不同，但走势相近。")
 
 
+# ---------- 第 22 章：训练诊断与评估 ----------
+
+def _eval_log():
+    src = DATA / "tinyllm-training-evaluation-log.json"
+    if not src.exists():
+        print("skip training-evaluation figures: run scripts/build-tinyllm-code.py training-evaluation to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def eval_pretty_curves():
+    """正确的代码与三个 bug 的训练损失：有 bug 的曲线反而更“好看”。"""
+    log = _eval_log()
+    if log is None:
+        return
+    c = log["curves"]
+    picks = [("None", "正确的代码", INK), ("漏了因果掩码", "漏了因果掩码", RED), ("标签没错位", "标签没错位", ORANGE),
+             ("每步同一个 batch", "每步同一个 batch", PURPLE)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    k = 9
+    for key, label, color in picks:
+        loss = np.array(c[key]["loss"])
+        sm = np.convolve(loss, np.ones(k) / k, mode="valid")
+        ax.plot(np.arange(len(sm)) + k // 2 + 1, sm, color=color, lw=2.6 if key == "None" else 1.8,
+                label=f"{label}：训练 {loss[-20:].mean():.3f}，验证 {c[key]['val']:.3f}")
+        ax.scatter([log["steps"] + 6], [c[key]["val"]], color=color, marker="D", s=60, clip_on=False, zorder=4)
+    ax.axhline(log["ln_v"], color=GRAY, ls="--", lw=1.2)
+    ax.text(3, log["ln_v"] + 0.12, f"均匀乱猜 ln V = {log['ln_v']:.2f}", color=GRAY, fontsize=11)
+    ax.set_xlabel("优化器步数（右侧菱形是最终验证损失）")
+    ax.set_ylabel("训练损失（9 步滑动平均）")
+    ax.set_xlim(0, log["steps"] + 12)
+    ax.set_ylim(-0.2, 9.2)
+    ax.legend(fontsize=10.5, loc="upper center", bbox_to_anchor=(0.6, 0.97))
+    ax.grid(alpha=0.25)
+    save_plot(fig, "eval-pretty-curves.svg", "有 bug 的训练曲线反而更好看",
+              f"正确的代码训练 240 步，验证损失 {c['None']['val']:.3f}。漏了因果掩码时训练、验证损失都降到 {c['漏了因果掩码']['val']:.2f}，"
+              f"标签没错位时降到 {c['标签没错位']['val']:.3f}，看起来比正确的代码好得多；每步同一个 batch 时训练损失降到接近 0，验证损失却是 {c['每步同一个 batch']['val']:.2f}。")
+
+
+def eval_matrix():
+    """六个 bug × 六项检查：通过 / 不通过，以及每格的数值。"""
+    log = _eval_log()
+    if log is None:
+        return
+    m = log["matrix"]
+    bugs = list(m)
+    checks = list(m[bugs[0]])
+    fig, ax = plt.subplots(figsize=(11.5, 4.9), layout="constrained")
+    for i, bug in enumerate(bugs):
+        for j, check in enumerate(checks):
+            cell = m[bug][check]
+            ok = cell["ok"]
+            ax.add_patch(plt.Rectangle((j, i), 1, 1, facecolor="#dcfce7" if ok else "#fee2e2", edgecolor="white", lw=3))
+            v = cell["value"]
+            txt = "/".join(f"{x:.3g}" for x in v) if isinstance(v, list) else f"{v:.3g}"
+            ax.text(j + 0.5, i + 0.38, "✓" if ok else "×", ha="center", va="center", fontsize=17,
+                    color=TEAL if ok else RED, fontweight="bold")
+            ax.text(j + 0.5, i + 0.74, txt, ha="center", va="center", fontsize=9.5, color=GRAY)
+    ax.set_xlim(0, len(checks))
+    ax.set_ylim(len(bugs), 0)
+    ax.set_xticks(np.arange(len(checks)) + 0.5, [f"{n}{c}" for n, c in zip("①②③④⑤⑥", checks)], fontsize=11)
+    ax.set_yticks(np.arange(len(bugs)) + 0.5, ["正确的代码" if b == "None" else b for b in bugs], fontsize=11)
+    ax.xaxis.tick_top()
+    ax.tick_params(length=0)
+    for s in ax.spines.values():
+        s.set_visible(False)
+    caught = {b: [c for c in checks if not m[b][c]["ok"]] for b in bugs if b != "None"}
+    save_plot(fig, "eval-matrix.svg", "六个 bug 与六项检查",
+              "行是六个 bug（第一行是正确的代码），列是六项检查，绿色勾表示通过，红色叉表示不通过，小字是检查测到的数。正确的代码六项全部通过；"
+              + "；".join(f"{b}被{('、'.join(v))}抓住" for b, v in caught.items()) + "。没有一项检查能抓住所有 bug。")
+
+
+def eval_causality():
+    """因果性测试：改掉第 t 个 token，前面各位置的输出是否改变。"""
+    body = text(480, 40, "因果性测试：改掉后面的一个 token，前面的输出不该变", 22, weight="bold")
+    n, x0, w, gap = 9, 115, 70, 12
+    pos = 6
+    for row, (title, leak, color) in enumerate([("有因果掩码（正确）", False, TEAL), ("漏了因果掩码", True, RED)]):
+        y0 = 92 + row * 210
+        body += text(60, y0 + 6, title, 17, color, "bold", "start")
+        for i in range(n):
+            x = x0 + i * (w + gap)
+            changed_in = i == pos
+            body += box(x, y0 + 22, w, 40, "#fef3c7" if changed_in else "#ffffff", ORANGE if changed_in else "#94a3b8")
+            body += text(x + w / 2, y0 + 48, "改" if changed_in else f"x{i}", 16, ORANGE if changed_in else INK, "bold" if changed_in else "normal")
+            out_changed = i >= pos or leak
+            body += arrow(x + w / 2, y0 + 64, x + w / 2, y0 + 92, GRAY, 1.6)
+            body += box(x, y0 + 94, w, 40, "#fee2e2" if out_changed else "#ecfdf5", RED if out_changed else TEAL)
+            body += text(x + w / 2, y0 + 120, "变了" if out_changed else "不变", 15, RED if out_changed else TEAL)
+        body += text(40, y0 + 48, "输入", 14, GRAY, anchor="start")
+        body += text(40, y0 + 120, "输出", 14, GRAY, anchor="start")
+        note = "改动之前的位置全部不变：它们看不到后面" if not leak else "改动之前的位置也变了：模型在“偷看”后面的答案"
+        body += text(480, y0 + 162, note, 15, color)
+    svg("eval-causality.svg", "因果性测试示意",
+        "把一段输入里第 6 个 token 换掉，比较前后两次的输出。有因果掩码时，第 6 个之前各位置的输出完全不变，只有它和它之后的位置会变；"
+        "漏了因果掩码时，前面的位置也变了，说明模型能看到后面的 token，训练时等于偷看了答案。", 520, body)
+
+
+def eval_bootstrap():
+    """对验证诗做 bootstrap：两个检查点各自的区间重叠，配对的差的区间不含 0。"""
+    log = _eval_log()
+    if log is None:
+        return
+    b = log["bootstrap"]
+    names = list(b)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.0), layout="constrained", gridspec_kw={"width_ratios": [1.4, 1]})
+    for name, color in zip(names[:2], (ORANGE, BLUE)):
+        v = np.array(b[name])
+        a1.hist(v, bins=40, color=color, alpha=0.55, label=name)
+        lo, hi = np.percentile(v, [2.5, 97.5])
+        a1.axvline(lo, color=color, ls="--", lw=1)
+        a1.axvline(hi, color=color, ls="--", lw=1)
+    a1.set_xlabel("验证损失（对 290 首诗重抽 1000 次）")
+    a1.set_ylabel("次数")
+    a1.set_title("各自的 95% 区间（虚线）互相重叠", fontsize=12.5)
+    a1.legend(fontsize=11)
+    a1.grid(alpha=0.25)
+    d = np.array(b[names[2]])
+    a2.hist(d, bins=40, color=TEAL, alpha=0.7)
+    lo, hi = np.percentile(d, [2.5, 97.5])
+    a2.axvline(lo, color=TEAL, ls="--", lw=1)
+    a2.axvline(hi, color=TEAL, ls="--", lw=1)
+    a2.axvline(0, color=RED, lw=1.5)
+    a2.text(0.0005, a2.get_ylim()[1] * 0.9, "0", color=RED, fontsize=11)
+    a2.set_xlabel("配对的差：第 230 步 − 第 240 步")
+    a2.set_title("配对以后，差的区间不含 0", fontsize=12.5)
+    a2.set_xlim(-0.002, max(d) * 1.1)
+    a2.grid(alpha=0.25)
+    va, vb = np.percentile(b[names[0]], [2.5, 97.5]), np.percentile(b[names[1]], [2.5, 97.5])
+    save_plot(fig, "eval-bootstrap.svg", "验证损失的抽样误差与配对比较",
+              f"左：对验证诗有放回地重抽 1000 次，第 230 步检查点的验证损失落在 {va[0]:.3f}～{va[1]:.3f}，第 240 步落在 {vb[0]:.3f}～{vb[1]:.3f}，两个区间重叠。"
+              f"右：每次重抽时两个检查点用同一批诗，算它们的差，95% 区间是 {lo:.4f}～{hi:.4f}，宽度只有各自区间的约八分之一，而且不含 0。")
+
+
+def eval_quality():
+    """同一次训练的几个检查点：验证损失与生成样例的格式、乱码、照抄比例。"""
+    log = _eval_log()
+    if log is None:
+        return
+    q = log["quality"]
+    steps = [int(s) for s in q]
+    fig, a1 = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    a1.plot(steps, [q[str(s)]["val"] for s in steps], color=INK, lw=2.4, marker="o", label="验证损失（左轴）")
+    a1.set_xlabel("训练步数（检查点）")
+    a1.set_ylabel("验证损失")
+    a1.grid(alpha=0.25)
+    a2 = a1.twinx()
+    a2.plot(steps, [100 * q[str(s)]["五字句"] for s in steps], color=TEAL, lw=2.2, marker="s", label="五字句占比 %（右轴）")
+    a2.plot(steps, [100 * q[str(s)]["乱码"] for s in steps], color=RED, lw=2.2, marker="^", label="乱码字符占比 %（右轴）")
+    a2.plot(steps, [100 * q[str(s)]["照抄训练集"] for s in steps], color=PURPLE, lw=1.6, ls="--", marker="x", label="照抄训练集的句子 %（右轴）")
+    a2.set_ylabel("百分比")
+    a2.set_ylim(-3, 100)
+    h1, l1 = a1.get_legend_handles_labels()
+    h2, l2 = a2.get_legend_handles_labels()
+    a1.legend(h1 + h2, l1 + l2, fontsize=10.5, loc="upper center", bbox_to_anchor=(0.55, 0.99))
+    first, last = q[str(steps[0])], q[str(steps[-1])]
+    save_plot(fig, "eval-quality.svg", "验证损失与生成样例质量",
+              f"同一次训练的 {len(steps)} 个检查点。验证损失从 {first['val']:.2f} 降到 {last['val']:.2f}；五字句占比从 {first['五字句']:.0%} 升到 {last['五字句']:.0%}，"
+              f"乱码字符从 {first['乱码']:.0%} 降到 {last['乱码']:.1%}；照抄训练集的句子始终是 0。两者方向一致，但不成比例：后期损失降得慢，格式仍在明显改善。")
+
+
+# ---------- 第 23 章：超参数与自动化调参 ----------
+
+def _hp_log():
+    src = DATA / "tinyllm-hyperparameter-tuning-log.json"
+    if not src.exists():
+        print("skip hyperparameter-tuning figures: run scripts/build-tinyllm-code.py hyperparameter-tuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def hp_sensitivity():
+    """每次只改一个超参数：验证损失偏离主线多少个 σ（龙卷风图）。"""
+    log = _hp_log()
+    if log is None:
+        return
+    sig, center, base = log["sigma"], log["center"], log["base"]
+    names = {"lr": "峰值学习率", "batch": "batch 大小（token 预算固定）", "warmup": "warmup 比例", "wd": "weight decay",
+             "beta2": "Adam β2", "decay": "衰减段比例"}
+    rows = sorted(log["sensitivity"].items(), key=lambda kv: -max(abs(x - center) for x in kv[1].values()))
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.axvspan(-2, 2, color=GRAY, alpha=0.12)
+    ax.text(0, -0.75, "±2σ：噪声以内", ha="center", color=GRAY, fontsize=10.5)
+    for i, (k, d) in enumerate(rows):
+        for (v, x), color, dy in zip(d.items(), (BLUE, ORANGE), (-0.19, 0.19)):
+            z = (x - center) / sig
+            ax.barh(i + dy, z, color=color, alpha=0.85, height=0.36)
+            ax.text(z + (0.3 if z >= 0 else -0.3), i + dy, f"{v}", va="center", ha="left" if z >= 0 else "right", fontsize=9.5, color=color)
+    ax.set_yticks(range(len(rows)), [f"{names[k]}（主线 {base[k]}）" for k, _ in rows], fontsize=10.5)
+    ax.invert_yaxis()
+    ax.axvline(0, color=INK, lw=1)
+    ax.set_xlabel(f"验证损失相对主线的变化（单位 σ = {sig:.4f}，5 个种子的标准差）")
+    ax.grid(alpha=0.25, axis="x")
+    lr = log["sensitivity"]["lr"]
+    save_plot(fig, "hp-sensitivity.svg", "超参数的敏感度",
+              f"以主线配置为中心，每次只把一个超参数换成更小（蓝）或更大（橙）的值，单个种子。学习率偏离最大（3e-2 时变差 {(max(lr.values()) - center) / sig:.1f}σ），"
+              "其次是固定 token 预算下的 batch 大小、过短的 warmup、过大的 weight decay；β2 和衰减段比例的变化都在 ±2σ 的噪声带以内。")
+
+
+def hp_search():
+    """左：网格与随机搜索试过的学习率和结果；右：各方法赢家换种子重训的成绩。"""
+    log = _hp_log()
+    if log is None:
+        return
+    s, curse, sig, noise = log["searches"], log["curse"], log["sigma"], log["noise"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1]})
+    for name, color, marker in (("网格", ORANGE, "s"), ("随机", BLUE, "o")):
+        rs = s[name]["results"]
+        a1.scatter([r["config"]["lr"] for r in rs], [r["val"] for r in rs], color=color, marker=marker, s=55, alpha=0.85,
+                   label=f"{name}搜索（最好 {s[name]['best']:.4f}）", zorder=3)
+    a1.set_xscale("log")
+    a1.set_ylim(4.65, 5.6)
+    a1.set_xlabel("峰值学习率")
+    a1.set_ylabel("最终验证损失（种子 0）")
+    a1.set_title("网格只试了 3 个学习率，随机试了 9 个", fontsize=12.5)
+    a1.legend(fontsize=10.5, loc="upper left")
+    a1.grid(alpha=0.25)
+    m = sum(noise) / len(noise)
+    a2.axhspan(m - 2 * sig, m + 2 * sig, color=GRAY, alpha=0.15)
+    a2.axhline(m, color=GRAY, ls="--", lw=1.2)
+    a2.text(2.45, m - 2 * sig + 0.002, "灰带：主线 5 个种子平均 ±2σ", color=GRAY, fontsize=10, ha="right", va="bottom")
+    for i, (name, c) in enumerate(curse.items()):
+        a2.scatter([i], [c["picked"]], color=RED, marker="D", s=70, zorder=4, label="挑中时（种子 0）" if i == 0 else None)
+        a2.scatter([i, i], c["new_seeds"], color=BLUE, s=40, zorder=4, label="换新种子重训" if i == 0 else None)
+        a2.plot([i, i], [c["picked"], sum(c["new_seeds"]) / 2], color=GRAY, lw=1, ls=":")
+    a2.set_xticks(range(len(curse)), list(curse), fontsize=11)
+    a2.set_xlim(-0.5, 2.5)
+    a2.set_ylabel("验证损失")
+    a2.set_title("赢家换个种子还是赢家吗", fontsize=12.5)
+    a2.legend(fontsize=10, loc="upper left")
+    a2.grid(alpha=0.25, axis="y")
+    save_plot(fig, "hp-search.svg", "三种搜索方法的比较",
+              f"左：网格搜索只试了 3 个学习率（1e-3、5.6e-3、3.2e-2），错过了 1e-2 附近的谷底，最好 {s['网格']['best']:.4f}；随机搜索的 9 个配置覆盖了 9 个不同的学习率，最好 {s['随机']['best']:.4f}。"
+              f"右：各方法挑出的配置换两个新种子重训。随机搜索的赢家基本站住（平均 {sum(curse['随机']['new_seeds']) / 2:.4f}）；逐轮淘汰的赢家从 {curse['逐轮淘汰']['picked']:.4f} 变成平均 "
+              f"{sum(curse['逐轮淘汰']['new_seeds']) / 2:.4f}，比主线还差；灰带是主线 5 个种子的平均 ±2σ。")
+
+
+def hp_halving():
+    """逐轮淘汰：27 个配置在第 32、96 步各淘汰三分之二，剩下的训练到第 240 步。"""
+    log = _hp_log()
+    if log is None:
+        return
+    r1, r2 = log["rungs"]
+    finals = {json.dumps(r["config"], sort_keys=True): r["val"] for r in log["searches"]["逐轮淘汰"]["results"]}
+    key = lambda c: json.dumps(c, sort_keys=True)
+    v2 = {key(e["config"]): e["fork"] for e in r2}
+    fig, ax = plt.subplots(figsize=(10, 4.6), layout="constrained")
+    for e in r1:
+        k = key(e["config"])
+        xs, ys = [32], [e["fork"]]
+        if k in v2:
+            xs.append(96); ys.append(v2[k])
+        if k in finals:
+            xs.append(240); ys.append(finals[k])
+        color = RED if k in finals and finals[k] == min(finals.values()) else (BLUE if k in finals else (TEAL if k in v2 else GRAY))
+        ax.plot(xs, ys, color=color, lw=1.6 if len(xs) > 1 else 1, alpha=0.9 if len(xs) > 1 else 0.5, marker="o", ms=4)
+    for x, n in ((32, len(r1)), (96, len(r2)), (240, len(finals))):
+        ax.text(x, 6.75, f"{n} 个", ha="center", color=INK, fontsize=11)
+    ax.set_xticks([32, 96, 240])
+    ax.set_xlabel("训练到第几步（第 32、96 步时从峰值阶段分叉、接一小段衰减再测）")
+    ax.set_ylabel("验证损失")
+    ax.set_ylim(4.6, 6.9)
+    ax.grid(alpha=0.25)
+    best = min(finals.values())
+    save_plot(fig, "hp-halving.svg", "逐轮淘汰的过程",
+              f"27 个随机配置先各训练 32 步，按分叉衰减后的验证损失只留最好的 9 个（灰色的被淘汰）；训练到第 96 步再留 3 个（青色的被淘汰）；"
+              f"最后 3 个训练满 240 步，最好的是 {best:.4f}（红色）。一共约 {log['searches']['逐轮淘汰']['steps'] / log['steps']:.1f} 次完整训练的步数。")
+
+
+def hp_peek():
+    """第 96 步（峰值阶段）的验证损失和最终验证损失：按中间结果挑会挑错。"""
+    log = _hp_log()
+    if log is None:
+        return
+    rs = log["searches"]["网格"]["results"] + log["searches"]["随机"]["results"]
+    early = np.array([r["val_at_peek"] for r in rs])
+    final = np.array([r["val"] for r in rs])
+    lrs = np.array([r["config"]["lr"] for r in rs])
+    fig, ax = plt.subplots(figsize=(8.6, 4.6), layout="constrained")
+    sc = ax.scatter(early, final, c=np.log10(lrs), cmap="viridis", s=60, zorder=3)
+    cb = fig.colorbar(sc, ax=ax)
+    cb.set_label("log10（峰值学习率）")
+    i_e, i_f = int(early.argmin()), int(final.argmin())
+    ax.scatter([early[i_e]], [final[i_e]], facecolor="none", edgecolor=RED, s=220, lw=2, zorder=4)
+    ax.annotate("按第 96 步挑中的", (early[i_e], final[i_e]), xytext=(early[i_e] + 0.15, final[i_e] + 0.12), color=RED, fontsize=11,
+                arrowprops=dict(arrowstyle="->", color=RED))
+    ax.scatter([early[i_f]], [final[i_f]], facecolor="none", edgecolor=BLUE, s=220, lw=2, zorder=4)
+    ax.annotate("按最终挑中的", (early[i_f], final[i_f]), xytext=(early[i_f] + 0.15, final[i_f] - 0.03), color=BLUE, fontsize=11,
+                arrowprops=dict(arrowstyle="->", color=BLUE))
+    ax.set_xlabel("第 96 步的验证损失（峰值阶段，还没衰减）")
+    ax.set_ylabel("最终验证损失")
+    ax.set_ylim(4.62, min(5.6, final.max() + 0.05))
+    ax.grid(alpha=0.25)
+    save_plot(fig, "hp-peek.svg", "中间结果与最终结果",
+              f"网格和随机搜索的 18 次训练：横轴是第 96 步（峰值阶段）的验证损失，纵轴是最终验证损失，颜色是学习率。两者大体一致，但不完全一致；"
+              f"按第 96 步挑中的配置最终是 {final[i_e]:.4f}，按最终挑中的是 {final[i_f]:.4f}。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2850,7 +3148,9 @@ def main():
                lr_schedules, lr_compare, lr_curves, lr_warmup,
                reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare,
                grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist,
-               loop_structure, ckpt_contents, ckpt_resume):
+               loop_structure, ckpt_contents, ckpt_resume,
+               eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
+               hp_sensitivity, hp_search, hp_halving, hp_peek):
         fn()
     print("figures written to", OUT)
 

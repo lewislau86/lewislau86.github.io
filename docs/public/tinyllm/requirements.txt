@@ -4,7 +4,7 @@
 # 本站最近一次完整运行用的是 Python 3.10.12、torch 2.14.1、tokenizers 0.23.3、opencc-python-reimplemented 0.1.7、plotly 7.1.0。
 
 torch>=2.4          # 所有章节（nn.RMSNorm 需要 2.4 以上）
-tokenizers>=0.20    # 第 4、12～15、17、18、20、21、26、27 章：训练字节级 BPE
+tokenizers>=0.20    # 第 4、12～15、17、18、20～23、26、27 章：训练字节级 BPE
 opencc-python-reimplemented  # 第 14 章：繁体转简体
 plotly>=5.20        # 第 4、8、10、16 章的交互图表
 jupyterlab          # 可选：在本地打开 notebook

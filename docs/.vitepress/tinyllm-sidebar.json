@@ -137,6 +137,14 @@
       {
         "text": "第 21 章 · 训练循环与检查点",
         "link": "/tinyllm/training-loop"
+      },
+      {
+        "text": "第 22 章 · 训练诊断与评估",
+        "link": "/tinyllm/training-evaluation"
+      },
+      {
+        "text": "第 23 章 · 超参数与自动化调参",
+        "link": "/tinyllm/hyperparameter-tuning"
       }
     ]
   },
@@ -158,14 +166,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 22 章 · 训练诊断与评估",
-        "link": "/tinyllm/training-evaluation"
-      },
-      {
-        "text": "第 23 章 · 超参数与自动化调参",
-        "link": "/tinyllm/hyperparameter-tuning"
-      },
       {
         "text": "第 24 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
