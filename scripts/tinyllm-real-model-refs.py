@@ -120,6 +120,14 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "training-loop": ("transformers 的 Trainer 存检查点、续训的做法和本章是同一套思路，只是拆成了几个文件：", [
+        ("保存检查点", "trainer.py", "Trainer._save_checkpoint", "模型、优化器、调度器、随机数状态和训练进度分别存成几个文件，放在同一个 `checkpoint-<步数>` 目录里"),
+        ("训练进度", "trainer_callback.py", "TrainerState", "`global_step`、`epoch`、日志历史等，存成 `trainer_state.json`，对应本章的 `progress`"),
+        ("保存随机数状态", "trainer.py", "Trainer._save_rng_state", "Python、NumPy、torch 以及每张 GPU 的随机数状态都存下来，比本章多几种"),
+        ("恢复随机数状态", "trainer.py", "Trainer._load_rng_state", "续训时装回去；找不到这个文件时会给出警告，提示结果可能无法逐位复现"),
+        ("跳过已经用过的 batch", "trainer.py", ("grep", r"skip_first_batches"), "续训时跳过这个 epoch 已经训练过的 batch，作用和本章 `EpochShuffle` 的 `start` 相同"),
+        ("只保留最近几个检查点", "trainer.py", "Trainer._rotate_checkpoints", "按 `save_total_limit` 删掉旧的检查点，并保证最好的那个不被删掉"),
+    ]),
     "gradient-stability": ("transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新：", [
         ("一个 micro-batch 的前向与反向", "trainer.py", "Trainer.training_step", "算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新"),
         ("什么时候才更新", "trainer.py", ("grep", r"do_sync_step = \(step \+ 1\) % self\.args\.gradient_accumulation_steps"), "每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章 `train(accum=4)` 的顺序一样"),

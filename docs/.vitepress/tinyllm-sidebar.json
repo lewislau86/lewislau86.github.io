@@ -133,6 +133,10 @@
       {
         "text": "第 20 章 · 梯度稳定与累积",
         "link": "/tinyllm/gradient-stability"
+      },
+      {
+        "text": "第 21 章 · 训练循环与检查点",
+        "link": "/tinyllm/training-loop"
       }
     ]
   },
@@ -154,10 +158,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第 21 章 · 训练循环与检查点",
-        "link": "/tinyllm/training-loop"
-      },
       {
         "text": "第 22 章 · 训练诊断与评估",
         "link": "/tinyllm/training-evaluation"

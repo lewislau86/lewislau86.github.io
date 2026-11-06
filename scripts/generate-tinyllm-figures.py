@@ -2671,6 +2671,129 @@ def grad_fp16_hist():
               "蓝色是放大 2^16 倍之后，整体右移约 4.8 个数量级，几乎全部进入正规数范围，离上限 65504 还有距离。")
 
 
+# ---------- 第 21 章：训练循环与检查点 ----------
+
+def _loop_log():
+    src = DATA / "tinyllm-training-loop-log.json"
+    if not src.exists():
+        print("skip training-loop figures: run scripts/build-tinyllm-code.py training-loop to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def loop_structure():
+    """训练循环的骨架：epoch 外层、batch 内层、每步的六个调用，以及日志、评估、保存的节奏。"""
+    body = text(500, 40, "可以随时中断、随时恢复的训练循环", 22, weight="bold")
+    body += cbox(60, 70, 880, 54, PURPLE) + text(500, 94, "progress = {step, epoch, batch_in_epoch}", 16, PURPLE, "bold")
+    body += text(500, 115, "新训练从 0 开始；恢复时从检查点读出来", 13.5, GRAY)
+    body += arrow(500, 124, 500, 146, GRAY)
+    body += f'<rect x="60" y="148" width="880" height="452" rx="16" fill="#ffffff" stroke="{TEAL}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(80, 174, "while step < until：每个 epoch", 15, TEAL, "bold", "start")
+    body += cbox(90, 186, 820, 38, TEAL) + mtext(500, 211, "sampler.set_epoch(epoch, start=batch_in_epoch * BATCH)", 15, TEAL)
+    body += f'<rect x="90" y="238" width="820" height="304" rx="14" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(108, 262, "for x, y in loader：每个 batch", 15, BLUE, "bold", "start")
+    calls = ["zero_grad", "前向", "backward", "裁剪", "optimizer.step", "scheduler.step"]
+    w, gap, x0 = 118, 14, 112
+    for i, c in enumerate(calls):
+        x = x0 + i * (w + gap)
+        body += cbox(x, 278, w, 44, BLUE) + (mtext(x + w / 2, 305, c, 13) if c.isascii() else text(x + w / 2, 306, c, 14.5, INK, "bold"))
+        if i < len(calls) - 1:
+            body += arrow(x + w, 300, x + w + gap - 1, 300, GRAY, 2)
+    body += text(500, 348, "step += 1，batch_in_epoch += 1；损失先存成张量", 15)
+    rows = [("每 log_every 步", "取一次 .item() 打印：GPU 上 .item() 会让 CPU 停下来等 GPU 算完", GRAY),
+            ("每 eval_every 步", "model.eval() 测验证损失，再切回 model.train()", GRAY),
+            ("每 save_every 步", "保存完整检查点：先写 .tmp，再 os.replace；只留最新几个", ORANGE),
+            ("step == until", "返回；下一次从 progress 接着来", RED)]
+    yy = 372
+    for k, (when, what, color) in enumerate(rows):
+        body += box(120, yy, 760, 36, "#ffffff", "#cbd5e1") + text(136, yy + 24, when, 14.5, color, "bold", "start")
+        body += text(290, yy + 24, what, 14, INK, anchor="start")
+        yy += 42
+    body += text(500, 572, "这个 epoch 的 batch 用完：epoch += 1，batch_in_epoch = 0", 15, TEAL)
+    svg("loop-structure.svg", "可以随时中断和恢复的训练循环",
+        "最外面是 progress（step、epoch、batch_in_epoch）。每个 epoch 先 sampler.set_epoch(epoch, start)，跳过这个 epoch 已经用过的样本；"
+        "每个 batch 依次 zero_grad、前向、backward、裁剪、optimizer.step、scheduler.step，然后推进 progress。"
+        "每隔若干步取一次 .item() 打印日志、测一次验证损失、保存一次完整检查点（先写临时文件再替换）；"
+        "到达 until 就返回，下次从 progress 接着来。一个 epoch 用完后 epoch 加一、batch_in_epoch 归零。", 620, body, width=1000)
+
+
+def ckpt_contents():
+    """检查点的组成、大小，以及缺了哪一样会怎样（数字来自 training-loop.py）。"""
+    log = _loop_log()
+    if log is None:
+        return
+    s, a = log["sizes"], log["ablation"]
+    kb = lambda k: f"{s[k] / 1024:.0f} KB" if s[k] >= 10 * 1024 else f"{s[k] / 1024:.1f} KB"
+    rows = [("model", "模型参数", "state_dict()：每个参数张量", None, BLUE),
+            ("optimizer", "优化器状态", "AdamW 的 m、v、步数，当前学习率", "缺优化器状态", RED),
+            ("scheduler", "调度器状态", "走到了第几步", "缺调度器状态", ORANGE),
+            ("progress", "训练进度", "step、epoch、这个 epoch 用掉几个 batch", "缺数据位置", TEAL),
+            ("rng", "随机数状态", "全局 torch 随机数（dropout 用）", "缺随机数状态", PURPLE),
+            ("config", "配置", "模型配置与训练配置，新进程先按它造对象", None, GRAY)]
+    body = text(480, 40, "一个能“接着训”的检查点里有什么", 22, weight="bold")
+    body += text(130, 78, "组成", 15, GRAY, "bold") + text(470, 78, "内容", 15, GRAY, "bold") + text(800, 78, "恢复时缺了它", 15, GRAY, "bold")
+    y = 92
+    for key, name, what, label, color in rows:
+        size = kb(key) if key != "config" else f"{(s['config'] + s['train_config']) / 1024:.1f} KB"
+        body += cbox(40, y, 180, 50, color) + text(130, y + 22, name, 16, color, "bold") + text(130, y + 42, size, 13.5, GRAY)
+        body += text(240, y + 31, what, 14.5, INK, anchor="start")
+        if label:
+            r = a[label]
+            body += text(800, y + 22, f"参数最大差 {r['param_diff']:.2f}", 14, color)
+            body += text(800, y + 42, f"最终验证 {r['val']:.4f}", 13.5, GRAY)
+        elif key == "model":
+            body += text(800, y + 31, "等于从头训练", 14, GRAY)
+        else:
+            body += text(800, y + 31, "造不出对象", 14, GRAY)
+        y += 60
+    full = a["完整恢复"]
+    body += box(40, y + 8, 880, 46, "#ecfdf5", TEAL) + text(480, y + 37, f"全部存齐（再给 DataLoader 一个自己的 generator）：参数最大差 {full['param_diff']:.1f}，"
+                                                      f"验证 {full['val']:.4f}，和一口气训完逐位相同", 15, TEAL, "bold")
+    body += text(480, y + 84, f"另外和检查点放在一起：tokenizer.json。本例 {log['n_params']:,} 个参数，优化器状态约是模型的 2 倍", 14, GRAY)
+    svg("ckpt-contents.svg", "检查点的组成与缺失的后果",
+        f"检查点由模型参数（{kb('model')}）、优化器状态（{kb('optimizer')}）、调度器状态、训练进度、随机数状态和配置组成。"
+        f"恢复时缺了优化器状态、调度器状态、数据位置或随机数状态中的任何一样，接着训练的参数都会偏离一口气训完的结果（最大差 "
+        f"{a['缺优化器状态']['param_diff']:.2f}、{a['缺调度器状态']['param_diff']:.2f}、{a['缺数据位置']['param_diff']:.2f}、{a['缺随机数状态']['param_diff']:.2f}）；"
+        f"全部存齐时最大差为 {full['param_diff']:.1f}，逐位相同。", y + 104, body)
+
+
+def ckpt_resume():
+    """从第 120 步恢复后，各种缺失方式的训练损失和参照的差。"""
+    log = _loop_log()
+    if log is None:
+        return
+    ref = np.array(log["reference"])
+    r0 = log["resume_step"]
+    styles = {"缺优化器状态": RED, "缺调度器状态": ORANGE, "缺数据位置": TEAL, "缺随机数状态": PURPLE}
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 6.0), layout="constrained", sharex=True, gridspec_kw={"height_ratios": [1.2, 1]})
+    k = 9
+    smooth = lambda v: np.convolve(v, np.ones(k) / k, mode="valid")
+    x = np.arange(len(ref) - k + 1) + k // 2 + 1
+    a1.plot(x, smooth(ref), color=INK, lw=2.6, label=f"一口气训完 / 完整恢复（验证 {log['reference_val']:.4f}）")
+    for label, color in styles.items():
+        v = np.array(log["ablation"][label]["losses"])
+        a1.plot(x[x > r0 - 5], smooth(v)[x > r0 - 5], color=color, lw=1.6, label=f"{label}（验证 {log['ablation'][label]['val']:.4f}）")
+        d = np.abs(v - ref)[r0:]
+        a2.plot(np.arange(r0 + 1, len(ref) + 1), np.maximum(d, 1e-6), color=color, lw=1.2, alpha=0.9)
+    for ax in (a1, a2):
+        ax.axvline(r0 + 0.5, color=GRAY, ls="--", lw=1.2)
+        ax.grid(alpha=0.25)
+    a1.text(r0 - 2, 6.2, f"第 {r0} 步存档、“断电”", color=GRAY, fontsize=11, ha="right")
+    a1.set_ylabel("训练损失（9 步滑动平均）")
+    a1.set_ylim(4.6, 6.6)
+    a1.legend(fontsize=10, loc="upper right")
+    a2.set_yscale("log")
+    a2.set_ylim(1e-6, 2)
+    a2.set_ylabel("和参照的损失差（每步）")
+    a2.set_xlabel("优化器步数")
+    a2.text(r0 + 3, 2.2e-6, "完整恢复：每一步的差都是 0（对数坐标画不出来）", color=INK, fontsize=10.5)
+    gaps = {lab: max(abs(a - b) for a, b in zip(log["ablation"][lab]["losses"][r0:], ref[r0:])) for lab in styles}
+    save_plot(fig, "ckpt-resume.svg", "从检查点恢复后的训练损失",
+              f"第 {r0} 步存档后恢复、接着训练到第 {len(ref)} 步。完整恢复时每一步的损失都和一口气训完相同。"
+              f"缺优化器状态时，恢复后头几步的损失明显跳高（最大差 {gaps['缺优化器状态']:.2f}）；缺调度器状态时学习率重新 warmup、最后的衰减段没有发生，"
+              f"损失降不下去（验证 {log['ablation']['缺调度器状态']['val']:.4f}）；缺数据位置、缺随机数状态时，损失从第 {r0 + 1} 步起就和参照不同，但走势相近。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2726,7 +2849,8 @@ def main():
                lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator,
                lr_schedules, lr_compare, lr_curves, lr_warmup,
                reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare,
-               grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist):
+               grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist,
+               loop_structure, ckpt_contents, ckpt_resume):
         fn()
     print("figures written to", OUT)
 

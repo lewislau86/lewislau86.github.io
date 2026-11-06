@@ -54,6 +54,7 @@ pageClass: tinyllm-course
 | [第 18 章 · 正则化与泛化](./regularization.md) | 只给 300 首诗让模型过拟合，29 次对照（3 个种子）：更多数据、提前停止、weight decay 的时间尺度 1/(lr·wd)、dropout 的三个位置与 train/eval 模式、label smoothing；用验证集挑、用测试集报；回到全部数据，同样的手段反而变差 | [查看](/tinyllm/notebooks/regularization) |
 | [第 19 章 · 数值精度与混合精度](./precision.md) | FP32/FP16/BF16、舍入与溢出、autocast；归一化与精度的关系 | [查看](/tinyllm/notebooks/precision) |
 | [第 20 章 · 梯度稳定与累积](./gradient-stability.md) | 全局梯度范数与两种裁剪；代理模型 3 个种子：AdamW 下裁剪阈值改一百倍几乎无影响，一次 1000 倍的梯度尖峰不裁剪就毁掉训练；梯度累积的一步对拍，FP16 的下溢、`GradScaler` 的动态调整与先 `unscale_` 后裁剪；训练时该盯的监测量 | [查看](/tinyllm/notebooks/gradient-stability) |
+| [第 21 章 · 训练循环与检查点](./training-loop.md) | `Dataset`、`Sampler`、`DataLoader` 与按 epoch 组织的训练循环；检查点存模型、优化器、调度器、训练进度、随机数状态和配置，断电后接着训和一口气训完逐位相同；找出 DataLoader 偷用全局随机数的坑，逐项去掉一样看偏差；原子保存、只留最新几个、`weights_only` | [查看](/tinyllm/notebooks/training-loop) |
 | [第 26 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
 | [第 27 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
 
@@ -103,7 +104,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 18 章 · 正则化与泛化](./regularization.md)
 - [第 19 章 · 数值精度与混合精度](./precision.md)
 - [第 20 章 · 梯度稳定与累积](./gradient-stability.md)
-- [第 21 章 · 训练循环与检查点](./training-loop.md)（规划中）
+- [第 21 章 · 训练循环与检查点](./training-loop.md)
 - [第 22 章 · 训练诊断与评估](./training-evaluation.md)（规划中）
 - [第 23 章 · 超参数与自动化调参](./hyperparameter-tuning.md)（规划中）
 - [第 24 章 · 大规模训练稳定性](./large-model-stability.md)（规划中）
@@ -166,7 +167,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [18 正则化](./regularization.md) | 主线预训练不加 dropout、不用 label smoothing；AdamW 对矩阵权重保留 `weight_decay=0.1`；按验证损失保留最好的检查点，测试集只报告一次 | 代理模型 3 个种子：300 首诗过 20 遍时，weight decay 3 与 dropout 0.3 明显改善，但不如把数据翻两番；全部数据只过一遍时，同样的手段都变差。数据有限、多遍训练或微调时，先加数据，再按 1/(lr·wd) 调 weight decay、试 dropout。 |
 | [19 精度](./precision.md) | 支持时用 BF16 混合精度，关键归约保持稳定实现；否则用 FP32 | BF16 指数范围较宽；缺 BF16 且需 FP16 时再配合 GradScaler。 |
 | [20 梯度](./gradient-stability.md) | 每个优化器步按全局范数裁到 1.0 并记录裁剪前范数；梯度累积时只在累积完以后裁剪、更新、推进调度器各一次；优先 BF16，FP16 才用 `GradScaler` 且先 `unscale_` 再裁剪 | 代理模型 3 个种子：AdamW 下阈值几乎不影响结果，但裁剪能完全挡住一次 1000 倍的梯度尖峰；累积写错时最终损失看不出来，要用一步对拍检查。用 SGD 时阈值直接决定步长，要和学习率一起调。 |
-| [21 训练循环](./training-loop.md) | 固定种子，明确 `zero_grad → forward → backward → clip → step → scheduler`，保存完整检查点 | 便于复现和中断恢复；梯度累积时只在更新步裁剪、更新学习率。 |
+| [21 训练循环](./training-loop.md) | 每步 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step`，用 progress（step、epoch、epoch 内 batch 数）记进度；数据顺序只由 (种子, epoch) 决定，DataLoader 用自己的 generator；检查点存模型、优化器、调度器、进度、随机数状态与配置，先写临时文件再替换 | 代理模型单种子：完整恢复与一口气训完逐位相同；缺任何一样都会偏离，缺调度器还会让 WSD 衰减段消失。GPU 上另存每张卡的随机数状态，需要逐位复现时打开确定性算法。 |
 | [22 评估](./training-evaluation.md) | 先过拟合小 batch，再看独立验证集交叉熵/困惑度与生成样例 | 分开排查代码连通性、泛化和生成质量；比较困惑度需同一 tokenizer 与数据口径。 |
 | [23 调参](./hyperparameter-tuning.md) | 先用多个种子量出噪声底线，再按敏感度从高到低调：学习率对数网格粗扫，其余用随机搜索配合逐轮淘汰；候选共用 batch 计划，验证集挑、测试集报 | 预算集中在最敏感的超参数上；小于噪声底线的差别不算改进。代理模型上的具体数值不直接搬到大模型，只迁移规律，跨规模迁移见第 24 章。 |
 | [24 大规模稳定性](./large-model-stability.md) | 保留基础 Pre-Norm 配置并监测尺度；扩深/扩宽出现问题时才评估 μP、DeepNorm 等整套方案 | 这些方法涉及初始化、结构和学习率的联动，不能只替换一个常数；多卡训练时再引入数据并行等分布式方案。 |

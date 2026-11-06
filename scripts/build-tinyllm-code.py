@@ -59,6 +59,7 @@ ARTIFACTS = {
     ("learning-rate", "learning_rate_log.json"): ROOT / "scripts/data/tinyllm-learning-rate-log.json",
     ("regularization", "regularization_log.json"): ROOT / "scripts/data/tinyllm-regularization-log.json",
     ("gradient-stability", "gradient_stability_log.json"): ROOT / "scripts/data/tinyllm-gradient-stability-log.json",
+    ("training-loop", "training_loop_log.json"): ROOT / "scripts/data/tinyllm-training-loop-log.json",
 }
 
 
