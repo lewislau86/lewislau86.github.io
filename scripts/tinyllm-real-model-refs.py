@@ -120,6 +120,12 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "gradient-stability": ("transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新：", [
+        ("一个 micro-batch 的前向与反向", "trainer.py", "Trainer.training_step", "算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新"),
+        ("什么时候才更新", "trainer.py", ("grep", r"do_sync_step = \(step \+ 1\) % self\.args\.gradient_accumulation_steps"), "每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章 `train(accum=4)` 的顺序一样"),
+        ("裁剪阈值", "trainer.py", ("grep", r"max_grad_norm"), "来自 `TrainingArguments.max_grad_norm`，默认 1.0；设成 0 或 `None` 就不裁剪"),
+        ("按全局范数裁剪", "trainer.py", "Trainer._clip_grad_norm", "调用 PyTorch 的 `clip_grad_norm_`（多卡时由 accelerate 包一层），返回裁剪前的范数，Trainer 把它记成日志里的 `grad_norm`"),
+    ]),
     "regularization": ("transformers 里和本章有关的开关都不大：weight decay 在创建优化器时分组，dropout 写在注意力里，提前停止是一个回调：", [
         ("哪些参数做 weight decay", "trainer.py", "Trainer.get_decay_parameter_names", "名字里带 `bias`、`norm` 的参数不衰减，其余（包括词嵌入）按 `weight_decay` 衰减，和本章 `p.dim() >= 2` 的分法结果相同"),
         ("weight decay 的默认值", "training_args.py", ("grep", r"weight_decay: float = field"), "`TrainingArguments` 默认 `weight_decay=0.0`，要自己设；本章的实验说明合适的值和数据量、学习率、训练步数都有关"),

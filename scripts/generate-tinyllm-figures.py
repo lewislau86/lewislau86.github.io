@@ -2477,6 +2477,200 @@ def reg_dropout_positions():
         "③ 词嵌入之后过一次。右：model.train() 时每个数以概率 p 置零，留下的乘 1/(1−p)，p=0.3 时约乘 1.43；model.eval() 时原样通过。", 650, body)
 
 
+# ---------- 第 20 章：梯度稳定与累积 ----------
+
+def _grad_log():
+    src = DATA / "tinyllm-gradient-stability-log.json"
+    if not src.exists():
+        print("skip gradient-stability figures: run scripts/build-tinyllm-code.py gradient-stability to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def grad_norm_trace():
+    """基线（裁到 1.0）3 个种子的裁剪前全局梯度范数。"""
+    log = _grad_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for seed, color, lw, alpha in ((1, GRAY, 1.2, 0.55), (2, GRAY, 1.2, 0.55), (0, BLUE, 1.8, 1.0)):
+        n = np.array(runs[f"裁到 1.0|{seed}"]["grad_norm"])
+        x = np.arange(1, len(n) + 1)
+        ax.plot(x, n, color=color, lw=lw, alpha=alpha, label={0: "种子 0", 1: "种子 1、2"}.get(seed))
+        if seed == 0:
+            hit = n > 1.0
+            ax.scatter(x[hit], n[hit], color=RED, s=16, zorder=4, label=f"种子 0 被裁剪的步（{hit.sum()}/{len(n)}）")
+    ax.axhline(1.0, color=RED, ls="--", lw=1.4)
+    ax.text(3, 1.05, "阈值 1.0", color=RED, fontsize=11, va="bottom")
+    ax.set_xlabel("优化器步数")
+    ax.set_ylabel("裁剪前的全局梯度范数")
+    ax.set_xlim(0, len(n) + 1)
+    ax.legend(fontsize=10.5, loc="upper left", ncol=3)
+    ax.grid(alpha=0.25)
+    n0 = runs["裁到 1.0|0"]["grad_norm"]
+    save_plot(fig, "grad-norm-trace.svg", "基线训练中的全局梯度范数",
+              f"代理模型、AdamW、学习率 3e-3、裁到 1.0。种子 0 的梯度范数从第 1 步的 {n0[0]:.2f} 很快降到 0.5 左右，后半程又逐渐变大、抖动加剧；"
+              f"240 步里有 {sum(v > 1.0 for v in n0)} 步超过阈值 1.0 被裁剪，多数集中在后半程。另外两个种子走势相同。")
+
+
+def grad_clip_geometry():
+    """按全局范数裁剪与按值裁剪的二维示意。"""
+    body = text(480, 40, "同一个梯度，两种裁剪方式（二维示意）", 22, weight="bold")
+    for k, (cx, title, color) in enumerate([(250, "按全局范数裁剪：整体缩小，方向不变", BLUE), (710, "按值裁剪：逐个数截断，方向改变", ORANGE)]):
+        ox, oy, u = cx - 150, 400, 60          # 原点与单位长度
+        body += text(cx, 82, title, 17, color, "bold")
+        body += f'<line x1="{ox - 20}" y1="{oy}" x2="{ox + 300}" y2="{oy}" stroke="#cbd5e1" stroke-width="1.5"/>'
+        body += f'<line x1="{ox}" y1="{oy + 20}" x2="{ox}" y2="{oy - 280}" stroke="#cbd5e1" stroke-width="1.5"/>'
+        if k == 0:
+            body += f'<path d="M{ox + 2 * u} {oy} A{2 * u} {2 * u} 0 0 0 {ox} {oy - 2 * u}" fill="none" stroke="{color}" stroke-width="1.6" stroke-dasharray="6 5"/>'
+            body += text(ox + 2 * u + 8, oy - 12, "半径 = 阈值", 13, color, anchor="start")
+            gx, gy = 4 * u, 3 * u                       # 原梯度 (4, 3)，范数 5
+            cx2, cy2 = gx * 2 / 5, gy * 2 / 5            # 裁到范数 2
+        else:
+            body += f'<rect x="{ox}" y="{oy - 1.2 * u}" width="{1.2 * u}" height="{1.2 * u}" fill="{SOFT[ORANGE]}" stroke="{color}" stroke-width="1.6" stroke-dasharray="6 5"/>'
+            body += text(ox + 1.2 * u + 8, oy - 1.2 * u + 4, "每个数限制在 ±阈值", 13, color, anchor="start")
+            gx, gy = 4 * u, 1 * u                       # 原梯度 (4, 1)
+            cx2, cy2 = 1.2 * u, 1 * u                    # 第一维截断到 1.2，第二维不变
+        body += arrow(ox, oy, ox + gx, oy - gy, GRAY, 3)
+        body += text(ox + gx + 6, oy - gy - 6, "原梯度", 14, GRAY, anchor="start")
+        body += arrow(ox, oy, ox + cx2, oy - cy2, color, 4)
+        body += text(ox + cx2 + 4, oy - cy2 + 24, "裁剪后", 14, color, "bold", "start")
+    body += text(250, 440, "所有分量乘同一个系数 min(1, 阈值/‖g‖)", 15)
+    body += text(710, 440, "大的分量被压扁，小的不动，方向偏向小分量", 15)
+    svg("grad-clip-geometry.svg", "按全局范数裁剪与按值裁剪",
+        "左：按全局范数裁剪，梯度向量整体缩短到阈值半径的圆上，方向不变。右：按值裁剪，每个分量被限制在正负阈值之内，"
+        "大的分量被压扁，小的不变，裁剪后的方向偏离原梯度。", 470, body)
+
+
+def grad_spike():
+    """第 120 步梯度放大 1000 倍：训练损失与每步更新量（种子 0）。"""
+    log = _grad_log()
+    if log is None:
+        return
+    runs, s0 = log["runs"], log["spike_step"]
+    picks = [("没有尖峰（不裁剪）", "不裁剪|0", GRAY), ("尖峰 ×1000，不裁剪", "尖峰 ×1000，不裁剪|0", RED),
+             ("尖峰 ×1000，不裁剪，β2=0.95", "尖峰 ×1000，不裁剪，β2=0.95|0", ORANGE), ("尖峰 ×1000，裁到 1.0", "尖峰 ×1000，裁到 1.0|0", BLUE)]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 6.2), layout="constrained", sharex=True, gridspec_kw={"height_ratios": [1.3, 1]})
+    k = 9
+    for label, key, color in picks:
+        r = runs[key]
+        loss = np.convolve(r["loss"], np.ones(k) / k, mode="valid")
+        a1.plot(np.arange(len(loss)) + k // 2 + 1, loss, color=color, lw=2.0, label=f"{label}（验证 {r['val']:.3f}）",
+                ls="--" if "裁到" in label else "-")
+        a2.plot(np.arange(1, len(r["update"]) + 1), r["update"], color=color, lw=1.6, ls="--" if "裁到" in label else "-")
+    for ax in (a1, a2):
+        ax.axvline(s0 + 1, color=RED, lw=1, alpha=0.5)
+        ax.grid(alpha=0.25)
+    a1.text(s0 - 2, 6.6, f"第 {s0 + 1} 步：梯度放大 1000 倍", color=RED, fontsize=11, ha="right")
+    a1.set_ylabel("训练损失（9 步滑动平均）")
+    a1.set_ylim(4.4, 7.2)
+    a1.legend(fontsize=10, loc="upper right")
+    a2.set_yscale("log")
+    a2.set_ylabel("每步更新量 ‖Δθ‖")
+    a2.set_xlabel("优化器步数")
+    sp = runs["尖峰 ×1000，不裁剪|0"]["update"]
+    save_plot(fig, "grad-spike.svg", "一次梯度尖峰对 AdamW 的影响",
+              f"种子 0，第 {s0 + 1} 步把梯度放大 1000 倍。不裁剪时，尖峰后约 10 步的更新量先变大（平均 {sum(sp[s0 + 1:s0 + 11]) / 10:.2f}，正常约 0.30），"
+              f"损失回升；之后更新量掉到 {sum(sp[200:]) / 40:.3f} 左右，训练几乎停住，验证损失停在 {runs['尖峰 ×1000，不裁剪|0']['val']:.3f}。"
+              f"β2=0.95 恢复得快一些（{runs['尖峰 ×1000，不裁剪，β2=0.95|0']['val']:.3f}）。裁到 1.0 时尖峰几乎没有影响（{runs['尖峰 ×1000，裁到 1.0|0']['val']:.3f}），和没有尖峰的曲线重合。")
+
+
+def grad_compare():
+    """3 个种子的对照：裁剪阈值，以及梯度尖峰。"""
+    log = _grad_log()
+    if log is None:
+        return
+    s = log["summary"]
+    rows = [("不裁剪", s["不裁剪"], GRAY), ("裁到 1.0（第 12 章）", s["裁到 1.0"], BLUE), ("裁到 0.01", s["裁到 0.01"], TEAL),
+            ("尖峰 ×1000，不裁剪", s["尖峰 ×1000，不裁剪"], RED), ("尖峰 ×1000，裁到 1.0", s["尖峰 ×1000，裁到 1.0"], BLUE)]
+    fig, ax = plt.subplots(figsize=(10, 3.8), layout="constrained")
+    for i, (name, vals, color) in enumerate(rows):
+        m = sum(vals) / len(vals)
+        ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+        ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+        ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+        ax.text(max(vals) + 0.015, i, f"{m:.3f}", va="center", fontsize=11, color=color)
+    ax.axhline(2.5, color="#cbd5e1", lw=1)
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=11)
+    ax.invert_yaxis()
+    ax.set_xlabel("最终验证损失（3 个种子；菱形是平均，横条是范围）")
+    ax.grid(alpha=0.25, axis="x")
+    lo, hi = ax.get_xlim()
+    ax.set_xlim(lo, hi + 0.06)
+    mean = lambda v: sum(v) / len(v)
+    save_plot(fig, "grad-compare.svg", "裁剪阈值与梯度尖峰的对照",
+              f"上面三行：不裁剪 {mean(s['不裁剪']):.3f}、裁到 1.0 {mean(s['裁到 1.0']):.3f}、裁到 0.01 {mean(s['裁到 0.01']):.3f}，范围互相重叠，阈值改一百倍几乎没有影响。"
+              f"下面两行：第 {log['spike_step'] + 1} 步梯度放大 1000 倍，不裁剪变差到 {mean(s['尖峰 ×1000，不裁剪']):.3f}，裁到 1.0 是 {mean(s['尖峰 ×1000，裁到 1.0']):.3f}，和没有尖峰时一样。")
+
+
+def grad_accum_loop():
+    """一个优化器步里各个调用的顺序（含梯度累积与 FP16）。"""
+    body = text(480, 40, "一个优化器步：先累积，再缩回、裁剪、更新", 22, weight="bold")
+    y = 78
+    body += cbox(330, y, 300, 40, GRAY) + mtext(480, y + 26, "optimizer.zero_grad()", 16)
+    body += text(660, y + 26, "每个优化器步一次", 14, GRAY, anchor="start")
+    body += arrow(480, y + 40, 480, y + 66, GRAY)
+    # 累积循环
+    body += f'<rect x="200" y="{y + 68}" width="560" height="196" rx="14" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(220, y + 92, "重复 accum 次（每个 micro-batch）", 15, BLUE, "bold", "start")
+    body += cbox(330, y + 104, 300, 38, BLUE) + text(480, y + 129, "前向：算这个 micro-batch 的损失", 15)
+    body += arrow(480, y + 142, 480, y + 158, GRAY, 2)
+    body += cbox(330, y + 160, 300, 38, BLUE) + mtext(480, y + 185, "(loss / accum).backward()", 15)
+    body += text(640, y + 185, "FP16：scaler.scale(…)", 13, ORANGE, anchor="start")
+    body += arrow(480, y + 198, 480, y + 214, GRAY, 2)
+    body += text(480, y + 236, "梯度在 .grad 里累加；这里不裁剪、不更新、不清零", 15, RED)
+    body += arrow(480, y + 264, 480, y + 290, GRAY)
+    steps = [("scaler.unscale_(optimizer)", "只有 FP16：先缩回真实大小，再检查 inf/nan", ORANGE, True),
+             ("clip_grad_norm_(params, 1.0)", "对累积完的梯度裁一次", INK, False),
+             ("optimizer.step()", "FP16 用 scaler.step(optimizer)，有 inf/nan 就跳过", INK, False),
+             ("scheduler.step()", "每个优化器步一次，不是每个 micro-batch", INK, False)]
+    yy = y + 292
+    for i, (code, note, color, dash) in enumerate(steps):
+        body += cbox(300, yy, 360, 38, ORANGE if dash else GRAY, dash=dash) + mtext(480, yy + 25, code, 15, color)
+        body += text(680, yy + 25, note, 13.5, ORANGE if dash else GRAY, anchor="start")
+        if i < len(steps) - 1:
+            body += arrow(480, yy + 38, 480, yy + 54, GRAY, 2)
+        yy += 56
+    svg("grad-accum-loop.svg", "一个优化器步里的调用顺序",
+        "一个优化器步从 zero_grad 开始；然后对每个 micro-batch 做前向和 (loss / accum).backward()，梯度在 .grad 里累加，期间不裁剪、不更新、不清零；"
+        "累积完以后，FP16 先 unscale_ 缩回真实大小，再对累积完的梯度裁剪一次，然后 optimizer.step()（FP16 用 scaler.step，遇到 inf/nan 跳过），最后 scheduler.step()。", yy + 10, body, width=1000)
+
+
+def grad_fp16_hist():
+    """训练好的模型上一个 batch 的梯度绝对值分布，对照 FP16 能表示的范围。"""
+    log = _grad_log()
+    if log is None:
+        return
+    h = np.array(log["hist"])
+    edges = np.linspace(-12, 0, len(h) + 1)
+    centers = (edges[:-1] + edges[1:]) / 2
+    w = edges[1] - edges[0]
+    shift = np.log10(2.0 ** 16)
+    lo_n, lo_s = np.log10(log["fp16"]["smallest_normal"]), np.log10(log["fp16"]["smallest_subnormal"])
+    hi = np.log10(65504)
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    ax.axvspan(-12.5, lo_s, color=RED, alpha=0.08)
+    ax.axvspan(lo_s, lo_n, color=ORANGE, alpha=0.10)
+    ax.axvspan(hi, 10, color=RED, alpha=0.08)
+    ax.bar(centers, h / h.sum() * 100, width=w * 0.95, color=GRAY, alpha=0.75, label="原始梯度")
+    ax.bar(centers + shift, h / h.sum() * 100, width=w * 0.95, color=BLUE, alpha=0.55, label="乘以 2^16 之后")
+    top = (h / h.sum() * 100).max() * 1.25
+    ax.text(lo_s - 0.15, top * 0.85, "变成 0", color=RED, fontsize=11, ha="right")
+    ax.text((lo_s + lo_n) / 2, top * 0.85, "次正规数\n（有效位变少）", color=ORANGE, fontsize=10.5, ha="center")
+    ax.text(hi + 0.15, top * 0.85, "溢出\n成 inf", color=RED, fontsize=11, ha="left")
+    ax.set_xlim(-12.5, 6.5)
+    ax.set_ylim(0, top)
+    ax.set_xlabel("梯度绝对值（log10）")
+    ax.set_ylabel("占全部参数的比例（%）")
+    ax.legend(fontsize=11, loc="upper left")
+    ax.grid(alpha=0.25)
+    below = h[centers < lo_n].sum() / h.sum()
+    save_plot(fig, "grad-fp16-hist.svg", "梯度大小与 FP16 能表示的范围",
+              f"灰色是训练好的代理模型在一个 batch 上的参数梯度（FP32），约 {below:.0%} 落在 FP16 的最小正规数 6.1e-5 以下，极少数小于 6e-8 会直接变成 0；"
+              "蓝色是放大 2^16 倍之后，整体右移约 4.8 个数量级，几乎全部进入正规数范围，离上限 65504 还有距离。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2531,7 +2725,8 @@ def main():
                data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage,
                lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator,
                lr_schedules, lr_compare, lr_curves, lr_warmup,
-               reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare):
+               reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare,
+               grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist):
         fn()
     print("figures written to", OUT)
 

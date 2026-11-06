@@ -23,6 +23,7 @@
 | 第 17 章 学习率策略 | [learning-rate.py](learning-rate.py) | [打开](https://lewislau86.github.io/tinyllm/learning-rate) |
 | 第 18 章 正则化与泛化 | [regularization.py](regularization.py) | [打开](https://lewislau86.github.io/tinyllm/regularization) |
 | 第 19 章 数值精度与混合精度 | [precision.py](precision.py) | [打开](https://lewislau86.github.io/tinyllm/precision) |
+| 第 20 章 梯度稳定与累积 | [gradient-stability.py](gradient-stability.py) | [打开](https://lewislau86.github.io/tinyllm/gradient-stability) |
 | 第 26 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
 | 第 27 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
 
