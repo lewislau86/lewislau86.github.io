@@ -8,7 +8,8 @@
 
     git clone --depth 1 --branch v5.21 --filter=blob:none --sparse https://github.com/huggingface/transformers.git /tmp/tf
     cd /tmp/tf && git sparse-checkout set src/transformers/models/llama src/transformers/models/qwen2 \\
-        src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation
+        src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation \\
+        src/transformers/models/mixtral src/transformers/models/qwen2_moe
     git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
         src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
         src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
@@ -123,6 +124,11 @@ SPEC = {
         ("WSD", "optimization.py", "_get_wsd_scheduler_lambda", "warmup、保持、衰减三段；衰减段可选线性、余弦或 1-sqrt，并可设最低学习率比例 `min_lr_ratio`"),
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
+    ]),
+    "mixture-of-experts": ("transformers 里的 MoE 层和本章的写法几乎一样：路由器打分、取 top-k、按分数加权求和；Qwen2-MoE 还多了一个共享专家：", [
+        ("路由与专家", "models/mixtral/modeling_mixtral.py", "MixtralSparseMoeBlock", "Mixtral 的 MoE 层：8 个专家选 2 个，softmax 后取 top-2 并重新归一化，和本章 `MoE` 的做法相同"),
+        ("负载均衡损失", "models/mixtral/modeling_mixtral.py", "load_balancing_loss_func", "Switch Transformer 的辅助损失：每个专家分到的比例乘以平均路由概率，再求和，即本章 `self.aux`"),
+        ("共享专家", "models/qwen2_moe/modeling_qwen2_moe.py", "Qwen2MoeSparseMoeBlock", "路由专家之外，还有一个每个 token 都经过的共享专家，用一个门控决定它的输出占多少"),
     ]),
     "large-model-stability": ("本章的几个手段，在 transformers 里分别对应下面这几处：", [
         ("QK Norm", QWEN3, ("grep", r"self\.q_norm = "), "Qwen3 给每个头的 q、k 各配一个 RMSNorm，和本章 `qk_norm=True` 的写法相同"),

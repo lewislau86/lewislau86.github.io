@@ -63,6 +63,7 @@ ARTIFACTS = {
     ("training-evaluation", "training_evaluation_log.json"): ROOT / "scripts/data/tinyllm-training-evaluation-log.json",
     ("hyperparameter-tuning", "hyperparameter_tuning_log.json"): ROOT / "scripts/data/tinyllm-hyperparameter-tuning-log.json",
     ("large-model-stability", "large_model_stability_log.json"): ROOT / "scripts/data/tinyllm-large-model-stability-log.json",
+    ("mixture-of-experts", "mixture_of_experts_log.json"): ROOT / "scripts/data/tinyllm-mixture-of-experts-log.json",
 }
 
 

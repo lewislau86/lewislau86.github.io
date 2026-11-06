@@ -3212,6 +3212,168 @@ def scale_parallel():
         "每层用之前 all-gather 参数，反向后 reduce-scatter 梯度。张量并行：每个矩阵切开放在不同的卡上，所有卡处理同一个 batch，每个子层之后 all-reduce 激活。", 410, body, width=1000)
 
 
+# ---------- 第 25 章：稀疏专家（MoE） ----------
+
+def _moe_log():
+    src = DATA / "tinyllm-mixture-of-experts-log.json"
+    if not src.exists():
+        print("skip mixture-of-experts figures: run scripts/build-tinyllm-code.py mixture-of-experts to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def moe_structure():
+    """稠密前馈层与 MoE 层：路由器选 2 个专家，按分数加权求和。"""
+    body = text(500, 40, "把一个前馈层换成 8 个专家：每个 token 只用其中 2 个", 22, weight="bold")
+    # 左：稠密
+    body += text(150, 84, "稠密前馈层", 18, BLUE, "bold")
+    body += mtext(150, 116, "x（一个 token）", 15)
+    body += arrow(150, 124, 150, 150, GRAY)
+    body += cbox(60, 152, 180, 64, BLUE) + text(150, 182, "SwiGLU", 17, BLUE, "bold") + text(150, 204, "每个 token 都用全部参数", 13, GRAY)
+    body += arrow(150, 216, 150, 244, GRAY)
+    body += mtext(150, 264, "输出", 15)
+    body += f'<line x1="300" y1="70" x2="300" y2="440" stroke="#e2e8f0" stroke-width="2"/>'
+    # 右：MoE
+    cx = 650
+    body += text(cx, 84, "MoE 层（本章：8 个专家，每个 token 选 2 个）", 18, TEAL, "bold")
+    body += mtext(cx, 116, "x（一个 token）", 15)
+    body += arrow(cx, 124, cx, 146, GRAY)
+    body += cbox(cx - 150, 148, 300, 52, ORANGE) + text(cx, 172, "路由器：Linear(d → 8) + softmax", 15, ORANGE, "bold") + text(cx, 192, "给 8 个专家各打一个分，选最高的 2 个", 12.5, GRAY)
+    xs = [cx - 331 + i * 84 for i in range(8)]
+    picked = {1, 5}
+    for i, x in enumerate(xs):
+        on = i in picked
+        body += (path(f"M{cx} 200 L{x + 40} 252", TEAL, 2.4) if on else
+                 f'<line x1="{cx}" y1="200" x2="{x + 40}" y2="252" stroke="#cbd5e1" stroke-width="1.2"/>')
+        body += box(x + 3, 254, 74, 60, SOFT[TEAL] if on else "#ffffff", TEAL if on else "#cbd5e1", width=2.4 if on else 1.4)
+        body += text(x + 40, 280, f"专家 {i}", 14, TEAL if on else GRAY, "bold" if on else "normal")
+        body += text(x + 40, 302, "SwiGLU", 12, GRAY)
+        if on:
+            body += path(f"M{x + 40} 314 L{cx} 360", TEAL, 2.4)
+    body += text(xs[1] + 40, 336, "× 0.62", 13, TEAL, "bold")
+    body += text(xs[5] + 40, 336, "× 0.38", 13, TEAL, "bold")
+    body += circle(cx, 374, 15) + text(cx, 381, "+", 21, weight="bold")
+    body += arrow(cx, 389, cx, 410, GRAY)
+    body += mtext(cx, 428, "输出 = 两个专家输出的加权和", 15)
+    body += text(500, 470, "前馈层的参数变成 8 份，每个 token 只算其中 2 份；没被选中的 6 个专家这次完全不参与计算", 14.5, INK)
+    svg("moe-structure.svg", "稠密前馈层与 MoE 层",
+        "左：稠密前馈层，每个 token 都经过同一个 SwiGLU。右：MoE 层，路由器给 8 个专家打分，每个 token 只选分数最高的 2 个专家，"
+        "两个专家的输出按归一化后的分数加权相加；没被选中的专家不参与这次计算。", 495, body, width=1000)
+
+
+def moe_compare():
+    """MoE 与三种稠密模型、稀疏升级：3 个种子的验证损失。"""
+    log = _moe_log()
+    if log is None:
+        return
+    r = log["results"]
+    rows = [("稠密（主线）", GRAY), ("稠密，激活参数相同", BLUE), ("稠密，总参数相同", BLUE), ("MoE，不均衡", ORANGE),
+            ("MoE，辅助损失", TEAL), ("MoE，偏置均衡", TEAL), ("稀疏升级", PURPLE)]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for i, (name, color) in enumerate(rows):
+        vals = r[name]
+        m = sum(vals) / len(vals)
+        ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+        ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+        ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+        busy = r.get(name + "·最忙")
+        note = f"{m:.3f}" + (f"   最忙专家 {max(busy):.0%}" if busy else "")
+        ax.text(max(vals) + 0.006, i, note, va="center", fontsize=10.5, color=color)
+    ax.set_yticks(range(len(rows)), [n for n, _ in rows], fontsize=11)
+    ax.invert_yaxis()
+    ax.set_xlabel("验证损失（3 个种子；菱形是平均，横条是范围）")
+    lo, hi = ax.get_xlim()
+    ax.set_xlim(lo, hi + 0.06)
+    ax.grid(alpha=0.25, axis="x")
+    mean = lambda k: sum(r[k]) / len(r[k])
+    save_plot(fig, "moe-compare.svg", "MoE 与稠密模型的对照",
+              f"代理模型、240 步、3 个种子。主线稠密模型 {mean('稠密（主线）'):.3f}；激活参数相同的稠密 {mean('稠密，激活参数相同'):.3f}、总参数相同的稠密 {mean('稠密，总参数相同'):.3f}、"
+              f"三种均衡方式的 MoE（{mean('MoE，不均衡'):.3f}、{mean('MoE，辅助损失'):.3f}、{mean('MoE，偏置均衡'):.3f}）和稀疏升级（{mean('稀疏升级'):.3f}）的范围互相重叠，"
+              "在这个尺度上分不出高下。不均衡时最忙的专家拿走四成多的选择，偏置均衡时只有 14%。")
+
+
+def moe_routing():
+    """偏置均衡的 MoE：每类 token 的第一选择落在哪个专家上。"""
+    log = _moe_log()
+    if log is None:
+        return
+    rt = log["routing"]
+    classes = ["逗号", "句号", "<eos>", "其余（汉字）"]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.6), layout="constrained")
+    for layer, ax in enumerate(axes):
+        mat = np.array([rt[f"{layer}|{c}"] for c in classes]) * 100
+        im = ax.imshow(mat, cmap="Blues", vmin=0, vmax=100, aspect="auto")
+        for i in range(mat.shape[0]):
+            for j in range(mat.shape[1]):
+                ax.text(j, i, f"{mat[i, j]:.0f}", ha="center", va="center", fontsize=10, color="white" if mat[i, j] > 60 else INK)
+        ax.set_xticks(range(8), [f"专家{j}" for j in range(8)], fontsize=10)
+        ax.set_yticks(range(len(classes)), classes, fontsize=11)
+        ax.set_title(f"第 {layer} 层", fontsize=12.5)
+    fig.colorbar(im, ax=axes, label="这类 token 里选它的比例（%）", shrink=0.9)
+    save_plot(fig, "moe-routing.svg", "专家的分工",
+              "偏置均衡的 MoE（种子 0）在验证集上的路由：每格是这一类 token 把第一选择给了哪个专家的比例。两层里，逗号、句号、<eos> 各自几乎全部交给一个固定的专家，"
+              "汉字则分散在其余专家上。")
+
+
+def moe_upcycle():
+    """稀疏升级：把稠密前馈层复制成 8 个专家，加一个路由器，接着训练。"""
+    log = _moe_log()
+    if log is None:
+        return
+    r, sim = log["results"], log["similarity"]
+    mean = lambda k: sum(r[k]) / len(r[k])
+    body = text(500, 40, "稀疏升级：训练到一半的稠密模型，改成 MoE 接着训练", 22, weight="bold")
+    body += cbox(60, 90, 220, 70, BLUE) + text(170, 120, "稠密模型训练到第 120 步", 15, BLUE, "bold") + text(170, 144, "参数 + 优化器状态", 13, GRAY)
+    body += arrow(280, 125, 340, 125, GRAY)
+    body += cbox(345, 82, 300, 86, ORANGE) + text(495, 108, "每层：前馈层复制 8 份 → 8 个专家", 14.5, ORANGE, "bold")
+    body += text(495, 130, "新加路由器（随机、几乎均匀）", 13, GRAY) + text(495, 152, "Adam 的 m、v 也复制给每个专家", 13, GRAY)
+    body += arrow(645, 125, 705, 125, GRAY)
+    body += cbox(710, 90, 230, 70, TEAL) + text(825, 120, "MoE 接着训练到第 240 步", 15, TEAL, "bold") + text(825, 144, "和稠密模型同样的数据与调度", 13, GRAY)
+    body += box(60, 196, 880, 64, "#ffffff", "#cbd5e1")
+    body += text(500, 222, "升级那一刻：8 个专家一模一样，选哪 2 个、权重多少，加权和都等于原来的前馈层", 15)
+    body += text(500, 246, "所以输出和稠密模型完全相同，验证损失一点不变：不用从头训练", 15, TEAL, "bold")
+    body += text(500, 300, f"接着训练 120 步后（3 个种子）：稀疏升级 {mean('稀疏升级'):.3f}，稠密 {mean('稠密（主线）'):.3f}，从头训练的 MoE {mean('MoE，偏置均衡'):.3f}", 15)
+    body += text(500, 328, f"专家之间的平均相似度：稀疏升级 {sim['upcycled']:.2f}，从头训练约为 0（{sim['scratch']:.3f}）：从同一个起点出发，专家分化得慢", 15, ORANGE)
+    svg("moe-upcycle.svg", "稀疏升级的过程",
+        "稠密模型训练到第 120 步后，每层的前馈层复制成 8 个一模一样的专家，新加一个路由器，Adam 的状态也一起复制，然后作为 MoE 接着训练到第 240 步。"
+        f"升级那一刻输出和稠密模型完全相同。接着训练后，稀疏升级 {mean('稀疏升级'):.3f}，稠密 {mean('稠密（主线）'):.3f}，从头训练的 MoE {mean('MoE，偏置均衡'):.3f}；"
+        f"专家之间的平均相似度，稀疏升级是 {sim['upcycled']:.2f}，从头训练约为 0。", 350, body, width=1000)
+
+
+def moe_serving():
+    """真实模型：权重显存与每 token 读的权重；批量变大时用到的专家比例。"""
+    log = _moe_log()
+    if log is None:
+        return
+    real, cov = log["real"], log["coverage"]
+    names = list(real)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1.2, 1]})
+    y = np.arange(len(names))
+    a1.barh(y - 0.2, [real[n][0] * 2 / 1e9 for n in names], height=0.38, color=GRAY, alpha=0.8, label="要装进显存的权重（总参数）")
+    a1.barh(y + 0.2, [real[n][1] * 2 / 1e9 for n in names], height=0.38, color=TEAL, alpha=0.9, label="每生成一个 token 读的权重（激活参数，批量 1）")
+    a1.set_xscale("log")
+    a1.set_yticks(y, names, fontsize=10.5)
+    a1.invert_yaxis()
+    a1.set_xlabel("GB（BF16，对数坐标）")
+    a1.legend(fontsize=9.5, loc="upper right")
+    a1.grid(alpha=0.25, axis="x")
+    a1.set_title("显存看总参数，速度看激活参数", fontsize=12.5)
+    batches = [1, 4, 16, 64, 256]
+    for (name, c), color in zip(cov.items(), (ORANGE, BLUE, TEAL, RED)):
+        a2.plot(batches, [100 * v for v in c], marker="o", lw=2, color=color, label=name, ls="--" if name == "DeepSeek-V3" else "-")
+    a2.set_xscale("log")
+    a2.set_xticks(batches, [str(b) for b in batches])
+    a2.set_xlabel("同时解码的 token 数（批量）")
+    a2.set_ylabel("一层里被用到的专家（%）")
+    a2.set_title("批量一大，几乎所有专家都要读", fontsize=12.5)
+    a2.legend(fontsize=9.5, loc="lower right")
+    a2.grid(alpha=0.25)
+    q = real["Qwen3-30B-A3B"]
+    save_plot(fig, "moe-serving.svg", "MoE 的推理账",
+              f"左：五个公开模型 BF16 权重的大小（总参数）和批量为 1 时每生成一个 token 要读的权重（激活参数）。Qwen3-30B-A3B 要装下 {q[0] * 2 / 1e9:.0f} GB，每个 token 只读 {q[1] * 2 / 1e9:.1f} GB。"
+              "右：假设路由均匀独立，批量变大时一层里至少被一个 token 选中的专家比例；Qwen3-30B-A3B 在批量 64 时已经接近全部，单用户时的带宽优势在高并发下基本消失。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -3271,7 +3433,8 @@ def main():
                loop_structure, ckpt_contents, ckpt_resume,
                eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
                hp_sensitivity, hp_search, hp_halving, hp_peek,
-               scale_instability, scale_mup, scale_memory, scale_parallel):
+               scale_instability, scale_mup, scale_memory, scale_parallel,
+               moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving):
         fn()
     print("figures written to", OUT)
 

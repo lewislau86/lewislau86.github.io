@@ -28,6 +28,7 @@
 | 第 22 章 训练诊断与评估 | [training-evaluation.py](training-evaluation.py) | [打开](https://lewislau86.github.io/tinyllm/training-evaluation) |
 | 第 23 章 超参数与自动化调参 | [hyperparameter-tuning.py](hyperparameter-tuning.py) | [打开](https://lewislau86.github.io/tinyllm/hyperparameter-tuning) |
 | 第 24 章 大规模训练稳定性 | [large-model-stability.py](large-model-stability.py) | [打开](https://lewislau86.github.io/tinyllm/large-model-stability) |
+| 第 25 章 稀疏专家（MoE） | [mixture-of-experts.py](mixture-of-experts.py) | [打开](https://lewislau86.github.io/tinyllm/mixture-of-experts) |
 | 第 26 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
 | 第 27 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
 
