@@ -3092,6 +3092,126 @@ def hp_peek():
               f"按第 96 步挑中的配置最终是 {final[i_e]:.4f}，按最终挑中的是 {final[i_f]:.4f}。")
 
 
+# ---------- 第 24 章：大规模训练稳定性 ----------
+
+def _scale_log():
+    src = DATA / "tinyllm-large-model-stability-log.json"
+    if not src.exists():
+        print("skip large-model-stability figures: run scripts/build-tinyllm-code.py large-model-stability to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def scale_instability():
+    """学习率扫描：验证损失与注意力分数的最大值。"""
+    log = _scale_log()
+    if log is None:
+        return
+    lrs = log["lrs"]
+    styles = {"原样": (GRAY, "o"), "加 QK Norm": (TEAL, "s"), "加 z-loss": (ORANGE, "^")}
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained")
+    for name, rows in log["sweep"].items():
+        color, marker = styles[name]
+        a1.plot(lrs, [r["val"] for r in rows], color=color, marker=marker, lw=2.2, ms=7, label=name)
+        a2.plot(lrs, [r["attn"] for r in rows], color=color, marker=marker, lw=2.2, ms=7, label=name)
+    for ax in (a1, a2):
+        ax.set_xscale("log")
+        ax.axvline(1e-2, color=BLUE, ls="--", lw=1)
+        ax.set_xlabel("峰值学习率（虚线是主线 1e-2）")
+        ax.grid(alpha=0.25)
+    a1.set_ylabel("最终验证损失")
+    a1.set_title("学习率变大时，QK Norm 坏得慢得多", fontsize=12.5)
+    a1.legend(fontsize=10.5, loc="upper left")
+    a2.set_yscale("log")
+    a2.set_ylabel("注意力分数绝对值的最大值")
+    a2.set_title("原样时注意力分数一路涨到十万以上", fontsize=12.5)
+    base, qk = log["sweep"]["原样"], log["sweep"]["加 QK Norm"]
+    save_plot(fig, "scale-instability.svg", "在小模型上用大学习率复现不稳定",
+              f"左：峰值学习率从 3e-3 扫到 3e-1。主线 1e-2 附近三种设置差不多；学习率更大时，原样和加 z-loss 迅速变差（3e-1 时 {base[-1]['val']:.2f}），"
+              f"加 QK Norm 变差得慢得多（{qk[-1]['val']:.2f}）。右：注意力分数（softmax 之前）的最大值。原样时从 {base[1]['attn']:.0f} 涨到 {base[-1]['attn']:.3g}；"
+              f"QK Norm 把它压在 {qk[-1]['attn']:.0f} 以内。z-loss 管的是输出 logits，对注意力分数没有作用。")
+
+
+def scale_mup():
+    """标准参数化与 μP：不同宽度下验证损失随学习率的变化。"""
+    log = _scale_log()
+    if log is None:
+        return
+    lrs = log["mup_lrs"]
+    colors = {"32": ORANGE, "64": GRAY, "128": BLUE}
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", sharey=True)
+    bests = {}
+    for ax, kind, title in ((axes[0], "SP", "标准参数化：最佳学习率随宽度漂移"), (axes[1], "μP", "μP：最佳学习率不随宽度变")):
+        for d, vals in log["mup"][kind].items():
+            ax.plot(lrs, vals, color=colors[d], marker="o", lw=2.2, label=f"宽度 {d}")
+            b = int(np.argmin(vals))
+            ax.scatter([lrs[b]], [vals[b]], s=180, facecolor="none", edgecolor=colors[d], lw=2.2, zorder=4)
+            bests[(kind, d)] = lrs[b]
+        ax.set_xscale("log")
+        ax.set_xlabel("峰值学习率（120 步，单个种子；圆圈是最好的一点）")
+        ax.set_title(title, fontsize=12.5)
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=10.5, loc="upper center")
+    axes[0].set_ylabel("验证损失")
+    axes[0].set_ylim(4.95, 6.1)
+    save_plot(fig, "scale-mup.svg", "标准参数化与 μP 的学习率迁移",
+              f"左：标准参数化下，宽度 32、64、128 的最佳学习率分别是 {bests[('SP', '32')]:.0e}、{bests[('SP', '64')]:.0e}、{bests[('SP', '128')]:.0e}，宽度每翻一倍，最佳学习率就往小移一档（网格每档约 3 倍）。"
+              f"右：μP 下三种宽度的最佳学习率都是 {bests[('μP', '64')]:.0e}，而且同一个学习率下，宽度越大验证损失越低。宽度 64 是基准宽度，两种参数化在这里完全相同。")
+
+
+def scale_memory():
+    """70 亿参数、8 张卡：数据并行与 ZeRO 各阶段每张卡的显存（不含激活）。"""
+    log = _scale_log()
+    if log is None:
+        return
+    mem = log["memory"]
+    names = list(mem)
+    fig, ax = plt.subplots(figsize=(10, 3.6), layout="constrained")
+    left = np.zeros(len(names))
+    for j, (part, color) in enumerate((("参数（BF16）", BLUE), ("梯度（BF16）", TEAL), ("优化器状态（FP32 主权重、m、v）", ORANGE))):
+        vals = np.array([mem[n][j] for n in names])
+        ax.barh(range(len(names)), vals, left=left, color=color, alpha=0.85, label=part, height=0.6)
+        left += vals
+    for i, n in enumerate(names):
+        ax.text(left[i] + 1.5, i, f"{left[i]:.1f} GB", va="center", fontsize=11)
+    ax.axvline(80, color=RED, ls="--", lw=1.2)
+    ax.text(81, 0.5, "一张 80 GB 的卡", color=RED, fontsize=10.5, va="center")
+    ax.set_yticks(range(len(names)), names, fontsize=10.5)
+    ax.invert_yaxis()
+    ax.set_xlabel("每张卡要放的训练状态（GB，不含激活）")
+    ax.set_xlim(0, max(left) * 1.15)
+    ax.legend(fontsize=10, loc="lower right")
+    ax.grid(alpha=0.25, axis="x")
+    save_plot(fig, "scale-memory.svg", "ZeRO 各阶段的显存",
+              f"70 亿参数、8 张卡，混合精度每个参数 16 字节。普通数据并行每张卡放一整份，{sum(mem[names[0]]):.0f} GB，超过一张 80 GB 的卡；"
+              f"ZeRO-1 把优化器状态切成 8 份，降到 {sum(mem[names[1]]):.1f} GB；ZeRO-2 再切梯度，{sum(mem[names[2]]):.1f} GB；ZeRO-3 / FSDP 连参数也切，{sum(mem[names[3]]):.1f} GB。")
+
+
+def scale_parallel():
+    """三种并行方式：每张卡放什么、在哪里通信。"""
+    body = text(500, 40, "三种把训练分到多张卡上的方式（以 2 张卡为例）", 22, weight="bold")
+    cols = [(170, "数据并行", BLUE, ["完整的模型", "完整的模型"], ["batch 前一半", "batch 后一半"],
+             "反向后：all-reduce 梯度", "每张卡要放得下整个模型"),
+            (500, "ZeRO-3 / FSDP", TEAL, ["参数、梯度、优化器的 1/2", "参数、梯度、优化器的 1/2"], ["batch 前一半", "batch 后一半"],
+             "每层用前 all-gather 参数，反向后 reduce-scatter 梯度", "通信更多，换来显存除以卡数"),
+            (830, "张量并行", ORANGE, ["每个矩阵的一半", "每个矩阵的一半"], ["同一个 batch", "同一个 batch"],
+             "每个子层后：all-reduce 激活", "通信频繁，适合同一台机器内")]
+    for cx, title, color, holds, data, comm, note in cols:
+        body += text(cx, 84, title, 18, color, "bold")
+        for r in range(2):
+            y = 104 + r * 120
+            body += cbox(cx - 140, y, 280, 96, color)
+            body += text(cx, y + 24, f"卡 {r}", 14, GRAY)
+            body += text(cx, y + 50, holds[r], 15, INK, "bold")
+            body += text(cx, y + 76, "数据：" + data[r], 13.5, GRAY)
+        body += f'<path d="M{cx - 150} 168 C {cx - 175} 190, {cx - 175} 230, {cx - 150} 252" stroke="{RED}" stroke-width="2.4" fill="none" marker-end="url(#arrow-{RED[1:]})" marker-start="url(#arrow-{RED[1:]})"/>'
+        body += text(cx, 360, comm, 13.5, RED)
+        body += text(cx, 386, note, 13.5, GRAY)
+    svg("scale-parallel.svg", "数据并行、ZeRO-3/FSDP 与张量并行",
+        "数据并行：每张卡放完整的模型，各算 batch 的一部分，反向后 all-reduce 梯度。ZeRO-3/FSDP：每张卡只放参数、梯度、优化器状态的一部分，"
+        "每层用之前 all-gather 参数，反向后 reduce-scatter 梯度。张量并行：每个矩阵切开放在不同的卡上，所有卡处理同一个 batch，每个子层之后 all-reduce 激活。", 410, body, width=1000)
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -3150,7 +3270,8 @@ def main():
                grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist,
                loop_structure, ckpt_contents, ckpt_resume,
                eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
-               hp_sensitivity, hp_search, hp_halving, hp_peek):
+               hp_sensitivity, hp_search, hp_halving, hp_peek,
+               scale_instability, scale_mup, scale_memory, scale_parallel):
         fn()
     print("figures written to", OUT)
 

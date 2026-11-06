@@ -57,6 +57,7 @@ pageClass: tinyllm-course
 | [第 21 章 · 训练循环与检查点](./training-loop.md) | `Dataset`、`Sampler`、`DataLoader` 与按 epoch 组织的训练循环；检查点存模型、优化器、调度器、训练进度、随机数状态和配置，断电后接着训和一口气训完逐位相同；找出 DataLoader 偷用全局随机数的坑，逐项去掉一样看偏差；原子保存、只留最新几个、`weights_only` | [查看](/tinyllm/notebooks/training-loop) |
 | [第 22 章 · 训练诊断与评估](./training-evaluation.md) | 故意埋 6 个常见 bug（漏因果掩码、标签没错位、双重 softmax、忘了清梯度、每步同一个 batch、初始化放大），用初始损失、单 batch 过拟合、因果性、训练/验证曲线、生成样例、梯度范数 6 项检查去抓；验证损失的 bootstrap 误差与配对比较；损失与生成质量的关系 | [查看](/tinyllm/notebooks/training-evaluation) |
 | [第 23 章 · 超参数与自动化调参](./hyperparameter-tuning.md) | 5 个种子量噪声底线（σ = 0.018）；每次只改一个超参数排敏感度（学习率、batch 最敏感，β2、衰减比例在噪声以内）；batch 与学习率的耦合；同样约 9 次训练的预算比较网格、随机、逐轮淘汰（借 WSD 分叉衰减评估）；按中间结果挑的陷阱、赢家换种子复核；TPE、PBT 与从小到大的迁移 | [查看](/tinyllm/notebooks/hyperparameter-tuning) |
+| [第 24 章 · 大规模训练稳定性](./large-model-stability.md) | 在小模型上用大学习率复现注意力分数失控（从 36 涨到 22 万），QK Norm 压住它、拓宽可用学习率，z-loss 在这里不起作用；DeepNorm；μP 让最佳学习率不随宽度漂移；ZeRO/FSDP 显存账、激活重计算、数据并行与张量并行的模拟；放大以后的稳定性清单 | [查看](/tinyllm/notebooks/large-model-stability) |
 | [第 26 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
 | [第 27 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
 
@@ -109,7 +110,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 21 章 · 训练循环与检查点](./training-loop.md)
 - [第 22 章 · 训练诊断与评估](./training-evaluation.md)
 - [第 23 章 · 超参数与自动化调参](./hyperparameter-tuning.md)
-- [第 24 章 · 大规模训练稳定性](./large-model-stability.md)（规划中）
+- [第 24 章 · 大规模训练稳定性](./large-model-stability.md)
 - [第 25 章 · 稀疏专家（MoE）](./mixture-of-experts.md)（规划中）
 
 ### 第六部分 · 推理
@@ -172,7 +173,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [21 训练循环](./training-loop.md) | 每步 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step`，用 progress（step、epoch、epoch 内 batch 数）记进度；数据顺序只由 (种子, epoch) 决定，DataLoader 用自己的 generator；检查点存模型、优化器、调度器、进度、随机数状态与配置，先写临时文件再替换 | 代理模型单种子：完整恢复与一口气训完逐位相同；缺任何一样都会偏离，缺调度器还会让 WSD 衰减段消失。GPU 上另存每张卡的随机数状态，需要逐位复现时打开确定性算法。 |
 | [22 评估](./training-evaluation.md) | 训练前先跑初始损失 ≈ ln V、因果性测试、单 batch 过拟合（用同一份训练代码）；训练中记训练/验证损失、梯度范数与学习率；训练后看固定提示词的生成样例和简单结构指标；比较模型时在同一验证集上配对 bootstrap，并结合多个种子 | 代理模型单种子：6 个 bug 没有一项检查能全部抓住，训练前三项几秒内抓住其中 4 个；有 bug 的验证损失可以比正确代码低几十倍；配对后差的区间约为单独区间的八分之一。阈值随模型和训练时长重定。 |
 | [23 调参](./hyperparameter-tuning.md) | 先用 3～5 个种子量噪声底线，小于约 2σ 不算改进；预算先给学习率（连同 batch 与步数），再确认 warmup、weight decay，β2 与衰减比例用默认值；自动搜索用随机搜索，配置多时用逐轮淘汰并在 WSD 峰值阶段分叉衰减后比较；赢家换新种子复核，测试集只报告一次 | 代理模型：学习率偏离 26.5σ、batch 16.3σ，β2 与衰减比例在 1.2σ 以内；同预算下随机搜索与逐轮淘汰好于网格，但复核后都没有可靠地超过第 17 章的主线。大模型上数值要重扫或改用 μP（第 24 章）。 |
-| [24 大规模稳定性](./large-model-stability.md) | 保留基础 Pre-Norm 配置并监测尺度；扩深/扩宽出现问题时才评估 μP、DeepNorm 等整套方案 | 这些方法涉及初始化、结构和学习率的联动，不能只替换一个常数；多卡训练时再引入数据并行等分布式方案。 |
+| [24 大规模稳定性](./large-model-stability.md) | 主线保持 Pre-RMSNorm 与残差输出缩放，记录注意力分数与输出 logits 的尺度；放大时先加 QK Norm，跨宽度迁移学习率时整套采用 μP，输出 logits 漂移或低精度时再加 z-loss；显存不够按激活重计算 → ZeRO-1/2 → FSDP → 张量并行的顺序考虑 | 代理模型单种子：大学习率下 QK Norm 让 5 个学习率上的平均验证损失从 5.304 降到 5.034，主线学习率上无差别；SP 最佳学习率随宽度从 3e-2 移到 3e-3，μP 都是 1e-2；重计算省九成激活、梯度逐位相同。 |
 | [25 MoE](./mixture-of-experts.md) | 主线保持稠密；MoE 作为对照变体，用相同数据和步数从头训练，并试稀疏升级 | 同样的计算量能放下更多参数，但要处理负载均衡与路由稳定；参数规模或推理成本成为瓶颈时再切换。 |
 | [26 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p，并固定种子 | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
 | [27 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |

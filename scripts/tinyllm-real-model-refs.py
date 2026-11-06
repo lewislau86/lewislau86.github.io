@@ -124,6 +124,11 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "large-model-stability": ("本章的几个手段，在 transformers 里分别对应下面这几处：", [
+        ("QK Norm", QWEN3, ("grep", r"self\.q_norm = "), "Qwen3 给每个头的 q、k 各配一个 RMSNorm，和本章 `qk_norm=True` 的写法相同"),
+        ("激活重计算的开关", "modeling_utils.py", "PreTrainedModel.gradient_checkpointing_enable", "给模型里的每一层打开重计算，底层就是本章用的 `torch.utils.checkpoint`"),
+        ("Trainer 何时打开它", "trainer.py", ("grep", r"gradient_checkpointing_enable\("), "`TrainingArguments(gradient_checkpointing=True)` 时，训练开始前调用上面那个方法"),
+    ]),
     "hyperparameter-tuning": ("transformers 的 Trainer 自带一个超参数搜索的入口，具体的搜索算法交给 Optuna、Ray Tune 等后端：", [
         ("搜索入口", "trainer.py", "Trainer.hyperparameter_search", "每个 trial 用 `model_init` 重新造一个模型，按 `direction` 取验证指标的最小或最大；算法（TPE、随机、ASHA 等）由所选的后端决定"),
         ("默认的搜索空间", "trainer_utils.py", "default_hp_space_optuna", "看一下默认都搜哪些量、范围多大；如果随机种子也在里面，挑出来的可能只是一次好运气（本章第 7 节）"),
