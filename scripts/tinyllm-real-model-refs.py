@@ -4,26 +4,25 @@
 并给出精确到行的链接。行号由本脚本从固定版本的源码里算出来（按类名、函数名定位），
 正文里 `<!-- real-model:start -->` 与 `<!-- real-model:end -->` 之间的内容由它整段重写，不要手改。
 
-升级 transformers 版本时：改 TAG，重新取源码，再运行本脚本；找不到的名字会直接报错。
+用法（三步，目录可以换成别的）：
 
-    git clone --depth 1 --branch v5.21 --filter=blob:none --sparse https://github.com/huggingface/transformers.git /tmp/tf
-    cd /tmp/tf && git sparse-checkout set src/transformers/models/llama src/transformers/models/qwen2 \\
-        src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation \\
-        src/transformers/models/mixtral src/transformers/models/qwen2_moe
-    git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
-        src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
-        src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
-        src/transformers/optimization.py src/transformers/training_args.py src/transformers/trainer_callback.py
+    python scripts/tinyllm-real-model-refs.py --fetch /tmp/tf   # 取源码：只下载 SPEC 里用到的文件
     python scripts/tinyllm-real-model-refs.py --check /tmp/tf   # 只检查每个名字找不找得到，不写文件
-    python scripts/tinyllm-real-model-refs.py /tmp/tf           # 生成；找不到的条目跳过，最后汇总报告
+    python scripts/tinyllm-real-model-refs.py /tmp/tf           # 生成
 
-找不到的条目不会中断整个脚本：其余条目照常生成，结束时列出全部问题并以状态码 1 退出。
+--fetch 用 git 浅克隆固定版本 TAG，并把 sparse-checkout 设成 SPEC 里出现的文件（不用手写路径清单）；
+目录已经是一个克隆时，只更新 sparse-checkout。新增 SPEC 条目或升级 TAG 后重新 --fetch 一次即可。
+
+源码目录里缺文件时，脚本列出缺的文件并直接退出，不逐条报错。
+其余找不到的名字不会中断脚本：其他条目照常生成，结束时列出全部问题并以状态码 1 退出。
 已经有“在真实模型里”一节的章节，如果这次有条目找不到，保留原来的一节，不用残缺的版本覆盖。
 """
 
 from pathlib import Path
 import ast
+import os
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +30,7 @@ DOCS = ROOT / "docs/tinyllm"
 TAG = "v5.21"
 BLOB = f"https://github.com/huggingface/transformers/blob/{TAG}/src/transformers/"
 START, END = "<!-- real-model:start -->", "<!-- real-model:end -->"
+REPO = os.environ.get("TINYLLM_TF_REPO", "https://github.com/huggingface/transformers.git")
 
 LLAMA = "models/llama/modeling_llama.py"
 QWEN3 = "models/qwen3/modeling_qwen3.py"
@@ -125,6 +125,18 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "quantization": ("transformers 不自己实现量化算法，而是用配置类描述格式，交给 bitsandbytes、GPTQ、AWQ 等后端；KV cache 的量化在缓存类里：", [
+        ("8 位 / 4 位加载", "utils/quantization_config.py", "BitsAndBytesConfig", "`load_in_8bit` 走 LLM.int8()：超过 `llm_int8_threshold`（默认 6.0）的离群值单独用 FP16 算；`load_in_4bit` 可选 NF4 或 FP4"),
+        ("GPTQ", "utils/quantization_config.py", "GPTQConfig", "`bits` 和 `group_size`（默认 128）就是本章的位数和分组大小；量化时用校准数据逐列补偿误差"),
+        ("AWQ", "utils/quantization_config.py", "AwqConfig", "默认 4 位、分组 128、带零点（非对称）；`modules_to_not_convert` 用来让某些层保持原精度"),
+        ("KV cache 量化", "cache_utils.py", "QuantizedLayer", "最近 `residual_length`（默认 128）个 token 保持原精度，更早的按 `q_group_size`（默认 64）分组量化成 `nbits`（默认 4）位"),
+    ]),
+    "attention-kernels": ("transformers 里的注意力层不自己写 softmax，而是按配置把 Q、K、V 交给某个注意力实现；默认就是本章用的 SDPA：", [
+        ("选择注意力实现", LLAMA, ("grep", r"attention_interface: Callable = ALL_ATTENTION_FUNCTIONS\.get_interface\("), "按 `config._attn_implementation`（`eager`、`sdpa`、`flash_attention_2` 等）挑一个函数，找不到时退回朴素写法；注意力层本身不关心用的是哪种内核"),
+        ("朴素写法", LLAMA, "eager_attention_forward", "先算出完整的分数矩阵、加掩码、softmax、再乘 V，和本章 `naive_attention` 一样，会写出整张 T×T 的表"),
+        ("SDPA", "integrations/sdpa_attention.py", "sdpa_attention_forward", "整理形状和掩码后调用 `torch.nn.functional.scaled_dot_product_attention`，由 PyTorch 选分块内核"),
+        ("FlashAttention", "integrations/flash_attention.py", "flash_attention_forward", "调用 flash-attn 库的 GPU 内核；需要单独安装，只支持部分 GPU 和数据类型"),
+    ]),
     "mixture-of-experts": ("transformers 里的 MoE 层和本章的写法几乎一样：路由器打分、取 top-k、按分数加权求和；Qwen2-MoE 还多了一个共享专家：", [
         ("路由与专家", "models/mixtral/modeling_mixtral.py", "MixtralSparseMoeBlock", "Mixtral 的 MoE 层：8 个专家选 2 个，softmax 后取 top-2 并重新归一化，和本章 `MoE` 的做法相同"),
         ("负载均衡损失", "models/mixtral/modeling_mixtral.py", "load_balancing_loss_func", "Switch Transformer 的辅助损失：每个专家分到的比例乘以平均路由概率，再求和，即本章 `self.aux`"),
@@ -151,7 +163,7 @@ SPEC = {
         ("保存随机数状态", "trainer.py", "Trainer._save_rng_state", "Python、NumPy、torch 以及每张 GPU 的随机数状态都存下来，比本章多几种"),
         ("恢复随机数状态", "trainer.py", "Trainer._load_rng_state", "续训时装回去；找不到这个文件时会给出警告，提示结果可能无法逐位复现"),
         ("跳过已经用过的 batch", "trainer.py", ("grep", r"skip_first_batches"), "续训时跳过这个 epoch 已经训练过的 batch，作用和本章 `EpochShuffle` 的 `start` 相同"),
-        ("只保留最近几个检查点", "trainer.py", "Trainer._rotate_checkpoints", "按 `save_total_limit` 删掉旧的检查点，并保证最好的那个不被删掉"),
+        ("只保留最近几个检查点", "trainer_utils.py", "rotate_checkpoints", "按 `save_total_limit` 删掉最旧的检查点，但始终保留最新的一个（续训要用）和验证最好的那个"),
     ]),
     "gradient-stability": ("transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新：", [
         ("一个 micro-batch 的前向与反向", "trainer.py", "Trainer.training_step", "算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新"),
@@ -202,7 +214,7 @@ class Missing(Exception):
 def locate(src: Path, target):
     """返回 (起始行, 结束行)。target 是“类名”“类名.方法名”“函数名”，或 ("grep", 正则) 取单行。"""
     if not src.exists():
-        raise Missing(f"文件不存在：{src}（检查 sparse-checkout 是否包含它）")
+        raise Missing(f"文件不存在：{src}（重新运行 --fetch）")
     text = src.read_text(encoding="utf-8")
     if isinstance(target, tuple):
         for i, line in enumerate(text.splitlines(), 1):
@@ -244,13 +256,45 @@ def section(slug: str, base: Path, problems: list) -> str | None:
     return "\n".join(out)
 
 
+def needed_files() -> list[str]:
+    """SPEC 里用到的全部源码文件（相对 src/transformers/）。"""
+    return sorted({row[1] for _, rows in SPEC.values() for row in rows})
+
+
+def fetch(dest: Path) -> None:
+    """浅克隆 transformers 的 TAG，只检出 needed_files()。"""
+    def git(*cmd):
+        print("$ git " + " ".join(cmd))
+        subprocess.run(["git", *cmd], check=True)
+    paths = [f"/src/transformers/{f}" for f in needed_files()]
+    if not (dest / ".git").exists():
+        if dest.exists() and any(dest.iterdir()):
+            raise SystemExit(f"{dest} 已存在但不是 git 克隆，换一个目录或先删掉它")
+        git("clone", "--depth", "1", "--branch", TAG, "--filter=blob:none", "--no-checkout", REPO, str(dest))
+    git("-C", str(dest), "sparse-checkout", "set", "--no-cone", *paths)
+    git("-C", str(dest), "checkout", "--detach", TAG)
+    missing = [f for f in needed_files() if not (dest / "src/transformers" / f).exists()]
+    if missing:
+        raise SystemExit("检出后仍然缺这些文件（TAG 里可能没有它们，改 SPEC）：\n  " + "\n  ".join(missing))
+    print(f"已取到 {len(needed_files())} 个文件：{dest}（transformers {TAG}）")
+
+
 def main() -> None:
     args = sys.argv[1:]
-    check = "--check" in args
-    args = [a for a in args if a != "--check"]
+    check, do_fetch = "--check" in args, "--fetch" in args
+    args = [a for a in args if a not in ("--check", "--fetch")]
     if len(args) != 1:
         raise SystemExit(__doc__)
     base = Path(args[0])
+    if do_fetch:
+        fetch(base)
+        return
+    missing = [f for f in needed_files() if not (base / "src/transformers" / f).exists()]
+    if missing:
+        print(f"{base} 下缺 {len(missing)}/{len(needed_files())} 个源码文件：")
+        for f in missing:
+            print(f"  src/transformers/{f}")
+        raise SystemExit(f"先运行：python scripts/tinyllm-real-model-refs.py --fetch {base}")
     problems = []
     for slug in SPEC:
         md = DOCS / f"{slug}.md"

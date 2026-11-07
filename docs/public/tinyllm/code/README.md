@@ -31,12 +31,14 @@
 | 第 25 章 稀疏专家（MoE） | [mixture-of-experts.py](mixture-of-experts.py) | [打开](https://lewislau86.github.io/tinyllm/mixture-of-experts) |
 | 第 26 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
 | 第 27 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
+| 第 28 章 注意力内核与算子融合 | [attention-kernels.py](attention-kernels.py) | [打开](https://lewislau86.github.io/tinyllm/attention-kernels) |
+| 第 29 章 量化 | [quantization.py](quantization.py) | [打开](https://lewislau86.github.io/tinyllm/quantization) |
 
 ## 怎么运行
 
 安装步骤、整包下载和常见问题见 [实验环境：安装与代码下载](https://lewislau86.github.io/tinyllm/setup)。
 
-每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、12、13、26 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`；第 26 章需要 `tokenizers`。
+每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、12～15、17、18、20～29 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`；第 28 章最后一节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一节会跳过。
 
 ## 和网站的关系
 

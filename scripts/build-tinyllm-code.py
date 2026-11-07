@@ -64,6 +64,8 @@ ARTIFACTS = {
     ("hyperparameter-tuning", "hyperparameter_tuning_log.json"): ROOT / "scripts/data/tinyllm-hyperparameter-tuning-log.json",
     ("large-model-stability", "large_model_stability_log.json"): ROOT / "scripts/data/tinyllm-large-model-stability-log.json",
     ("mixture-of-experts", "mixture_of_experts_log.json"): ROOT / "scripts/data/tinyllm-mixture-of-experts-log.json",
+    ("attention-kernels", "attention_kernels_log.json"): ROOT / "scripts/data/tinyllm-attention-kernels-log.json",
+    ("quantization", "quantization_log.json"): ROOT / "scripts/data/tinyllm-quantization-log.json",
 }
 
 

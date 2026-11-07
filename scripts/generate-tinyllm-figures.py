@@ -3374,6 +3374,279 @@ def moe_serving():
               "右：假设路由均匀独立，批量变大时一层里至少被一个 token 选中的专家比例；Qwen3-30B-A3B 在批量 64 时已经接近全部，单用户时的带宽优势在高并发下基本消失。")
 
 
+# ---------- 第 28 章：注意力内核与算子融合 ----------
+
+def _kernels_log():
+    src = DATA / "tinyllm-attention-kernels-log.json"
+    if not src.exists():
+        print("skip attention-kernels figures: run scripts/build-tinyllm-code.py attention-kernels to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kernels_memory():
+    """朴素注意力与 SDPA 的峰值内存；朴素与分块的读写字节数。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    mem, tr = log["memory"], log["traffic"]
+    Ts = [r["T"] for r in mem]
+    mib = lambda b: b / 2**20
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained")
+    a1.plot(Ts, [mib(r["naive_peak"]) for r in mem], marker="o", lw=2.2, color=RED, label="朴素写法")
+    a1.plot(Ts, [mib(r["table"]) for r in mem], ls="--", lw=1.6, color=GRAY, label="一张 T×T 分数表")
+    a1.plot(Ts, [mib(r["sdpa_peak"]) for r in mem], marker="o", lw=2.2, color=TEAL, label="scaled_dot_product_attention")
+    for r in mem:
+        a1.annotate(f"{mib(r['naive_peak']):.1f}" if mib(r["naive_peak"]) < 10 else f"{mib(r['naive_peak']):.0f}", (r["T"], mib(r["naive_peak"])), textcoords="offset points", xytext=(-6, 8), fontsize=10, color=RED, ha="right")
+        a1.annotate(f"{mib(r['sdpa_peak']):.2f}", (r["T"], mib(r["sdpa_peak"])), textcoords="offset points", xytext=(-6, 8), fontsize=10, color=TEAL, ha="right")
+    a1.set_xscale("log", base=2)
+    a1.set_yscale("log")
+    a1.set_xticks(Ts, [str(t) for t in Ts])
+    a1.set_xlabel("序列长度 T")
+    a1.set_ylabel("中间张量峰值（MiB，对数）")
+    a1.set_title("峰值：朴素写法随 T² 增长", fontsize=12.5)
+    a1.legend(fontsize=9.5, loc="upper left")
+    a1.grid(alpha=0.25)
+    Ts2 = [r["T"] for r in tr]
+    a2.plot(Ts2, [mib(r["naive"]) for r in tr], marker="o", lw=2.2, color=RED, label="朴素写法")
+    for blk, color in (("16", ORANGE), ("64", BLUE), ("256", TEAL)):
+        a2.plot(Ts2, [mib(r[blk]) for r in tr], marker="o", lw=2, color=color, label=f"分块，块大小 {blk}")
+    last = tr[-1]
+    for key, color in (("naive", RED), ("16", ORANGE), ("64", BLUE), ("256", TEAL)):
+        a2.annotate(f"{mib(last[key]):.0f}", (last["T"], mib(last[key])), textcoords="offset points", xytext=(6, -4), fontsize=10, color=color)
+    a2.set_xscale("log", base=2)
+    a2.set_yscale("log")
+    a2.set_xticks(Ts2, [str(t) for t in Ts2])
+    a2.set_xlim(Ts2[0] * 0.8, Ts2[-1] * 1.7)
+    a2.set_xlabel("序列长度 T")
+    a2.set_ylabel("读写字节（MiB，对数）")
+    a2.set_title("读写：块越大，K、V 被重读得越少", fontsize=12.5)
+    a2.legend(fontsize=9.5, loc="upper left")
+    a2.grid(alpha=0.25)
+    m4, t4 = mem[-1], tr[-1]
+    save_plot(fig, "kernels-memory.svg", "朴素注意力与分块注意力的内存账",
+              f"batch 1、4 个头、每头 32 维、FP32，在算子层面记账。左：中间张量的峰值。T=4096 时朴素写法 {mib(m4['naive_peak']):.0f} MiB（一张分数表 {mib(m4['table']):.0f} MiB），"
+              f"scaled_dot_product_attention 只有 {mib(m4['sdpa_peak']):.2f} MiB，几乎就是输出本身。右：读写的字节数。T=4096 时朴素写法 {mib(t4['naive']):.0f} MiB，"
+              f"分块写法块大小 16、64、256 时分别是 {mib(t4['16']):.0f}、{mib(t4['64']):.0f}、{mib(t4['256']):.0f} MiB。")
+
+
+def kernels_online():
+    """online softmax：一行 64 个分数分 4 块到来，最大值与指数和怎样更新。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    trace = log["online"]
+    body = text(480, 38, "online softmax：一行分数分 4 块到来，每块只看 16 个", 21, weight="bold")
+    heads = ["分数", "本块最大", "目前最大 m", "校正系数 e^(m旧−m新)", "指数和 ℓ"]
+    xs = [120, 290, 450, 650, 840]
+    for x, h in zip(xs, heads):
+        body += text(x, 86, h, 15, GRAY, "bold")
+    for i, (start, bmax, m, alpha, l) in enumerate(trace):
+        y = 126 + i * 50
+        raised = i > 0 and m > trace[i - 1][2]
+        color = ORANGE if raised else INK
+        body += box(40, y - 26, 880, 42, SOFT[ORANGE] if raised else "#ffffff", ORANGE if raised else "#e2e8f0", width=1.5)
+        body += text(xs[0], y, f"第 {start}–{start + 15} 个", 15)
+        body += text(xs[1], y, f"{bmax:.3f}", 15, color)
+        body += text(xs[2], y, f"{m:.3f}", 15, color, "bold" if raised else "normal")
+        body += text(xs[3], y, f"{alpha:.3f}", 15, color, "bold" if raised else "normal")
+        body += text(xs[4], y, f"{l:.3f}", 15)
+    body += text(480, 340, "橙色行：新的一块出现了更大的分数，旧的 ℓ 和加权和都乘以校正系数，换到新的基准上", 15, ORANGE)
+    body += text(480, 368, "第一块之前什么都没有，校正系数是 0；最后输出 = 加权和 ÷ ℓ，与先算完整 softmax 的结果只差浮点舍入", 15)
+    svg("kernels-online.svg", "online softmax 的更新过程",
+        "第 0 层、第 0 句、第 0 个头最后一个位置的 64 个分数，分成 4 块、每块 16 个依次处理。每块之后更新目前的最大值 m 和以 m 为基准的指数和 ℓ；"
+        "出现更大的分数时，旧的指数和与加权和乘以校正系数 e^(m旧−m新)。第三、四块各提高了一次最大值，校正系数分别是 "
+        f"{trace[2][3]:.3f} 和 {trace[3][3]:.3f}。", 392, body)
+
+
+def kernels_tiling():
+    """分块注意力：4×4 个方块，因果掩码跳过右上方 6 块；数据在主存与片上之间怎样搬。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    done, skipped = log["tiles_per_head"]
+    body = text(500, 38, "分块注意力：一次只在片上算一个 16×16 的方块", 21, weight="bold")
+    x0, y0, c = 110, 110, 62
+    body += text(x0 + 2 * c, y0 - 34, "K、V 的块 j →", 15, GRAY)
+    body += f'<text x="{x0 - 46}" y="{y0 + 2 * c}" font-size="15" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 46} {y0 + 2 * c})">Q 的块 i →</text>'
+    for i in range(4):
+        body += text(x0 - 16, y0 + i * c + c / 2 + 5, str(i), 14, GRAY)
+        body += text(x0 + i * c + c / 2, y0 - 10, str(i), 14, GRAY)
+        for j in range(4):
+            x, y = x0 + j * c, y0 + i * c
+            if j > i:
+                body += f'<rect x="{x + 3}" y="{y + 3}" width="{c - 6}" height="{c - 6}" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-dasharray="5 4" stroke-width="1.5"/>'
+                body += text(x + c / 2, y + c / 2 + 5, "跳过", 13, GRAY)
+            else:
+                diag = j == i
+                fill = SOFT[ORANGE] if diag else SOFT[TEAL]
+                stroke = ORANGE if diag else TEAL
+                body += f'<rect x="{x + 3}" y="{y + 3}" width="{c - 6}" height="{c - 6}" rx="6" fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
+                if diag:
+                    body += f'<path d="M{x + 3} {y + 3} L{x + c - 3} {y + c - 3} L{x + c - 3} {y + 3} Z" fill="#ffffff" opacity="0.85"/>'
+                body += text(x + c / 2 - (8 if diag else 0), y + c / 2 + (14 if diag else 5), "算", 13, stroke, "bold")
+    body += f'<rect x="{x0 - 2}" y="{y0 + 2 * c - 2}" width="{4 * c + 4}" height="{c + 4}" rx="8" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
+    body += text(x0 + 2 * c, y0 + 4 * c + 30, f"每个头 16 块：算 {done} 块，跳过 {skipped} 块", 15, INK, "bold")
+    body += text(x0 + 2 * c, y0 + 4 * c + 54, "对角线上的块只算左下半（橙色），其余整块可见（绿色）", 13.5, GRAY)
+    # 右：一行 Q 块的处理过程
+    rx = 450
+    body += text(rx + 250, 92, "蓝框那一行（Q 块 2）怎样走", 16, BLUE, "bold")
+    body += cbox(rx, 108, 500, 74, GRAY) + text(rx + 250, 132, "主存（显存 / 内存）：完整的 Q、K、V，最后写回输出 O 和每行的 lse", 14)
+    body += text(rx + 250, 158, "容量大、读写慢", 13, GRAY)
+    body += cbox(rx, 240, 500, 128, TEAL) + text(rx + 250, 264, "片上快速存储（GPU 的共享内存 / CPU 的缓存）", 14, TEAL, "bold")
+    body += text(rx + 250, 290, "Q 块 2 常驻；每行的 m、ℓ 和加权和 o", 14)
+    body += text(rx + 250, 314, "依次放进 K、V 的块 0、1、2，算一个 16×16 的分数块", 14)
+    body += text(rx + 250, 338, "用 online softmax 更新 m、ℓ、o，分数块用完即弃", 14)
+    body += text(rx + 250, 358, "容量小、读写快", 13, GRAY)
+    body += f'<line x1="{rx + 120}" y1="184" x2="{rx + 120}" y2="236" stroke="{BLUE}" stroke-width="2.5"/>'
+    body += text(rx + 112, 214, "读 Q 块、K/V 块", 13, BLUE, anchor="end")
+    body += f'<line x1="{rx + 380}" y1="184" x2="{rx + 380}" y2="236" stroke="{ORANGE}" stroke-width="2.5"/>'
+    body += text(rx + 388, 214, "只写回 O 块和 lse", 13, ORANGE, anchor="start")
+    body += text(rx + 250, 400, "T×T 的分数表从头到尾没有完整出现在主存里", 15, TEAL, "bold")
+    svg("kernels-tiling.svg", "分块注意力的计算顺序",
+        f"左：64 个位置按 16 切成 4×4 个方块。因果掩码让对角线右上方的 {skipped} 块整块不用算，对角线上的块只算左下半，一共算 {done} 块。"
+        "右：处理一行 Q 块时，Q 块常驻片上，K、V 的块依次读进来，每次只算一个 16×16 的分数块，用 online softmax 更新每行的最大值、指数和与加权和；"
+        "最后只把输出块和每行一个 lse 写回主存。", 440, body, width=1000)
+
+
+def kernels_fusion():
+    """逐元素小算子：eager 实际读写与融合后的下限。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    rows, comp = log["fusion"], log.get("compile")
+    fig, ax = plt.subplots(figsize=(10, 3.6), layout="constrained")
+    y = np.arange(len(rows))
+    mib = lambda b: b / 2**20
+    ax.barh(y - 0.19, [mib(r["traffic"]) for r in rows], height=0.36, color=RED, alpha=0.75, label="eager：每个算子各读一遍输入、写一遍输出")
+    ax.barh(y + 0.19, [mib(r["lower"]) for r in rows], height=0.36, color=TEAL, alpha=0.85, label="融合后的下限：输入读一次、输出写一次")
+    for i, r in enumerate(rows):
+        ax.text(mib(r["traffic"]) + 0.15, i - 0.19, f"{mib(r['traffic']):.2f} MiB（{r['ops']} 个算子，{r['traffic'] / r['lower']:.1f} 倍）", va="center", fontsize=10.5, color=RED)
+        ax.text(mib(r["lower"]) + 0.15, i + 0.19, f"{mib(r['lower']):.2f} MiB", va="center", fontsize=10.5, color=TEAL)
+    ax.set_yticks(y, [r["name"] for r in rows], fontsize=12)
+    ax.invert_yaxis()
+    ax.set_xlabel("读写字节（MiB），一个训练 batch：32 × 64 个位置")
+    ax.set_xlim(0, max(mib(r["traffic"]) for r in rows) * 1.55)
+    ax.legend(fontsize=10, loc="lower right")
+    ax.grid(alpha=0.25, axis="x")
+    note = f"整层 Block：eager 调用 {comp['eager_ops']} 个算子，torch.compile 生成 {len(comp['fused'])} 个融合内核。" if comp else ""
+    save_plot(fig, "kernels-fusion.svg", "逐元素小算子的读写",
+              "RMSNorm、RoPE、SiLU 门控在 eager 模式下实际读写的字节数（每个算子读一遍输入、写一遍输出），以及把它们融合成一个内核后的下限。"
+              + "，".join(f"{r['name']} {r['ops']} 个算子、多搬 {r['traffic'] / r['lower']:.1f} 倍" for r in rows) + "。" + note)
+
+
+# ---------- 第 29 章：量化 ----------
+
+def _quant_log():
+    src = DATA / "tinyllm-quantization-log.json"
+    if not src.exists():
+        print("skip quantization figures: run scripts/build-tinyllm-code.py quantization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def quant_levels():
+    """INT4 的刻度：嵌入行用对称量化；SiLU 输出对称与非对称的差别。"""
+    log = _quant_log()
+    if log is None:
+        return
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 3.9), layout="constrained")
+    row = np.array(log["row"])
+    a1.hist(row, bins=40, color=BLUE, alpha=0.55)
+    for v in log["row_levels"]:
+        a1.axvline(v, color=ORANGE, lw=1, alpha=0.8)
+    a1.set_title("嵌入表“，”这一行：INT4 对称，15 个刻度", fontsize=12.5)
+    a1.set_xlabel("数值")
+    a1.set_ylabel("个数")
+    h = log["act_hist"]
+    edges, counts = np.array(h["edges"]), np.array(h["counts"])
+    a2.bar(edges[:-1], counts, width=np.diff(edges), align="edge", color=TEAL, alpha=0.55)
+    a2.set_yscale("log")
+    ymax = counts.max() * 3
+    for v in log["act_levels"]["sym"]:
+        a2.plot([v, v], [ymax * 0.25, ymax], color=RED, lw=1.4)
+    for v in log["act_levels"]["asym"]:
+        a2.plot([v, v], [0.5, 1.6], color=ORANGE, lw=1.4)
+    a2.set_ylim(0.5, ymax)
+    a2.text(edges[-1], ymax * 0.5, f"对称：实际用到 {len(log['act_levels']['sym'])} 个刻度（红，上）", ha="right", fontsize=10.5, color=RED)
+    a2.text(edges[-1], 2.4, f"非对称：用满 {len(log['act_levels']['asym'])} 个刻度（橙，下）", ha="right", fontsize=10.5, color=ORANGE)
+    a2.set_title("第 0 层 SiLU 输出：负的一侧很短", fontsize=12.5)
+    a2.set_xlabel("数值")
+    a2.set_ylabel("个数（对数）")
+    save_plot(fig, "quant-levels.svg", "INT4 量化的刻度",
+              "左：种子 0 的嵌入表中“，”那一行的 128 个数，大致关于 0 对称，INT4 对称量化的刻度（橙色竖线）均匀覆盖两侧。"
+              f"右：第 0 层 SiLU 门控的输出，最小约 −0.28，最大约 7。对称量化按绝对值最大的一侧定刻度，负半边几乎用不上，实际只用到 {len(log['act_levels']['sym'])} 个刻度；"
+              f"非对称量化用最小值和最大值定范围，{len(log['act_levels']['asym'])} 个刻度全部用上。")
+
+
+def quant_granularity():
+    """各种量化方案：每个权重的位数、相对误差；3 个种子上的验证损失增量。"""
+    log = _quant_log()
+    if log is None:
+        return
+    g, res, base = log["granularity"], log["results"], log["base_loss"]
+    names = [r["scheme"] for r in g]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained", gridspec_kw={"width_ratios": [1, 1.15]})
+    y = np.arange(len(names))
+    colors = [GRAY if n.startswith("INT8") else (RED if "按张量" in n or n.startswith("INT3") else TEAL) for n in names]
+    a1.barh(y, [r["rel_err"] * 100 for r in g], color=colors, alpha=0.75)
+    for i, r in enumerate(g):
+        a1.text(r["rel_err"] * 100 + 0.4, i, f"{r['rel_err']:.1%}，{r['bpw']:.2f} 位/权重", va="center", fontsize=10)
+    a1.set_yticks(y, names, fontsize=11)
+    a1.invert_yaxis()
+    a1.set_xlim(0, max(r["rel_err"] for r in g) * 100 * 1.6)
+    a1.set_xlabel("权重的相对误差（%，种子 0）")
+    a1.set_title("单位越小，误差越小，位数略多", fontsize=12.5)
+    seeds = sorted(base)
+    for i, n in enumerate(names):
+        dl = [res[n][j][0] - base[s] for j, s in enumerate(seeds)]
+        a2.plot([min(dl), max(dl)], [i, i], color=colors[i], lw=6, alpha=0.35, solid_capstyle="round")
+        a2.scatter(dl, [i] * len(dl), color=colors[i], s=22, zorder=3)
+        a2.scatter([sum(dl) / len(dl)], [i], color=colors[i], s=80, marker="D", zorder=4)
+        a2.text(max(dl) + 0.0015, i, f"{sum(dl) / len(dl):+.4f}", va="center", fontsize=10, color=colors[i])
+    a2.axvline(0, color=GRAY, lw=1)
+    a2.set_yticks(y, names, fontsize=11)
+    a2.invert_yaxis()
+    a2.set_xlabel("验证损失的增量（3 个种子；菱形是平均）")
+    a2.set_title("放回模型：INT8 看不出差别，INT4 要分组", fontsize=12.5)
+    a2.grid(alpha=0.25, axis="x")
+    lo, hi = a2.get_xlim()
+    a2.set_xlim(lo, hi + 0.008)
+    mean = lambda n: sum(res[n][j][0] - base[s] for j, s in enumerate(seeds)) / len(seeds)
+    save_plot(fig, "quant-granularity.svg", "量化粒度与模型质量",
+              "左：种子 0 的全部权重矩阵在各方案下的相对误差（量化误差的范数除以权重的范数）和每个权重摊到的位数（含 FP16 缩放因子）。"
+              f"右：3 个种子上验证损失的增量。INT8 按通道 {mean('INT8 按通道'):+.4f}，INT4 按张量 {mean('INT4 按张量'):+.4f}，INT4 按通道 {mean('INT4 按通道'):+.4f}，"
+              f"INT4 分组 32 {mean('INT4 分组 32'):+.4f}，INT3 分组 32 {mean('INT3 分组 32'):+.4f}。")
+
+
+def quant_outliers():
+    """第 1 层 down 的输入：每个通道的最大绝对值，SmoothQuant 前后；对照 qkv 的输入。"""
+    log = _quant_log()
+    if log is None:
+        return
+    down, sm, qkv = np.array(log["absmax_down1"]), np.array(log["absmax_down1_smoothed"]), np.array(log["absmax_qkv1"])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 3.9), layout="constrained", gridspec_kw={"width_ratios": [1, 2.3]})
+    a1.bar(np.arange(len(qkv)), qkv, color=BLUE, alpha=0.7, width=1.0)
+    a1.axhline(np.median(qkv), color=GRAY, ls="--", lw=1.2)
+    a1.set_title(f"qkv 的输入（128 个通道）：最大 / 中位数 = {qkv.max() / np.median(qkv):.1f}", fontsize=12)
+    a1.set_xlabel("通道")
+    a1.set_ylabel("最大绝对值")
+    x = np.arange(len(down))
+    a2.bar(x, down / np.median(down), color=RED, alpha=0.55, width=1.0, label=f"原始：最大 / 中位数 = {down.max() / np.median(down):.1f}")
+    a2.bar(x, sm / np.median(sm), color=TEAL, alpha=0.75, width=1.0, label=f"SmoothQuant（α=0.5）之后：{sm.max() / np.median(sm):.1f}")
+    a2.axhline(1, color=GRAY, ls="--", lw=1.2)
+    a2.set_title("down 的输入（341 个通道），按中位数归一", fontsize=12)
+    a2.set_xlabel("通道")
+    a2.set_ylabel("最大绝对值 ÷ 中位数")
+    a2.legend(fontsize=10, loc="upper right")
+    ar = log["act_results"]
+    m = lambda k: sum(ar[k]) / len(ar[k])
+    save_plot(fig, "quant-outliers.svg", "激活里的离群通道",
+              "种子 0 的模型、第 1 层，在一批验证文本上统计每个输入通道出现过的最大绝对值。左：qkv 的输入（RMSNorm 之后）各通道差不多大。"
+              f"右：down 的输入（SiLU 门控乘 up）少数通道是中位数的十几倍，SmoothQuant 把一部分尺度挪给权重后降到 {sm.max() / np.median(sm):.1f} 倍。"
+              f"激活 INT6 时，按张量量化损失增加 {m('W8A6 按张量'):+.4f}，SmoothQuant 后 {m('W8A6 SmoothQuant + 按张量'):+.4f}，按 token 量化 {m('W8A6 按 token'):+.4f}（3 个种子平均）。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -3434,7 +3707,9 @@ def main():
                eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
                hp_sensitivity, hp_search, hp_halving, hp_peek,
                scale_instability, scale_mup, scale_memory, scale_parallel,
-               moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving):
+               moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving,
+               kernels_memory, kernels_online, kernels_tiling, kernels_fusion,
+               quant_levels, quant_granularity, quant_outliers):
         fn()
     print("figures written to", OUT)
 

@@ -313,6 +313,25 @@ label smoothing 0.1 最好的一步 100/125/100 测试 5.484（5.468～5.494） 
 4. **dropout 只放一处。** 只保留位置 ②（子层输出），去掉 ① 和 ③，用 `dropout=0.3` 跑 3 个种子，和三处都放的 5.253 比较。
 5. **patience 的取舍。** 用 `patience=1` 和 `patience=8` 各跑一次提前停止，分别停在哪一步？`patience=1` 会不会停得太早？
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 里和本章有关的开关都不大：weight decay 在创建优化器时分组，dropout 写在注意力里，提前停止是一个回调。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 哪些参数做 weight decay | [`Trainer.get_decay_parameter_names`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1405-L1415) | 名字里带 `bias`、`norm` 的参数不衰减，其余（包括词嵌入）按 `weight_decay` 衰减，和本章 `p.dim() >= 2` 的分法结果相同 |
+| weight decay 的默认值 | [`training_args.py 第 816 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/training_args.py#L816) | `TrainingArguments` 默认 `weight_decay=0.0`，要自己设；本章的实验说明合适的值和数据量、学习率、训练步数都有关 |
+| 注意力 dropout 只在训练时打开 | [`modeling_llama.py 第 263 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L263) | 评估模式下传 0，和本章 `dropout_p=... if self.training else 0.0` 一样；比例来自配置里的 `attention_dropout` |
+| 在注意力权重上丢弃 | [`eager_attention_forward`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L180-L202) | softmax 之后对注意力权重做 `nn.functional.dropout`，即本章的位置 ①；`LlamaDecoderLayer` 里没有本章的 ② ③ 两处 |
+| 提前停止 | [`EarlyStoppingCallback`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer_callback.py#L711-L784) | `early_stopping_patience` 次评估没有改进就停止训练；配合 `load_best_model_at_end=True` 才会在结束时换回最好的检查点 |
+| label smoothing | [`LabelSmoother`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer_pt_utils.py#L435-L481) | `label_smoothing_factor` 不为 0 时启用；评估指标仍应看普通交叉熵（第 15 章） |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的主线预训练**不加 dropout（`dropout=0`），不用 label smoothing**；AdamW 保留第 12 章的 `weight_decay=0.1`，只作用在矩阵权重上，归一化的权重不衰减。训练时始终同时看训练损失（eval 模式）和验证损失，**按验证损失保留最好的检查点**；最终结果用测试集报告一次。

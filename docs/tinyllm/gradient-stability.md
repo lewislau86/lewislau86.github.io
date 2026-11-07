@@ -314,6 +314,23 @@ FP32 梯度里，绝对值小于 6.1e-05 的占 15.2%，小于 6.0e-08 的占 0.
 3. **累积的分母。** 把训练数据换成长短不一的诗（不拼接成流，每首单独补齐），用 `train(accum=4)` 的写法和整个 batch 对拍。差别多大？按[第 15 章](./language-model-loss.md)的做法改分母后再对拍。
 4. **错误的顺序。** 在第 8 节的 `GradScaler` 循环里，把 `scaler.unscale_` 挪到 `clip_grad_norm_` 之后。打印每一步的更新量，和正确顺序比较。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 一个 micro-batch 的前向与反向 | [`Trainer.training_step`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2023-L2100) | 算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新 |
+| 什么时候才更新 | [`trainer.py 第 1872 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1872) | 每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章 `train(accum=4)` 的顺序一样 |
+| 裁剪阈值 | [`trainer.py 第 1910 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1910) | 来自 `TrainingArguments.max_grad_norm`，默认 1.0；设成 0 或 `None` 就不裁剪 |
+| 按全局范数裁剪 | [`Trainer._clip_grad_norm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2738-L2744) | 调用 PyTorch 的 `clip_grad_norm_`（多卡时由 accelerate 包一层），返回裁剪前的范数，Trainer 把它记成日志里的 `grad_norm` |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 每个优化器步都**按全局范数把梯度裁到 1.0**，并把 `clip_grad_norm_` 返回的裁剪前范数记进日志。需要更大的有效 batch 时用**梯度累积**：每个 optimizer step 只 `zero_grad` 一次，每个 micro-batch 的损失按总 token 数归一后反传，累积完再裁剪、更新、推进调度器，各一次。优先用 BF16，不需要 `GradScaler`；只能用 FP16 时，用 `GradScaler`，并且**先 `unscale_` 再裁剪**。

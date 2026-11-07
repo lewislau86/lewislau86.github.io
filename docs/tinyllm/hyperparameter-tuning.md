@@ -237,6 +237,21 @@ batch 32，学习率 1.41e-02：验证损失 5.0786（+19.2σ）
 3. **加宽学习率范围。** 把搜索空间的学习率上限改成 1e-1，重做第 6 节。“第 96 步”和“最终”的秩相关变高还是变低？“分叉衰减”和“不衰减直接测”的分歧变大了吗？
 4. **batch 和步数分开看。** 第 3 节的 batch 32 只有 120 步。把 token 预算加倍（batch 32、240 步），和 batch 16、240 步比较。这时更大的 batch 还吃亏吗？
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 的 Trainer 自带一个超参数搜索的入口，具体的搜索算法交给 Optuna、Ray Tune 等后端。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 搜索入口 | [`Trainer.hyperparameter_search`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L4468-L4547) | 每个 trial 用 `model_init` 重新造一个模型，按 `direction` 取验证指标的最小或最大；算法（TPE、随机、ASHA 等）由所选的后端决定 |
+| 默认的搜索空间 | [`default_hp_space_optuna`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer_utils.py#L452-L462) | 看一下默认都搜哪些量、范围多大；如果随机种子也在里面，挑出来的可能只是一次好运气（本章第 7 节） |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 调参时先用主线配置跑 3～5 个种子量出**噪声底线**（本章代理模型上 $\sigma = 0.018$），小于约 $2\sigma$ 的差别不算改进。预算按敏感度分配：**学习率（连同 batch 和训练步数）最先调**，其次确认 warmup 不太短、weight decay 不太大，$\beta_2$ 和衰减比例用常见的默认值。需要自动搜索时用**随机搜索**；配置多、预算紧时用**逐轮淘汰**，在 WSD 的峰值阶段分叉衰减后再比较。**任何搜索的赢家都要换新种子复核**，最后在测试集上报告一次。

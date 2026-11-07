@@ -252,6 +252,23 @@ ln V = 6.931
 3. **验证集要多大。** 只用前 50 首验证诗重复第 5 节，单个检查点的区间宽多少？配对的差的区间呢？
 4. **换一个生成指标。** 加一个“押韵率”：律诗的第 2、4、6、8 句末字是否同韵（可以先用末字的拼音韵母近似）。它和验证损失的关系，与五字句占比一样吗？
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章埋的几个 bug，在 transformers 里分别由下面这几处代码防住；评估也有固定的入口。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 标签错位 | [`ForCausalLMLoss`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/loss/loss_utils.py#L51-L73) | 把 `labels` 整体左移一位再算交叉熵；调用者只要传 `labels=input_ids`，错位由这里完成，避免了“标签没错位” |
+| 因果掩码 | [`modeling_llama.py 第 380 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/llama/modeling_llama.py#L380) | Llama 在主干的前向里构造因果掩码，再交给每一层注意力；本章“漏了因果掩码”就是少了这一步 |
+| 评估入口 | [`Trainer.evaluate`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2762-L2859) | 在验证集上跑一遍，返回 `eval_loss` 等指标；`Trainer` 不替你算困惑度，常见的做法是自己取 `exp(eval_loss)` |
+| 评估循环 | [`Trainer.evaluation_loop`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2861-L3066) | 切到评估模式、关掉梯度，逐个 batch 收集损失和预测，再汇总成一个平均数 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 每次改动训练代码以后，正式训练之前先跑三项检查：**初始损失接近 $\ln V$、因果性测试、单 batch 过拟合**（用和正式训练同一份训练代码）。训练中记录训练损失、验证损失、梯度范数和学习率；训练后用**固定提示词、固定随机种子**的生成样例，和五字句占比、乱码占比、照抄训练集比例这几个简单指标，补验证损失看不到的地方。比较两个模型时，在同一个验证集上**配对比较**，按诗做 bootstrap 估区间，并结合多个随机种子。

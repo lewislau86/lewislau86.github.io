@@ -250,6 +250,22 @@ DeepSeek-V3           1342 GB         74 GFLOP       74.0 GB
 3. **加一个共享专家。** 在 MoE 层里加一个每个 token 都经过的 SwiGLU（中间宽度 170），路由专家改成选 1 个。逗号、句号还需要专门的专家吗？
 4. **部分重新初始化的稀疏升级。** 升级时把每个专家一半的中间神经元重新随机初始化（对应的 `gate`、`up` 的行和 `down` 的列），专家之间的相似度和继续训练后的验证损失怎样变化？
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 里的 MoE 层和本章的写法几乎一样：路由器打分、取 top-k、按分数加权求和；Qwen2-MoE 还多了一个共享专家。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 路由与专家 | [`MixtralSparseMoeBlock`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/mixtral/modeling_mixtral.py#L113-L129) | Mixtral 的 MoE 层：8 个专家选 2 个，softmax 后取 top-2 并重新归一化，和本章 `MoE` 的做法相同 |
+| 负载均衡损失 | [`load_balancing_loss_func`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/mixtral/modeling_mixtral.py#L474-L540) | Switch Transformer 的辅助损失：每个专家分到的比例乘以平均路由概率，再求和，即本章 `self.aux` |
+| 共享专家 | [`Qwen2MoeSparseMoeBlock`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen2_moe/modeling_qwen2_moe.py#L331-L350) | 路由专家之外，还有一个每个 token 都经过的共享专家，用一个门控决定它的输出占多少 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的主线保持**稠密**。MoE 作为对照变体：每个 Block 的前馈层换成路由器加若干个 SwiGLU 专家，每个 token 选 `top_k` 个，输出按归一化的分数加权求和；负载均衡用**无辅助损失的偏置**。模型放大、参数容量或推理成本成为瓶颈时再切换；已经有训练好的稠密模型时，先用**稀疏升级**，从稠密模型的效果出发接着训练。

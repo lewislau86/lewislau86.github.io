@@ -267,6 +267,22 @@ ZeRO-3 / FSDP：再切参数    参数    1.8 GB  梯度    1.8 GB  优化器   
 3. **把 μP 扩到宽度 256。** 在第 4 节加上宽度 256（每次约 6 秒），标准参数化的最佳学习率会继续往小移吗？μP 还在 1e-2 吗？
 4. **只重算一部分层。** 第 6 节只给前 4 个 Block 加 `checkpoint`，保存的字节数和用时各是多少？画出“重算的层数 - 显存 - 用时”的关系。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+本章的几个手段，在 transformers 里分别对应下面这几处。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| QK Norm | [`modeling_qwen3.py 第 229 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/models/qwen3/modeling_qwen3.py#L229) | Qwen3 给每个头的 q、k 各配一个 RMSNorm，和本章 `qk_norm=True` 的写法相同 |
+| 激活重计算的开关 | [`PreTrainedModel.gradient_checkpointing_enable`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/modeling_utils.py#L3109-L3175) | 给模型里的每一层打开重计算，底层就是本章用的 `torch.utils.checkpoint` |
+| Trainer 何时打开它 | [`trainer.py 第 1507 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1507) | `TrainingArguments(gradient_checkpointing=True)` 时，训练开始前调用上面那个方法 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的主线保持基础的 Pre-RMSNorm 配置和第 10 章的残差输出缩放，不加 QK Norm、z-loss，也不用 μP；训练时记录注意力分数的最大值和输出 logits 的 log-sum-exp。模型放大时，**先加 QK Norm**，拓宽能用的学习率范围；需要在多个宽度之间迁移学习率时，**整套采用 μP**（隐藏层学习率、输出乘子、词嵌入三条一起改），在小宽度上扫好学习率再搬到大宽度；输出 logits 出现漂移、或改用低精度时，再加 z-loss。显存不够时，按“激活重计算 → ZeRO-1/2 → FSDP → 张量并行”的顺序考虑，每一步都先验证结果和单卡一致。

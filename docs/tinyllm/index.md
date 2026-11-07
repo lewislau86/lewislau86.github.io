@@ -61,6 +61,8 @@ pageClass: tinyllm-course
 | [第 25 章 · 稀疏专家（MoE）](./mixture-of-experts.md) | 路由器、top-k 与总参数/激活参数；与三种稠密模型的 3 种子对照；负载均衡（辅助损失与无辅助损失的偏置）；路由器自己学出“标点各用一个专家”；稀疏升级把稠密模型无损改成 MoE；专题：能否后期改成 MoE、使用体验的差别、厂商为何选 MoE（以小米 MiMo 为例） | [查看](/tinyllm/notebooks/mixture-of-experts) |
 | [第 26 章 · 自回归生成](./generation.md) | 温度、top-k 与 top-p、重复惩罚、随机种子与停止条件；把格式写进掩码的约束解码，同一批请求格式合法率从 0/12 到 12/12 | [查看](/tinyllm/notebooks/generation) |
 | [第 27 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
+| [第 28 章 · 注意力内核与算子融合](./attention-kernels.md) | 用挂在算子分发上的记账员量出朴素注意力的峰值与读写；手写 online softmax 与分块注意力，和 SDPA 对齐；块大小与 K、V 重读；反向只存每行一个 lse；torch.compile 把一层 37 个算子融合成 6 个内核 | [查看](/tinyllm/notebooks/attention-kernels) |
+| [第 29 章 · 量化](./quantization.md) | 对称与非对称量化；按张量、按通道、分组的误差与位数；INT8/INT4 在 3 个种子上的损失、KL 与一致率；嵌入表最敏感；激活离群通道与 SmoothQuant；KV cache 量化；真实模型的体积与带宽上限 | [查看](/tinyllm/notebooks/quantization) |
 
 ## 课程路线 {#roadmap}
 
@@ -120,8 +122,8 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 
 - [第 26 章 · 自回归生成](./generation.md)
 - [第 27 章 · 推理效率：prefill、decode 与 KV cache](./inference-efficiency.md)
-- [第 28 章 · 注意力内核与算子融合](./attention-kernels.md)（规划中）
-- [第 29 章 · 量化](./quantization.md)（规划中）
+- [第 28 章 · 注意力内核与算子融合](./attention-kernels.md)
+- [第 29 章 · 量化](./quantization.md)
 - [第 30 章 · 投机解码](./speculative-decoding.md)（规划中）
 - [第 31 章 · 批处理与调度](./batching.md)（规划中）
 - [第 32 章 · KV 显存管理：分页与前缀缓存](./kv-memory.md)（规划中）
@@ -178,8 +180,8 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [25 MoE](./mixture-of-experts.md) | 主线保持稠密；MoE 作为对照变体，前馈层换成路由器加 SwiGLU 专家、选 top-k、按归一化分数加权，负载均衡用无辅助损失的偏置；已有稠密模型时先用稀疏升级 | 代理模型 3 个种子：MoE 与激活参数相同的稠密模型打平，优势要在数据多、模型大时才显现；偏置均衡把最忙专家从 44% 压到 14%；稀疏升级输出与稠密只差 3.3e-6。显存看总参数、速度看激活参数：端侧选稠密，云端高并发选 MoE。 |
 | [26 生成](./generation.md) | 可复现评估用贪心解码；开放式生成提供温度与 top-p，并固定种子 | 评估稳定，交互时可调多样性；采样参数需随任务调节。 |
 | [27 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |
-| [28 注意力内核](./attention-kernels.md) | 先写朴素注意力看清 N×N 分数表，再写分块 + online softmax 的版本，两者数值对齐 | 分块省下峰值内存、把读写留在片上；这是 FlashAttention 的核心，但真正的吞吐收益依赖 GPU 内核与编译器，CPU 上只验证等价性和内存账。 |
-| [29 量化](./quantization.md) | 训练沿用第 19 章的精度；部署受限时先做按通道或分组的 INT8 权重量化 | 压缩推理存储和带宽；每次量化都在同一验证集上比较困惑度与生成样例。 |
+| [28 注意力内核](./attention-kernels.md) | 注意力调用 `F.scaled_dot_product_attention`，让 PyTorch 选 FlashAttention 一类的分块内核；逐元素小算子交给 `torch.compile` 融合；手写的朴素与分块版本只用于理解和核对 | 长度 4096 时朴素写法峰值 536 MiB、读写 2120 MiB，SDPA 峰值 2.06 MiB；分块读写约 $T^2 d/B$，块大小受片上存储限制。需要 SDPA 不支持的掩码时换可编程内核或数学实现，先核对结果再在 GPU 上测速度与显存。 |
+| [29 量化](./quantization.md) | 训练和评估不量化；部署受限时先做 INT8 按通道的权重量化，再到 INT4 分组 32（输出层和嵌入表保留高精度）；KV cache 先 INT8 | 3 个种子：INT8 损失变化在 ±0.0002 以内；INT4 按张量涨 0.032，分组 32 只涨 0.008；KV INT4 涨 0.004。要压到 4 位以下或要求更高时换 GPTQ、AWQ 等带校准的方法；速度要在有整数内核的硬件上测。 |
 | [30 投机解码](./speculative-decoding.md) | 贪心解码下用“起草 → 验证”一次接受多个 token，并要求输出与基线逐 token 一致 | 只在起草模型和目标模型接近时有效；接受率要实测，采样模式下必须用拒绝采样才不改变分布。 |
 | [31 批处理](./batching.md) | 主线先单请求；多个请求时用连续批处理按 token 步调度，并记录每个请求的等待时间 | 短请求不必等最长的那个；chunked prefill 能减少长提示词对其他请求的阻塞，代价是调度开销。 |
 | [32 KV 显存管理](./kv-memory.md) | 缓存按固定大小的块分配，用一张块表拼出逻辑序列；相同前缀的块共享 | 分页解决碎片与超配，前缀共享解决重复计算；两者都要淘汰策略，命中率必须按工作负载实测。 |

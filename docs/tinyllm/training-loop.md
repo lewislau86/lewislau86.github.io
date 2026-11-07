@@ -279,6 +279,25 @@ scheduler 先：前 3 步用的学习率 6.67e-04  1.00e-03  1.33e-03；PyTorch 
 3. **加上 `GradScaler`。** 用第 20 章的 FP16 写法训练，检查点还要多存哪一样？不存的话，恢复后会发生什么？
 4. **测保存的代价。** 每一步都保存一次检查点，训练时间变成原来的多少倍？每 40 步一次呢？
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 的 Trainer 存检查点、续训的做法和本章是同一套思路，只是拆成了几个文件。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 保存检查点 | [`Trainer._save_checkpoint`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L3318-L3385) | 模型、优化器、调度器、随机数状态和训练进度分别存成几个文件，放在同一个 `checkpoint-<步数>` 目录里 |
+| 训练进度 | [`TrainerState`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer_callback.py#L35-L186) | `global_step`、`epoch`、日志历史等，存成 `trainer_state.json`，对应本章的 `progress` |
+| 保存随机数状态 | [`Trainer._save_rng_state`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L3425-L3474) | Python、NumPy、torch 以及每张 GPU 的随机数状态都存下来，比本章多几种 |
+| 恢复随机数状态 | [`Trainer._load_rng_state`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L3800-L3843) | 续训时装回去；找不到这个文件时会给出警告，提示结果可能无法逐位复现 |
+| 跳过已经用过的 batch | [`trainer.py 第 219 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L219) | 续训时跳过这个 epoch 已经训练过的 batch，作用和本章 `EpochShuffle` 的 `start` 相同 |
+| 只保留最近几个检查点 | [`rotate_checkpoints`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer_utils.py#L342-L386) | 按 `save_total_limit` 删掉最旧的检查点，但始终保留最新的一个（续训要用）和验证最好的那个 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 TinyLLM 的训练循环按 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step` 的顺序执行，用 `progress`（step、epoch、这个 epoch 用掉的 batch 数）记录进度；数据顺序只由 `(DATA_SEED, epoch)` 决定，`DataLoader` 用自己的 `generator`，不碰全局随机数。损失先存成张量，每隔若干步才 `.item()` 一次。
