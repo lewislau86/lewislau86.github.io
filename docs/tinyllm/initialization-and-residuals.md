@@ -13,7 +13,7 @@ pageClass: tinyllm-course
 
 **前置：** [第 2 章](./tensors-and-autograd.md)的张量形状与自动求导；知道 Block 由注意力和前馈层两个子层组成（[第 6 章](./self-attention.md)、[第 8 章](./activations-and-ffn.md)、[第 9 章](./transformer-block.md)）。
 
-**实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)（也可以直接运行 <a href="/tinyllm/code/initialization-and-residuals.py" download>initialization-and-residuals.py</a>），CPU 即可，图表使用 Plotly。
+**实践方式：** [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals)（也可以直接运行 <a href="/tinyllm/code/initialization-and-residuals.py" download>initialization-and-residuals.py</a>），CPU 约一分半（大部分是第 7 节训练 12 个代理模型），需要 PyTorch、`tokenizers`，图表使用 Plotly。
 :::
 
 <TinyLLMMap active="initialization-and-residuals" />
@@ -152,6 +152,42 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 
 另一类做法只在<strong>初始化时</strong>缩小写回残差流的输出投影，前向时不再乘系数。例如 nanoGPT 对每个 Block 中注意力和 MLP 的 `c_proj.weight` 使用 `0.02 / sqrt(2 * n_layer)` 的初始标准差，这里的 2 对应每层两条残差分支。这是特定架构的经验设计，只作用在输出投影上；[第 24 章的 DeepNorm](./large-model-stability.md#deepnorm) 是另一套完整配置。[nanoGPT 源码](https://github.com/karpathy/nanoGPT/blob/master/model.py)给出了具体实现。
 
+### 实测：真实 Block 上的 $1/\sqrt{2L}$ {#scaling-measured}
+
+上面的论证是“方差会累积”，第 5 节的实验也只用了 `tanh(Linear(x))` 这样的玩具子层。这个缩放在真正的 TinyLLM Block 上有没有用？下面换成 Pre-RMSNorm Block（RoPE 因果注意力加 SwiGLU），尺寸用[第 17 章](./learning-rate.md)的代理模型（宽度 64、4 个头），只改层数。模型的 `init_weights` 先用 Xavier，再把每个 Block 的 `proj` 和 `down` 乘 $1/\sqrt{2L}$；“不缩放”就是把这一步撤掉，其余完全相同。
+
+先看初始化时，一个 batch 穿过每个 Block 后残差流的 RMS：
+
+<<< @/public/tinyllm/code/initialization-and-residuals.py#scaling-init
+
+```text
+ 8 层 不缩放      嵌入 0.124 → 最后一层 1.840（14.8 倍，3 个种子平均）
+ 8 层 乘 1/√(2L)  嵌入 0.124 → 最后一层 0.415（3.3 倍，3 个种子平均）
+24 层 不缩放      嵌入 0.124 → 最后一层 3.455（27.8 倍，3 个种子平均）
+24 层 乘 1/√(2L)  嵌入 0.124 → 最后一层 0.433（3.5 倍，3 个种子平均）
+```
+
+不缩放时，每个 Block 写回的更新都和残差流差不多大，层数从 8 加到 24，最后的 RMS 从嵌入的 14.8 倍涨到 27.8 倍。乘上 $1/\sqrt{2L}$ 以后，8 层和 24 层最后都停在 3.3～3.5 倍：$2L$ 次写回的方差加起来，正好被每次缩小的 $1/(2L)$ 抵掉，残差流的尺度不再随深度变化。这正是这个系数的设计目的。
+
+再训练 8 层的模型，看它对结果的影响。用第 17 章的 WSD 调度训练 240 步，峰值学习率取两档，各 3 个种子：
+
+<<< @/public/tinyllm/code/initialization-and-residuals.py#scaling-train
+
+```text
+峰值 0.01  不缩放      验证损失 5.036 5.032 5.028  平均 5.032   第 1 步梯度范数 1.99
+峰值 0.01  乘 1/√(2L)  验证损失 4.698 4.727 4.670  平均 4.698   第 1 步梯度范数 3.31
+峰值 0.003  不缩放      验证损失 5.041 5.079 5.054  平均 5.058   第 1 步梯度范数 1.99
+峰值 0.003  乘 1/√(2L)  验证损失 4.737 4.747 4.742  平均 4.742   第 1 步梯度范数 3.31
+```
+
+![左：初始化时残差流的 RMS 随层数的变化，不缩放时 24 层涨到 3.46、8 层涨到 1.84，乘 1/√(2L) 后都停在 0.4 附近；右：8 层模型训练 240 步的验证损失，峰值 1e-2 时 5.032 对 4.698，峰值 3e-3 时 5.058 对 4.742](/tinyllm/figures/residual-scaling.svg)
+
+怎么读这张图：左边是初始化时的残差流，实线 24 层、虚线 8 层，红色不缩放、绿色缩放；红线一路往上走，绿线几乎是平的。右边是训练后的验证损失，每个点是一个种子，菱形是平均。两档学习率下，缩放都比不缩放低约 0.33，3 个种子的范围离得很远，所以这不是“不缩放时学习率选大了”。
+
+为什么差这么多？下面是分析，不是本节实验直接证明的结论：不缩放时，残差流在第一步就被 16 次随机的写回淹没，词嵌入那 0.124 的信号只占很小一部分，模型要先花训练步数把这些噪声压下去。第 1 步梯度范数的差别也和这一点一致：残差流越大，最终 RMSNorm 除掉的尺度越大，传回去的梯度就越小（1.99 对 3.31，两者都被裁剪到 1.0）。
+
+实验的边界：宽度 64、8 层的代理模型，训练 240 步。更大的模型、更长的训练，差距可能缩小，也可能需要别的深层方案（第 24 章的 DeepNorm）；但“不缩放时残差流随深度增长”这件事和宽度无关，是这个缩放最直接的理由。
+
 ## 8. 动手实验：测量每一层，而不只看一条损失曲线
 
 [initialization-and-residuals.ipynb](/tinyllm/notebooks/initialization-and-residuals) 分三步运行：
@@ -184,7 +220,7 @@ $\alpha=1$ 就是不缩放。减小 $\alpha$ 会同时缩小前向更新和反�
 
 <strong>先用宽度感知的随机初始化：</strong>普通 `nn.Linear` 的权重用 Xavier normal，token embedding 用零均值、标准差 $1/\sqrt d$ 的正态分布，偏置（若有）设为 0，RMSNorm 的缩放权重设为 1。每个 Block 有注意力和 FFN 两次残差写回；对注意力输出投影和 SwiGLU 的 `down` 投影，在 Xavier 抽样后再乘 $1/\sqrt{2L}$，其中 $L$ 是 Block 数。输出头若与 embedding 共享权重，只初始化共享张量一次。这是本课程的<strong>可测量起点</strong>：Xavier 并非专门为 SwiGLU 推导，这套配置也只是一个经得起检查的默认值。
 
-为什么这样选？全零会让隐藏单元保持对称；所有层用同一个固定 `std` 又忽略了宽度（开头那张图）。Xavier 按输入和输出宽度给出起始尺度；Pre-RMSNorm 让每个子层看到统一尺寸的输入；残差直通路径保留梯度。粗略假设各层的两次更新相互独立时，写回分支随 $L$ 缩小可以减轻残差流方差的累积。[Pre-LN 分析](https://arxiv.org/abs/2002.04745)解释了初始化附近的梯度差异；[nanoGPT](https://github.com/karpathy/nanoGPT/blob/master/model.py)展示了按 $2L$ 缩小残差投影的另一种配方，它的基础尺度是 `std=0.02`，本课程的基础尺度是 Xavier，两者是不同的实现。
+为什么这样选？第 7 节的实测（8 层代理模型、3 个种子）：乘 $1/\sqrt{2L}$ 让初始残差流的尺度不随深度增长（24 层从嵌入的 27.8 倍降到 3.5 倍），两档学习率下验证损失都低约 0.33（5.032 对 4.698、5.058 对 4.742）。全零会让隐藏单元保持对称；所有层用同一个固定 `std` 又忽略了宽度（开头那张图）。Xavier 按输入和输出宽度给出起始尺度；Pre-RMSNorm 让每个子层看到统一尺寸的输入；残差直通路径保留梯度。粗略假设各层的两次更新相互独立时，写回分支随 $L$ 缩小可以减轻残差流方差的累积。[Pre-LN 分析](https://arxiv.org/abs/2002.04745)解释了初始化附近的梯度差异；[nanoGPT](https://github.com/karpathy/nanoGPT/blob/master/model.py)展示了按 $2L$ 缩小残差投影的另一种配方，它的基础尺度是 `std=0.02`，本课程的基础尺度是 Xavier，两者是不同的实现。
 
 <strong>何时改选？</strong>复现某个模型时，以该模型的初始化和归一化配方为准。若初始激活 RMS、logits、各层梯度随深度明显漂移，先检查权重是否被重复初始化、输出头和残差投影是否设对、学习率是否过大，再比较固定标准差、截断正态、零初始化的残差输出或更专门的深层方案。第 7 节的前向残差系数 $\alpha$ 与这里<strong>仅在初始化时缩小输出投影</strong>是两种不同操作。
 

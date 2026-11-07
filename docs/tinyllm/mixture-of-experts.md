@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 **实践方式：** [mixture-of-experts.ipynb](/tinyllm/notebooks/mixture-of-experts)（也可以直接运行 <a href="/tinyllm/code/mixture-of-experts.py" download>mixture-of-experts.py</a>），CPU 约一分半，需要 PyTorch 和 `tokenizers`。
 :::
 
-[第 3 章](./architecture-evolution.md)讲架构演进时说过，今天最大的那些模型，几乎都把前馈层换成了**稀疏专家**（Mixture of Experts，MoE）：DeepSeek-V3 有 6710 亿参数，每个 token 只用其中 370 亿；Kimi K3、Qwen3 的大尺寸、小米的 MiMo-V2 系列，旗舰模型都是 MoE。
+[第 3 章](./architecture-evolution.md)讲架构演进时说过，今天最大的那些模型，几乎都把前馈层换成了**稀疏专家**（Mixture of Experts，MoE）：DeepSeek-V3 有 6710 亿参数，每个 token 只用其中 370 亿；Kimi K3（2.8 万亿参数、每个 token 激活 1040 亿，[Kimi Team，2026](https://arxiv.org/abs/2607.24653)）、Qwen3 的大尺寸、小米的 MiMo-V2 系列，旗舰模型都是 MoE。
 
 这一章是第五部分的最后一章，也是一个特殊的专题。前半部分在 TinyLLM 上把 MoE 搭起来，看清路由、负载均衡、专家分工这几件事；后半部分回答三个更实际的问题：
 
@@ -52,6 +52,8 @@ Block 里只改一行：`n_experts` 不为 0 时，前馈层换成 MoE。
 <<< @/public/tinyllm/code/mixture-of-experts.py#moe
 
 ![左：稠密前馈层，每个 token 都经过同一个 SwiGLU。右：MoE 层，路由器给 8 个专家打分，每个 token 只选分数最高的 2 个专家，两个专家的输出按归一化后的分数加权相加；没被选中的专家不参与这次计算](/tinyllm/figures/moe-structure.svg)
+
+怎么读这张图：左右两边的输入、输出形状一样，区别在中间。左边每个 token 都经过同一个前馈层；右边先由路由器给 8 个专家各打一个分，只有分数最高的 2 个专家（深色）参与计算，它们的输出按分数加权相加。所以 MoE 的参数是 8 份，每个 token 的计算只有 2 份。
 
 `forward` 里的循环是“按专家分组”：先找出选了第 $e$ 个专家的那些 token，把它们一起送进这个专家，再把结果按权重加回各自的位置。真实的实现也是这个思路，只是用专门的 GPU 内核把分组、计算、写回做得更快。负载均衡的那几行，第 3 节再讲。
 
@@ -98,7 +100,7 @@ MoE，偏置均衡     验证损失 4.721（4.717～4.728）   最忙的专家�
 
 这和大模型上的经验并不矛盾，而是说明 MoE 的好处需要条件：
 
-- **每个专家只看到一部分数据。** 8 个专家选 2 个，平均每个专家只训练了四分之一的 token。240 步、30 万 token 的训练，对每个专家来说太少了。MoE 的优势在“数据多、训练长”的时候才显现。
+- **每个专家只看到一部分数据。** 8 个专家选 2 个，平均每个专家只训练了四分之一的 token。240 步、约 25 万 token 的训练，对每个专家来说太少了。MoE 的优势在“数据多、训练长”的时候才显现。
 - **模型太小。** 宽度只有 64，路由器能用来区分 token 的信息很少；专家也很小。
 
 大规模的结果是另一番景象：Switch Transformer 在相同的计算量下，比对应的稠密模型训练快了好几倍（[Fedus 等，2021](https://arxiv.org/abs/2101.03961)）；DeepSeek-V3 每个 token 只用 370 亿参数，能力却和更大的稠密模型相当（[DeepSeek-AI，2024](https://arxiv.org/abs/2412.19437)）。所以本章的小模型实验用来看清 MoE 的**机制**，而“MoE 在大规模上更划算”这个结论，来自这些大规模的实验。
@@ -115,6 +117,10 @@ MoE，偏置均衡     验证损失 4.721（4.717～4.728）   最忙的专家�
 - **无辅助损失的偏置**（[Wang 等，2024](https://arxiv.org/abs/2408.15664)，DeepSeek-V3 采用）：给每个专家一个偏置，只加在“选谁”的分数上，**不参与输出的加权**，也不通过梯度学习。每一步看负载：太忙的专家，偏置减一点；太闲的，加一点（代码里的 `self.bias += self.gamma * sign(...)`）。它不碰损失函数，所以不和语言模型损失抢梯度。本章它把三个种子的最忙专家都压到了 14%，是三种方法里最均衡的。
 
 在这个小模型上，三种方式的质量差别都在种子噪声以内；DeepSeek-V3 的技术报告在大规模上比较过，无辅助损失的方法在保持均衡的同时质量更好。本章其余部分的 MoE 都用偏置均衡。
+
+![专家并行：8 个专家分在 4 张卡上，token 经第一次 all-to-all 发到专家所在的卡，算完后第二次 all-to-all 送回原来的卡；一层的时间由收到 token 最多的那张卡决定](/tinyllm/figures/expert-parallel.svg)
+
+怎么读这张图：从上往下是一层 MoE 在 4 张卡上的执行顺序。每张卡上的 token 先由路由器选好专家（小框里的 E 几），第一次 all-to-all 把它们发到专家所在的卡，各卡算完，第二次 all-to-all 再送回去。中间一行写着每张卡收到多少 token：所有卡要一起等最忙的那张，这就是负载均衡要解决的问题。
 
 还有一种更激进的做法是给每个专家设“容量上限”：一个 batch 里，每个专家最多接收多少个 token，超出的 token 直接跳过这个专家（Switch Transformer 的 capacity factor）。这能严格控制每张卡的计算量，代价是有些 token 没被处理。
 
@@ -225,7 +231,7 @@ DeepSeek-V3           1342 GB         74 GFLOP       74.0 GB
 
 ## 7. 专题三：为什么越来越多的厂商选择 MoE
 
-先看事实。小米 MiMo 系列最早的模型 MiMo-7B（2025 年 5 月）是**稠密**模型，主打推理能力，从头预训练了 25 万亿 token（[小米 LLM-Core 团队，2025](https://arxiv.org/abs/2505.07608)）。2026 年 1 月的 MiMo-V2-Flash 换成了 **MoE**：总参数 3090 亿，每个 token 激活 150 亿；技术报告把它的目标描述为“快速、强推理和 agent 能力”，并说它的能力可以和 DeepSeek-V3.2、Kimi-K2 相比，总参数却只有它们的 1/2 和 1/3；推理时再用多 token 预测做投机解码（[第 30 章](./speculative-decoding.md)），解码速度最高提升 2.6 倍（[小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780)）。据公开报道，之后的 Pro 系列总参数约 1 万亿、每个 token 激活约 420 亿，也是 MoE（[Wikipedia：Xiaomi MiMo](https://en.wikipedia.org/wiki/Xiaomi_MiMo)）。DeepSeek、Qwen、Kimi 的旗舰模型同样都是 MoE。
+先看事实。小米 MiMo 系列最早的模型 MiMo-7B（2025 年 5 月）是**稠密**模型，主打推理能力，从头预训练了 25 万亿 token（[小米 LLM-Core 团队，2025](https://arxiv.org/abs/2505.07608)）。2026 年 1 月的 MiMo-V2-Flash 换成了 **MoE**：总参数 3090 亿，每个 token 激活 150 亿；技术报告把它的目标描述为“快速、强推理和 agent 能力”，并说它的能力可以和 DeepSeek-V3.2、Kimi-K2 相比，总参数却只有它们的 1/2 和 1/3；推理时再用多 token 预测做投机解码（[第 30 章](./speculative-decoding.md)），解码速度最高提升 2.6 倍（[小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780)）。2026 年 3 月的 MiMo-V2-Pro 总参数 1 万亿、每个 token 激活 420 亿，也是 MoE，注意力按 1:7 混合全局注意力和滑动窗口注意力，上下文 100 万 token；4 月的 V2.5-Pro 沿用这一规模，9 月又发布了同为万亿参数级的 V2.6 系列（[小米 MiMo 模型更新日志](https://mimo.mi.com/docs/en-US/updates/model)）。DeepSeek、Qwen、Kimi 的旗舰模型同样都是 MoE。
 
 技术报告没有专门解释“为什么选 MoE”。下面是从前几节的账出发的**分析**，不是小米的官方说法：
 
@@ -340,6 +346,7 @@ MoE 的基础：
 
 - [Qwen3 Technical Report，Qwen 团队，2025](https://arxiv.org/abs/2505.09388) 与 [Qwen3-30B-A3B 模型卡](https://huggingface.co/Qwen/Qwen3-30B-A3B)
 - [MiMo: Unlocking the Reasoning Potential of Language Model，小米 LLM-Core 团队，2025](https://arxiv.org/abs/2505.07608)
-- [MiMo-V2-Flash Technical Report，小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780)
+- [MiMo-V2-Flash Technical Report，小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780) · [小米 MiMo 模型更新日志](https://mimo.mi.com/docs/en-US/updates/model)
+- [Kimi K3: Open Frontier Intelligence，Kimi Team，2026](https://arxiv.org/abs/2607.24653)
 
 第五部分到这里结束：数据、目标、优化、正则化、精度、梯度、训练循环、评估、调参，再到放大以后的稳定性和 MoE。模型训好了，下一部分讲怎样用它：[第 26 章：自回归生成](./generation.md)。

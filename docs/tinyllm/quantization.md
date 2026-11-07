@@ -54,6 +54,10 @@ pageClass: tinyllm-course
 - **对称量化**：按绝对值最大的数定一个缩放因子 $s=\max|x|/(2^{b-1}-1)$，整数 $q=\text{round}(x/s)$，还原成 $\hat x = s\,q$。INT8 用 −127 到 127，INT4 用 −7 到 7。
 - **非对称量化**：按最小值和最大值定范围，多一个零点 $z$：$q=\text{round}(x/s)+z$，还原成 $\hat x = s(q-z)$。INT8 用 0 到 255，INT4 用 0 到 15。
 
+![量化的数值映射：对称 INT4 把 −max|x| 到 max|x| 分成 15 个刻度，0 在刻度上；非对称按最小值和最大值定范围，16 个刻度都落在数据范围内；x 还原成最近的刻度，误差最多半个刻度](/tinyllm/figures/quant-mapping.svg)
+
+怎么读这张图：每条数轴上的竖线是能存下的值。橙点是原来的数 $x$，空心点是还原后的值，它们之间的距离就是量化误差，最多半个刻度。上面的对称量化刻度关于 0 对称；下面的非对称量化把刻度挤在数据真正覆盖的范围里（浅色带），同样 16 个整数，刻度更密。
+
 <<< @/public/tinyllm/code/quantization.py#formula
 
 先拿种子 0 的嵌入表里“，”这一行（128 个数）试一下：
@@ -87,6 +91,10 @@ SiLU 输出的范围 [-0.278, 6.981]
 - **按张量**：整个矩阵一个 $s$，由全矩阵绝对值最大的那个数决定；
 - **按通道**：每个输出通道（矩阵的一行）一个 $s$；
 - **分组**：每行里每 $g$ 个相邻的输入一个 $s$。
+
+![量化粒度：同一个 6 行 16 列的矩阵，按张量时整个矩阵一个缩放因子，按通道时每行一个，分组 g=4 时每行每 4 个一组；组越小误差越小，每个权重多 16/g 位](/tinyllm/figures/quant-grouping.svg)
+
+怎么读这张图：颜色相同的格子共用一个缩放因子 $s$，$s$ 由这一组里绝对值最大的数决定。左边整个矩阵一种颜色，一个大数就决定了所有数的刻度；右边每 4 个数一组，每组的刻度只迁就自己组里的数。代价写在每张图下面：缩放因子越多，摊到每个权重上的额外位数越多。
 
 单位越小，每组的最大值越贴近组内的数，误差越小；代价是缩放因子变多。每个缩放因子按 FP16 存、占 16 位，摊到每个权重上就是 $16/g$ 位。下面用对称量化处理种子 0 的全部权重矩阵（嵌入表和所有线性层），看相对误差和摊到每个权重上的位数：
 
@@ -248,9 +256,26 @@ Llama 3 70B   BF16  141.2 GB（≤   24 token/s）  INT8 按通道   70.6 GB（�
 2. **保留输出层。** 在第 4 节的 INT4 分组 32 上，跳过嵌入表（`parts=("注意力", "前馈")`），损失降了多少，体积多了多少？和第 5 节的结论对得上吗？
 3. **K 按通道。** 仿照 KIVI，把第 7 节的 K 改成“每个通道、每 16 个 token 一组”，V 保持按 token，在 INT4 上和原来比较。提示：分组要沿 token 维做，最后一组可能不满 16 个。
 
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 不自己实现量化算法，而是用配置类描述格式，交给 bitsandbytes、GPTQ、AWQ 等后端；KV cache 的量化在缓存类里。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 8 位 / 4 位加载 | [`BitsAndBytesConfig`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/utils/quantization_config.py#L390-L608) | `load_in_8bit` 走 LLM.int8()：超过 `llm_int8_threshold`（默认 6.0）的离群值单独用 FP16 算；`load_in_4bit` 可选 NF4 或 FP4 |
+| GPTQ | [`GPTQConfig`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/utils/quantization_config.py#L617-L795) | `bits` 和 `group_size`（默认 128）就是本章的位数和分组大小；量化时用校准数据逐列补偿误差 |
+| AWQ | [`AwqConfig`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/utils/quantization_config.py#L799-L861) | 默认 4 位、分组 128、带零点（非对称）；`modules_to_not_convert` 用来让某些层保持原精度 |
+| KV cache 量化 | [`QuantizedLayer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cache_utils.py#L741-L849) | 最近 `residual_length`（默认 128）个 token 保持原精度，更早的按 `q_group_size`（默认 64）分组量化成 `nbits`（默认 4）位 |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-TinyLLM 训练和评估沿用[第 19 章](./precision.md)的精度，不做量化。部署受显存或带宽限制时，按这个顺序考虑：先做 <strong>INT8 按通道的权重量化</strong>，在 3 个种子上损失变化在 ±0.0002 以内，体积是 FP32 的四分之一；还不够时用 <strong>INT4 分组 32</strong>，损失涨约 0.008，体积约为 FP32 的七分之一，输出层和嵌入表保留高精度；KV cache 先用 INT8（损失不变），需要更长上下文时再试 INT4（涨约 0.004）。
+TinyLLM 训练和评估沿用[第 19 章](./precision.md)的精度，不做量化。部署受显存或带宽限制时，按这个顺序考虑：先做 <strong>INT8 按通道的权重量化</strong>，在 3 个种子上损失变化在 ±0.0002 以内，体积是 FP32 的四分之一；还不够时用 <strong>INT4 分组 32</strong>，损失涨约 0.008；嵌入表（同时是输出层）保留 FP16 时，权重总体积约为 FP32 的 0.29，其中七成是嵌入表，在真实的大模型上嵌入表只占百分之几，体积就接近 FP32 的八分之一；KV cache 先用 INT8（损失不变），需要更长上下文时再试 INT4（涨约 0.004）。
 
 为什么：INT4 按张量的相对误差有 21%，损失涨 0.032，分组把它压到 0.008，每个权重只多 0.5 位。嵌入表（同时是输出层）对量化最敏感，只量化它就占了 INT4 按张量损失增加的大半。激活量化只在需要整数矩阵乘时才做；离群通道集中在没有归一化的 `down` 输入上，按 token 量化效果最好，SmoothQuant 能改善按张量的结果。
 

@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 配套教案：https://lewislau86.github.io/tinyllm/precision
 
-从上到下运行即可（`python precision.py`）。基础数值实验只需 CPU 和 PyTorch；
+从上到下运行即可（`python precision.py`），CPU 上约一分半（大部分是第 8 节训练 9 个代理模型，需要 `tokenizers`）。基础数值实验只需 CPU 和 PyTorch；
 CUDA/MPS 的计时实验和 MLX 实验是可选的，环境里没有时会打印提示并跳过。
 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
@@ -222,9 +222,9 @@ for dtype in (torch.float32, torch.float16, torch.bfloat16):
 ```
 
 ```text
-torch.float32 输出 dtype: torch.float32 平均绝对误差: 8.36636e-07 最大绝对误差: 9.89148e-06 非有限值: 0
-torch.float16 输出 dtype: torch.float16 平均绝对误差: 0.00226702 最大绝对误差: 0.0163676 非有限值: 0
-torch.bfloat16 输出 dtype: torch.bfloat16 平均绝对误差: 0.018222 最大绝对误差: 0.115184 非有限值: 0
+torch.float32 输出 dtype: torch.float32 平均绝对误差: 8.12436e-07 最大绝对误差: 8.67667e-06 非有限值: 0
+torch.float16 输出 dtype: torch.float16 平均绝对误差: 0.00227065 最大绝对误差: 0.0163648 非有限值: 0
+torch.bfloat16 输出 dtype: torch.bfloat16 平均绝对误差: 0.0182221 最大绝对误差: 0.115183 非有限值: 0
 ```
 
 ::: v-pre
@@ -453,6 +453,297 @@ MLX GPU 不可用，跳过 MLX GPU 计时。
 ::: v-pre
 **读输出：**MLX 计时采用单次矩阵乘法，与前面的 PyTorch 多层模型不同，不能比较两栏的绝对时间。MLX 的惰性求值需要 `mx.eval`；缺少它会低估实际计算时间。
 :::
+
+::: v-pre
+## 8. 在 TinyLLM 代理模型上：三种精度设置
+
+前面都是单个张量上的实验。下面换成第 17 章的代理模型（词表 1024、宽度 64、2 层），按第 17 章的 WSD 调度（峰值 1e-2）训练 240 步，
+比较三种设置，各 3 个种子；所有设置用同一组预先排好的 batch，种子只决定初始参数：
+
+- **FP32**：参数、计算全部 FP32；
+- **BF16 autocast**：参数和优化器状态留在 FP32，前向的矩阵乘在 BF16 里算（第 6 节）；
+- **参数存成 BF16**：计算用 FP32，但每次更新后把参数舍入到 BF16，模拟“主权重不留 FP32”。优化器状态仍是 FP32，只看参数存储这一件事。
+:::
+
+<p class="nb-label">In [15]</p>
+
+```python
+import copy
+import json
+import math
+import time
+from dataclasses import dataclass
+
+import torch
+from torch import nn
+from torch.nn import functional as F
+from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
+
+
+import hashlib
+import json
+import os
+from pathlib import Path
+from urllib.request import urlopen
+
+CORPUS_URL = "https://lewislau86.github.io/tinyllm/data/tang-poems.jsonl"
+CORPUS_SHA256 = "764f0614663c20e95927c6ecb63e454629f6cb0efefe9ac84454e256f7173fb1"
+
+def load_poems(n):
+    """本课统一唐诗语料的前 n 首（来源和处理方式见“实验环境”页）。
+    依次找：环境变量 TINYLLM_DATA、当前目录、../data/（整包下载解压后的位置）；都没有就从网站下载一份。"""
+    candidates = [os.environ.get("TINYLLM_DATA", ""), "tang-poems.jsonl", "../data/tang-poems.jsonl"]
+    path = next((Path(p) for p in candidates if p and Path(p).exists()), None)
+    if path is None:
+        path = Path("tang-poems.jsonl")
+        with urlopen(CORPUS_URL, timeout=120) as r:
+            path.write_bytes(r.read())
+    raw = path.read_bytes().replace(b"\r\n", b"\n")
+    if hashlib.sha256(raw).hexdigest() != CORPUS_SHA256:
+        raise RuntimeError(f"{path} 不是本课使用的语料版本，删掉它再运行一次即可重新下载")
+    return [json.loads(line) for line in raw.decode("utf-8").splitlines()[:n]]
+```
+
+::: v-pre
+## 0. 第 17 章的代理模型
+
+模型代码、数据划分、评估口径都从第 12 章原样复制，尺寸和第 17 章的代理模型相同（词表 1024、宽度 64、2 层）。
+本章要训练二十多次，所以用这个缩小的版本；损失只在本章内部比较。
+:::
+
+<p class="nb-label">In [16]</p>
+
+```python
+@dataclass
+class TinyConfig:
+    vocab_size: int = 4096     # BPE 词表大小（含 4 个特殊 token）
+    d_model: int = 128         # 每个 token 向量的宽度 d
+    n_layers: int = 4          # Block 层数 L
+    n_heads: int = 4           # 注意力头数，每头 d / n_heads = 32 维
+    context: int = 64          # 一次最多看多少个 token
+    rope_base: float = 10000.0
+
+cfg = TinyConfig()
+
+cfg = TinyConfig(vocab_size=1024, d_model=64, n_layers=2)       # 代理模型：只改这三个尺寸
+STEPS, BATCH = 240, 16
+print(cfg)
+```
+
+```text
+TinyConfig(vocab_size=1024, d_model=64, n_layers=2, n_heads=4, context=64, rope_base=10000.0)
+```
+
+<p class="nb-label">In [17]</p>
+
+```python
+poems = load_poems(6000)
+train_poems = [p["text"] for p in poems if p["split"] == "train"]
+val_poems = [p["text"] for p in poems if p["split"] == "val"]
+
+def train_tokenizer(texts, vocab_size):
+    tok = Tokenizer(models.BPE())
+    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    tok.decoder = decoders.ByteLevel()
+    trainer = trainers.BpeTrainer(
+        vocab_size=vocab_size,
+        special_tokens=["<pad>", "<unk>", "<bos>", "<eos>"],
+        initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
+        show_progress=False,
+    )
+    tok.train_from_iterator(texts, trainer)
+    return tok
+
+tokenizer = train_tokenizer(train_poems, cfg.vocab_size)
+EOS = tokenizer.token_to_id("<eos>")
+```
+
+<p class="nb-label">In [18]</p>
+
+```python
+def rope_tables(context, head_dim, base):
+    theta = base ** (-torch.arange(0, head_dim, 2).float() / head_dim)
+    angle = torch.arange(context).float()[:, None] * theta        # (T, head_dim/2)
+    return angle.cos(), angle.sin()
+
+def apply_rope(x, cos, sin):                                      # x: (B, 头数, T, head_dim)
+    T = x.shape[-2]
+    cos, sin = cos[:T], sin[:T]
+    x1, x2 = x[..., 0::2], x[..., 1::2]
+    return torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1).flatten(-2)
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.n_heads = cfg.n_heads
+        self.qkv = nn.Linear(cfg.d_model, 3 * cfg.d_model, bias=False)
+        self.proj = nn.Linear(cfg.d_model, cfg.d_model, bias=False)   # 输出投影：写回残差流
+
+    def forward(self, x, cos, sin):
+        B, T, D = x.shape
+        q, k, v = (t.view(B, T, self.n_heads, D // self.n_heads).transpose(1, 2)
+                   for t in self.qkv(x).split(D, dim=-1))
+        y = F.scaled_dot_product_attention(apply_rope(q, cos, sin), apply_rope(k, cos, sin), v, is_causal=True)
+        return self.proj(y.transpose(1, 2).reshape(B, T, D))
+
+class SwiGLU(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        hidden = 8 * cfg.d_model // 3
+        self.gate = nn.Linear(cfg.d_model, hidden, bias=False)
+        self.up = nn.Linear(cfg.d_model, hidden, bias=False)
+        self.down = nn.Linear(hidden, cfg.d_model, bias=False)        # 输出投影：写回残差流
+
+    def forward(self, x):
+        return self.down(F.silu(self.gate(x)) * self.up(x))
+
+class Block(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.norm1 = nn.RMSNorm(cfg.d_model)
+        self.attn = CausalSelfAttention(cfg)
+        self.norm2 = nn.RMSNorm(cfg.d_model)
+        self.ffn = SwiGLU(cfg)
+
+    def forward(self, x, cos, sin):
+        x = x + self.attn(self.norm1(x), cos, sin)
+        return x + self.ffn(self.norm2(x))
+
+class TinyLLM(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
+        self.blocks = nn.ModuleList(Block(cfg) for _ in range(cfg.n_layers))
+        self.norm = nn.RMSNorm(cfg.d_model)
+        cos, sin = rope_tables(cfg.context, cfg.d_model // cfg.n_heads, cfg.rope_base)
+        self.register_buffer("cos", cos, persistent=False)
+        self.register_buffer("sin", sin, persistent=False)
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+        nn.init.normal_(self.embed.weight, mean=0.0, std=self.cfg.d_model ** -0.5)
+        scale = (2 * self.cfg.n_layers) ** -0.5
+        with torch.no_grad():
+            for b in self.blocks:
+                b.attn.proj.weight.mul_(scale)
+                b.ffn.down.weight.mul_(scale)
+
+    def forward(self, idx, targets=None):
+        x = self.embed(idx)                                   # (B, T) → (B, T, d)
+        for block in self.blocks:
+            x = block(x, self.cos, self.sin)
+        logits = self.norm(x) @ self.embed.weight.T           # (B, T, d) → (B, T, V)，与嵌入共享权重
+        if targets is None:
+            return logits
+        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
+```
+
+<p class="nb-label">In [19]</p>
+
+```python
+def to_stream(texts):
+    ids = []
+    for t in texts:
+        ids += tokenizer.encode(t).ids + [EOS]
+    return torch.tensor(ids)
+
+train_ids, val_ids = to_stream(train_poems), to_stream(val_poems)
+tokens_per_char = len(val_ids) / sum(len(t) + 1 for t in val_poems)   # 每首诗的 <eos> 记作一个“字”
+
+@torch.no_grad()
+def evaluate(model, ids=val_ids, T=cfg.context, batch=64):
+    model.eval()
+    n = (len(ids) - 1) // T * T
+    xs, ys = ids[:n].view(-1, T), ids[1:n + 1].view(-1, T)
+    total = sum(F.cross_entropy(model(xs[i:i + batch]).flatten(0, 1), ys[i:i + batch].flatten(), reduction="sum").item()
+                for i in range(0, len(xs), batch))
+    model.train()
+    nats = total / ys.numel()
+    return nats, nats * tokens_per_char / math.log(2)    # (每 token 的 nats, 每字比特)
+```
+
+<p class="nb-label">In [20]</p>
+
+```python
+plan = torch.Generator().manual_seed(1234)                 # batch 计划：所有对照共用
+starts = torch.randint(0, len(train_ids) - cfg.context - 1, (STEPS, BATCH), generator=plan)
+
+def get_batch(step):
+    idx = starts[step][:, None] + torch.arange(cfg.context + 1)
+    return train_ids[idx[:, :-1]], train_ids[idx[:, 1:]]
+
+def wsd(step, peak=1e-2, warmup=30, decay_frac=0.2):      # 第 17 章的调度
+    decay_start = int(STEPS * (1 - decay_frac))
+    if step < warmup:
+        return peak * (step + 1) / warmup
+    if step < decay_start:
+        return peak
+    return peak * (STEPS - step) / (STEPS - decay_start)
+
+def round_to_bf16(model):
+    with torch.no_grad():
+        for p in model.parameters():
+            p.copy_(p.bfloat16().float())                  # 存成 BF16 再读回来：多余的尾数位丢掉
+
+def run(mode, seed=0, probe=(60, 120, 180, 230)):
+    torch.manual_seed(seed)
+    model = TinyLLM(cfg)
+    decay = [p for p in model.parameters() if p.dim() >= 2]
+    no_decay = [p for p in model.parameters() if p.dim() < 2]
+    optimizer = torch.optim.AdamW([{"params": decay, "weight_decay": 0.1},
+                                   {"params": no_decay, "weight_decay": 0.0}], lr=1e-2)
+    if mode == "参数存成 BF16":
+        round_to_bf16(model)
+    stuck = {}
+    for step in range(STEPS):
+        for group in optimizer.param_groups:
+            group["lr"] = wsd(step)
+        x, y = get_batch(step)
+        with torch.autocast("cpu", dtype=torch.bfloat16, enabled=(mode == "BF16 autocast")):
+            logits = model(x)
+        loss = F.cross_entropy(logits.float().flatten(0, 1), y.flatten())      # 损失在 FP32 里算
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        before = [p.detach().clone() for p in model.parameters()] if step in probe else None
+        optimizer.step()
+        if mode == "参数存成 BF16":
+            round_to_bf16(model)
+        if before is not None:                                                  # 这一步有多少个参数一点都没动
+            same = sum((p.detach() == b).sum().item() for p, b in zip(model.parameters(), before))
+            stuck[step] = same / sum(p.numel() for p in model.parameters())
+    return evaluate(model)[0], stuck
+
+precision_results = {}
+for mode in ("FP32", "BF16 autocast", "参数存成 BF16"):
+    runs = [run(mode, seed) for seed in (0, 1, 2)]
+    precision_results[mode] = runs
+    vals = [r[0] for r in runs]
+    print(f"{mode:<10} 验证损失 {' '.join(f'{v:.3f}' for v in vals)}  平均 {sum(vals) / 3:.3f}")
+for mode in ("FP32", "参数存成 BF16"):
+    stuck = precision_results[mode][0][1]
+    print(f"{mode:<10} 一步更新后完全没变的参数比例（种子 0）："
+          + "  ".join(f"第 {k} 步 {v:.0%}（lr {wsd(k):.0e}）" for k, v in stuck.items()))
+```
+
+```text
+FP32       验证损失 4.733 4.758 4.752  平均 4.748
+```
+
+```text
+BF16 autocast 验证损失 4.745 4.760 4.779  平均 4.761
+```
+
+```text
+参数存成 BF16  验证损失 4.754 4.759 4.759  平均 4.757
+FP32       一步更新后完全没变的参数比例（种子 0）：第 60 步 0%（lr 1e-02）  第 120 步 0%（lr 1e-02）  第 180 步 0%（lr 1e-02）  第 230 步 0%（lr 2e-03）
+参数存成 BF16  一步更新后完全没变的参数比例（种子 0）：第 60 步 16%（lr 1e-02）  第 120 步 18%（lr 1e-02）  第 180 步 19%（lr 1e-02）  第 230 步 54%（lr 2e-03）
+```
 
 ::: v-pre
 ## 9. 思考练习与答案

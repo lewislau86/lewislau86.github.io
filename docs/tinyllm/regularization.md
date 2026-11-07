@@ -193,6 +193,8 @@ dropout 放在哪？常见的位置有三处，本章都加上，用同一个比
 
 ![左：TinyLLM 的三处 dropout。① 注意力权重在 softmax 之后随机丢掉一部分；② 注意力和 SwiGLU 的输出在加回残差流之前各过一次 dropout；③ 词嵌入之后过一次。右：model.train() 时每个数以概率 p 置零，留下的乘 1/(1−p)，p=0.3 时约乘 1.43；model.eval() 时原样通过](/tinyllm/figures/reg-dropout-positions.svg)
 
+怎么读这张图：左边是一个 Block，三个带编号的位置是 dropout 插进去的地方；右边是 dropout 本身做的事。训练时随机把一部分数置零、其余放大，让模型不能依赖某几个特定的数；评估时原样通过。三处的概率可以分开设，下面先把三处都设成同一个 `p`。
+
 代码上的改动很少。配置里多一个字段：
 
 <<< @/public/tinyllm/code/regularization.py#config

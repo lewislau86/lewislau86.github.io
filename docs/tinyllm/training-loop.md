@@ -164,7 +164,11 @@ iter(loader) 之后，全局随机数状态变了： True
 - 一口气训练时，只在每个 epoch 开头创建迭代器，第 121 步在第 1 个 epoch 的中间，前面没有新建迭代器。
 - 恢复训练时，`train` 从第 1 个 epoch 的中间开始，先创建一次迭代器，**多取了一个随机数**，之后 dropout 的掩码就全部错开了一位。
 
-修法是给 `DataLoader` 一个自己的随机数生成器（`generator=...`），它就不再碰全局随机数了。这是一个很隐蔽的坑：没有报错，没有警告，结果只差小数点后第 4 位，看最终损失根本发现不了。只有用“逐位相同”这个标准，才把它揪了出来。
+修法是给 `DataLoader` 一个自己的随机数生成器（`generator=...`），它就不再碰全局随机数了。
+
+![全局随机数的取用顺序：一口气训练时第 121 步的 dropout 取 r3；恢复后先创建迭代器，DataLoader 取走 r3，第 121 步只能取 r4，之后全部错开一位](/tinyllm/figures/rng-timeline.svg)
+
+怎么读这张图：把全局随机数想成一串依次取用的数。上面一行一口气训到底，第 121 步取到 r3；下面一行从第 120 步恢复，随机数状态也恢复到“下一个该取 r3”，可是 `iter(loader)` 先取走了 r3（红框），dropout 从此每一步都拿到“下一个”数。这是一个很隐蔽的坑：没有报错，没有警告，结果只差小数点后第 4 位，看最终损失根本发现不了。只有用“逐位相同”这个标准，才把它揪了出来。
 
 换上新的 `loader`，把参照、训练到第 120 步“断电”、恢复后接着训，全部重跑一遍：
 
@@ -300,7 +304,7 @@ transformers 的 Trainer 存检查点、续训的做法和本章是同一套思�
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-TinyLLM 的训练循环按 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step` 的顺序执行，用 `progress`（step、epoch、这个 epoch 用掉的 batch 数）记录进度；数据顺序只由 `(DATA_SEED, epoch)` 决定，`DataLoader` 用自己的 `generator`，不碰全局随机数。损失先存成张量，每隔若干步才 `.item()` 一次。
+TinyLLM 的训练循环按 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step` 的顺序执行，用 `progress`（step、epoch、这个 epoch 用掉的 batch 数）记录进度；数据顺序只由 `(DATA_SEED, epoch)` 决定，`DataLoader` 用自己的 `generator`，不碰全局随机数。按轮打乱是本章为了演示续训而用的取数方式；第 12 章之后各章的对照实验仍用随机起点，两者谁训得更好还没有做过对照。损失先存成张量，每隔若干步才 `.item()` 一次。
 
 检查点存六样东西：**模型参数、优化器状态、调度器状态、训练进度、随机数状态、配置**，分词器放在同一个目录里。保存时先写临时文件再 `os.replace`，只保留最新几个；读取时用 `weights_only=True`。检验标准是**中断后接着训，参数和一口气训完逐位相同**。
 

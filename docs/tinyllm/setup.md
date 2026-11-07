@@ -104,7 +104,7 @@ python -m pip install -r requirements.txt
 | 包 | 用在哪里 | 不装会怎样 |
 | --- | --- | --- |
 | `torch` | 所有章节 | 无法运行 |
-| `tokenizers` | 第 4、12～15、17、18、20～29 章：训练字节级 BPE | 这几章无法运行 |
+| `tokenizers` | 第 4、10、12～29 章：训练字节级 BPE | 这几章无法运行 |
 | `opencc-python-reimplemented` | 第 14 章：繁体转简体 | 第 14 章无法运行 |
 | `plotly` | 第 4、8、10、16 章的交互图表 | 这几章画图那一步报错 |
 | `jupyterlab` | 在本地打开 notebook | 不影响 `.py` 脚本，只是不能用 notebook |
@@ -138,7 +138,7 @@ PyTorch 2.14.1+cpu
 
 | 项目 | 内容 |
 | --- | --- |
-| 下载 | 整包里的 `data/tang-poems.jsonl`，或<a href="/tinyllm/data/tang-poems.jsonl" download>单独下载</a>（约 4.2 MB） |
+| 下载 | 整包里的 `data/tang-poems.jsonl`，或<a href="/tinyllm/data/tang-poems.jsonl" download>从网站单独下载</a>、[从 GitHub 直接下载](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/tang-poems.jsonl)（约 4.2 MB） |
 | 校验 | SHA-256 `764f0614663c20e95927c6ecb63e454629f6cb0efefe9ac84454e256f7173fb1` |
 | 顺序 | 前 39 首是第 1 章的诗，接着 99 首出自《唐诗三百首》，其余来自《全唐诗》并按固定种子打乱；“前 N 首”永远是同一个子集 |
 | 划分 | 每首诗都标了 `train`、`val` 或 `test`（约 90% / 5% / 5%，按正文哈希固定），前 39 首都在训练集 |
@@ -154,8 +154,8 @@ PyTorch 2.14.1+cpu
 | 第 2～8 章的小例子 | “我 在 学习”等，写在脚本里 |
 | 第 4 章 | 训练 BPE 的几段示例文本，写在脚本里 |
 | 第 12 章起 | 统一语料的更大子集，按 `split` 字段区分训练集和验证集 |
-| 第 14 章 · 语料与数据管线 | 另用《全唐诗》最前面 3 个原始源文件（`poet.tang.0.json`、`poet.tang.1000.json`、`poet.tang.2000.json`，共 3,002 条、约 1.3 MB），和 chinese-poetry 固定版本逐字节相同，放在整包的 `data/` 里，找不到时脚本从网站下载并核对校验值 |
-| 第 13 章 · TinyLLM 在 GPU 上完整实现 | 唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），在本机用 `scripts/prepare-tinyllm-large-corpus.py` 生成并自动核对校验值，见[该页](./gpu-training.md#corpora) |
+| 第 14 章 · 语料与数据管线 | 另用《全唐诗》最前面 3 个原始源文件（[`poet.tang.0.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.0.json)、[`poet.tang.1000.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.1000.json)、[`poet.tang.2000.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.2000.json)，共 3,002 条、约 1.3 MB，链接可从 GitHub 直接下载），和 chinese-poetry 固定版本逐字节相同，放在整包的 `data/` 里，找不到时脚本从网站下载并核对校验值 |
+| 第 13 章 · TinyLLM 在 GPU 上完整实现 | 唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），从 [GitHub Release](https://github.com/lewislau86/lewislau86.github.io/releases/download/tinyllm-data-v1/tang-song-poems.jsonl.gz) 直接下载（`python scripts/prepare-tinyllm-large-corpus.py --download`，自动解压并核对校验值），或在本机重新生成，见[该页](./gpu-training.md#corpora) |
 
 为什么前几章只用 39 首？那几章的实验比的是结构（有没有注意力、位置、残差），每个模型只训练几百步。在本站构建用的 2 核 CPU 上，把语料从 39 首换成 600 首，同样 600 步的训练时间只从约 23 秒增加到约 40 秒（主要是词表从 556 个字变成约 2,500 个字）；但几百步对 600 首诗来说太少，模型还只学到常用字的频率，结构之间的差别反而看不出来。语料一大，要多训练很多步才能看出“学会了”，这正是第 12 章开始的完整训练要做的事。
 

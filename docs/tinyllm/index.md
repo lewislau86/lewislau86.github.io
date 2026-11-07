@@ -149,7 +149,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 每章结尾都有一节“本章结论：TinyLLM 的选择”，回答三个问题：**主线具体选什么、为什么、什么情况下换方案**。下表把它们汇总在一起。这是从零训练一个小型、稠密、Decoder-only 语言模型的教学基线，不是“所有现代大模型的唯一最优配方”；规划章节的选择还要用相同数据、参数预算和训练条件验证。
 
 <details>
-<summary>展开全书主线选择汇总表（37 行）</summary>
+<summary>展开全书主线选择汇总表（38 行）</summary>
 
 | 章节 | 主线选择 | 主要理由与调整条件 |
 | --- | --- | --- |
@@ -162,16 +162,16 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [7 位置表示](./position-encoding.md) | 对 Q/K 使用 RoPE | 把位置信息放进注意力计算；超过训练上下文不能只靠 RoPE 自动保证质量，须专门验证或扩展训练。 |
 | [8 激活与 FFN](./activations-and-ffn.md) | 无偏置 SwiGLU：SiLU 门控，门控宽度先取约 `8d/3` | 相近参数预算下比较门控与普通 `4d` FFN；若追求最少算子或复现旧架构，可选 GELU/ReLU 普通 FFN。 |
 | [9 Transformer Block](./transformer-block.md) | 注意力和 SwiGLU 各有一次 Pre-RMSNorm 与残差加法 | 保留直接的残差梯度路径；复杂的额外归一化只在诊断有需求时加入。 |
-| [10 初始化与残差](./initialization-and-residuals.md) | 线性层先用 Xavier normal，嵌入用标准差 `1/√d` 的零均值正态；注意力输出和 FFN 输出投影再乘 `1/√(2L)`；采用 Pre-Norm 与两次残差相加 | 随机权重打破对称，较小的初始残差更新抑制深度累积；这是教学起点，仍需结合激活 RMS 与梯度诊断。 |
+| [10 初始化与残差](./initialization-and-residuals.md) | 线性层先用 Xavier normal，嵌入用标准差 `1/√d` 的零均值正态；注意力输出和 FFN 输出投影再乘 `1/√(2L)`；采用 Pre-Norm 与两次残差相加 | 随机权重打破对称，较小的初始残差更新抑制深度累积。代理模型 8 层、3 个种子：缩放让初始残差流不随深度增长（24 层 27.8 倍降到 3.5 倍），验证损失低约 0.33；仍需结合激活 RMS 与梯度诊断。 |
 | [11 归一化](./normalization.md) | 每个注意力/前馈子层前用 RMSNorm，末尾再用一次 RMSNorm | 控制每个 token 的尺度，计算较简洁；若注意力分数失控，再评估 QK Norm；极深 Post-Norm 结构另研究 DeepNorm。 |
 | [12 完整模型](./tinyllm-model.md) | 稠密 Decoder-only Transformer，最后 RMSNorm 接词表 logits | 先形成可训练、可生成的闭环；MoE 作为对照变体放在[第 25 章](./mixture-of-experts.md)。 |
 | [13 GPU 完整实现](./gpu-training.md) | 同一份模型代码只改配置，在 GPU 上用 BF16 autocast、SDPA 注意力和 AdamW 完整训练 | 先保证结果与 CPU 基线口径一致，再逐项打开 GPU 优化；每一项都要单独测吞吐和显存，不叠加后再归功于某一项。 |
 | [14 数据](./data-pipeline.md) | 逐条规则清洗，先归一化（繁转简）再去重，用字二元组重合度去近重复；按正文哈希固定划分，划分后再做泄漏检查；整个训练集预先分词、拼成用 `<eos>` 隔开的 token 流 | 哈希划分不随语料增减而变；不补齐、不浪费计算。长文档或多轮训练时再评估文档掩码与按轮打乱；混合比例取决于任务与语料质量。 |
 | [15 损失](./language-model-loss.md) | 下一个 token 的交叉熵，`F.cross_entropy` 直接吃原始 logits，按有效 token 数平均；`<eos>` 计入，`<pad>` 用 -100 屏蔽；梯度累积先求和、最后除以总有效 token 数；不用 label smoothing | 与自回归生成目标一致，分母不随 batch 切法变化；指令微调只算回答部分，模型放大、换低精度后再考虑 z-loss。 |
-| [16 优化器](./optimizers.md) | AdamW；对归一化权重及偏置关闭 weight decay | 自适应更新适合基线，衰减与梯度惩罚分离；状态内存不足再比较 Adafactor 等。 |
+| [16 优化器](./optimizers.md) | AdamW，学习率先在 1e-3～1e-2 之间扫；矩阵权重 `weight_decay=0.1`，归一化权重及偏置不衰减 | 代理模型 3 个种子：调好学习率后 AdamW 4.806、Adam 4.810，SGD+Momentum 5.104；同样写 0.1，Adam+L2 坏到 6.268，系数不能互换；分组与否差别在噪声内。状态内存不足再比较 Adafactor 等。 |
 | [17 学习率](./learning-rate.md) | 按优化器步调度：线性 warmup 后默认 WSD（最后约 20% 线性降到 0）；总步数确定、只训练一次时也可用 warmup + 余弦降到峰值的 10%；加衰减后重新调峰值 | 代理模型 3 个种子：衰减要配更高峰值才有好处，WSD 最好，去掉 warmup 变差；WSD 便于从检查点继续训练。换 batch 或宽度要重扫峰值。 |
 | [18 正则化](./regularization.md) | 主线预训练不加 dropout、不用 label smoothing；AdamW 对矩阵权重保留 `weight_decay=0.1`；按验证损失保留最好的检查点，测试集只报告一次 | 代理模型 3 个种子：300 首诗过 20 遍时，weight decay 3 与 dropout 0.3 明显改善，但不如把数据翻两番；全部数据只过一遍时，同样的手段都变差。数据有限、多遍训练或微调时，先加数据，再按 1/(lr·wd) 调 weight decay、试 dropout。 |
-| [19 精度](./precision.md) | 支持时用 BF16 混合精度，关键归约保持稳定实现；否则用 FP32 | BF16 指数范围较宽；缺 BF16 且需 FP16 时再配合 GradScaler。 |
+| [19 精度](./precision.md) | 支持时用 BF16 autocast，主权重和优化器状态留在 FP32，关键归约保持稳定实现；否则用 FP32 | 代理模型 3 个种子：BF16 autocast 与 FP32 损失范围重叠；参数本身存成 BF16 时每步 16%～19% 的更新被舍入吞掉，衰减段末尾 54%。缺 BF16 且需 FP16 时再配合 GradScaler。 |
 | [20 梯度](./gradient-stability.md) | 每个优化器步按全局范数裁到 1.0 并记录裁剪前范数；梯度累积时只在累积完以后裁剪、更新、推进调度器各一次；优先 BF16，FP16 才用 `GradScaler` 且先 `unscale_` 再裁剪 | 代理模型 3 个种子：AdamW 下阈值几乎不影响结果，但裁剪能完全挡住一次 1000 倍的梯度尖峰；累积写错时最终损失看不出来，要用一步对拍检查。用 SGD 时阈值直接决定步长，要和学习率一起调。 |
 | [21 训练循环](./training-loop.md) | 每步 `zero_grad → 前向 → backward → 裁剪 → optimizer.step → scheduler.step`，用 progress（step、epoch、epoch 内 batch 数）记进度；数据顺序只由 (种子, epoch) 决定，DataLoader 用自己的 generator；检查点存模型、优化器、调度器、进度、随机数状态与配置，先写临时文件再替换 | 代理模型单种子：完整恢复与一口气训完逐位相同；缺任何一样都会偏离，缺调度器还会让 WSD 衰减段消失。GPU 上另存每张卡的随机数状态，需要逐位复现时打开确定性算法。 |
 | [22 评估](./training-evaluation.md) | 训练前先跑初始损失 ≈ ln V、因果性测试、单 batch 过拟合（用同一份训练代码）；训练中记训练/验证损失、梯度范数与学习率；训练后看固定提示词的生成样例和简单结构指标；比较模型时在同一验证集上配对 bootstrap，并结合多个种子 | 代理模型单种子：6 个 bug 没有一项检查能全部抓住，训练前三项几秒内抓住其中 4 个；有 bug 的验证损失可以比正确代码低几十倍；配对后差的区间约为单独区间的八分之一。阈值随模型和训练时长重定。 |

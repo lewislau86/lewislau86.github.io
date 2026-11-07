@@ -38,7 +38,7 @@ pageClass: tinyllm-course
 
 ## 1. 原始记录长什么样
 
-统一语料来自开源数据集 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT 许可证）。本章取《全唐诗》最前面的 3 个源文件，和上游固定版本 `b8594f81` 逐字节相同，本课网站上有一份镜像。读取方式和 `load_poems` 一样：先在本地找，找不到就下载，再核对 SHA-256：
+统一语料来自开源数据集 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT 许可证）。本章取《全唐诗》最前面的 3 个源文件，和上游固定版本 `b8594f81` 逐字节相同，本课网站和 GitHub 上都有一份镜像（[`poet.tang.0.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.0.json)、[`poet.tang.1000.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.1000.json)、[`poet.tang.2000.json`](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/poet.tang.2000.json)，可以直接下载）。加工好的统一语料 `tang-poems.jsonl` 同样可以[从 GitHub 直接下载](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/tang-poems.jsonl)。读取方式和 `load_poems` 一样：先在本地找，找不到就下载，再核对 SHA-256：
 
 <<< @/public/tinyllm/code/data-pipeline.py#raw-sample
 
@@ -138,6 +138,10 @@ pageClass: tinyllm-course
   重合度 0.79：荷恩承顾托，执契恭临抚。庙畧静边荒，天兵耀神武。
             荷恩承顾托，执契恭临抚。庙略静边荒，天兵曜神武。
 ```
+
+![二元组重合度与倒排索引：两首几乎相同的诗拆成字二元组，共有的用蓝绿框，不同的用红框；倒排索引从二元组查到含有它的诗，只和至少共享一个二元组的诗比较](/tinyllm/figures/near-dup-index.svg)
+
+怎么读这张图：上半是第一对近重复的前四句，每个小框是一个二元组。两首只差“杨/园”“莺啼/鸟鸣”三个字，红框也只有含这几个字的二元组，其余全部相同，所以重合度很高；如果逐句比较，四句里有两句对不上。下半是倒排索引：查“岁隔”这个二元组，就能直接找到可能重复的诗，不用和全部 925 首比。
 
 这是被去掉的 33 首里重合度最低的三对，也就是最接近阈值、最可能误判的三对。逐字对一下：第一对差“杨/园”“莺啼/鸟鸣”，第二对差“观/新”，第三对差“畧/略”“耀/曜”。确实都是同一首诗的不同版本。
 
@@ -369,7 +373,7 @@ batch 的形状定了，还要决定每一步取哪几个窗口。第 12 章每�
 
 青色是另一种做法，**按轮打乱**：把训练流切成不重叠的窗口，每一轮把所有窗口打乱一遍按顺序取完，再开始下一轮。同样的预算下，每个 token 都恰好用了 2 次或 3 次（流末尾凑不满一个窗口的 46 个 token 除外）。按轮打乱是大多数训练框架的默认做法，PyTorch 的 `DataLoader(shuffle=True)` 就是这样。
 
-覆盖更均匀，训练效果会更好吗？直觉上会，但本章只算了覆盖率，没有做训练对照。第 12 章的基线保持随机起点不变，这样后面各章仍然和同一条基线比；换成按轮打乱的对照，放在[第 21 章：训练循环与检查点](./training-loop.md)，那时训练循环本身也要改。
+覆盖更均匀，训练效果会更好吗？直觉上会，但本章只算了覆盖率，没有做训练对照。第 12 章的基线保持随机起点不变，这样后面各章仍然和同一条基线比；按轮打乱的写法在[第 21 章：训练循环与检查点](./training-loop.md)实现，那一章关心的是中断后能逐位续训；按轮打乱和随机起点谁训得更好，本书还没有做对照。
 
 ## 9. 喂数据要多快
 
@@ -456,7 +460,7 @@ TinyLLM 的数据管线是：从 chinese-poetry 固定版本的《全唐诗》�
 
 本章还查出了统一语料自己的问题：首句、末句规则漏掉了一部分近重复，全部 852 首验证诗里有 36 首（4.2%）在训练集里有近亲，第 12 章用的前 6000 首里有 2 首。在能背下来的小实验里，这些近亲的验证损失比干净验证低 5 个多 nats（3 个种子）；第 12 章的基线验证集里只有 2 首，按最极端的差距估算也最多拉低 0.04。语料暂时不改，下一版生成脚本会加上近重复检查。
 
-这些选择在什么情况下要换：语料里有长文档、代码或对话时，考虑文档掩码；样本长短差别大、又必须逐条处理时（比如[第 34 章](./instruction-finetuning.md)的指令微调数据），用按长度分桶；训练多轮时，换成按轮打乱（[第 21 章](./training-loop.md)做对照）；数据放到 GPU 上训练时，用后台预取，或者整条流常驻显存。
+这些选择在什么情况下要换：语料里有长文档、代码或对话时，考虑文档掩码；样本长短差别大、又必须逐条处理时（比如[第 34 章](./instruction-finetuning.md)的指令微调数据），用按长度分桶；训练多轮时，换成按轮打乱（写法见[第 21 章](./training-loop.md)）；数据放到 GPU 上训练时，用后台预取，或者整条流常驻显存。
 
 ::: warning 常见误区
 - **去重只看完全相同。** 同一份内容换个写法（繁简、标点、空白、异文）就能躲过精确去重。先归一化，再用 n-gram 重合度这类方法找近重复。

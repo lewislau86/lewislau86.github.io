@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 **实践方式：** <a href="/tinyllm/code/gpu-training.py" download>gpu-training.py</a>。有 NVIDIA 显卡时默认按“GPU 小”配置完整训练；没有显卡时自动改用“CPU 冒烟”配置，几十步跑通整条流程，约半分钟。[gpu-training.ipynb](/tinyllm/notebooks/gpu-training) 是在 CPU 上生成的，也可以[在 Colab 中运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/gpu-training.ipynb)（运行时选 GPU）。
 :::
 
-<TinyLLMMap active="tinyllm-model" />
+<TinyLLMMap active="gpu-training" />
 
 ## 问题：基线还在下降，CPU 却跑不动了
 
@@ -79,16 +79,26 @@ gpu-medium   91,245,312     32,768    1.46G   3.10G   4.56G
 | 规模 | 17,439 首，约 77 万字 | 296,659 首（唐 50,286、宋 246,373），约 1,726 万字 |
 | 不同的字 | 5,702 | 10,319 |
 | 划分 | 训练 / 验证 / 测试 ≈ 90% / 5% / 5% | 同样的规则：训练 266,957、验证 14,768、测试 14,934 首 |
-| 文件 | 4.2 MB，放在网站和整包下载里 | 约 90 MB，**在本机生成**，不放进仓库 |
+| 文件 | 4.2 MB，放在网站、整包下载和 [GitHub](https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/tang-poems.jsonl) 上 | 约 90 MB（压缩后约 30 MB），放在 [GitHub Release](https://github.com/lewislau86/lewislau86.github.io/releases/download/tinyllm-data-v1/tang-song-poems.jsonl.gz) 上直接下载，也可以在本机重新生成 |
 
-大语料来自同一个开源数据集（chinese-poetry，MIT 许可证）的同一个固定版本。只保留由汉字和常用中文标点组成、长度 10～400 字的诗作（带注释或缺字的整首丢弃），繁体转简体、去重、打乱，再按正文哈希划分。生成方法：
+大语料来自同一个开源数据集（chinese-poetry，MIT 许可证）的同一个固定版本。只保留由汉字和常用中文标点组成、长度 10～400 字的诗作（带注释或缺字的整首丢弃），繁体转简体、去重、打乱，再按正文哈希划分。
+
+最省事的是直接下载处理好的文件，不需要装 OpenCC：
+
+```sh
+python scripts/prepare-tinyllm-large-corpus.py --download
+```
+
+它从本仓库的 [GitHub Release](https://github.com/lewislau86/lewislau86.github.io/releases/download/tinyllm-data-v1/tang-song-poems.jsonl.gz) 下载 gzip 压缩包，解压到仓库根目录的 `data/tang-song-poems.jsonl`，再核对校验值。不用脚本也可以：手动下载这个 `.gz`，解压后放到同样的位置（或用环境变量 `TINYLLM_LARGE_DATA` 指向它）。
+
+想自己从源数据走一遍清洗流程，就在本机重新生成：
 
 ```sh
 python -m pip install opencc-python-reimplemented==0.1.7
 python scripts/prepare-tinyllm-large-corpus.py
 ```
 
-脚本会下载约 130 MB 的源数据（缓存在 `.cache/`，中断后可以接着下），在仓库根目录生成 `data/tang-song-poems.jsonl`，最后和 [`manifest-large.json`](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/data/manifest-large.json) 里的校验值（SHA-256 `23ce7f9b…`）核对。繁简转换的结果依赖 OpenCC 词典，请用上面指定的版本，否则校验值可能不同。`gpu-training.py` 会在环境变量 `TINYLLM_LARGE_DATA`、当前目录、`../data/` 和仓库根目录的 `data/` 里找这个文件。
+脚本会下载约 130 MB 的源数据（缓存在 `.cache/`，中断后可以接着下），在仓库根目录生成 `data/tang-song-poems.jsonl`，两种方式最后都和 [`manifest-large.json`](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/data/manifest-large.json) 里的校验值（SHA-256 `23ce7f9b…`）核对。繁简转换的结果依赖 OpenCC 词典，请用上面指定的版本，否则校验值可能不同。`gpu-training.py` 会在环境变量 `TINYLLM_LARGE_DATA`、当前目录、`../data/` 和仓库根目录的 `data/` 里找这个文件。
 
 <<< @/public/tinyllm/code/gpu-training.py#data
 
@@ -111,6 +121,10 @@ python scripts/prepare-tinyllm-large-corpus.py
 <<< @/public/tinyllm/code/gpu-training.py#train
 
 计时前后都调用了 `synchronize()`，因为 GPU 是**异步**执行的：Python 把运算交给 GPU 之后马上返回，不等它算完。不同步就读时间，量到的只是“发命令”的时间。
+
+![CPU 与 GPU 的异步时间线：好的写法下 CPU 依次发射，GPU 连续执行；每步调用 loss.item() 时 CPU 要等 GPU 算完，GPU 在两步之间空转](/tinyllm/figures/gpu-async-timeline.svg)
+
+怎么读这张图：上下各两行，蓝色是 CPU，绿色是 GPU。上面 CPU 发完命令就去做别的，GPU 一步接一步地算；下面每步都 `.item()`，CPU 必须等 GPU 把结果拷回来（红色虚线框），然后才发下一步，GPU 在中间空着。这是示意图，块的长短不代表实测时间。本章训练循环把损失留在 GPU 上、隔若干步才取一次，就是为了避免下面这种情况；计时则相反，必须先 `synchronize()`，让两条时间线对齐。
 
 在 CPU 上冒烟运行的输出（60 步）：
 
@@ -183,7 +197,7 @@ T4 不支持 BF16，脚本会自动关闭混合精度、用 FP32 训练，吞吐
 | ⑥ | 优化器 | 已用 `fused=True` 的 AdamW | 显存紧张时换状态更小的优化器 | [第 16 章](./optimizers.md) |
 | ⑦ | CPU 与 GPU 的同步 | 每步 `loss.item()` 让 CPU 等 GPU 算完 | 日志每 N 步取一次，让 CPU 提前把下一步的命令发出去 | [第 21 章](./training-loop.md) |
 
-还有两类优化不在这张图里：一张卡放不下时的**多卡训练**（数据并行、FSDP，见[第 24 章](./large-model-stability.md)）；模型训好之后的**推理优化**（KV cache 见[第 27 章](./inference-efficiency.md)，注意力内核见[第 28 章](./attention-kernels.md)，连续批处理见[第 31 章](./batching.md)，投机解码见[第 30 章](./speculative-decoding.md)，逐项对照见[第 33 章](./inference-optimization.md)）。尺寸上也有一个小讲究：宽度和词表取 64 的倍数（本章的 512、768、8192 都是），矩阵乘才能整齐地铺满张量核。
+还有两类优化不在这张图里：一张卡放不下时的**多卡训练**（数据并行、FSDP，见[第 24 章](./large-model-stability.md)）；模型训好之后的**推理优化**（KV cache 见[第 27 章](./inference-efficiency.md)，注意力内核见[第 28 章](./attention-kernels.md)，连续批处理见[第 31 章](./batching.md)，投机解码见[第 30 章](./speculative-decoding.md)，逐项对照见[第 33 章](./inference-optimization.md)）。尺寸上也有一个小讲究：宽度和词表取 64 的倍数（本章的 512、768、8192 都是），矩阵乘才能整齐地铺满张量核。SwiGLU 的中间宽度 $8d/3$ 是个例外：$d=512$ 时是 1365，不是 64 的倍数。真实模型会把它向上取整，比如 Llama 3 8B 的中间宽度是 14336（256 的倍数）；本章为了和 CPU 版的配置一致没有改，在 GPU 上可以先试着取整到 1408 或 1536，再比较吞吐。
 
 这些优化各有一章，是因为它们都要回答同一个问题：**改了以后，结果还和原来一样吗、快了多少？** 所以本章刻意不叠加任何一项，先留下一条口径清楚的 GPU 基线。
 

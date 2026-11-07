@@ -3647,6 +3647,968 @@ def quant_outliers():
               f"激活 INT6 时，按张量量化损失增加 {m('W8A6 按张量'):+.4f}，SmoothQuant 后 {m('W8A6 SmoothQuant + 按张量'):+.4f}，按 token 量化 {m('W8A6 按 token'):+.4f}（3 个种子平均）。")
 
 
+# ---------- 2026-11 评审补充的结构示意图 ----------
+
+def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
+    extra = ' stroke-dasharray="6 4"' if dash else ""
+    return f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{width}"{extra}/>'
+
+
+def mod(x, y, w, h, title, shape=None, color=GRAY, size=14):
+    """一个模块框：名字在上，形状（等宽）在下。"""
+    if shape:
+        return (cbox(x, y, w, h, color) + text(x + w / 2, y + h / 2 - 3, title, size, color, "bold")
+                + mtext(x + w / 2, y + h / 2 + 15, shape, 12.5, INK))
+    return cbox(x, y, w, h, color) + text(x + w / 2, y + h / 2 + 5, title, size, color, "bold")
+
+
+def first_run_shapes():
+    """第 1 章的模型：一次前向里张量形状怎样变化。"""
+    body = text(480, 36, "第 1 章的模型：一个 batch 穿过一次前向", 21, weight="bold")
+    x, w = 90, 340
+    steps = [("一批训练样本：每格是一个字的编号", "[32, 24]", GRAY),
+             ("查表：字向量 + 位置向量", "[32, 24, 96]", BLUE),
+             ("Block 1：注意力 + 前馈层", "[32, 24, 96]", TEAL),
+             ("Block 2", "[32, 24, 96]", TEAL),
+             ("Block 3", "[32, 24, 96]", TEAL),
+             ("RMSNorm，再乘字表的转置", "[32, 24, 556]", ORANGE)]
+    y = 66
+    tops = []
+    for i, (t, s, c) in enumerate(steps):
+        body += mod(x, y, w, 52, t, s, c)
+        tops.append(y)
+        if i < len(steps) - 1:
+            body += arrow(x + w / 2, y + 52, x + w / 2, y + 70, GRAY, 2)
+        y += 72
+    body += f'<rect x="{x - 12}" y="{tops[2] - 10}" width="{w + 24}" height="{tops[4] - tops[2] + 72}" rx="12" fill="none" stroke="{TEAL}" stroke-dasharray="6 4" stroke-width="1.5"/>'
+    body += text(x + w + 24, tops[3] + 30, "形状不变", 13, TEAL, anchor="start")
+    body += text(x + w + 24, tops[1] + 22, "字表 556×96", 13, BLUE, anchor="start")
+    body += text(x + w + 24, tops[1] + 40, "位置表 24×96", 13, BLUE, anchor="start")
+    body += text(x + w + 24, tops[5] + 22, "每个位置给 556 个字", 13, ORANGE, anchor="start")
+    body += text(x + w + 24, tops[5] + 40, "各打一个分", 13, ORANGE, anchor="start")
+    body += path(f"M{x} {tops[1] + 26} H{x - 30} V{tops[5] + 26} H{x - 4}", ORANGE, 1.8, dash=True)
+    body += text(x - 36, (tops[1] + tops[5]) / 2 + 60, "同一张字表", 12, ORANGE, anchor="end")
+    rx = 630
+    body += text(rx + 150, 96, "训练时", 16, RED, "bold")
+    body += mod(rx, 112, 300, 52, "目标：同一段往后错一位", "[32, 24]", GRAY)
+    body += mod(rx, 196, 300, 52, "交叉熵损失", "一个数", RED)
+    body += arrow(rx + 150, 164, rx + 150, 192, GRAY, 2)
+    body += path(f"M{x + w} {tops[5] + 26} H{rx - 40} V222 H{rx - 4}", ORANGE, 2)
+    body += text(rx + 150, 284, "backward 给 388,128 个参数各算一个梯度，", 13.5)
+    body += text(rx + 150, 306, "AdamW 把每个参数挪一小步，重复 600 次", 13.5)
+    body += text(rx + 150, 366, "生成时", 16, TEAL, "bold")
+    body += text(rx + 150, 392, "只取最后一个位置的 556 个分数，", 13.5)
+    body += text(rx + 150, 414, "抽一个字接到末尾，再走一遍左边这一列", 13.5)
+    svg("first-run-shapes.svg", "第 1 章模型的形状流",
+        "一个 batch 是 32 段、每段 24 个字的编号，查字表和位置表后变成 [32, 24, 96]，穿过 3 个 Block 形状不变，最后归一化并乘字表的转置得到 [32, 24, 556] 的分数。"
+        "训练时这些分数和往后错一位的目标算交叉熵，backward 给 388,128 个参数算梯度，AdamW 更新参数；生成时只取最后一个位置的分数抽一个字。", y + 6, body)
+
+
+def reshape_vs_transpose():
+    """同一个 [3, 4] 张量：reshape 成 [4, 3] 与 transpose 成 [4, 3]。"""
+    body = text(480, 36, "reshape 与 transpose：结果都是 [4, 3]，数的位置不一样", 20, weight="bold")
+    cell = 38
+
+    def grid(x0, y0, vals, color, hl):
+        out = ""
+        for r, row in enumerate(vals):
+            for c, v in enumerate(row):
+                on = v in hl
+                out += box(x0 + c * cell, y0 + r * cell, cell, cell, SOFT[ORANGE] if on else SOFT[color], ORANGE if on else color, width=1.4)
+                out += mtext(x0 + c * cell + cell / 2, y0 + r * cell + cell / 2 + 5, str(v), 15, ORANGE if on else INK, "bold" if on else "normal")
+        return out
+
+    a = [[r * 4 + c for c in range(4)] for r in range(3)]
+    rs = [[r * 3 + c for c in range(3)] for r in range(4)]
+    tr = [[a[c][r] for c in range(3)] for r in range(4)]
+    hl = {1, 5, 9}
+    body += text(170, 86, "原张量 x：[3, 4]", 16, BLUE, "bold") + grid(94, 104, a, BLUE, hl)
+    body += text(170, 246, "内存里依次是 0 1 2 … 11", 13.5, GRAY)
+    body += text(500, 86, "x.reshape(4, 3)", 16, TEAL, "bold") + grid(443, 104, rs, TEAL, hl)
+    body += text(500, 284, "按内存顺序重新分行", 14, TEAL)
+    body += text(500, 306, "第 0 行仍是 0 1 2", 13.5, GRAY)
+    body += text(800, 86, "x.transpose(0, 1)", 16, ORANGE, "bold") + grid(743, 104, tr, ORANGE, hl)
+    body += text(800, 284, "行和列互换", 14, ORANGE)
+    body += text(800, 306, "第 0 行是原来的第 0 列：0 4 8", 13.5, GRAY)
+    body += arrow(260, 150, 428, 150, GRAY, 2) + arrow(260, 178, 728, 190, GRAY, 2)
+    body += text(480, 352, "橙色的 1、5、9 原来是第 1 列：transpose 后正好成了第 1 行；reshape 后散在三行里", 14.5)
+    body += text(480, 378, "拆注意力头时先用 view 切出“头”这一维，再用 transpose 把它换到前面；用错一个，形状对，结果错", 14.5, INK, "bold")
+    svg("reshape-vs-transpose.svg", "reshape 与 transpose 的区别",
+        "左边是 [3, 4] 的张量，里面是 0 到 11。reshape(4, 3) 按内存顺序把 12 个数重新分成 4 行，第 0 行是 0 1 2；transpose(0, 1) 交换行和列，第 0 行是原来的第 0 列 0 4 8。"
+        "两者形状相同，元素的位置不同。", 400, body)
+
+
+def mask_patterns():
+    """三种注意力：编码器双向、解码器因果、交叉注意力。"""
+    body = text(480, 36, "三种注意力的区别就是“谁能看谁”：着色的格子是允许看的位置", 20, weight="bold")
+    cell = 34
+
+    def grid(x0, y0, rows, cols, allow, fill, edge, rl, cl):
+        out = ""
+        for r in range(rows):
+            out += text(x0 - 10, y0 + r * cell + cell / 2 + 5, rl[r], 13, GRAY, anchor="end")
+            for c in range(cols):
+                ok = allow(r, c)
+                out += box(x0 + c * cell, y0 + r * cell, cell, cell, fill if ok else "#ffffff", edge if ok else "#cbd5e1", width=1.2)
+        for c in range(cols):
+            out += text(x0 + c * cell + cell / 2, y0 - 8, cl[c], 13, GRAY)
+        return out
+
+    src = ["I", "am", "a", "cat", "."]
+    tgt = ["我", "是", "猫", "。"]
+    body += text(180, 80, "编码器自注意力：5 × 5", 16, BLUE, "bold")
+    body += grid(95, 120, 5, 5, lambda r, c: True, "#bfdbfe", BLUE, src, src)
+    body += text(180, 314, "原文每个词看全部原文：25 / 25", 14, BLUE)
+    body += text(490, 80, "解码器自注意力：4 × 4", 16, TEAL, "bold")
+    body += grid(422, 120, 4, 4, lambda r, c: c <= r, "#99f6e4", TEAL, tgt, tgt)
+    body += text(490, 280, "只看自己和前面：10 / 16", 14, TEAL)
+    body += text(490, 304, "TinyLLM 只用这一种（因果掩码）", 13.5, TEAL, "bold")
+    body += text(800, 80, "交叉注意力：4 × 5", 16, ORANGE, "bold")
+    body += grid(720, 120, 4, 5, lambda r, c: True, "#fde68a", ORANGE, tgt, src)
+    body += text(805, 280, "每个译词看全部原文：20 / 20", 14, ORANGE)
+    body += text(480, 360, "行是“谁在看”（Q），列是“被看的是谁”（K）；计数与本章脚本 masks 一段的输出一致", 14, GRAY)
+    svg("mask-patterns.svg", "三种注意力的掩码",
+        "左：编码器自注意力，5 个原文词互相都能看，25 个格子全部允许。中：解码器自注意力，4 个译词只能看自己和前面，是下三角，16 个格子里 10 个允许，这就是因果掩码。"
+        "右：交叉注意力，每个译词能看全部 5 个原文词，20 个格子全部允许。", 385, body)
+
+
+def attention_dataflow():
+    """单头注意力的完整数据流，带形状。"""
+    body = text(480, 36, "一层注意力的数据流（T 个位置，每头 d_h 维）", 20, weight="bold")
+    y = 64
+    body += mod(380, y, 200, 48, "输入 x", "[T, d]", GRAY)
+    xs = [130, 380, 630]
+    for (n, c), xx in zip([("Q = x·W_Q", BLUE), ("K = x·W_K", TEAL), ("V = x·W_V", ORANGE)], xs):
+        body += path(f"M480 {y + 48} V{y + 70} H{xx + 100} V{y + 92}", GRAY, 1.8)
+        body += mod(xx, y + 96, 200, 48, n, "[T, d_h]", c)
+    body += path(f"M230 {y + 144} V{y + 180} H420 V{y + 202}", BLUE, 1.8)
+    body += path(f"M480 {y + 144} V{y + 202}", TEAL, 1.8)
+    body += text(500, y + 180, "Kᵀ", 13, TEAL, anchor="start")
+    rows = [("分数 S = Q·Kᵀ / √d_h", "[T, T]", INK), ("因果掩码：右上方置为 −∞", "[T, T]", RED),
+            ("softmax：每行加起来是 1", "[T, T] 权重", INK), ("加权求和：权重 · V", "[T, d_h]", ORANGE),
+            ("多头拼接 → 输出投影 W_O", "[T, d]，加回残差流", PURPLE)]
+    yy = y + 206
+    ys = []
+    for i, (t, s, c) in enumerate(rows):
+        body += mod(330, yy, 300, 50, t, s, c)
+        ys.append(yy)
+        if i < len(rows) - 1:
+            body += arrow(480, yy + 50, 480, yy + 72, GRAY, 2)
+        yy += 76
+    body += path(f"M730 {y + 144} V{ys[3] + 25} H634", ORANGE, 1.8)
+    body += line(318, ys[0] + 4, 300, ys[0] + 4, "#94a3b8", 1.5) + line(300, ys[0] + 4, 300, ys[2] + 46, "#94a3b8", 1.5) + line(300, ys[2] + 46, 318, ys[2] + 46, "#94a3b8", 1.5)
+    body += text(288, ys[1] + 0, "这三步都要", 13.5, GRAY, anchor="end")
+    body += text(288, ys[1] + 22, "一张 T×T 的表：", 13.5, GRAY, anchor="end")
+    body += text(288, ys[1] + 44, "长度翻倍，表变 4 倍", 13.5, GRAY, anchor="end")
+    body += text(288, ys[4] + 16, "多头：d 拆成 H 份，每份 d_h = d/H 维，", 13.5, PURPLE, anchor="end")
+    body += text(288, ys[4] + 38, "各自走中间这一列，在 W_O 处合并", 13.5, PURPLE, anchor="end")
+    svg("attention-dataflow.svg", "注意力的数据流",
+        "输入 [T, d] 经三个投影得到 Q、K、V，各是 [T, d_h]。Q 乘 K 的转置再除以根号 d_h 得到 [T, T] 的分数，因果掩码把右上方置为负无穷，softmax 后每行加起来是 1，"
+        "再对 V 加权求和得到 [T, d_h]。多个头的结果拼起来，经输出投影回到 [T, d]，加回残差流。分数、掩码、softmax 这三步都要一张 T×T 的表。", yy + 10, body)
+
+
+def gqa_heads():
+    """MHA、GQA、MQA：几个 Q 头共用一组 K、V。"""
+    body = text(480, 36, "MHA、GQA、MQA：Q 头数相同，K/V 的组数不同", 21, weight="bold")
+    configs = [("MHA：8 组 K/V", 8, BLUE, "每个 Q 头各有一组"), ("GQA：2 组 K/V", 2, TEAL, "每 4 个 Q 头共用一组"),
+               ("MQA：1 组 K/V", 1, ORANGE, "所有 Q 头共用一组")]
+    for row, (title, kv, color, note) in enumerate(configs):
+        y = 74 + row * 128
+        body += text(110, y + 46, title, 16, color, "bold") + text(110, y + 70, note, 13, GRAY)
+        group = 8 // kv
+        for g in range(kv):
+            x0 = 240 + g * group * 52
+            wb = group * 52 - 12
+            for h in range(g * group, (g + 1) * group):
+                body += line(240 + h * 52 + 20, y + 42, x0 + wb / 2, y + 78, color, 1.3)
+            body += box(x0, y + 78, wb, 32, SOFT[color], color, width=1.6)
+            body += text(x0 + wb / 2, y + 99, "K、V" if kv > 1 else "一组 K、V", 13, color, "bold")
+        for h in range(8):
+            x = 240 + h * 52
+            body += box(x, y + 10, 40, 32, SOFT[BLUE], BLUE, width=1.4) + text(x + 20, y + 31, f"Q{h}", 13, BLUE)
+        body += text(830, y + 46, f"KV cache = MHA × {kv}/8", 15, color, "bold")
+    body += text(480, 470, "缓存大小正比于 K/V 的组数（第 27 章的公式）。Llama 3 8B 用 32 个 Q 头、8 组 K/V，缓存是 MHA 的四分之一", 14.5)
+    svg("gqa-heads.svg", "MHA、GQA 与 MQA",
+        "三行都有 8 个 Q 头。MHA 每个 Q 头各有一组 K、V，共 8 组；GQA 每 4 个 Q 头共用一组，共 2 组；MQA 所有 Q 头共用 1 组。KV cache 的大小正比于 K/V 的组数，"
+        "分别是 MHA 的 8/8、2/8、1/8。", 490, body)
+
+
+def tinyllm_architecture():
+    """第 12 章：把一个 Block 展开，标出每一步的形状、章节号和初始化。"""
+    body = text(500, 36, "完整 TinyLLM：一句 11 个 token 的诗走一遍（d=128，4 个头，每头 32 维）", 20, weight="bold")
+    lx, lw = 50, 270
+    body += mod(lx, 66, lw, 50, "token ID（第 4 章）", "[1, 11]", GRAY)
+    body += arrow(lx + lw / 2, 116, lx + lw / 2, 136, GRAY, 2)
+    body += mod(lx, 138, lw, 50, "查嵌入表 E（第 5 章）", "[1, 11, 128]", BLUE)
+    body += arrow(lx + lw / 2, 188, lx + lw / 2, 226, GRAY, 2)
+    body += f'<rect x="{lx}" y="228" width="{lw}" height="200" rx="12" fill="{SOFT[TEAL]}" stroke="{TEAL}" stroke-width="2"/>'
+    body += text(lx + lw / 2, 282, "Block × 4（第 9 章）", 17, TEAL, "bold")
+    body += mtext(lx + lw / 2, 308, "[1, 11, 128] → [1, 11, 128]", 13)
+    body += text(lx + lw / 2, 344, "每层结构相同、参数各自独立", 13, GRAY)
+    body += text(lx + lw / 2, 366, "展开见右边", 13, GRAY)
+    body += arrow(lx + lw / 2, 428, lx + lw / 2, 466, GRAY, 2)
+    body += mod(lx, 468, lw, 50, "最终 RMSNorm（第 11 章）", "[1, 11, 128]", GRAY)
+    body += arrow(lx + lw / 2, 518, lx + lw / 2, 538, GRAY, 2)
+    body += mod(lx, 540, lw, 50, "乘 E 的转置，得到 logits", "[1, 11, 4096]", ORANGE)
+    body += path(f"M{lx} 163 H{lx - 26} V565 H{lx - 4}", ORANGE, 2, dash=True)
+    body += f'<text x="{lx - 34}" y="364" font-size="12.5" fill="{ORANGE}" text-anchor="middle" transform="rotate(-90 {lx - 34} 364)">输入输出共用 E（4096×128）</text>'
+    rx, rw = 370, 600
+    body += f'<rect x="{rx}" y="62" width="{rw}" height="652" rx="14" fill="#ffffff" stroke="{TEAL}" stroke-width="2"/>'
+    body += line(lx + lw, 228, rx, 62, TEAL, 1.2, True) + line(lx + lw, 428, rx, 714, TEAL, 1.2, True)
+    body += text(rx + rw / 2, 88, "一个 Block 展开", 16, TEAL, "bold")
+    cx, bw = rx + 230, 280
+    bx = cx - bw / 2
+    body += mtext(cx, 116, "残差流 x：[1, 11, 128]", 13.5, INK, "bold")
+    body += arrow(cx, 122, cx, 132, GRAY, 1.6)
+
+    def stack(items, y):
+        ys = []
+        for i, (t, s, c) in enumerate(items):
+            body_ = cbox(bx, y, bw, 40, c) + text(cx, y + 17, t, 13.5, c, "bold") + mtext(cx, y + 34, s, 11.5, INK)
+            ys.append((y, body_))
+            y += 48
+        return ys, y
+
+    attn = [("RMSNorm", "[1, 11, 128]", GRAY), ("qkv：一个 Linear", "[1, 11, 384]，切成 Q、K、V", BLUE),
+            ("拆成 4 个头", "[1, 4, 11, 32]", BLUE), ("Q、K 加 RoPE（第 7 章）", "[1, 4, 11, 32]", PURPLE),
+            ("因果 SDPA（第 6 章），再合头", "[1, 11, 128]", BLUE), ("proj", "[1, 11, 128]", RED)]
+    ys, y = stack(attn, 134)
+    for i, (yy, b) in enumerate(ys):
+        body += b
+        if i < len(ys) - 1:
+            body += arrow(cx, yy + 40, cx, yy + 48, GRAY, 1.6)
+    add1 = y + 6
+    body += arrow(cx, ys[-1][0] + 40, cx, add1 - 11, GRAY, 1.6)
+    body += circle(cx, add1, 11) + text(cx, add1 + 5, "+", 16, weight="bold")
+    body += path(f"M{cx} 127 H{bx - 30} V{add1} H{cx - 13}", INK, 2)
+    ffn = [("RMSNorm", "[1, 11, 128]", GRAY), ("gate、up：两个 Linear", "各 [1, 11, 341]", TEAL),
+           ("SiLU(gate) × up（第 8 章）", "[1, 11, 341]", TEAL), ("down", "[1, 11, 128]", RED)]
+    ys2, y2 = stack(ffn, add1 + 22)
+    body += arrow(cx, add1 + 11, cx, add1 + 20, GRAY, 1.6)
+    for i, (yy, b) in enumerate(ys2):
+        body += b
+        if i < len(ys2) - 1:
+            body += arrow(cx, yy + 40, cx, yy + 48, GRAY, 1.6)
+    add2 = y2 + 6
+    body += arrow(cx, ys2[-1][0] + 40, cx, add2 - 11, GRAY, 1.6)
+    body += circle(cx, add2, 11) + text(cx, add2 + 5, "+", 16, weight="bold")
+    body += path(f"M{cx} {add1 + 15} H{bx - 30} V{add2} H{cx - 13}", INK, 2)
+    body += text(bx - 36, (127 + add1) / 2, "残差", 13, INK, anchor="end")
+    body += text(bx - 36, (add1 + add2) / 2 + 10, "残差", 13, INK, anchor="end")
+    body += arrow(cx, add2 + 11, cx, add2 + 28, GRAY, 1.6)
+    body += mtext(cx, add2 + 44, "下一层：[1, 11, 128]", 13, INK)
+    nx = bx + bw + 16
+    body += text(nx, ys[1][0] + 18, "线性层都不带偏置", 12.5, GRAY, anchor="start")
+    body += text(nx, ys[3][0] + 16, "cos/sin 表预先算好，", 12.5, PURPLE, anchor="start")
+    body += text(nx, ys[3][0] + 33, "4 层共用一份", 12.5, PURPLE, anchor="start")
+    body += text(nx, ys[5][0] + 16, "红框：写回残差流的投影，", 12.5, RED, anchor="start")
+    body += text(nx, ys[5][0] + 33, "初始化再乘 1/√(2L)（第 10 章）", 12.5, RED, anchor="start")
+    body += text(nx, ys2[1][0] + 24, "中间宽度 8d/3 = 341", 12.5, TEAL, anchor="start")
+    body += text(nx, ys2[3][0] + 24, "同样乘 1/√(2L)", 12.5, RED, anchor="start")
+    svg("tinyllm-architecture.svg", "完整 TinyLLM 的结构",
+        "左：11 个 token 的 ID 查嵌入表变成 [1, 11, 128]，穿过 4 个 Block，最终 RMSNorm 后乘嵌入表的转置得到 [1, 11, 4096] 的 logits，输入输出共用一张表。"
+        "右：一个 Block 展开。注意力半块：RMSNorm，qkv 投影到 [1, 11, 384] 再切成 Q、K、V，拆成 4 个头 [1, 4, 11, 32]，Q、K 加 RoPE，因果 SDPA 后合头，proj 投影，加回残差。"
+        "前馈半块：RMSNorm，gate 和 up 各投影到 341 维，SiLU(gate) 乘 up，down 投影回 128 维，加回残差。proj 和 down 的初始化再乘 1/√(2L)。", 730, body, width=1000)
+
+
+def _notebook_lines(slug, prefix):
+    """从已生成的 notebook 输出里取一行（保证图里的数和脚本真实输出一致）。"""
+    nb = json.loads((ROOT / f"docs/public/tinyllm/notebooks/{slug}.ipynb").read_text(encoding="utf-8"))
+    for cell in nb["cells"]:
+        for o in cell.get("outputs", []):
+            for ln in "".join(o.get("text", "")).splitlines():
+                if ln.startswith(prefix):
+                    return ln[len(prefix):].strip()
+    raise SystemExit(f"{slug}.ipynb 里找不到以 {prefix!r} 开头的输出")
+
+
+def tokenizer_pipeline():
+    """第 4 章：一句话穿过 tokenizer 流水线，每一步的中间结果。"""
+    import ast
+    toks = ast.literal_eval(_notebook_lines("tokenization", "tokens:"))
+    ids = ast.literal_eval(_notebook_lines("tokenization", "IDs:"))
+    body = text(480, 36, "tokenizer 是一条流水线：“猫在学习 TinyLLM。\\n” 每一步变成什么", 20, weight="bold")
+    stages = [("原文", "猫在学习 TinyLLM。⏎", GRAY, "14 个字符"),
+              ("① 规范化", "本例不改写（NFKC 等规则在这一步）", GRAY, "随词表保存"),
+              ("② 预切分 + 字节映射", "UTF-8 字节 → 可显示符号；空格变成 Ġ，换行变成 Ċ", BLUE, "汉字 3 字节"),
+              ("③ BPE 按合并优先级切分", None, TEAL, f"{len(toks)} 个 token"),
+              ("④ 查词表得到 ID", None, ORANGE, "送进模型"),
+              ("⑤ 解码：ID → 字节 → 整段拼回", "猫在学习 TinyLLM。⏎（和原文逐字相同）", PURPLE, "整段解码")]
+    y = 64
+    for i, (name, content, color, note) in enumerate(stages):
+        body += cbox(40, y, 220, 50, color) + text(150, y + 30, name, 14.5, color, "bold")
+        body += box(276, y, 520, 50, "#ffffff", "#e2e8f0", width=1.2)
+        if name.startswith("③"):
+            x = 284
+            for t in toks:
+                w = 10 + 9 * len(t)
+                body += box(x, y + 12, w, 26, SOFT[TEAL], TEAL, width=1.1) + mtext(x + w / 2, y + 30, t, 12.5, INK)
+                x += w + 3
+        elif name.startswith("④"):
+            body += mtext(536, y + 31, " ".join(str(i_) for i_ in ids), 12.5, INK)
+        else:
+            body += text(536, y + 31, content, 14)
+        body += text(810, y + 31, note, 12.5, GRAY, anchor="start")
+        if i < len(stages) - 1:
+            body += arrow(150, y + 50, 150, y + 66, GRAY, 2)
+        y += 68
+    body += text(480, y + 14, "③ 里 “ç Į «” 三个片段合起来才是“猫”这一个字的 3 个字节；“学习”两个字合成了一个 token", 14)
+    body += text(480, y + 38, "① ② 是配置，③ 是训练出来的合并表，④ 是词表；四样都要和模型一起保存（第 4 章第 7 节）", 14, GRAY)
+    svg("tokenizer-pipeline.svg", "tokenizer 流水线",
+        "原文“猫在学习 TinyLLM。”加一个换行，经规范化（本例不改写）、预切分与字节映射（空格变成 Ġ、换行变成 Ċ，一个汉字是 3 个字节），"
+        f"BPE 按合并优先级切成 {len(toks)} 个 token，查词表得到同样多的 ID；解码时把 ID 变回字节、整段拼回原文。数据来自第 4 章脚本的 encode-roundtrip 输出。", y + 60, body)
+
+
+def ffn_vs_attention():
+    """注意力在位置之间搬信息；前馈层对每个位置做同一个变换。"""
+    body = text(480, 36, "注意力管“位置之间”，前馈层管“每个位置自己”", 21, weight="bold")
+    toks = ["春", "眠", "不", "觉", "晓"]
+    # 左：注意力
+    body += text(240, 78, "注意力：每个位置看前面的位置", 16, BLUE, "bold")
+    xs = [70 + i * 85 for i in range(5)]
+    for i, (x, t) in enumerate(zip(xs, toks)):
+        body += box(x, 110, 60, 44, SOFT[GRAY], GRAY, width=1.4) + text(x + 30, 139, t, 18)
+        body += box(x, 290, 60, 44, SOFT[BLUE], BLUE, width=1.6) + text(x + 30, 319, t + "′", 18, BLUE)
+        for j in range(i + 1):
+            body += line(xs[j] + 30, 154, x + 30, 288, BLUE if j == i else "#93c5fd", 2 if j == i else 1.2)
+    body += text(240, 372, "第 5 个位置“晓”的输出混合了前 5 个位置的信息", 13.5, GRAY)
+    body += text(240, 394, "权重随输入而变；位置之间的连线就是 T×T 的表", 13.5, GRAY)
+    body += line(480, 70, 480, 410, "#e2e8f0", 2)
+    # 右：前馈层
+    body += text(720, 78, "前馈层：每个位置各自过同一个变换", 16, TEAL, "bold")
+    xs2 = [540 + i * 85 for i in range(5)]
+    for x, t in zip(xs2, toks):
+        body += box(x, 110, 60, 44, SOFT[BLUE], BLUE, width=1.4) + text(x + 30, 139, t + "′", 18, BLUE)
+        body += arrow(x + 30, 154, x + 30, 194, GRAY, 1.6)
+        body += box(x - 2, 196, 64, 52, SOFT[TEAL], TEAL, width=1.6) + text(x + 30, 218, "SwiGLU", 11.5, TEAL, "bold") + text(x + 30, 236, "W 相同", 11, GRAY)
+        body += arrow(x + 30, 248, x + 30, 288, GRAY, 1.6)
+        body += box(x, 290, 60, 44, SOFT[TEAL], TEAL, width=1.6) + text(x + 30, 319, t + "″", 18, TEAL)
+    body += text(720, 372, "5 个框是同一组参数 W_gate、W_up、W_down", 13.5, GRAY)
+    body += text(720, 394, "位置之间没有连线：换掉别的字，“晓”的结果不变", 13.5, GRAY)
+    svg("ffn-vs-attention.svg", "注意力与前馈层的分工",
+        "左：注意力里，每个位置的输出由它自己和前面所有位置加权混合而成，连线就是 T×T 的注意力表。右：前馈层对每个位置单独做同一个变换，"
+        "5 个框共用同一组参数，位置之间没有连线。", 420, body)
+
+
+def norm_axes():
+    """[B, T, d] 张量上，RMSNorm/LayerNorm 与 BatchNorm 各沿哪些元素算统计量。"""
+    body = text(480, 36, "归一化沿哪一维：同一个 [B, T, d] 张量，两种取法", 21, weight="bold")
+    cell = 22
+    B, T, D = 3, 4, 8
+
+    def tensor(x0, y0, pick):
+        out = ""
+        for b in reversed(range(B)):
+            ox, oy = x0 + b * 26, y0 - b * 26
+            for t in range(T):
+                for d in range(D):
+                    on = pick(b, t, d)
+                    out += f'<rect x="{ox + d * cell}" y="{oy + t * cell}" width="{cell}" height="{cell}" fill="{"#fdba74" if on else "#ffffff"}" stroke="{ORANGE if on else "#94a3b8"}" stroke-width="1"/>'
+        return out
+
+    for k, (title, pick, color, notes) in enumerate([
+            ("RMSNorm / LayerNorm：每个 token 自己算", lambda b, t, d: b == 0 and t == 1, TEAL,
+             ["一组统计量 = 一个 token 的 d 个数", "B × T 个 token，各算各的", "和 batch 里别的样本无关，", "训练、推理、batch 大小 1 都一样"]),
+            ("BatchNorm：每个特征跨样本算", lambda b, t, d: d == 2, RED,
+             ["一组统计量 = 某一维在全部 B×T 个位置上", "依赖 batch 里的其他样本，", "推理时要换成训练时攒下的均值；", "语言模型里基本不用"])]):
+        x0 = 120 + k * 460
+        body += text(x0 + 150, 84, title, 15.5, color, "bold")
+        body += tensor(x0, 160, pick)
+        body += text(x0 + 88, 270, "d（特征）→", 12.5, GRAY)
+        body += f'<text x="{x0 - 14}" y="{160 + 44}" font-size="12.5" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 14} {204})">T（位置）</text>'
+        body += text(x0 + D * cell + 60, 108, "B（样本）↗", 12.5, GRAY, anchor="start")
+        for i, n in enumerate(notes):
+            body += text(x0 + 150, 304 + i * 22, n, 13.5)
+    body += text(480, 410, "橙色是“一起算均值或均方根”的那组数。TinyLLM 用 RMSNorm：每个 token 的 128 维各算一个均方根", 14, INK, "bold")
+    svg("norm-axes.svg", "归一化沿哪一维",
+        "左右都是形状 [B, T, d] 的张量，画成 B 层、每层 T 行 d 列。左：RMSNorm 和 LayerNorm 对每个 token 的 d 个数算一组统计量，B×T 个 token 各算各的，"
+        "与 batch 里的其他样本无关。右：BatchNorm 对每一维特征，在 batch 的全部位置上算一组统计量，依赖其他样本，语言模型里基本不用。", 430, body)
+
+
+def data_eval_protocol():
+    """第 12 章：训练流、batch 计划与验证窗口。"""
+    body = text(500, 36, "数据流与评估口径：每个模型吃同一批数据，验证集每次算法相同", 20, weight="bold")
+
+    def stream(y, color, label, count):
+        out = text(40, y + 16, label, 14.5, color, "bold", "start") + text(40, y + 36, count, 12.5, GRAY, "normal", "start")
+        x = 200
+        for i, n in enumerate([7, 5, 9, 6, 8, 4, 7]):
+            w = n * 11
+            out += box(x, y, w, 34, SOFT[color], color, width=1.2) + text(x + w / 2, y + 22, f"诗{i + 1}", 11.5, color)
+            x += w
+            out += box(x, y, 22, 34, "#fef3c7", ORANGE, width=1.2) + mtext(x + 11, y + 22, "e", 11, ORANGE)
+            x += 22
+        return out
+
+    body += stream(70, BLUE, "训练流", "225,007 个 token")
+    body += text(960, 62, "e = <eos>", 12.5, ORANGE, anchor="end")
+    body += text(500, 140, "每一步：用一个单独的随机数生成器（种子 1234）事先排好 32 个起点", 14)
+    for i, x in enumerate([230, 420, 610]):
+        body += line(x, 104, x, 156, RED, 2)
+        body += box(x, 158, 260 if i < 2 else 240, 30, "#fff1f2", RED, width=1.4) + text(x + 120, 178, "65 个 token 的窗口", 12.5, RED)
+    body += text(500, 214, "窗口内：输入 x = 前 64 个，目标 y = 后 64 个（往后错一位）", 14)
+    xs = 230
+    for i in range(9):
+        body += box(xs + i * 30, 228, 28, 26, "#ffffff", GRAY, width=1) + mtext(xs + i * 30 + 14, 246, f"t{i}", 10.5)
+    body += text(xs - 10, 246, "窗口", 12.5, GRAY, anchor="end")
+    body += box(xs, 260, 8 * 30 - 2, 24, SOFT[BLUE], BLUE, width=1.2) + text(xs + 120, 277, "x：t0 … t63", 12.5, BLUE)
+    body += box(xs + 30, 290, 8 * 30 - 2, 24, SOFT[TEAL], TEAL, width=1.2) + text(xs + 150, 307, "y：t1 … t64", 12.5, TEAL)
+    body += text(560, 268, "→ 模型的种子只决定初始参数，", 13.5, INK, anchor="start")
+    body += text(560, 290, "  换结构、换超参数时 batch 完全相同", 13.5, INK, anchor="start")
+    body += stream(350, PURPLE, "验证流", "12,256 个 token")
+    for k in range(4):
+        x = 200 + k * 160
+        body += box(x, 398, 156, 28, "#f5f3ff", PURPLE, width=1.3) + text(x + 78, 417, f"窗口 {k + 1}：64 个", 12, PURPLE)
+    body += text(850, 417, "…… 共 191 个", 12.5, PURPLE, anchor="start")
+    body += text(500, 460, "不重叠、不抽样、全部算一遍取平均：同一个模型每次得到同一个数", 14)
+    body += text(500, 486, "nats/token × 每字 0.954 个 token ÷ ln 2 = 比特/字（换分词器也能比）", 14, GRAY)
+    svg("data-eval-protocol.svg", "数据流与评估口径",
+        "训练集和验证集各自拼成一条长 token 流，每首诗后接一个 <eos>。训练时用单独的随机数生成器事先排好每步 32 个起点，各切 65 个 token，前 64 个是输入、后 64 个是目标。"
+        "验证时把整条验证流切成 191 个不重叠的 64-token 窗口，全部算一遍取平均，再换算成比特/字。", 510, body, width=1000)
+
+
+def gpu_async_timeline():
+    """第 13 章：CPU 排队发射内核，GPU 异步执行；.item() 让两边互相等。"""
+    body = text(480, 36, "CPU 和 GPU 是两条时间线：CPU 只负责排队，GPU 慢慢执行", 20, weight="bold")
+
+    def row(y, label, segs, color):
+        out = text(110, y + 24, label, 14.5, color, "bold", "end")
+        for x, w, t, kind in segs:
+            fill = {"run": SOFT[color], "idle": "#ffffff", "wait": "#fef2f2"}[kind]
+            stroke = {"run": color, "idle": "#cbd5e1", "wait": RED}[kind]
+            dash = ' stroke-dasharray="5 4"' if kind != "run" else ""
+            out += f'<rect x="{x}" y="{y}" width="{w}" height="36" rx="6" fill="{fill}" stroke="{stroke}" stroke-width="1.3"{dash}/>'
+            out += text(x + w / 2, y + 23, t, 12, RED if kind == "wait" else (color if kind == "run" else GRAY))
+        return out
+
+    body += text(480, 80, "好的写法：损失留在 GPU 上，每隔 N 步才取一次", 15, TEAL, "bold")
+    body += row(96, "CPU", [(130, 70, "发射 step1", "run"), (200, 70, "发射 step2", "run"), (270, 70, "发射 step3", "run"), (340, 70, "发射 step4", "run"), (410, 360, "可以去准备下一批数据", "idle")], BLUE)
+    body += row(142, "GPU", [(150, 150, "step1", "run"), (300, 150, "step2", "run"), (450, 150, "step3", "run"), (600, 150, "step4", "run")], TEAL)
+    body += text(480, 210, "GPU 一刻不停；CPU 远远跑在前面，只受队列长度限制", 13.5, GRAY)
+    body += text(480, 254, "坏的写法：每步都 loss.item()（或 print、.cpu()）", 15, RED, "bold")
+    body += row(270, "CPU", [(130, 60, "发射 1", "run"), (190, 120, "item() 等 GPU", "wait"), (310, 60, "发射 2", "run"), (370, 120, "item() 等 GPU", "wait"), (490, 60, "发射 3", "run")], BLUE)
+    body += row(316, "GPU", [(150, 150, "step1", "run"), (300, 30, "空", "idle"), (330, 150, "step2", "run"), (480, 30, "空", "idle"), (510, 150, "step3", "run")], TEAL)
+    body += text(480, 384, "每次 .item() 都要把数从 GPU 拷回 CPU，CPU 只能等 GPU 把队列里的活干完；", 13.5)
+    body += text(480, 406, "等到以后才发射下一步，GPU 在两步之间空转。计时也一样：测 GPU 时间前要 torch.cuda.synchronize()", 13.5)
+    svg("gpu-async-timeline.svg", "CPU 与 GPU 的异步时间线",
+        "上：CPU 依次发射每一步的计算，GPU 按顺序执行，两者互不等待，GPU 一直在忙。下：每步调用 loss.item() 时，CPU 必须等 GPU 算完并把数拷回来，"
+        "之后才发射下一步，GPU 在两步之间空转。这是示意图，块的长短不代表实测时间。", 430, body)
+
+
+def near_dup_index():
+    """第 14 章：字二元组、重合度与倒排索引。"""
+    import re as _re
+    a = "倡楼启曙扉，杨柳正依依。莺啼知岁隔，条变识春归。"
+    b = "倡楼启曙扉，园柳正依依。鸟鸣知岁隔，条变识春归。"
+
+    def grams(t):
+        s = _re.sub("[，。]", "", t)
+        return [s[i:i + 2] for i in range(len(s) - 1)]
+
+    ga, gb = grams(a), grams(b)
+    shared = set(ga) & set(gb)
+    score = len(shared) / min(len(set(ga)), len(set(gb)))
+    body = text(500, 36, f"近重复：拆成字二元组，数共有的比例（下面这两段的重合度 {score:.2f}）", 20, weight="bold")
+    for k, (poem, g, color) in enumerate([(a, ga, BLUE), (b, gb, TEAL)]):
+        y = 70 + k * 120
+        body += text(40, y + 20, f"诗 {'甲乙'[k]}：{poem}", 15, color, "bold", "start")
+        x = 40
+        for i, gram in enumerate(g):
+            on = gram in shared
+            body += box(x, y + 36, 42, 28, SOFT[color] if on else "#fff1f2", color if on else RED, width=1.2)
+            body += text(x + 21, y + 55, gram, 12.5, INK if on else RED)
+            x += 45
+            if i == 9:
+                x, y = 40, y + 34
+    body += text(500, 326, f"共有 {len(shared)} 个（蓝绿框），不同的在红框里；重合度 = 共有数 ÷ 较短那首的二元组数 = {len(shared)}/{min(len(set(ga)), len(set(gb)))} = {score:.2f}", 14)
+    body += text(500, 350, "逐句比较会因为每句差一个字而一句都对不上；二元组只丢掉含那个字的两三个", 13.5, GRAY)
+    iy = 380
+    body += text(500, iy + 8, "倒排索引：从二元组查到含有它的诗，只和至少共享一个二元组的诗比较", 15, ORANGE, "bold")
+    entries = [("倡楼", "诗甲、诗乙、……"), ("正依", "诗甲、诗乙、……"), ("岁隔", "诗甲、诗乙、……"), ("杨柳", "诗甲、其他含“杨柳”的诗")]
+    for i, (k_, v) in enumerate(entries):
+        x = 70 + i * 225
+        body += box(x, iy + 26, 70, 30, SOFT[ORANGE], ORANGE, width=1.3) + text(x + 35, iy + 46, k_, 13.5, ORANGE)
+        body += arrow(x + 70, iy + 41, x + 90, iy + 41, GRAY, 1.6)
+        body += text(x + 94, iy + 46, v, 12.5, INK, anchor="start")
+    body += text(500, iy + 92, "925 首两两比较要 43 万对；有了索引，大部分诗只和几十首候选比较", 13.5, GRAY)
+    svg("near-dup-index.svg", "二元组重合度与倒排索引",
+        f"两首几乎相同的诗各自去掉标点后拆成相邻两字的二元组，共有 {len(shared)} 个，重合度 {score:.2f}。倒排索引记录每个二元组出现在哪些诗里，"
+        "查重时只和至少共享一个二元组的诗比较，不必两两比较全部 43 万对。例子来自第 14 章脚本的输出。", 490, body, width=1000)
+
+
+def lm_targets_mask():
+    """第 15 章：错位出题，以及哪些位置算损失。"""
+    body = text(480, 36, "一段 65 个 token 出 64 道题；不是每道题都算进损失", 20, weight="bold")
+    toks = ["春", "眠", "不", "觉", "晓", "，", "处", "处"]
+    cell = 60
+    x0 = 160
+    body += text(140, 92, "窗口", 14, GRAY, anchor="end")
+    for i, t in enumerate(toks + ["…"]):
+        body += box(x0 + i * cell, 70, cell - 6, 36, "#ffffff", GRAY, width=1.2) + text(x0 + i * cell + 27, 94, t, 16)
+    body += text(140, 146, "输入 x", 14, BLUE, "bold", "end")
+    body += text(140, 196, "目标 y", 14, TEAL, "bold", "end")
+    for i in range(8):
+        body += box(x0 + i * cell, 124, cell - 6, 36, SOFT[BLUE], BLUE, width=1.3) + text(x0 + i * cell + 27, 148, toks[i], 16, BLUE)
+        nxt = toks[i + 1] if i + 1 < len(toks) else "…"
+        body += box(x0 + i * cell, 174, cell - 6, 36, SOFT[TEAL], TEAL, width=1.3) + text(x0 + i * cell + 27, 198, nxt, 16, TEAL)
+        body += arrow(x0 + i * cell + 27, 160, x0 + i * cell + 27, 172, GRAY, 1.4)
+    body += text(720, 148, "第 t 道题：看 x 的前 t 个，", 13.5, INK, anchor="start")
+    body += text(720, 170, "猜 y 的第 t 个", 13.5, INK, anchor="start")
+    body += text(720, 196, "因果掩码保证看不到答案", 13.5, GRAY, anchor="start")
+    # 掩码条
+    body += text(480, 262, "哪些位置算损失（指令微调时的一条样本，补齐到同样长度）", 15, INK, "bold")
+    segs = [("用户：写一句春天", 4, GRAY, "提问：-100，不算"), ("助手：春眠不觉晓", 4, TEAL, "回答：算"), ("<eos>", 1, ORANGE, "结束：要算"), ("<pad>", 2, "#94a3b8", "补齐：-100")]
+    x = 100
+    for label, n, color, note in segs:
+        w = n * 62
+        fill = SOFT.get(color, "#f1f5f9") if color != "#94a3b8" else "#f1f5f9"
+        body += box(x, 280, w - 4, 40, fill, color, width=1.5) + text(x + w / 2 - 2, 305, label, 13.5, color if color != "#94a3b8" else GRAY, "bold")
+        body += text(x + w / 2 - 2, 342, note, 12.5, color if color not in (GRAY, "#94a3b8") else GRAY)
+        x += w
+    body += text(480, 384, "预训练（第 14 章的拼接流）没有提问和补齐，64 个位置全部算；<eos> 在两种情况下都要算", 13.5)
+    body += text(480, 406, "平均时分母是“算了损失的位置数”，不是窗口长度（第 5 节）", 13.5, GRAY)
+    svg("lm-targets-mask.svg", "错位出题与损失掩码",
+        "上：一段窗口里，输入 x 是前 64 个 token，目标 y 是往后错一位的 64 个 token，第 t 道题看 x 的前 t 个、猜 y 的第 t 个。下：指令微调的一条样本里，"
+        "提问部分和补齐的 <pad> 标成 -100、不算损失，回答和 <eos> 算损失；预训练的拼接流里所有位置都算。", 430, body)
+
+
+def adam_step():
+    """第 16 章：AdamW 一步的数据流，以及每个参数占多少字节。"""
+    body = text(480, 36, "AdamW 的一步：每个参数带着两个“记忆” m、v", 21, weight="bold")
+    body += mod(40, 70, 170, 50, "梯度 g", "backward 得到", RED)
+    body += mod(260, 70, 230, 50, "m ← β1·m + (1−β1)·g", "β1 = 0.9：梯度的平均方向", BLUE, 13.5)
+    body += mod(260, 150, 230, 50, "v ← β2·v + (1−β2)·g^2", "β2 = 0.999：梯度的平均大小的平方", TEAL, 13.5)
+    body += arrow(210, 95, 256, 95, GRAY, 2) + path("M225 95 V175 H256", GRAY, 2)
+    body += mod(540, 110, 200, 50, "偏差修正", "m^ = m/(1−β1ᵗ)，v^ 同理", GRAY, 13.5)
+    body += arrow(490, 95, 536, 125, GRAY, 2) + arrow(490, 175, 536, 145, GRAY, 2)
+    body += mod(540, 200, 200, 50, "方向 ÷ 大小", "m^ / (√v^ + ε)", ORANGE, 14)
+    body += arrow(640, 160, 640, 196, GRAY, 2)
+    body += mod(540, 290, 200, 50, "乘学习率 η", "第 17 章的调度给出 η", ORANGE, 14)
+    body += arrow(640, 250, 640, 286, GRAY, 2)
+    body += mod(800, 290, 140, 50, "w ← w − 更新", None, PURPLE)
+    body += arrow(740, 315, 796, 315, GRAY, 2)
+    body += mod(800, 200, 140, 50, "衰减 η·λ·w", "直接作用在 w 上", RED, 13.5)
+    body += arrow(870, 250, 870, 286, GRAY, 2)
+    body += text(870, 186, "AdamW 的“W”", 12.5, RED)
+    body += text(240, 262, "每个方向各自除以自己的 √v^：", 13.5, INK)
+    body += text(240, 284, "梯度一直很大的方向步子变小，", 13.5, INK)
+    body += text(240, 306, "一直很小的方向步子变大", 13.5, INK)
+    # 内存
+    y = 380
+    body += text(480, y, "每个参数要多存几个数（FP32 训练）", 16, INK, "bold")
+    parts = [("参数 w", 4, PURPLE), ("梯度 g", 4, RED), ("m", 4, BLUE), ("v", 4, TEAL)]
+    x = 240
+    for name, b_, color in parts:
+        body += box(x, y + 18, 110, 40, SOFT[color], color, width=1.5) + text(x + 55, y + 43, f"{name}：{b_} 字节", 13.5, color, "bold")
+        x += 120
+    body += text(480, y + 84, "合计 16 字节 / 参数：第 12 章 131 万参数约 21 MB；70 亿参数就是 112 GB（还没算激活）", 14)
+    body += text(480, y + 108, "m 和 v 存在 optimizer.state 里，续训时必须一起保存（第 21 章）；Adafactor 把 v 压成行、列两个向量来省内存", 13.5, GRAY)
+    svg("adam-step.svg", "AdamW 一步的数据流与内存",
+        "梯度 g 同时更新两个滑动平均：m 是梯度的平均方向（β1=0.9），v 是梯度平方的平均（β2=0.999）。偏差修正后用 m^ 除以 √v^ 加 ε 得到每个方向各自归一的步子，"
+        "乘学习率后从参数里减掉；权重衰减直接作用在参数上。FP32 训练时每个参数要存参数、梯度、m、v 各 4 字节，共 16 字节。", y + 128, body)
+
+
+def wsd_branches():
+    """第 17、23 章：WSD 的主干停在峰值上，从检查点分叉出不同预算的模型。"""
+    body = text(480, 36, "WSD：一条主干一直在峰值上，从检查点接一段衰减就得到一个“训完”的模型", 19, weight="bold")
+    x0, y0, w, h = 110, 80, 760, 260
+    body += line(x0, y0 + h, x0 + w, y0 + h, INK, 1.5) + line(x0, y0, x0, y0 + h, INK, 1.5)
+    body += text(x0 + w, y0 + h + 26, "训练步数 →", 13, GRAY, anchor="end")
+    body += f'<text x="{x0 - 30}" y="{y0 + h / 2}" font-size="13" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 30} {y0 + h / 2})">学习率</text>'
+    peak = y0 + 30
+    warm = x0 + 50
+    body += f'<path d="M{x0} {y0 + h} L{warm} {peak} L{x0 + w - 20} {peak}" stroke="{BLUE}" stroke-width="3" fill="none"/>'
+    body += text(warm - 4, peak - 10, "warmup", 12.5, GRAY, anchor="end")
+    body += text(x0 + w - 10, peak - 12, "主干：停在峰值，可以一直往后接", 13, BLUE, anchor="end")
+    for i, (bx, label, color) in enumerate([(300, "预算 A", TEAL), (480, "预算 B", ORANGE), (660, "预算 C", PURPLE)]):
+        dec = (bx - x0) * 0.25
+        body += circle(bx, peak, 6, SOFT[color], color)
+        body += f'<path d="M{bx} {peak} L{bx + dec} {y0 + h - 4}" stroke="{color}" stroke-width="2.6" fill="none" stroke-dasharray="7 4"/>'
+        body += text(bx + dec + 4, y0 + h - 14, f"{label}：衰减到 0", 12.5, color, anchor="start")
+        body += text(bx, peak - 12, "检查点", 12, color)
+    body += text(480, y0 + h + 60, "衰减段约占这一个预算的最后 20%（第 17 章）；分叉不浪费主干：每个预算只多花一段衰减", 14)
+    body += text(480, y0 + h + 84, "余弦调度的形状由总步数决定，换一个预算就要从头重训；第 23 章的逐轮淘汰正是靠这个分叉", 13.5, GRAY)
+    svg("wsd-branches.svg", "WSD 的分叉",
+        "横轴是训练步数，纵轴是学习率。主干经过 warmup 后一直停在峰值上。从主干上的几个检查点出发，各接一段线性衰减到 0，就得到预算 A、B、C 三个训练完成的模型，"
+        "衰减段约占各自预算的最后 20%。这是示意图，不是某次实验的曲线。", y0 + h + 104, body)
+
+
+def bf16_rounding():
+    """第 19 章：1 附近的刻度，以及小更新被舍入吞掉。"""
+    body = text(480, 36, "1 附近的刻度有多密：一次 0.001 的更新还留得住吗", 21, weight="bold")
+    rows = [("FP32", 2 ** -23, BLUE, "间隔 2^-23 ≈ 0.00000012", "1.001 → 1.00100005", "留住了"),
+            ("FP16", 2 ** -10, TEAL, "间隔 2^-10 ≈ 0.00098", "1.001 → 1.0009766", "大致留住"),
+            ("BF16", 2 ** -7, RED, "间隔 2^-7 = 0.0078125", "1.001 → 1.0", "整个被吞掉")]
+    x0, x1 = 140, 860
+    lo, hi = 0.996, 1.010
+    sx = lambda v: x0 + (v - lo) / (hi - lo) * (x1 - x0)
+    for i, (name, ulp, color, gap, res, verdict) in enumerate(rows):
+        y = 100 + i * 100
+        body += text(110, y + 6, name, 16, color, "bold", "end")
+        body += line(x0, y, x1, y, "#94a3b8", 1.5)
+        if ulp > 1e-5:
+            k0 = int((lo - 1) / ulp) - 1
+            k = k0
+            while 1 + k * ulp <= hi:
+                v = 1 + k * ulp
+                if v >= lo:
+                    body += line(sx(v), y - 8, sx(v), y + 8, color, 1.4)
+                k += 1
+        else:
+            body += f'<rect x="{x0}" y="{y - 8}" width="{x1 - x0}" height="16" fill="{SOFT[color]}" stroke="none"/>'
+            body += text(480, y + 4, "刻度密到画不出来", 11.5, color)
+        body += circle(sx(1.0), y, 5, INK, INK) + circle(sx(1.001), y, 5, ORANGE, ORANGE)
+        body += text(x1 + 10, y - 6, gap, 12.5, color, anchor="start") if False else ""
+        body += text(sx(1.0), y + 30, gap, 12.5, color, anchor="start")
+        body += text(x1, y + 30, f"{res}：{verdict}", 13, color, "bold", "end")
+    body += text(sx(1.0), 76, "1.0", 12.5, INK) + text(sx(1.001) + 6, 76, "1.001", 12.5, ORANGE, anchor="start")
+    body += text(480, 420, "学习率 1e-3 量级的一步更新，落在 BF16 的半个刻度以内，加上去再舍入就回到原值", 14.5)
+    body += text(480, 446, "所以混合精度训练时，前向和反向可以用 BF16，参数本身（主权重）和优化器状态要留在 FP32", 14.5, INK, "bold")
+    svg("bf16-rounding.svg", "1 附近的浮点刻度",
+        "三条数轴画出 1.0 附近能精确表示的数。FP32 的间隔约 1.2e-7，1.001 能保留；FP16 的间隔约 0.00098，1.001 舍入成 1.0009766；BF16 的间隔是 0.0078125，"
+        "1.001 舍入回 1.0，一次 0.001 的更新完全丢失。所以混合精度训练要把主权重留在 FP32。", 470, body)
+
+
+def rng_timeline():
+    """第 21 章：全局随机数被谁取走了。"""
+    body = text(480, 36, "恢复训练为什么差了一点：全局随机数多被取走了一次", 21, weight="bold")
+
+    def row(y, label, items, color):
+        out = text(150, y + 24, label, 14.5, color, "bold", "end")
+        x = 170
+        for t, kind in items:
+            w = {"step": 92, "iter": 108, "load": 120, "gap": 30}[kind]
+            fill = {"step": SOFT[color], "iter": "#fef2f2", "load": "#f1f5f9", "gap": "#ffffff"}[kind]
+            stroke = {"step": color, "iter": RED, "load": GRAY, "gap": "#ffffff"}[kind]
+            out += box(x, y, w - 6, 38, fill, stroke, width=1.4)
+            out += text(x + (w - 6) / 2, y + 24, t, 12.5, RED if kind == "iter" else (GRAY if kind in ("load", "gap") else color))
+            x += w
+        return out
+
+    body += text(480, 78, "全局随机数是一串依次取用的数：r1 r2 r3 …，dropout 每步按顺序取", 14, GRAY)
+    body += row(100, "一口气训完", [("step 119：r1", "step"), ("step 120：r2", "step"), ("step 121：r3", "step"), ("step 122：r4", "step"), ("…", "gap")], BLUE)
+    body += row(170, "断电后恢复", [("读检查点", "load"), ("iter(loader)：r3", "iter"), ("step 121：r4", "step"), ("step 122：r5", "step"), ("…", "gap")], ORANGE)
+    body += text(170, 160, "恢复了第 120 步之后的随机数状态，下一个该取的是 r3", 12.5, GRAY, anchor="start")
+    body += text(480, 248, "恢复后从 epoch 1 中间开始，先创建一次迭代器，DataLoader 顺手取走 r3 给 worker 当种子；", 14)
+    body += text(480, 272, "从第 121 步起每一步的 dropout 掩码都错开一位，损失差在小数点后第 4 位，120 步后参数最大差 0.52", 14)
+    body += box(170, 300, 620, 46, SOFT[TEAL], TEAL, width=1.5)
+    body += text(480, 329, "修法：DataLoader(..., generator=torch.Generator().manual_seed(种子))，它就不再碰全局随机数", 14, TEAL, "bold")
+    svg("rng-timeline.svg", "全局随机数的取用顺序",
+        "上：一口气训练时，第 119、120、121、122 步的 dropout 依次取全局随机数 r1、r2、r3、r4。下：从第 120 步的检查点恢复时，随机数状态恢复到该取 r3，"
+        "但从 epoch 中间开始训练要先创建迭代器，DataLoader 取走了 r3，第 121 步的 dropout 只能取 r4，之后全部错开一位。给 DataLoader 自己的随机数生成器就能修好。", 370, body)
+
+
+def eval_checklist_flow():
+    """第 22 章：训练前、训练中、训练后、比较模型四个阶段各查什么。"""
+    body = text(500, 36, "诊断清单按时间排：越早的检查越便宜，越晚的越接近真实质量", 20, weight="bold")
+    stages = [("训练前", "几秒", BLUE, ["初始损失 ≈ ln V", "因果性：改后面的 token，", "前面的输出不变", "单 batch 能过拟合", "（用同一份训练代码）"]),
+              ("训练中", "每隔几十步", TEAL, ["训练损失和验证损失", "梯度范数（裁剪前）", "学习率是否按计划走", "有没有 NaN / inf"]),
+              ("训练后", "一次", ORANGE, ["固定提示词的生成样例", "简单结构指标", "（字数、标点、重复）"]),
+              ("比较两个模型", "每次对照", PURPLE, ["同一验证集、同一口径", "配对 bootstrap 求差的区间", "多个种子，报平均和范围", "测试集只报告一次"])]
+    x = 30
+    for i, (name, when, color, items) in enumerate(stages):
+        w = 225
+        body += cbox(x, 70, w, 46, color) + text(x + w / 2, 92, name, 16, color, "bold") + text(x + w / 2, 110, when, 12, GRAY)
+        body += box(x, 128, w, 170, "#ffffff", color, width=1.3)
+        for j, it in enumerate(items):
+            bullet = not it.startswith("（") and not (j > 0 and items[j - 1].endswith("，"))
+            body += text(x + 14, 156 + j * 28, ("• " if bullet else "  ") + it, 13.5, INK, anchor="start")
+        if i < 3:
+            body += arrow(x + w, 93, x + w + 14, 93, GRAY, 2)
+        x += w + 16
+    body += text(500, 334, "第 4 节的矩阵说明：没有一项检查能抓住全部 6 个 bug，训练前的三项几秒内就抓住了其中 4 个", 14)
+    body += text(500, 358, "有 bug 的模型验证损失可以比正确代码还低，所以“损失降得好”不能代替前面的检查", 13.5, GRAY)
+    svg("eval-checklist-flow.svg", "诊断清单的四个阶段",
+        "训练前花几秒做三项检查：初始损失约等于 ln V、因果性测试、单 batch 过拟合。训练中记录训练与验证损失、梯度范数和学习率。训练后看固定提示词的生成样例和简单结构指标。"
+        "比较两个模型时在同一验证集上做配对 bootstrap，并结合多个种子。", 380, body, width=1000)
+
+
+def tensor_parallel_swiglu():
+    """第 24 章：SwiGLU 在两张卡上按列切、再按行切。"""
+    body = text(500, 36, "张量并行：一个 SwiGLU 前馈层切到 2 张卡上", 21, weight="bold")
+    for g, (color, gx) in enumerate([(BLUE, 60), (TEAL, 530)]):
+        body += f'<rect x="{gx}" y="66" width="410" height="330" rx="14" fill="{SOFT[color]}" stroke="{color}" stroke-width="1.6"/>'
+        body += text(gx + 205, 90, f"GPU {g}", 16, color, "bold")
+        body += mod(gx + 105, 104, 200, 44, "输入 x（每张卡一份完整的）", "[T, d]", GRAY, 13)
+        body += mod(gx + 20, 176, 170, 48, f"gate 的第 {g} 半列", "[d, h/2]", color, 13)
+        body += mod(gx + 220, 176, 170, 48, f"up 的第 {g} 半列", "[d, h/2]", color, 13)
+        body += path(f"M{gx + 205} 148 V162 H{gx + 105} V174", GRAY, 1.6) + path(f"M{gx + 205} 162 H{gx + 305} V174", GRAY, 1.6)
+        body += mod(gx + 105, 250, 200, 44, "SiLU(gate)·up", "[T, h/2]：只在本卡算", color, 13)
+        body += path(f"M{gx + 105} 224 V236 H{gx + 205} V248", GRAY, 1.6) + path(f"M{gx + 305} 224 V236 H{gx + 205}", GRAY, 1.6)
+        body += mod(gx + 105, 322, 200, 48, f"down 的第 {g} 半行", "[h/2, d] → 部分和 [T, d]", color, 13)
+        body += arrow(gx + 205, 294, gx + 205, 318, GRAY, 1.6)
+    body += cbox(330, 420, 340, 50, RED) + text(500, 442, "all-reduce：两张卡的部分和相加", 15, RED, "bold") + mtext(500, 461, "y = y0 + y1   [T, d]", 13)
+    body += path("M265 370 V444 H326", RED, 1.8) + path("M735 370 V444 H674", RED, 1.8)
+    body += text(500, 500, "gate、up 按列切，down 按行切：中间的门控完全在各卡内部算完，前向只在最后通信一次", 14)
+    body += text(500, 524, "每张卡只存一半的前馈层参数；代价是每层都要一次和激活一样大的通信，所以只在同一台机器的几张卡之间做", 13.5, GRAY)
+    svg("tensor-parallel-swiglu.svg", "SwiGLU 的张量并行切分",
+        "两张卡各有一份完整的输入 x。gate 和 up 的权重按列切成两半，每张卡算出中间宽度的一半，SiLU 门控在本卡内完成；down 的权重按行切成两半，每张卡算出一份部分和，"
+        "最后用一次 all-reduce 把两份部分和相加，得到完整输出。", 545, body, width=1000)
+
+
+def activation_recompute():
+    """第 24 章：激活重计算只存每个 Block 的输入，反向时重算。"""
+    body = text(480, 36, "激活重计算：前向少存，反向时把这一个 Block 再算一遍", 21, weight="bold")
+    for row, (title, color, recompute) in enumerate([("普通训练：Block 内部的中间结果全都存着", GRAY, False), ("激活重计算：只存每个 Block 的输入", TEAL, True)]):
+        y = 76 + row * 190
+        body += text(60, y, title, 15.5, color, "bold", "start")
+        for b in range(4):
+            x = 60 + b * 210
+            body += box(x, y + 18, 180, 60, SOFT[BLUE], BLUE, width=1.4) + text(x + 90, y + 44, f"Block {b + 1}", 14, BLUE, "bold")
+            body += box(x - 4, y + 90, 20, 22, "#fde68a", ORANGE, width=1.2)
+            if not recompute:
+                for k in range(5):
+                    body += box(x + 26 + k * 30, y + 90, 24, 22, "#fde68a", ORANGE, width=1.2)
+            else:
+                for k in range(5):
+                    body += box(x + 26 + k * 30, y + 90, 24, 22, "#ffffff", "#cbd5e1", width=1, dash=True)
+            if b < 3:
+                body += arrow(x + 180, y + 48, x + 208, y + 48, GRAY, 1.6)
+        body += text(60, y + 134, "黄格：存在显存里、等反向用的激活" if not recompute else "黄格：Block 的输入；虚线格：前向算完就扔，反向到这个 Block 时从输入重算", 13, GRAY, anchor="start")
+    body += path("M900 410 H690 V330", RED, 2) if False else ""
+    body += text(480, 460, "本章实测：激活省下九成多，梯度逐位相同，每步慢约三成（多了一次前向）", 14.5, INK, "bold")
+    svg("activation-recompute.svg", "激活重计算",
+        "上：普通训练时，每个 Block 内部的中间结果都要存着等反向用。下：激活重计算只存每个 Block 的输入，内部的中间结果算完就扔，反向传播到这个 Block 时从输入把前向重算一遍。"
+        "第 24 章的实验里，激活显存省下九成多，梯度逐位相同，每步慢约三成。", 480, body)
+
+
+def expert_parallel():
+    """第 25 章：专家并行，token 经两次 all-to-all 去对应的卡再回来。"""
+    body = text(500, 36, "专家并行：8 个专家放在 4 张卡上，token 要去专家所在的卡算完再回来", 19, weight="bold")
+    colors = [BLUE, TEAL, ORANGE, PURPLE]
+    toks = [[0, 5, 2, 7], [1, 1, 6, 3], [4, 0, 1, 5], [1, 2, 1, 6]]
+    for g in range(4):
+        x = 40 + g * 240
+        c = colors[g]
+        body += text(x + 105, 76, f"GPU {g}：专家 {2 * g}、{2 * g + 1}", 14, c, "bold")
+        body += box(x, 88, 210, 44, "#ffffff", "#cbd5e1", width=1.2)
+        for i, e in enumerate(toks[g]):
+            ec = colors[e // 2]
+            body += box(x + 8 + i * 50, 96, 44, 28, SOFT[ec], ec, width=1.2) + mtext(x + 30 + i * 50, 115, f"→E{e}", 12, ec)
+        body += box(x, 230, 210, 50, SOFT[c], c, width=1.6)
+        body += text(x + 105, 252, f"专家 {2 * g} 和 {2 * g + 1} 计算", 13.5, c, "bold")
+        load = sum(1 for row in toks for e in row if e // 2 == g)
+        body += text(x + 105, 271, f"收到 {load} 个 token", 12.5, GRAY)
+        body += box(x, 360, 210, 44, "#ffffff", "#cbd5e1", width=1.2) + text(x + 105, 387, "结果回到原来的卡，按路由分数加权", 12, GRAY)
+    body += cbox(40, 160, 920, 40, RED) + text(500, 186, "all-to-all（分发）：每个 token 发到它选中的专家所在的卡", 14, RED, "bold")
+    body += cbox(40, 300, 920, 40, RED) + text(500, 326, "all-to-all（收回）：算完的结果发回 token 原来的卡", 14, RED, "bold")
+    for g in range(4):
+        x = 145 + g * 240
+        body += arrow(x, 132, x, 158, GRAY, 1.6) + arrow(x, 200, x, 228, GRAY, 1.6) + arrow(x, 280, x, 298, GRAY, 1.6) + arrow(x, 340, x, 358, GRAY, 1.6)
+    loads = [sum(1 for row in toks for e in row if e // 2 == g) for g in range(4)]
+    body += text(500, 440, f"这一层要等最慢的那张卡：GPU 0 收到 {loads[0]} 个 token，其余各 {min(loads)} 个。负载越不均，其他卡空等越久", 14)
+    body += text(500, 464, "（示意：每张卡 4 个 token、每个 token 只画第一选择；实际是 top-2，通信量更大）", 13, GRAY)
+    svg("expert-parallel.svg", "专家并行与 all-to-all",
+        "8 个专家分在 4 张卡上，每张卡两个。每张卡上的 token 先由路由器选出专家，第一次 all-to-all 把 token 发到专家所在的卡，各卡算完后第二次 all-to-all 把结果送回原来的卡。"
+        "一层的时间由收到 token 最多的那张卡决定，这就是负载均衡要解决的问题。示意图，token 分配是举例。", 485, body, width=1000)
+
+
+def sampling_pipeline():
+    """第 26 章：从 logits 到下一个 token 的每一步。"""
+    body = text(500, 36, "生成循环：从最后一个位置的 logits 到下一个 token", 21, weight="bold")
+    steps = [("模型前向", "最后一个位置的 logits", GRAY, "第 12 章"),
+             ("重复惩罚", "出现过的 token 降分", ORANGE, "第 8 节"),
+             ("约束掩码", "不合格式的置为 −∞", RED, "第 9 节"),
+             ("÷ 温度 T，softmax", "T 小更尖，T 大更平", BLUE, "第 1、5 节"),
+             ("top-k / top-p 截断", "砍掉长尾，重新归一化", TEAL, "第 2 节"),
+             ("按概率抽一个", "用固定的 generator", PURPLE, "第 6 节")]
+    x = 20
+    for i, (name, note, color, ref) in enumerate(steps):
+        w = 146
+        body += cbox(x, 80, w, 70, color) + text(x + w / 2, 106, name, 14, color, "bold") + text(x + w / 2, 126, note, 11, INK) + text(x + w / 2, 143, ref, 11, GRAY)
+        if i < len(steps) - 1:
+            body += arrow(x + w, 115, x + w + 14, 115, GRAY, 2)
+        x += w + 14
+    body += path("M675 150 V176 H770", BLUE, 1.6, dash=True) if False else ""
+    body += box(560, 180, 410, 40, "#ffffff", PURPLE, width=1.4, dash=True)
+    body += text(765, 205, "贪心：跳过温度、截断和抽样，直接取 argmax", 13, PURPLE)
+    body += path("M904 150 V178", PURPLE, 1.4, dash=True)
+    body += mod(380, 250, 240, 50, "是 <eos>，或到 max_new_tokens？", None, INK, 13.5)
+    body += path("M880 150 V170 H975 V275 H624", GRAY, 2)
+    body += text(640, 270, "否：接到序列末尾，回到模型前向", 13, GRAY, anchor="start") if False else ""
+    body += path("M380 275 H20 V115 H26", GRAY, 2)
+    body += text(200, 266, "否：新 token 接到末尾，再走一圈", 13, GRAY)
+    body += arrow(500, 300, 500, 330, GRAY, 2)
+    body += text(500, 350, "是：停止，把新 token 整段解码成文字", 13.5, INK, "bold")
+    body += text(500, 390, "每一步都只改“这一次怎么选”，模型参数一个也不动；换采样方式不用重新训练", 14, GRAY)
+    svg("sampling-pipeline.svg", "生成循环的每一步",
+        "模型前向得到最后一个位置的 logits，依次经过重复惩罚、约束掩码、除以温度后 softmax、top-k 或 top-p 截断，再按概率抽一个 token；贪心解码跳过后三步直接取最大值。"
+        "如果抽到 <eos> 或达到最大长度就停止，否则把新 token 接到序列末尾再走一圈。", 410, body, width=1000)
+
+
+def roofline():
+    """第 27 章：roofline，用 H100 的公布值画 prefill 与 decode 的位置。"""
+    peak, bw = 989e12, 3.35e12            # H100 SXM：BF16 稠密张量算力、显存带宽（NVIDIA 公布值）
+    ridge = peak / bw
+    I = np.logspace(-0.3, 4, 200)
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(I, np.minimum(peak, bw * I) / 1e12, color=INK, lw=2.2)
+    ax.axvline(ridge, color=GRAY, ls="--", lw=1)
+    ax.text(ridge * 1.08, 30, f"拐点 ≈ {ridge:.0f} FLOP/字节", fontsize=10.5, color=GRAY)
+    pts = [(1, "decode，batch 1", RED), (10, "prefill 10 个 token", ORANGE), (64, "decode，batch 64", BLUE), (2048, "prefill 2048 个 token", TEAL)]
+    for x, label, color in pts:
+        y = min(peak, bw * x) / 1e12
+        ax.scatter([x], [y], color=color, s=60, zorder=3)
+        ax.annotate(f"{label}\n≈ {y:.0f} TFLOP/s", (x, y), textcoords="offset points", xytext=(8, -26 if x < 100 else 8), fontsize=10, color=color)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_ylim(1, 4000)
+    ax.set_xlabel("算术强度：每读 1 字节权重做多少次浮点运算（≈ 一次前向里同时处理的 token 数）")
+    ax.set_ylabel("能达到的算力上限（TFLOP/s）")
+    ax.text(2, peak / 1e12 * 0.55, "左边斜线：卡在带宽", fontsize=11, color=RED)
+    ax.text(ridge * 3, peak / 1e12 * 0.55, "右边平线：卡在算力", fontsize=11, color=TEAL)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "roofline.svg", "prefill 与 decode 在 roofline 上的位置",
+              f"用 H100 SXM 的公布值（BF16 稠密 {peak / 1e12:.0f} TFLOP/s、显存带宽 3.35 TB/s）画出的 roofline，拐点约 {ridge:.0f} FLOP/字节。"
+              "BF16 权重的矩阵乘里，每个权重 2 字节、每个 token 做 2 次运算，算术强度约等于一次处理的 token 数（只算权重读取的粗略估计）。"
+              "decode batch 1 和 10 个 token 的 prefill 都在左边卡在带宽，2048 个 token 的 prefill 才到右边卡在算力。")
+
+
+def chunked_prefill_timeline():
+    """第 27 章：长提示词的 prefill 不分块与分块时，别人的 decode 怎样排队。"""
+    body = text(480, 36, "chunked prefill：长提示词切成几块，正在生成的请求可以插进来", 20, weight="bold")
+
+    def row(y, label, segs):
+        out = text(118, y + 22, label, 14, INK, "bold", "end")
+        for x, w, t, color in segs:
+            out += box(x, y, w - 3, 34, SOFT[color], color, width=1.3) + text(x + (w - 3) / 2, y + 22, t, 12, color)
+        return out
+
+    body += text(130, 76, "不分块：一次前向做完新请求 C 的 2000 个 token", 14.5, RED, "bold", "start")
+    segs = [(130, 50, "A、B", BLUE), (180, 50, "A、B", BLUE), (230, 330, "C 的 prefill（2000 个 token）", ORANGE), (560, 70, "A、B、C", BLUE), (630, 70, "A、B、C", BLUE)]
+    body += row(92, "每次前向", segs)
+    body += text(395, 150, "A、B 在这段时间里一个字也出不来：用户看到“卡了一下”", 13, RED)
+    body += text(130, 196, "分块：C 的 prefill 切成 4 块，每次前向带上 A、B 的 decode", 14.5, TEAL, "bold", "start")
+    segs2 = [(130, 50, "A、B", BLUE)] + [(180 + i * 110, 110, f"C 第 {i + 1} 块 + A、B", TEAL) for i in range(4)] + [(620, 70, "A、B、C", BLUE)]
+    body += row(212, "每次前向", segs2)
+    body += text(400, 270, "A、B 每次前向都多出一个字；C 的第一个字反而晚一点出来", 13, TEAL)
+    body += text(480, 320, "分块不改变结果（本章第 9 节验证了误差为 0），改变的是谁等谁：别人的 ITL 变稳，C 自己的 TTFT 略长", 14)
+    body += text(480, 344, "块越小，插得越勤，但每块都要重读一遍已经缓存的 KV，开销变大；块大小要按负载调", 13.5, GRAY)
+    svg("chunked-prefill-timeline.svg", "chunked prefill 的调度",
+        "上：不分块时，新请求 C 的 2000 个 token 一次前向做完，这段时间里正在生成的 A、B 一个字也出不来。下：把 C 的 prefill 切成 4 块，每次前向同时带上 A、B 的 decode，"
+        "A、B 每次前向都能多出一个字，C 的首字稍晚。示意图，块的长短不代表实测时间。", 365, body)
+
+
+def gpu_memory_hierarchy():
+    """第 28 章：GPU 的存储层次（H100 SXM 公布值）。"""
+    body = text(480, 36, "GPU 的存储层次：越靠近计算单元越快，也越小（H100 SXM）", 20, weight="bold")
+    levels = [("HBM 显存", "80 GB", "约 3.35 TB/s", "权重、KV cache、激活都在这里", GRAY, 700),
+              ("L2 缓存", "50 MB", "全卡共享", "自动缓存，程序管不了", BLUE, 600),
+              ("每个 SM 的共享内存 / L1", "最多 228 KB（共 132 个 SM）", "程序显式管理", "FlashAttention 把 Q、K、V 的块放在这里", TEAL, 470),
+              ("寄存器", "每个 SM 256 KB", "最快", "正在算的那几个数", ORANGE, 320)]
+    y = 70
+    for name, size, speed, note, color, w in levels:
+        x = 480 - w / 2
+        body += cbox(x, y, w, 62, color) + text(480, y + 24, f"{name}：{size}", 15, color, "bold") + text(480, y + 46, f"{speed}；{note}", 12.5, INK)
+        y += 74
+    body += text(480, y + 18, "朴素注意力把 T×T 的分数表写回 HBM 再读出来；分块内核让一个方块的计算从头到尾留在共享内存里，", 13.5)
+    body += text(480, y + 40, "只把输出写回 HBM。块大小的上限就是这 228 KB（第 5 节）", 13.5)
+    body += text(480, y + 68, "数据来自 NVIDIA Hopper 调优指南与 H100 产品说明；其他 GPU 的容量不同，A100 每个 SM 的共享内存最多 164 KB", 12.5, GRAY)
+    svg("gpu-memory-hierarchy.svg", "GPU 的存储层次",
+        "从下往上：H100 SXM 的 HBM 显存 80 GB、带宽约 3.35 TB/s，存权重、KV cache 和激活；L2 缓存 50 MB，全卡共享；每个 SM 的共享内存最多 228 KB，共 132 个 SM，"
+        "由程序显式管理，FlashAttention 把 Q、K、V 的块放在这里；寄存器每个 SM 256 KB。分块注意力让计算留在共享内存里，只把输出写回 HBM。", y + 90, body)
+
+
+def quant_grouping():
+    """第 29 章：同一个矩阵，按张量、按通道、分组时，哪些权重共用一个缩放因子。"""
+    body = text(500, 36, "量化粒度：同一种颜色的权重共用一个缩放因子", 21, weight="bold")
+    rows, cols, cell = 6, 16, 16
+    palette = ["#bfdbfe", "#99f6e4", "#fde68a", "#fecaca", "#ddd6fe", "#fbcfe8", "#bbf7d0", "#fed7aa"]
+    configs = [("按张量：1 个缩放因子", lambda r, c: 0, "每个权重 + 0 位", "一个大数会拉低所有数的精度"),
+               ("按通道（每行一个）：6 个", lambda r, c: r, "每个权重 + 16/16 = 1 位（这里每行只有 16 个数）", "TinyLLM 的行有 128～341 个数，约 + 0.1 位"),
+               ("分组 g = 4：24 个", lambda r, c: r * 4 + c // 4, "每个权重 + 16/4 = 4 位", "实际常用 g = 32～128，+ 0.5～0.125 位")]
+    for k, (title, gid, cost, note) in enumerate(configs):
+        x0 = 40 + k * 320
+        body += text(x0 + cols * cell / 2, 78, title, 15, INK, "bold")
+        for r in range(rows):
+            for c in range(cols):
+                g = gid(r, c)
+                body += f'<rect x="{x0 + c * cell}" y="{96 + r * cell}" width="{cell}" height="{cell}" fill="{palette[g % len(palette)]}" stroke="#ffffff" stroke-width="1"/>'
+        if k == 2:
+            for r in range(rows):
+                for c in range(0, cols, 4):
+                    body += f'<rect x="{x0 + c * cell}" y="{96 + r * cell}" width="{4 * cell}" height="{cell}" fill="none" stroke="{INK}" stroke-width="0.8"/>'
+        body += text(x0 + cols * cell / 2, 216, cost, 12.5, BLUE)
+        body += text(x0 + cols * cell / 2, 238, note, 12, GRAY)
+    body += text(500, 282, "缩放因子 s = 这一组里绝对值最大的数 ÷ 7（INT4 对称）。组越小，s 越贴近组内的数，误差越小；", 14)
+    body += text(500, 306, "每个缩放因子按 FP16 存，多花 16 位，摊到组内每个权重上就是 16/g 位（第 3 节的“每个权重几位”）", 14)
+    svg("quant-grouping.svg", "量化粒度",
+        "同一个 6 行 16 列的权重矩阵，颜色相同的格子共用一个缩放因子。按张量时整个矩阵一个；按通道时每行一个，共 6 个；分组 g=4 时每行每 4 个一组，共 24 个。"
+        "组越小误差越小，但每个缩放因子要多存 16 位，摊到每个权重上是 16/g 位。", 325, body, width=1000)
+
+
+def quant_mapping():
+    """第 29 章：x → q → x̂ 的往返，对称与非对称。"""
+    body = text(480, 36, "量化是把一段实数映射到一排整数刻度上（INT4）", 21, weight="bold")
+    x0, x1 = 120, 860
+    for k, (title, lo, hi, levels, color, note) in enumerate([
+            ("对称：s = max|x| / 7，整数 −7…7", -1.0, 1.0, [i / 7 for i in range(-7, 8)], BLUE, "0 正好在刻度上；适合大致关于 0 对称的权重"),
+            ("非对称：s = (max − min) / 15，零点 z 把 0 放在刻度上，整数 0…15", -0.3, 1.0, None, TEAL, "范围贴着数据：有偏的激活（比如 SiLU 输出）一个刻度也不浪费")]):
+        y = 110 + k * 150
+        body += text(x0, y - 26, title, 15, color, "bold", "start")
+        body += line(x0, y, x1, y, "#94a3b8", 1.5)
+        sx = lambda v: x0 + (v - (-1.0)) / 2.0 * (x1 - x0)
+        if levels is None:
+            s = (hi - lo) / 15
+            levels = [lo + i * s for i in range(16)]
+        for i, v in enumerate(levels):
+            body += line(sx(v), y - 9, sx(v), y + 9, color, 1.6)
+        body += f'<rect x="{sx(lo)}" y="{y - 4}" width="{sx(hi) - sx(lo)}" height="8" fill="{SOFT[color]}" stroke="none"/>' if k == 1 else ""
+        xv = 0.53
+        near = min(levels, key=lambda v: abs(v - xv))
+        body += circle(sx(xv), y, 5, ORANGE, ORANGE) + text(sx(xv), y - 16, "x", 13, ORANGE, "bold")
+        body += circle(sx(near), y, 5, "#ffffff", INK) + text(sx(near) + 8, y + 26, "还原值", 12.5, INK, "bold", "start")
+        body += text(x1, y + 52, note, 12.5, GRAY, anchor="end")
+        body += text(x0 - 10, y + 5, "−1" if k == 0 else "", 12, GRAY, anchor="end") + text(x1 + 10, y + 5, "1", 12, GRAY, anchor="start")
+    body += text(480, 400, "x 先除以 s 再四舍五入成整数 q，存起来；用的时候还原成 s·(q − z)，落在最近的刻度上，误差最多半个刻度 s/2", 14)
+    body += text(480, 424, "刻度间隔 s 决定误差：位数少一位，s 大一倍；一组里的最大值越大，s 越大（第 3 节为什么要分组）", 13.5, GRAY)
+    svg("quant-mapping.svg", "量化的数值映射",
+        "上：对称 INT4 量化，把 −max|x| 到 max|x| 均匀分成 15 个刻度，0 正好落在刻度上。下：非对称量化按最小值和最大值定范围，用零点把 0 放到刻度上，16 个刻度都落在数据范围内。"
+        "一个数 x 量化后还原成最近的刻度，误差最多半个刻度。", 445, body)
+
+
+def residual_scaling():
+    """第 10 章：真实 Block 上，1/√(2L) 对残差流 RMS 和训练结果的影响。"""
+    src = DATA / "tinyllm-initialization-residuals-log.json"
+    if not src.exists():
+        print("skip residual-scaling: run scripts/build-tinyllm-code.py initialization-and-residuals to create", src)
+        return
+    log = json.loads(src.read_text(encoding="utf-8"))
+    rms, tr = log["rms"], log["train"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1]})
+    for key, color, ls, label in (("24|False", RED, "-", "24 层，不缩放"), ("24|True", TEAL, "-", "24 层，乘 1/√(2L)"),
+                                  ("8|False", RED, "--", "8 层，不缩放"), ("8|True", TEAL, "--", "8 层，乘 1/√(2L)")):
+        ys = rms[key]
+        a1.plot(range(len(ys)), ys, color=color, ls=ls, lw=2, label=label)
+        a1.annotate(f"{ys[-1]:.2f}", (len(ys) - 1, ys[-1]), textcoords="offset points", xytext=(5, -3), fontsize=10, color=color)
+    a1.set_xlabel("第几个 Block 之后（0 是嵌入）")
+    a1.set_ylabel("残差流的 RMS（初始化时，3 个种子平均）")
+    a1.set_title("不缩放：越深涨得越多；缩放后几乎不随深度变", fontsize=12)
+    a1.legend(fontsize=10)
+    a1.grid(alpha=0.25)
+    groups = [("1e-2", "0.01"), ("3e-3", "0.003")]
+    for gi, (lab, key) in enumerate(groups):
+        for k, (scaled, color) in enumerate((("False", RED), ("True", TEAL))):
+            vals = tr[f"{key}|{scaled}"]
+            x = gi * 1.0 + (k - 0.5) * 0.32
+            a2.scatter([x] * 3, vals, color=color, s=28, zorder=3)
+            m = sum(vals) / 3
+            a2.scatter([x], [m], color=color, marker="D", s=70, zorder=4)
+            a2.annotate(f"{m:.3f}", (x, m), textcoords="offset points", xytext=(8, -4), fontsize=10, color=color)
+    a2.set_xticks([0, 1], ["峰值学习率 1e-2", "峰值学习率 3e-3"])
+    a2.set_xlim(-0.6, 1.6)
+    a2.set_ylabel("验证损失（8 层，240 步）")
+    a2.set_title("训练后：两档学习率下都差约 0.33", fontsize=12)
+    a2.scatter([], [], color=RED, label="不缩放")
+    a2.scatter([], [], color=TEAL, label="乘 1/√(2L)")
+    a2.legend(fontsize=10, loc="center right")
+    a2.grid(alpha=0.25, axis="y")
+    save_plot(fig, "residual-scaling.svg", "残差输出投影缩放的实测",
+              f"左：TinyLLM 的 Pre-RMSNorm Block（宽度 64），初始化时残差流的 RMS 随层数的变化。不缩放时 24 层最后涨到 {rms['24|False'][-1]:.2f}，是嵌入的 {rms['24|False'][-1] / rms['24|False'][0]:.0f} 倍；"
+              f"proj 和 down 乘 1/√(2L) 后，8 层和 24 层都停在 {rms['8|True'][-1]:.2f} 附近。右：8 层模型训练 240 步的验证损失，3 个种子（菱形是平均）："
+              f"峰值 1e-2 时 {sum(tr['0.01|False']) / 3:.3f} 对 {sum(tr['0.01|True']) / 3:.3f}，峰值 3e-3 时 {sum(tr['0.003|False']) / 3:.3f} 对 {sum(tr['0.003|True']) / 3:.3f}。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -3709,7 +4671,13 @@ def main():
                scale_instability, scale_mup, scale_memory, scale_parallel,
                moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving,
                kernels_memory, kernels_online, kernels_tiling, kernels_fusion,
-               quant_levels, quant_granularity, quant_outliers):
+               quant_levels, quant_granularity, quant_outliers,
+               first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
+               tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
+               lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,
+               eval_checklist_flow, tensor_parallel_swiglu, activation_recompute, expert_parallel, sampling_pipeline,
+               roofline, chunked_prefill_timeline, gpu_memory_hierarchy, quant_grouping, quant_mapping,
+               residual_scaling):
         fn()
     print("figures written to", OUT)
 
