@@ -37,7 +37,7 @@ next:
 | Rust、Cargo、rustfmt、Clippy | 现在 | 编译、运行、格式化与静态检查。 |
 | 系统 C 编译工具与链接器 | 现在 | 链接可执行程序，支持需要编译本地代码的依赖。 |
 | Git、终端和文本编辑器 | 现在 | 阅读源码、记录修改并执行命令。 |
-| 课程 Rust 工程与固定依赖 | R00–R02 工程发布时 | 使用工程自带的工具链与锁文件；当前学习包待实现。 |
+| 课程 Rust 工程与固定依赖 | 完成自检后进入 R02 | [R02 独立工程](./tools-and-graph.md)已提供工具链、锁文件与下载包。 |
 | 支持工具调用的模型服务与凭据 | 真实模型实验前 | 在脚本模型实验通过后，验证请求、响应和工具协议。 |
 | PostgreSQL | P01 等数据库实验前 | 验证检查点保存与跨进程恢复。 |
 
@@ -130,9 +130,9 @@ Environment check passed: Rust + Cargo + rustfmt + Clippy.
 
 环境自检使用 stable 来确认基础安装。正式课程工程发布后，进入其根目录，优先遵循工程自带的 `rust-toolchain.toml` 和 `Cargo.lock`：前者选择 Rust 工具链，后者记录依赖解析结果。选择规则见 [rustup overrides](https://rust-lang.github.io/rustup/overrides.html)。
 
-`langchain-rust` 与 `graph-flow` 是课程程序的库依赖，将由工程的 `Cargo.toml` 声明并通过 Cargo 获取。固定 revision、启用的 feature 和首次构建命令，会在 R00–R02 工程实际通过后给出。基础自检尚未编译这两个库。
+`langchain-rust` 与 `graph-flow` 是课程程序的库依赖，由 [R02 独立工程](./tools-and-graph.md)的 `Cargo.toml` 声明固定 Git revision，并通过 Cargo 获取。该工程固定 Rust 1.99.1、关闭两库的默认 feature，按 `Cargo.lock` 构建；进入工程后运行 `cargo run --locked`。本页基础自检仍只检查标准库程序，两库集成由 R02 单独验证。
 
-当前课程还没有可下载的完整 Rust 工程。可以先完成本页自检并阅读架构，待工程入口开放后继续。正式学习包将包含源码、锁文件、工具链与运行说明，并在独立解压目录中验证；读者无需复制作者电脑上的相邻仓库或个人路径。
+现在可以下载 <a href="/learn-agent-rust/tools-and-graph.zip" download>R02 章节工程</a>，其中含源码、锁文件、工具链与运行说明，已在独立临时解压目录验证。读者无需复制作者电脑上的相邻仓库或个人路径。全课程学习包随后续章节补齐。
 
 ## 5. 模型与数据库按实验阶段配置
 

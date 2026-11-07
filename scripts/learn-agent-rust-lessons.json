@@ -17,21 +17,21 @@
       "prerequisites": []
     },
     {
-      "id": "R01", "slug": "agent-loop", "title": "最小 Agent 循环", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "id": "R01", "slug": "agent-loop", "title": "最小 Agent 循环", "part": "execution", "domain": "工具与执行", "status": "written",
       "question": "模型怎样请求工具，看到执行结果后再继续？",
       "addition": "显式循环、结构化调用、消息配对与停止状态。",
       "outcome": "用脚本模型完成一次文件读取，核对消息、call_id、轮次和预算耗尽路径。",
       "prerequisites": ["R00"]
     },
     {
-      "id": "R02", "slug": "tools-and-graph", "title": "工具注册与图调度", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "id": "R02", "slug": "tools-and-graph", "title": "工具注册与图调度", "part": "execution", "domain": "工具与执行", "status": "written",
       "question": "增加工具后，怎样让循环保持清晰并映射到图？",
       "addition": "工具注册表，以及 ModelTurn 与 ExecuteTools 的图节点映射。",
       "outcome": "增加第二个只读工具，用相同用例比较显式版和图版的消息、调用与结果。",
       "prerequisites": ["R01"]
     },
     {
-      "id": "R03", "slug": "permissions", "title": "工具权限与审批", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "id": "R03", "slug": "permissions", "title": "工具权限与审批", "part": "execution", "domain": "工具与执行", "status": "written",
       "question": "模型提出动作后，谁决定允许、拒绝或等待审批？",
       "addition": "执行前权限判断与类型化审批状态。",
       "outcome": "验证拒绝路径没有执行工具，批准后只执行被批准的动作；跨进程恢复另行验收。",

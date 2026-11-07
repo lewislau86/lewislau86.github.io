@@ -234,10 +234,15 @@ struct Workspace(PathBuf);
 
 impl Workspace {
     fn create(scenario: &str) -> Result<Self, Box<dyn Error>> {
+        static NEXT: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+        let sequence = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_nanos();
-        let path = env::temp_dir().join(format!("learn-agent-r01-{}-{stamp}", std::process::id()));
+        let path = env::temp_dir().join(format!(
+            "learn-agent-r01-{}-{stamp}-{sequence}",
+            std::process::id()
+        ));
         fs::create_dir(&path)?;
         let workspace = Self(path);
         if scenario != "missing-file" {

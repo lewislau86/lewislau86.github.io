@@ -5,12 +5,14 @@ pageClass: learn-agent-rust-course
 prev:
   text: 第 0 章 · 整体架构与环境
   link: /learn-agent-rust/architecture-and-setup
-next: false
+next:
+  text: 第 2 章 · 工具注册与图调度
+  link: /learn-agent-rust/tools-and-graph
 ---
 
 # 第 1 章：最小 Agent 循环
 
-[课程总览](./index.md) · [上一章](./architecture-and-setup.md) · [学习路径](./learning-path.md) · [下一章提纲](./tools-and-graph.md)
+[课程总览](./index.md) · [上一章](./architecture-and-setup.md) · [学习路径](./learning-path.md) · [下一章](./tools-and-graph.md)
 
 ::: tip 本章学习目标
 - 沿一次文件读取，说明模型请求、工具执行、结果回传与再次调用的顺序。
@@ -19,7 +21,7 @@ next: false
 
 **前置：** 完成[环境准备](./setup.md)，读过[课程架构](./architecture.md)；能阅读结构体、枚举、`match`、`Vec` 和 `Result`。
 
-**实践方式：** 下载本章[完整 Rust 源码](/learn-agent-rust/code/agent-loop.rs)，使用支持 edition 2024 的 Rust 工具链编译。只有标准库依赖，运行时无需模型密钥、GPU 或数据库。
+**实践方式：** 下载本章<a href="/learn-agent-rust/code/agent-loop.rs" download>完整 Rust 源码</a>，使用支持 edition 2024 的 Rust 工具链编译。只有标准库依赖，运行时无需模型密钥、GPU 或数据库。
 :::
 
 上一章把模型、工具和应用策略放在了一张架构图中。现在让它们围绕一个问题真正往返一次：
@@ -43,7 +45,7 @@ next: false
 ::: info 代码出处
 下文 Rust 代码直接引用同一个源文件，终端输出也从实际运行记录导入。
 
-<a href="/learn-agent-rust/code/agent-loop.rs" download>下载完整 agent-loop.rs</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/main/docs/public/learn-agent-rust/code/agent-loop.rs)
+<a href="/learn-agent-rust/code/agent-loop.rs" download>下载完整 agent-loop.rs</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/learn-agent-rust/code/agent-loop.rs)
 :::
 
 把文件下载到一个练习目录，在该目录打开终端。以下是编译和运行命令：
@@ -243,6 +245,22 @@ Windows 原生终端编译后运行 `./agent-r01.exe`；使用 WSL 时沿用上�
 
 <!-- r01-results:start -->
 
+| 场景 | 模型轮次 | 工具执行尝试 | 文件读取尝试 / 成功 | 停止原因 | 练习目标达成 |
+| --- | --- | --- | --- | --- | --- |
+| `normal` | 2 | 1 | 1 / 1 | `FinalAnswer` | 是 |
+| `changed-readme` | 2 | 1 | 1 / 1 | `FinalAnswer` | 是 |
+| `missing-file` | 2 | 1 | 1 / 0 | `FinalAnswer` | 否 |
+| `model-budget` | 1 | 1 | 1 / 1 | `ModelBudget` | 否 |
+| `zero-model-budget` | 0 | 0 | 0 / 0 | `ModelBudget` | 否 |
+| `tool-budget` | 1 | 0 | 0 / 0 | `ToolBudget` | 否 |
+| `repeat` | 3 | 2 | 2 / 2 | `ToolBudget` | 否 |
+| `repeat-model-budget` | 2 | 2 | 2 / 2 | `ModelBudget` | 否 |
+| `two-tools` | 2 | 2 | 2 / 2 | `FinalAnswer` | 是 |
+| `batch-budget` | 1 | 0 | 0 / 0 | `ToolBudget` | 否 |
+| `duplicate-id` | 2 | 1 | 1 / 1 | `InvalidCall` | 否 |
+| `unknown-tool` | 2 | 1 | 0 / 0 | `FinalAnswer` | 否 |
+| `invalid-path` | 2 | 1 | 0 / 0 | `FinalAnswer` | 否 |
+
 <!-- r01-results:end -->
 
 记录的编译器与目标平台见 <a href="/learn-agent-rust/outputs/r01-environment.txt" download>实验环境</a>。所有场景都使用标准库、脚本模型和临时文件，无第三方 crate；首次准备 Rust 工具链是否需要联网，与本章运行时是否请求模型服务分别看待。
@@ -331,4 +349,4 @@ rustc --edition=2024 -D warnings --test agent-loop.rs -o agent-r01-tests
 
 参考课程的[原始循环图](/learn-agent-rust/figures/upstream/r01-agent-loop.svg)继续保留，图中使用其 Python/Claude 语境；来源版本与许可见[课程架构](./architecture.md#reference-assets)。本章正文中的 Rust 图由本站脚本生成。
 
-下一章：[第 2 章：工具注册与图调度（提纲）](./tools-and-graph.md)。将单工具分派扩展为注册表，再比较显式循环与图执行的行为。
+下一章：[第 2 章：工具注册与图调度](./tools-and-graph.md)。将单工具分派扩展为注册表，再比较显式循环与图执行的行为。

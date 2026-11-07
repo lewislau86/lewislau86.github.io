@@ -1,4 +1,4 @@
-"""Generate course schematics and R00/R03 figures from verified run data.
+"""Generate course schematics and chapter figures from verified run data.
 
 Reference website figures are preserved separately by sync-learn-agent-rust-assets.py.
 """
@@ -176,7 +176,7 @@ def approval_binding():
     body = panel(30, 86, 420, 226, "pending 保存完整快照", ["当前会话的工作区 scope", "审批序号 + call_id", "工具类型 + 路径 + 写入内容", "每个字段都参与相等比较"], "#b45309")
     body += panel(510, 86, 420, 226, "可信入口提交人工决定", ["展示快照后选择批准或拒绝", "回复必须匹配保存的快照", "不匹配：保留等待状态", "批准身份由外层 UI 负责"])
     body += arrow("M450 200 H501")
-    body += arrow("M720 312 V347 H480 V378")
+    body += arrow("M720 312 V363 H480 V378")
     body += text(480, 347, "匹配后先 take()，移走 pending", 18, "#b45309", True)
     body += panel(30, 390, 420, 130, "人工拒绝", ["不调用文件工具", "返回 declined + 原 call_id"], "#b91c1c")
     body += panel(510, 390, 420, 130, "人工批准", ["执行保存的原始动作", "返回 ok 或 tool_error"], "#0f766e")
@@ -206,17 +206,86 @@ def permission_results():
     save_figure("r03-permission-results.svg", "规则是否生效，用文件调用次数核对", "实际运行的十个场景中，等待、拒绝和参数替换没有写入尝试；批准和重复批准只写一次；写入失败计一次尝试零次成功。", 710, body)
 
 
+def r02_figures():
+    """Generate the R02 schematics and message trace from verified package output."""
+    evidence = json.loads((ROOT / "scripts/data/learn-agent-rust/r02-results.json").read_text())
+    package = ROOT / "docs/public/learn-agent-rust/code/tools-and-graph"
+    for name, digest in evidence["source_sha256"].items():
+        if hashlib.sha256((package / name).read_bytes()).hexdigest() != digest:
+            raise ValueError("R02 evidence is stale; rerun verify-learn-agent-rust-r02.py")
+
+    body = panel(48, 82, 864, 128, "模型：看到可用工具的描述", ["名称 · 说明 · 参数 schema", "本例由脚本模型返回固定调用；真实服务另验收"])
+    body += arrow("M480 272 V218")
+    body += text(681, 247, "definitions() 导出", 18, "#2563eb")
+    body += panel(48, 280, 864, 132, "Registry：同一条目保存描述与处理函数", ["list_files → list_files(root, args)", "read_file → read_file(root, args)"], "#0f766e")
+    body += arrow("M480 420 V470")
+    body += text(705, 452, "dispatch() 按名称查找", 18, "#0f766e")
+    body += panel(48, 478, 864, 100, "程序：解析参数，运行处理函数", ["成功返回 data，失败返回 error；都保留调用 ID。"], "#b45309")
+    body += text(480, 621, "示意图：新增工具修改注册条目，循环继续使用共同入口。", 18, "#475569")
+    save_figure("r02-tool-registry.svg", "工具描述与执行入口来自同一份注册表", "注册表向模型导出描述，并按模型返回名称查找处理函数。", 650, body)
+
+    normal = next(row for row in evidence["scenarios"] if row["scenario"] == "normal")
+    messages = normal["state"]["messages"]
+    labels = {"human": "用户", "ai": "assistant", "tool": "tool"}
+    body = ""
+    for index, message in enumerate(messages):
+        y = 80 + index * 82
+        calls = message.get("tool_calls") or []
+        if calls:
+            call = calls[0]
+            detail = call["function"]["name"] + " · ID=" + call["id"]
+        elif message["message_type"] == "tool":
+            data = json.loads(message["content"])["data"]
+            detail = ("目录结果" if "entries" in data else "README 正文") + " · ID=" + message["id"]
+        else:
+            detail = "先列目录，再读 README" if index == 0 else message["content"]
+        color = "#0f766e" if message["message_type"] == "tool" else "#2563eb"
+        body += '<rect x="48" y="{}" width="864" height="62" rx="10" fill="#fff" stroke="{}" stroke-width="2"/>'.format(y, color)
+        body += text(194, y + 38, "{} · {}".format(index + 1, labels[message["message_type"]]), 20, color, True)
+        body += text(625, y + 38, detail, 18)
+        if index < len(messages) - 1:
+            body += arrow("M480 {} V{}".format(y + 62, y + 76))
+    state = normal["state"]
+    body += text(480, 613, "真实运行：{} 轮模型调用 · {} 次工具分发 · {} 条消息".format(state["model_turns"], state["tool_dispatches"], len(messages)), 21, "#0f766e", True)
+    body += text(480, 654, "数据：固定脚本模型 + 真实临时文件；显式版与图版状态一致。", 17, "#475569")
+    save_figure("r02-message-history.svg", "两次工具往返怎样形成完整的消息历史？", "消息顺序、调用 ID 与计数均来自 R02 normal 实际运行记录。", 684, body)
+
+    body = panel(38, 96, 400, 142, "ModelTurn", ["检查轮次 → 调用模型", "记录请求，或写入停止原因"])
+    body += arrow("M438 164 H515")
+    body += text(480, 137, "有调用", 16, "#2563eb")
+    body += panel(524, 96, 398, 142, "ExecuteTools", ["按返回顺序分发待处理调用", "追加工具结果，清空 pending"], "#0f766e")
+    body += arrow("M724 238 V301 H350 V245")
+    body += text(480, 289, "Continue → Paused → 外层再次推进", 18, "#0f766e")
+    body += arrow("M238 238 V374", "#b45309")
+    body += text(135, 336, "已有停止原因", 17, "#b45309")
+    body += panel(38, 382, 400, 112, "End → Completed", ["应用仍需读取 stop 判断业务结果"], "#b45309")
+    body += panel(524, 382, 398, 112, "状态放在 Context 的 agent 键", ["消息 · pending · ID 集合 · 预算"], "#0f766e")
+    body += text(480, 552, "两个节点共用 State；Session 记录当前位置。本例仅在内存中推进。", 18, "#475569")
+    save_figure("r02-graph-routing.svg", "把同一循环映射为两个图节点", "ModelTurn 与 ExecuteTools 通过 Continue 交回外层驱动器，停止时返回 End。", 586, body)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lesson", choices=["R00", "R03", "all"], default="all")
+    parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "all"], default="all")
     args = parser.parse_args()
+    if args.r02:
+        args.lesson = "R02"
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    if args.lesson in ("R01", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("loop_figures", ROOT / "scripts/learn-agent-rust-loop-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
     if args.lesson in ("R00", "all"):
         runtime_architecture()
         request_and_action()
         message_trace()
         state_lifetimes()
         control_flow()
+    if args.lesson in ("R02", "all") and (ROOT / "scripts/data/learn-agent-rust/r02-results.json").exists():
+        r02_figures()
     if args.lesson in ("R03", "all"):
         permission_routes()
         approval_binding()

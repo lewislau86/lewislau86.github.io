@@ -1,0 +1,205 @@
+{
+  "scope": "R01 standard-library explicit loop; scripted model; real temporary file; no HTTP/framework/database",
+  "source_sha256": "61a4bb00da71cc662a2e84bf23d7cc5aa3defca9fccf6b00e9e5562949202d9f",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "unit_tests_passed": 6,
+  "scenarios": [
+    {
+      "name": "normal",
+      "args": [],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 1,
+      "read_successes": 1,
+      "messages": 4,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": true,
+      "stdout_sha256": "0c15a2a148a709013b591d02abe12f91c89d03470cfcbdc487c53d346e5cbcaf"
+    },
+    {
+      "name": "changed-readme",
+      "args": [
+        "--scenario",
+        "changed-readme"
+      ],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 1,
+      "read_successes": 1,
+      "messages": 4,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": true,
+      "stdout_sha256": "1e9e729bc6e4c86898f246509d32d141968c8ca0e6594a272f9553216a90d42c"
+    },
+    {
+      "name": "missing-file",
+      "args": [
+        "--scenario",
+        "missing-file"
+      ],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 1,
+      "read_successes": 0,
+      "messages": 4,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": false,
+      "stdout_sha256": "d066d053be7733ad5c3dd33ea55a232064b5208c6c35abd31b0e9e87271e6cd1"
+    },
+    {
+      "name": "model-budget",
+      "args": [
+        "--max-model-turns",
+        "1"
+      ],
+      "model_turns": 1,
+      "tool_calls": 1,
+      "read_attempts": 1,
+      "read_successes": 1,
+      "messages": 3,
+      "stop": "ModelBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "bf4cf3cd8ba4434562c4ccce66bb6effa1dd013f090828f555998f627a4a5eee"
+    },
+    {
+      "name": "zero-model-budget",
+      "args": [
+        "--max-model-turns",
+        "0"
+      ],
+      "model_turns": 0,
+      "tool_calls": 0,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 1,
+      "stop": "ModelBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "b5e4f1110b36db82ac36cd7885b1d6be0f88855c9d8d22381f543b09236838b7"
+    },
+    {
+      "name": "tool-budget",
+      "args": [
+        "--max-tool-calls",
+        "0"
+      ],
+      "model_turns": 1,
+      "tool_calls": 0,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 3,
+      "stop": "ToolBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "1a55a335e871f9be2f4f2865a9f6d4607a1683cf9cea5a53d72dba16a2292ec0"
+    },
+    {
+      "name": "repeat",
+      "args": [
+        "--scenario",
+        "repeat"
+      ],
+      "model_turns": 3,
+      "tool_calls": 2,
+      "read_attempts": 2,
+      "read_successes": 2,
+      "messages": 7,
+      "stop": "ToolBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "4cf549e3322c062b8a45c99441edf550b645e1853a171a56786739697c209001"
+    },
+    {
+      "name": "repeat-model-budget",
+      "args": [
+        "--scenario",
+        "repeat",
+        "--max-model-turns",
+        "2"
+      ],
+      "model_turns": 2,
+      "tool_calls": 2,
+      "read_attempts": 2,
+      "read_successes": 2,
+      "messages": 5,
+      "stop": "ModelBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "6602582c30d75c7bd8da5eed37ed4c0836cc2d2855711ae2db90c1d498922a52"
+    },
+    {
+      "name": "two-tools",
+      "args": [
+        "--scenario",
+        "two-tools"
+      ],
+      "model_turns": 2,
+      "tool_calls": 2,
+      "read_attempts": 2,
+      "read_successes": 2,
+      "messages": 5,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": true,
+      "stdout_sha256": "713ecb3dfa2e59d9794571d0e448186db92063c0460345886d66dc5146c28e2c"
+    },
+    {
+      "name": "batch-budget",
+      "args": [
+        "--scenario",
+        "two-tools",
+        "--max-tool-calls",
+        "1"
+      ],
+      "model_turns": 1,
+      "tool_calls": 0,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 4,
+      "stop": "ToolBudget",
+      "fixture_goal_met": false,
+      "stdout_sha256": "d895c3a8a333874b897dcc57e2189d600e50a998890f33b8dd85bd474acd27f8"
+    },
+    {
+      "name": "duplicate-id",
+      "args": [
+        "--scenario",
+        "duplicate-id"
+      ],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 1,
+      "read_successes": 1,
+      "messages": 4,
+      "stop": "InvalidCall",
+      "fixture_goal_met": false,
+      "stdout_sha256": "5c8391f6abfd54054e420565d2e952ce7a7d01eb1b88b064e9ddafaae7ca0677"
+    },
+    {
+      "name": "unknown-tool",
+      "args": [
+        "--scenario",
+        "unknown-tool"
+      ],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 4,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": false,
+      "stdout_sha256": "90036be69026c87d8d2ca6288b73dacb19a0306ee25371087a8e5d674cce126e"
+    },
+    {
+      "name": "invalid-path",
+      "args": [
+        "--scenario",
+        "invalid-path"
+      ],
+      "model_turns": 2,
+      "tool_calls": 1,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 4,
+      "stop": "FinalAnswer",
+      "fixture_goal_met": false,
+      "stdout_sha256": "44756ce5b00041217d4fee23d47070e7ee01c7837b01cf0742d05b5e46dfcf39"
+    }
+  ]
+}

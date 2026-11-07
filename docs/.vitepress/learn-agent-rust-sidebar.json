@@ -31,6 +31,18 @@
       {
         "text": "第 0 章 · 整体架构与环境",
         "link": "/learn-agent-rust/architecture-and-setup"
+      },
+      {
+        "text": "第 1 章 · 最小 Agent 循环",
+        "link": "/learn-agent-rust/agent-loop"
+      },
+      {
+        "text": "第 2 章 · 工具注册与图调度",
+        "link": "/learn-agent-rust/tools-and-graph"
+      },
+      {
+        "text": "第 3 章 · 工具权限与审批",
+        "link": "/learn-agent-rust/permissions"
       }
     ]
   },
@@ -42,18 +54,6 @@
         "text": "第一部分 · 工具与执行",
         "collapsed": true,
         "items": [
-          {
-            "text": "第 1 章 · 最小 Agent 循环",
-            "link": "/learn-agent-rust/agent-loop"
-          },
-          {
-            "text": "第 2 章 · 工具注册与图调度",
-            "link": "/learn-agent-rust/tools-and-graph"
-          },
-          {
-            "text": "第 3 章 · 工具权限与审批",
-            "link": "/learn-agent-rust/permissions"
-          },
           {
             "text": "第 4 章 · 生命周期与 Hooks",
             "link": "/learn-agent-rust/hooks"

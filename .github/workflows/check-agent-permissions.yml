@@ -1,0 +1,42 @@
+name: Check R03 permission experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/permissions.md"
+      - "docs/public/learn-agent-rust/code/permissions.rs"
+      - "docs/public/learn-agent-rust/outputs/r03-*.txt"
+      - "docs/public/learn-agent-rust/permissions-lab.zip"
+      - "scripts/data/learn-agent-rust/r03-results.json"
+      - "scripts/verify-agent-permissions.py"
+      - ".github/workflows/check-agent-permissions.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/permissions.md"
+      - "docs/public/learn-agent-rust/code/permissions.rs"
+      - "docs/public/learn-agent-rust/outputs/r03-*.txt"
+      - "docs/public/learn-agent-rust/permissions-lab.zip"
+      - "scripts/data/learn-agent-rust/r03-results.json"
+      - "scripts/verify-agent-permissions.py"
+      - ".github/workflows/check-agent-permissions.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  permissions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the minimum supported edition 2024 toolchain
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Check scenarios, regression tests and extracted download
+        env:
+          RUSTUP_TOOLCHAIN: "1.85.0"
+        run: python scripts/verify-agent-permissions.py --check
