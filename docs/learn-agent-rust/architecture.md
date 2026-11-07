@@ -2,22 +2,24 @@
 title: 课程架构与框架分工
 description: 从一次工作区读取出发，建立 Rust Agent 的模型、工具、图调度、策略与状态边界。
 prev:
-  text: 学习路径 · 能力演化
-  link: /learn-agent-rust/learning-path
-next: false
+  text: 环境准备
+  link: /learn-agent-rust/setup
+next:
+  text: 第 0 章 · 整体架构与环境
+  link: /learn-agent-rust/architecture-and-setup
 pageClass: learn-agent-rust-course
 ---
 
 # 课程架构与框架分工
 
-[课程总览](./index.md) · [学习路径](./learning-path.md)
+[课程总览](./index.md) · [学习路径](./learning-path.md) · [环境准备](./setup.md)
 
 ::: tip 阅读目标
 - 沿一次读取请求，指出模型、图节点、工具与存储各负责什么。
 - 区分同进程方法调用、外部模型 HTTP 和会话保存边界。
 - 把课程中的计划、消息、任务与记忆放到合适的位置。
 
-**实践状态：** 本页是目标架构导读。逐章 Rust 工程与运行验收将从 R00–R02 开始补齐。
+**实践状态：** 本页是目标架构导读。[第 0 章](./architecture-and-setup.md)提供标准库接线实验；两库课程工程与后续运行验收仍需逐章补齐。
 :::
 
 ## 1. 从读取 README 的任务出发

@@ -10,7 +10,7 @@
   ],
   "lessons": [
     {
-      "id": "R00", "slug": "architecture-and-setup", "title": "整体架构与环境", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "id": "R00", "slug": "architecture-and-setup", "title": "整体架构与环境", "part": "execution", "domain": "工具与执行", "status": "written",
       "question": "模型、工具、图调度与应用策略分别放在哪里？",
       "addition": "建立两库分工、进程边界与实验环境的全貌。",
       "outcome": "画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。",

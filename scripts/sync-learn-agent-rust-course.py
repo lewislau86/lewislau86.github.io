@@ -94,6 +94,7 @@ def sidebar(course):
         {"text": "返回知识库", "link": "/"},
         {"text": "课程总览", "link": "/learn-agent-rust/"},
         {"text": "学习路径 · 能力演化", "link": "/learn-agent-rust/learning-path"},
+        {"text": "环境准备", "link": "/learn-agent-rust/setup"},
         {"text": "课程架构与框架分工", "link": "/learn-agent-rust/architecture"},
     ]}]
 

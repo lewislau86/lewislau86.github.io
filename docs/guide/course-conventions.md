@@ -13,7 +13,7 @@
 | TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
 | mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
-| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/figures/`，代码与学习包后续补齐 | `learn-agent-rust-sidebar.json` | 框架与目录已建立，章节规划中 |
+| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/{code,outputs,figures}/`，两库工程与学习包后续补齐 | `learn-agent-rust-sidebar.json` | R00 已成文，其他章节规划中 |
 
 ## 2. 文件名与 URL
 
@@ -30,6 +30,7 @@
 - 尚未成文的章节集中放进最后一个折叠分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。
 - 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表（新增章节还要在 `nodes` 里给它一个框、在 `io` 里写出本章的输入和输出）和总览页的“已成文的章节”表。
 - Learn Agent by Rust 的章节顺序、主题路径、前置关系和正文状态维护在 `scripts/learn-agent-rust-lessons.json`，运行 `python3 scripts/sync-learn-agent-rust-course.py` 更新侧栏、总览目录和学习路径的标记区。脚本只为缺失章节建立规划提纲，不覆盖已有章节正文；`--check` 检查是否过期。标为 `written` 前先完成正文与相应验证，实验状态另在章内记录。
+- 该课程用 `<LearnAgentRustMap active="章节主题名" />` 展示章节位置，课程地图从同一章节清单读取状态。R00 标准库源码在 `docs/public/learn-agent-rust/code/`，运行 `python3 scripts/verify-learn-agent-rust.py` 更新输出与配图输入，`--check` 重新执行并检查是否过期；该脚本当前只验证 R00，不代表两库集成通过。
 
 ## 4. 章节模板
 

@@ -5,22 +5,24 @@ prev:
   text: 课程总览
   link: /learn-agent-rust/
 next:
-  text: 课程架构与框架分工
-  link: /learn-agent-rust/architecture
+  text: 环境准备
+  link: /learn-agent-rust/setup
 pageClass: learn-agent-rust-course
 ---
 
 # 学习路径：从最小循环到完整助手
 
-[课程总览](./index.md) · [课程架构与框架分工](./architecture.md)
+[课程总览](./index.md) · [环境准备](./setup.md) · [课程架构与框架分工](./architecture.md)
 
 ::: tip 怎样使用这条时间线
 先读每个节点的“本章问题”和“新增机制”，再看“计划验收”。它们分别回答为什么要学、增加什么，以及学完要拿出什么证据。
 
-**当前状态：** 下列 26 个节点均是规划，章节链接通往提纲。Rust 示例和对应实验尚未完成。
+**当前状态：** R00 已有正文与标准库接线实验，其余 25 个节点为规划提纲。两库课程工程与真实模型实验按后续章节分别验收。
 :::
 
 ## 一条贯穿全书的任务
+
+准备动手时，先完成[环境准备](./setup.md)中的工具链自检。它独立于下列 26 个规划节点，不改变主线编号。
 
 从“读取 README，解释运行方式”开始，先看清模型与工具循环，再加入权限、计划和上下文；任务变长后，增加持久化、后台执行与协作，最后接入外部工具并检查故障边界。
 
@@ -32,7 +34,7 @@ pageClass: learn-agent-rust-course
 
 ### R00 · 整体架构与环境 {#r00}
 
-> 工具与执行 · 规划中 · 正文与实验待完成
+> 工具与执行 · 正文已成文 · 实验状态见章内
 
 **本章问题：** 模型、工具、图调度与应用策略分别放在哪里？
 
@@ -42,7 +44,7 @@ pageClass: learn-agent-rust-course
 
 **计划验收：** 画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。
 
-[查看章节提纲（规划中） →](./architecture-and-setup.md)
+[阅读正文 →](./architecture-and-setup.md)
 
 ### R01 · 最小 Agent 循环 {#r01}
 
@@ -422,4 +424,4 @@ pageClass: learn-agent-rust-course
 
 时间线借鉴 [Learn Claude Code 学习路径](https://learn.shareai.run/zh/timeline/) 的逐章演化方式。当前突出能力与验收产出；代码行数和工具数将在有真实 Rust 工程且统计口径明确后再考虑展示。
 
-继续阅读[课程架构与框架分工](./architecture.md)，把这些机制放回同一条调用链。
+继续完成[环境准备](./setup.md)，再阅读[课程架构与框架分工](./architecture.md)，把这些机制放回同一条调用链。

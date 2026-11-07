@@ -1,0 +1,12 @@
+R02 | scripted model + real filesystem | explicit vs graph-flow
+normal: equal=true turns=3 dispatches=2 messages=6 stop=completed
+nodes: ModelTurn -> ExecuteTools -> ModelTurn -> ExecuteTools -> ModelTurn
+answer: README 里的启动命令是：cargo run
+batch: equal=true turns=2 dispatches=2 messages=5 stop=completed
+unknown-tool: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
+invalid-json: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
+invalid-args: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
+missing-file: equal=true turns=3 dispatches=2 messages=6 stop=tool_error
+duplicate-id: equal=true turns=1 dispatches=0 messages=1 stop=invalid_call_id
+zero-budget: equal=true turns=0 dispatches=0 messages=1 stop=turn_limit
+turn-limit: equal=true turns=1 dispatches=1 messages=3 stop=turn_limit
