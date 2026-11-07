@@ -1,0 +1,163 @@
+[
+  {
+    "text": "Learn Agent by Rust",
+    "items": [
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "课程总览",
+        "link": "/learn-agent-rust/"
+      },
+      {
+        "text": "学习路径 · 能力演化",
+        "link": "/learn-agent-rust/learning-path"
+      },
+      {
+        "text": "课程架构与框架分工",
+        "link": "/learn-agent-rust/architecture"
+      }
+    ]
+  },
+  {
+    "text": "规划中（尚未成文）",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "第一部分 · 工具与执行",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "第 0 章 · 整体架构与环境",
+            "link": "/learn-agent-rust/architecture-and-setup"
+          },
+          {
+            "text": "第 1 章 · 最小 Agent 循环",
+            "link": "/learn-agent-rust/agent-loop"
+          },
+          {
+            "text": "第 2 章 · 工具注册与图调度",
+            "link": "/learn-agent-rust/tools-and-graph"
+          },
+          {
+            "text": "第 3 章 · 工具权限与审批",
+            "link": "/learn-agent-rust/permissions"
+          },
+          {
+            "text": "第 4 章 · 生命周期与 Hooks",
+            "link": "/learn-agent-rust/hooks"
+          }
+        ]
+      },
+      {
+        "text": "第二部分 · 规划、上下文与恢复",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "第 5 章 · 可见的任务清单",
+            "link": "/learn-agent-rust/todo-planning"
+          },
+          {
+            "text": "第 6 章 · 子 Agent 与上下文隔离",
+            "link": "/learn-agent-rust/subagents"
+          },
+          {
+            "text": "第 7 章 · 按需加载技能",
+            "link": "/learn-agent-rust/skill-loading"
+          },
+          {
+            "text": "第 8 章 · 上下文压缩",
+            "link": "/learn-agent-rust/context-compaction"
+          },
+          {
+            "text": "第 9 章 · 跨会话记忆",
+            "link": "/learn-agent-rust/memory"
+          },
+          {
+            "text": "第 10 章 · 系统提示词组装",
+            "link": "/learn-agent-rust/system-prompts"
+          },
+          {
+            "text": "第 11 章 · 错误分类与恢复",
+            "link": "/learn-agent-rust/error-recovery"
+          }
+        ]
+      },
+      {
+        "text": "第三部分 · 长任务与协作",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "第 12 章 · 持久化任务系统",
+            "link": "/learn-agent-rust/task-system"
+          },
+          {
+            "text": "第 13 章 · 后台任务",
+            "link": "/learn-agent-rust/background-tasks"
+          },
+          {
+            "text": "第 14 章 · 定时调度",
+            "link": "/learn-agent-rust/scheduling"
+          },
+          {
+            "text": "第 15 章 · Agent 团队",
+            "link": "/learn-agent-rust/agent-teams"
+          },
+          {
+            "text": "第 16 章 · 团队协作协议",
+            "link": "/learn-agent-rust/team-protocols"
+          },
+          {
+            "text": "第 17 章 · 自主任务领取",
+            "link": "/learn-agent-rust/autonomous-workers"
+          },
+          {
+            "text": "第 18 章 · 工作区隔离",
+            "link": "/learn-agent-rust/worktree-isolation"
+          }
+        ]
+      },
+      {
+        "text": "第四部分 · 外部工具与集成",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "第 19 章 · MCP 外部工具",
+            "link": "/learn-agent-rust/mcp-tools"
+          },
+          {
+            "text": "第 20 章 · 完整 Agent 集成",
+            "link": "/learn-agent-rust/integrated-agent"
+          }
+        ]
+      },
+      {
+        "text": "第五部分 · 可靠性专题",
+        "collapsed": true,
+        "items": [
+          {
+            "text": "专题 1 · PostgreSQL 检查点",
+            "link": "/learn-agent-rust/postgres-checkpoints"
+          },
+          {
+            "text": "专题 2 · 外部操作的可靠性",
+            "link": "/learn-agent-rust/side-effect-reliability"
+          },
+          {
+            "text": "专题 3 · 模型协议与质量评估",
+            "link": "/learn-agent-rust/model-evaluation"
+          },
+          {
+            "text": "专题 4 · 生产准入与演练",
+            "link": "/learn-agent-rust/production-readiness"
+          },
+          {
+            "text": "专题 5 · 固定工作流与目标控制",
+            "link": "/learn-agent-rust/workflow-and-goal-control"
+          }
+        ]
+      }
+    ]
+  }
+]

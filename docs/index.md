@@ -30,6 +30,12 @@ title: 文档首页
 
 [进入 Burn 教程 →](./burn/index.md)
 
+### [Learn Agent by Rust · 构建可理解、可恢复的 Agent](./learn-agent-rust/index.md)
+
+围绕一个工作区助手，规划使用 `langchain-rust + graph-flow` 从最小模型工具循环出发，逐步加入权限、技能、上下文、任务、团队和 MCP，再用恢复与幂等实验检查运行边界。当前已建立课程总览、架构导读、学习路径和 21 个主线章节、5 个可靠性专题的提纲；Rust 示例与学习包待实现。参考课程原图保留在对应提纲中，并注明来源和原始语境。
+
+[进入课程 →](./learn-agent-rust/index.md) · [查看学习路径 →](./learn-agent-rust/learning-path.md)
+
 ## 从这里开始
 
 更多文档将逐步整理。你可以通过左侧目录浏览文档，通过右侧目录定位当前章节，也可以使用顶部搜索查找内容。

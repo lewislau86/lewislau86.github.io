@@ -1,0 +1,195 @@
+{
+  "title": "Learn Agent by Rust",
+  "subtitle": "使用 Rust 构建可理解、可恢复的 Agent",
+  "parts": [
+    {"id": "execution", "title": "第一部分 · 工具与执行"},
+    {"id": "context", "title": "第二部分 · 规划、上下文与恢复"},
+    {"id": "tasks", "title": "第三部分 · 长任务与协作"},
+    {"id": "integration", "title": "第四部分 · 外部工具与集成"},
+    {"id": "reliability", "title": "第五部分 · 可靠性专题"}
+  ],
+  "lessons": [
+    {
+      "id": "R00", "slug": "architecture-and-setup", "title": "整体架构与环境", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "question": "模型、工具、图调度与应用策略分别放在哪里？",
+      "addition": "建立两库分工、进程边界与实验环境的全貌。",
+      "outcome": "画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。",
+      "prerequisites": []
+    },
+    {
+      "id": "R01", "slug": "agent-loop", "title": "最小 Agent 循环", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "question": "模型怎样请求工具，看到执行结果后再继续？",
+      "addition": "显式循环、结构化调用、消息配对与停止状态。",
+      "outcome": "用脚本模型完成一次文件读取，核对消息、call_id、轮次和预算耗尽路径。",
+      "prerequisites": ["R00"]
+    },
+    {
+      "id": "R02", "slug": "tools-and-graph", "title": "工具注册与图调度", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "question": "增加工具后，怎样让循环保持清晰并映射到图？",
+      "addition": "工具注册表，以及 ModelTurn 与 ExecuteTools 的图节点映射。",
+      "outcome": "增加第二个只读工具，用相同用例比较显式版和图版的消息、调用与结果。",
+      "prerequisites": ["R01"]
+    },
+    {
+      "id": "R03", "slug": "permissions", "title": "工具权限与审批", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "question": "模型提出动作后，谁决定允许、拒绝或等待审批？",
+      "addition": "执行前权限判断与类型化审批状态。",
+      "outcome": "验证拒绝路径没有执行工具，批准后只执行被批准的动作；跨进程恢复另行验收。",
+      "prerequisites": ["R02"]
+    },
+    {
+      "id": "R04", "slug": "hooks", "title": "生命周期与 Hooks", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "question": "怎样在循环边界增加策略、记录与检查？",
+      "addition": "执行前后与停止阶段的生命周期扩展点。",
+      "outcome": "观察 Hook 顺序，并验证拒绝、异常和超时的传播策略。",
+      "prerequisites": ["R03"]
+    },
+    {
+      "id": "R05", "slug": "todo-planning", "title": "可见的任务清单", "part": "context", "domain": "规划与控制", "status": "planned",
+      "question": "长任务怎样记录目标、步骤和当前进度？",
+      "addition": "会话内待办清单与合法状态迁移。",
+      "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
+      "prerequisites": ["R02", "R03"]
+    },
+    {
+      "id": "R06", "slug": "subagents", "title": "子 Agent 与上下文隔离", "part": "context", "domain": "规划与控制", "status": "planned",
+      "question": "怎样把一次子任务放进独立的消息历史？",
+      "addition": "子会话输入输出契约与父子预算。",
+      "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
+      "prerequisites": ["R02", "R03"]
+    },
+    {
+      "id": "R07", "slug": "skill-loading", "title": "按需加载技能", "part": "context", "domain": "规划与控制", "status": "planned",
+      "question": "怎样只在任务需要时加入专业说明？",
+      "addition": "技能目录、版本与按需内容注入。",
+      "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
+      "prerequisites": ["R02", "R03"]
+    },
+    {
+      "id": "R08", "slug": "context-compaction", "title": "上下文压缩", "part": "context", "domain": "记忆管理", "status": "planned",
+      "question": "对话历史太长时，怎样保留继续行动需要的事实？",
+      "addition": "上下文预算、裁剪与历史摘要。",
+      "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
+      "prerequisites": ["R01", "R07"]
+    },
+    {
+      "id": "R09", "slug": "memory", "title": "跨会话记忆", "part": "context", "domain": "记忆管理", "status": "planned",
+      "question": "哪些事实应当在新会话中仍然可用？",
+      "addition": "有来源和版本的事实存储、提取与召回。",
+      "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
+      "prerequisites": ["R08"]
+    },
+    {
+      "id": "R10", "slug": "system-prompts", "title": "系统提示词组装", "part": "context", "domain": "规划与控制", "status": "planned",
+      "question": "策略、工具、技能和环境怎样组成一次模型请求？",
+      "addition": "运行时提示词组装与各部分的来源和版本。",
+      "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
+      "prerequisites": ["R07", "R09"]
+    },
+    {
+      "id": "R11", "slug": "error-recovery", "title": "错误分类与恢复", "part": "context", "domain": "规划与控制", "status": "planned",
+      "question": "什么错误值得重试，重试何时应该结束？",
+      "addition": "类型化错误、有限重试、退避与累计预算。",
+      "outcome": "区分临时和永久错误，验证重试或恢复后仍受总预算约束。",
+      "prerequisites": ["R02", "R08"]
+    },
+    {
+      "id": "R12", "slug": "task-system", "title": "持久化任务系统", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "question": "任务依赖与执行状态怎样在进程退出后保留？",
+      "addition": "业务任务身份、依赖校验、合法迁移与单执行者存储。",
+      "outcome": "从新进程恢复任务，拒绝依赖环，并观察保存失败和损坏记录。",
+      "prerequisites": ["R05", "R11"]
+    },
+    {
+      "id": "R13", "slug": "background-tasks", "title": "后台任务", "part": "tasks", "domain": "并发与调度", "status": "planned",
+      "question": "慢工具怎样在后台运行，同时保持可查询与可取消？",
+      "addition": "有界后台执行、任务句柄、通知与资源回收。",
+      "outcome": "验证启动、查询、取消、完成通知与退出清理的完整生命周期。",
+      "prerequisites": ["R12"]
+    },
+    {
+      "id": "R14", "slug": "scheduling", "title": "定时调度", "part": "tasks", "domain": "并发与调度", "status": "planned",
+      "question": "定时触发怎样在重启后继续，并处理重复触发？",
+      "addition": "有时区的持久化调度与触发身份。",
+      "outcome": "检查错过触发、重复触发和调度重启时的行为。",
+      "prerequisites": ["R12", "R13"]
+    },
+    {
+      "id": "R15", "slug": "agent-teams", "title": "Agent 团队", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "question": "多个执行者怎样分工，并保留各自的上下文？",
+      "addition": "独立会话、有界邮箱与队友生命周期。",
+      "outcome": "观察消息投递、队友等待与退出，明确单进程和跨进程能力范围。",
+      "prerequisites": ["R06", "R12", "R13"]
+    },
+    {
+      "id": "R16", "slug": "team-protocols", "title": "团队协作协议", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "question": "队友怎样批准、拒绝、汇报和退出？",
+      "addition": "类型化消息、关联身份与协议状态迁移。",
+      "outcome": "拒绝非法协议消息，验证关闭握手、超时和失败退出。",
+      "prerequisites": ["R15"]
+    },
+    {
+      "id": "R17", "slug": "autonomous-workers", "title": "自主任务领取", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "question": "谁有权执行任务，原执行者退出后谁来接管？",
+      "addition": "原子领取、所有权、租约与接管。",
+      "outcome": "验证竞争领取、租约过期和旧执行者拒写，单独核对外部动作重放。",
+      "prerequisites": ["R12", "R16"]
+    },
+    {
+      "id": "R18", "slug": "worktree-isolation", "title": "工作区隔离", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "question": "并发代码任务怎样拥有独立文件与变更归属？",
+      "addition": "任务绑定的练习 worktree 与资源回收策略。",
+      "outcome": "在专用练习仓库验证创建、绑定、保留和回收，不覆盖已有修改。",
+      "prerequisites": ["R03", "R17"]
+    },
+    {
+      "id": "R19", "slug": "mcp-tools", "title": "MCP 外部工具", "part": "integration", "domain": "多 Agent 平台", "status": "planned",
+      "question": "外部服务怎样进入同一工具注册与调用体系？",
+      "addition": "工具发现、命名空间、schema 映射与连接生命周期。",
+      "outcome": "锁定协议与客户端版本，用本地真实服务验证发现、调用、超时与退出。",
+      "prerequisites": ["R02", "R03", "R11"]
+    },
+    {
+      "id": "R20", "slug": "integrated-agent", "title": "完整 Agent 集成", "part": "integration", "domain": "多 Agent 平台", "status": "planned",
+      "question": "工具、策略、上下文、任务与团队怎样围绕同一个循环工作？",
+      "addition": "统一事件、累计预算和跨机制的端到端路径。",
+      "outcome": "重新验收完整任务与故障路径，分别记录模块通过与集成通过。",
+      "prerequisites": ["R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11", "R14", "R16", "R18", "R19"]
+    },
+    {
+      "id": "P01", "slug": "postgres-checkpoints", "title": "PostgreSQL 检查点", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "question": "一个模型轮次或工具步骤怎样成为可恢复的检查点？",
+      "addition": "版本化会话、逐轮和逐工具保存边界。",
+      "outcome": "用独立进程与故障注入验证恢复，并明确工具成功而保存失败的窗口。",
+      "prerequisites": ["R02", "R11", "R12"]
+    },
+    {
+      "id": "P02", "slug": "side-effect-reliability", "title": "外部操作的可靠性", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "question": "工具已产生业务结果、检查点却未保存时，怎样重放？",
+      "addition": "操作身份、业务幂等、Outbox 与对账。",
+      "outcome": "在指定故障窗口重试，核对重复调用与最终业务结果。",
+      "prerequisites": ["P01", "R17"]
+    },
+    {
+      "id": "P03", "slug": "model-evaluation", "title": "模型协议与质量评估", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "question": "协议正确与任务真正完成，分别怎样验证？",
+      "addition": "provider fixture、真实服务与固定任务集。",
+      "outcome": "分别报告协议、完成率、延迟和成本，并记录模型与实验环境。",
+      "prerequisites": ["R01", "R11", "R20"]
+    },
+    {
+      "id": "P04", "slug": "production-readiness", "title": "生产准入与演练", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "question": "实验通过以后，长期服务还需要哪些证据？",
+      "addition": "授权、迁移、版本兼容、监控与故障恢复。",
+      "outcome": "按明确环境执行负载、旧会话升级、故障接管和备份恢复演练。",
+      "prerequisites": ["P01", "P02", "P03"]
+    },
+    {
+      "id": "P05", "slug": "workflow-and-goal-control", "title": "固定工作流与目标控制", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "question": "固定业务编排与自主循环怎样结合，目标何时算完成？",
+      "addition": "工作流边界、独立目标判断与有上限的继续策略。",
+      "outcome": "区分正常返回与目标完成，验证不可完成、续跑上限和人工接管路径。",
+      "prerequisites": ["R11", "R20", "P03"]
+    }
+  ]
+}

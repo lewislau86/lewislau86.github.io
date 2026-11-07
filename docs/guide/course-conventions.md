@@ -1,6 +1,6 @@
 # 课程写作规范
 
-本站的三个系列教程（TinyLLM、mini-redis、Burn）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
+本站的系列教程（TinyLLM、mini-redis、Burn、Learn Agent by Rust）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
 
 ## 1. 网站是唯一来源
 
@@ -13,6 +13,7 @@
 | TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
 | mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
+| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/figures/`，代码与学习包后续补齐 | `learn-agent-rust-sidebar.json` | 框架与目录已建立，章节规划中 |
 
 ## 2. 文件名与 URL
 
@@ -28,6 +29,7 @@
 - 条目文字写成 `第 N 章 · 标题`。
 - 尚未成文的章节集中放进最后一个折叠分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。
 - 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表（新增章节还要在 `nodes` 里给它一个框、在 `io` 里写出本章的输入和输出）和总览页的“已成文的章节”表。
+- Learn Agent by Rust 的章节顺序、主题路径、前置关系和正文状态维护在 `scripts/learn-agent-rust-lessons.json`，运行 `python3 scripts/sync-learn-agent-rust-course.py` 更新侧栏、总览目录和学习路径的标记区。脚本只为缺失章节建立规划提纲，不覆盖已有章节正文；`--check` 检查是否过期。标为 `written` 前先完成正文与相应验证，实验状态另在章内记录。
 
 ## 4. 章节模板
 
@@ -132,6 +134,7 @@ pageClass: tinyllm-course
 
 - 图由脚本生成，不手工编辑 SVG：TinyLLM 用 `scripts/generate-tinyllm-figures.py`，mini-redis 用 `scripts/generate-mini-redis-figures.py`，Burn 用 `scripts/generate-burn-math-figures.py`。改图就改脚本，再重新运行。
 - 数据图的数据来自真实运行。需要训练记录的图，把记录保存在 `scripts/data/`，脚本只负责读取和绘制。
+- Learn Agent by Rust 自制图由 `scripts/generate-learn-agent-rust-figures.py` 生成。经许可复用的参考站原图原样保留，由 `scripts/learn-agent-rust-upstream-assets.json` 登记来源、版本校验值与许可；运行 `python3 scripts/sync-learn-agent-rust-assets.py --fetch` 同步，`--check` 检查。不要手改原始 SVG；逐图来源与上游许可保留在资源目录，正文说明原图语境。
 - 图片的替代文本写成一句完整描述，说明图中“看到了什么结论”，而不只是图名。
 - 图下紧跟一段“怎么读这张图”，指出读者应该注意的地方。
 - 配色：蓝 `#2563eb`、青 `#0f766e`、橙 `#b45309`、红 `#b91c1c`、灰 `#64748b`，浅灰底 `#f8fafc`。
