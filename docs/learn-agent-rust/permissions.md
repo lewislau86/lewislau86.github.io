@@ -4,13 +4,15 @@ description: "用独立 Rust 实验区分允许、拒绝和等待审批，把批
 prev:
   text: 第 2 章 · 工具注册与图调度
   link: /learn-agent-rust/tools-and-graph
-next: false
+next:
+  text: 第 4 章 · 生命周期与 Hooks
+  link: /learn-agent-rust/hooks
 pageClass: learn-agent-rust-course
 ---
 
 # 第 3 章：工具权限与审批
 
-[课程总览](./index.md) · [上一章：工具注册与图调度](./tools-and-graph.md) · [下一章：生命周期与 Hooks（规划中）](./hooks.md)
+[课程总览](./index.md) · [上一章：工具注册与图调度](./tools-and-graph.md) · [下一章：生命周期与 Hooks](./hooks.md)
 
 ::: tip 本章学习目标
 - 把工具请求分成允许、拒绝和等待审批三条路径。
@@ -293,4 +295,4 @@ python3 scripts/verify-agent-permissions.py --check
 
 </details>
 
-下一章：[第 4 章 · 生命周期与 Hooks](./hooks.md)（规划中），把执行前检查、执行后记录与停止处理放到清晰的扩展点中。
+下一章：[第 4 章 · 生命周期与 Hooks](./hooks.md)，把执行前检查、执行后记录与停止处理放到清晰的扩展点中。

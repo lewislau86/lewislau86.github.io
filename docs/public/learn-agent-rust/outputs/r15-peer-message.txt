@@ -1,0 +1,12 @@
+R15 | scenario=peer-message | scripted LLM + graph-flow + bounded Tokio mailboxes
+limits members=2 mailbox=2 messages=16 model_calls=16 tool_calls=8 context_bytes=16000
+receipt id=config-1 member=config status=completed
+summary=config.toml：timeout_ms 为零；需要明确其禁用或立即超时语义。同伴资料 1 条；未运行被审查项目的测试。
+receipt id=core-1 member=core status=completed
+summary=src/lib.rs：空输入会索引越界；建议返回 Option<u8>。同伴资料 0 条；未运行被审查项目的测试。
+member=config lifecycle=closed notes=1 reads=1 history_messages=6 pairs=true
+events=idle -> note:core-1-note -> busy -> idle -> closing -> closed
+member=core lifecycle=closed notes=0 reads=1 history_messages=7 pairs=true
+events=idle -> busy -> idle -> closing -> closed
+usage accepted=3 models=5 tools=3 reads=2 spawned=2 active=0 joined=2 aborted=0
+checks isolation=true source_unchanged=true shared_files=true no_write_output=true workspace_removed=true

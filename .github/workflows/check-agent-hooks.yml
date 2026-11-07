@@ -1,0 +1,52 @@
+name: Check R04 hook experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/hooks.md"
+      - "docs/public/learn-agent-rust/code/hooks.rs"
+      - "docs/public/learn-agent-rust/outputs/r04-*.txt"
+      - "docs/public/learn-agent-rust/figures/r04-*.svg"
+      - "docs/public/learn-agent-rust/hooks-lab.zip"
+      - "scripts/data/learn-agent-rust/r04-results.json"
+      - "scripts/verify-agent-hooks.py"
+      - "scripts/learn-agent-rust-hooks-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-hooks.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/hooks.md"
+      - "docs/public/learn-agent-rust/code/hooks.rs"
+      - "docs/public/learn-agent-rust/outputs/r04-*.txt"
+      - "docs/public/learn-agent-rust/figures/r04-*.svg"
+      - "docs/public/learn-agent-rust/hooks-lab.zip"
+      - "scripts/data/learn-agent-rust/r04-results.json"
+      - "scripts/verify-agent-hooks.py"
+      - "scripts/learn-agent-rust-hooks-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-hooks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  hooks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the minimum supported edition 2024 toolchain
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Verify callbacks, worker cleanup and extracted download
+        env:
+          RUSTUP_TOOLCHAIN: "1.85.0"
+        run: python scripts/verify-agent-hooks.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R04
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r04-*.svg'

@@ -38,84 +38,84 @@
       "prerequisites": ["R02"]
     },
     {
-      "id": "R04", "slug": "hooks", "title": "生命周期与 Hooks", "part": "execution", "domain": "工具与执行", "status": "planned",
+      "id": "R04", "slug": "hooks", "title": "生命周期与 Hooks", "part": "execution", "domain": "工具与执行", "status": "written",
       "question": "怎样在循环边界增加策略、记录与检查？",
       "addition": "执行前后与停止阶段的生命周期扩展点。",
       "outcome": "观察 Hook 顺序，并验证拒绝、异常和超时的传播策略。",
       "prerequisites": ["R03"]
     },
     {
-      "id": "R05", "slug": "todo-planning", "title": "可见的任务清单", "part": "context", "domain": "规划与控制", "status": "planned",
+      "id": "R05", "slug": "todo-planning", "title": "可见的任务清单", "part": "context", "domain": "规划与控制", "status": "written",
       "question": "长任务怎样记录目标、步骤和当前进度？",
       "addition": "会话内待办清单与合法状态迁移。",
       "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R06", "slug": "subagents", "title": "子 Agent 与上下文隔离", "part": "context", "domain": "规划与控制", "status": "planned",
+      "id": "R06", "slug": "subagents", "title": "子 Agent 与上下文隔离", "part": "context", "domain": "规划与控制", "status": "written",
       "question": "怎样把一次子任务放进独立的消息历史？",
       "addition": "子会话输入输出契约与父子预算。",
       "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R07", "slug": "skill-loading", "title": "按需加载技能", "part": "context", "domain": "规划与控制", "status": "planned",
+      "id": "R07", "slug": "skill-loading", "title": "按需加载技能", "part": "context", "domain": "规划与控制", "status": "written",
       "question": "怎样只在任务需要时加入专业说明？",
       "addition": "技能目录、版本与按需内容注入。",
       "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R08", "slug": "context-compaction", "title": "上下文压缩", "part": "context", "domain": "记忆管理", "status": "planned",
+      "id": "R08", "slug": "context-compaction", "title": "上下文压缩", "part": "context", "domain": "记忆管理", "status": "written",
       "question": "对话历史太长时，怎样保留继续行动需要的事实？",
       "addition": "上下文预算、裁剪与历史摘要。",
       "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
       "prerequisites": ["R01", "R07"]
     },
     {
-      "id": "R09", "slug": "memory", "title": "跨会话记忆", "part": "context", "domain": "记忆管理", "status": "planned",
+      "id": "R09", "slug": "memory", "title": "跨会话记忆", "part": "context", "domain": "记忆管理", "status": "written",
       "question": "哪些事实应当在新会话中仍然可用？",
       "addition": "有来源和版本的事实存储、提取与召回。",
       "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
       "prerequisites": ["R08"]
     },
     {
-      "id": "R10", "slug": "system-prompts", "title": "系统提示词组装", "part": "context", "domain": "规划与控制", "status": "planned",
+      "id": "R10", "slug": "system-prompts", "title": "系统提示词组装", "part": "context", "domain": "规划与控制", "status": "written",
       "question": "策略、工具、技能和环境怎样组成一次模型请求？",
       "addition": "运行时提示词组装与各部分的来源和版本。",
       "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
       "prerequisites": ["R07", "R09"]
     },
     {
-      "id": "R11", "slug": "error-recovery", "title": "错误分类与恢复", "part": "context", "domain": "规划与控制", "status": "planned",
+      "id": "R11", "slug": "error-recovery", "title": "错误分类与恢复", "part": "context", "domain": "规划与控制", "status": "written",
       "question": "什么错误值得重试，重试何时应该结束？",
       "addition": "类型化错误、有限重试、退避与累计预算。",
       "outcome": "区分临时和永久错误，验证重试或恢复后仍受总预算约束。",
       "prerequisites": ["R02", "R08"]
     },
     {
-      "id": "R12", "slug": "task-system", "title": "持久化任务系统", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R12", "slug": "task-system", "title": "持久化任务系统", "part": "tasks", "domain": "多 Agent 平台", "status": "written",
       "question": "任务依赖与执行状态怎样在进程退出后保留？",
       "addition": "业务任务身份、依赖校验、合法迁移与单执行者存储。",
       "outcome": "从新进程恢复任务，拒绝依赖环，并观察保存失败和损坏记录。",
       "prerequisites": ["R05", "R11"]
     },
     {
-      "id": "R13", "slug": "background-tasks", "title": "后台任务", "part": "tasks", "domain": "并发与调度", "status": "planned",
+      "id": "R13", "slug": "background-tasks", "title": "后台任务", "part": "tasks", "domain": "并发与调度", "status": "written",
       "question": "慢工具怎样在后台运行，同时保持可查询与可取消？",
       "addition": "有界后台执行、任务句柄、通知与资源回收。",
       "outcome": "验证启动、查询、取消、完成通知与退出清理的完整生命周期。",
       "prerequisites": ["R12"]
     },
     {
-      "id": "R14", "slug": "scheduling", "title": "定时调度", "part": "tasks", "domain": "并发与调度", "status": "planned",
+      "id": "R14", "slug": "scheduling", "title": "定时调度", "part": "tasks", "domain": "并发与调度", "status": "written",
       "question": "定时触发怎样在重启后继续，并处理重复触发？",
       "addition": "有时区的持久化调度与触发身份。",
       "outcome": "检查错过触发、重复触发和调度重启时的行为。",
       "prerequisites": ["R12", "R13"]
     },
     {
-      "id": "R15", "slug": "agent-teams", "title": "Agent 团队", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R15", "slug": "agent-teams", "title": "Agent 团队", "part": "tasks", "domain": "多 Agent 平台", "status": "written",
       "question": "多个执行者怎样分工，并保留各自的上下文？",
       "addition": "独立会话、有界邮箱与队友生命周期。",
       "outcome": "观察消息投递、队友等待与退出，明确单进程和跨进程能力范围。",

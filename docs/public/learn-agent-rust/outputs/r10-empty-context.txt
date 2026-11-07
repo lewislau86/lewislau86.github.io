@@ -1,0 +1,10 @@
+scenario=empty-context stop=answer error=none model_turns=2 reads=1 write_attempts=0 goal_verified=true
+graph=AssemblePrompt -> ModelTurn -> ExecuteTools -> AssemblePrompt -> ModelTurn
+input=1 messages=2 system=1 serialized_bytes=837 prefix_cache_hit=false
+source=policy/core version=1.0.0 placement=system text_bytes=167
+input=2 messages=4 system=1 serialized_bytes=1228 prefix_cache_hit=true
+summary_exists=false source_unchanged=true
+启动说明（来自 README）：
+项目：Rust Agent
+启动命令：cargo run --release
+环境要求：Rust 1.99.1

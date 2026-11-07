@@ -1,0 +1,695 @@
+{
+  "scope": "R09 deterministic extraction; JSON event history; real disk; separate CLI processes; no LLM or framework integration",
+  "source_sha256": "c1ed95ca60aa124c55d544b548a55b59028ef02f8981e058972e8ebc701a0393",
+  "files_sha256": {
+    "Cargo.toml": "fa629e3796be0e002c1ffed6e13c953e8f5ca7448b24d356eec9d84f8485e5d7",
+    "Cargo.lock": "2b0407b51d4683ced5ccaab51c1462e2dfa3b67f3472c9dc9806dfb16db8aaa6",
+    ".gitignore": "92232a06667b4b5c0b7aa20f1035ac18838f7035c392df92d223be0ab7f42052",
+    "README.md": "ae4b17462048cc04cb27a38f109ed7e8fcf888f8b3165236b01a512dc4975e34",
+    "src/main.rs": "c1ed95ca60aa124c55d544b548a55b59028ef02f8981e058972e8ebc701a0393"
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "contract_tests_passed": 8,
+  "scenarios": [
+    {
+      "name": "empty",
+      "processes": 1,
+      "steps": [
+        {
+          "label": "recall new-process project-a",
+          "status": "missing",
+          "error": null,
+          "revision": 0,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "9f1e11350ef4d67068c6c94451870198ad51a712d706e872984ed38012456cbc"
+    },
+    {
+      "name": "new-process",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 1,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 1,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "52662f5a57710d249b1222cd513ed456490d75b245d5fcb55443bbf297d6bc83"
+    },
+    {
+      "name": "update",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-C expected=1",
+          "status": "saved",
+          "error": null,
+          "revision": 2,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 2,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "English"
+            },
+            "key": "reply_language",
+            "revision": 2,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=English",
+              "role": "user",
+              "session": "session-C",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "2f5939d299460db44f21752c23cc4502bf7c10a4bd211dd725a044a58623d75a"
+    },
+    {
+      "name": "stale",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-C expected=0",
+          "status": "error",
+          "error": "revision_conflict",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 1,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 1,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "663a1781c2f195d4aef37a64f773f1fa7eda43f84753f261d4bd66839cac8911"
+    },
+    {
+      "name": "repeat",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-B expected=1",
+          "status": "unchanged",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "21dd89bddb3a20eb2b23993c8b1cf310bce5587756242bc5cc06cba5e066ed4e"
+    },
+    {
+      "name": "scope",
+      "processes": 5,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-b",
+          "status": "missing",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-B expected=1",
+          "status": "saved",
+          "error": null,
+          "revision": 2,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 2,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 1,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        },
+        {
+          "label": "recall new-process project-b",
+          "status": "found",
+          "error": null,
+          "revision": 2,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "English"
+            },
+            "key": "reply_language",
+            "revision": 2,
+            "scope": "project-b",
+            "source": {
+              "quote": "请记住：reply_language=English",
+              "role": "user",
+              "session": "session-B",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "663f5f5a63c2980ba870704a465dab960a691ffa270417819f8515b481e2dec8"
+    },
+    {
+      "name": "forget",
+      "processes": 7,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 1,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 1,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        },
+        {
+          "label": "apply session-C expected=1",
+          "status": "saved",
+          "error": null,
+          "revision": 2,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 2,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "English"
+            },
+            "key": "reply_language",
+            "revision": 2,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=English",
+              "role": "user",
+              "session": "session-C",
+              "turn": 1
+            }
+          }
+        },
+        {
+          "label": "apply session-D expected=2",
+          "status": "saved",
+          "error": null,
+          "revision": 3,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "missing",
+          "error": null,
+          "revision": 3,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=3",
+          "status": "error",
+          "error": "fact_missing",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "bf2af44418e0a93757dad753f1ad408f8a4b55951bb521ebdcecd8f902f3e77e"
+    },
+    {
+      "name": "no-intent",
+      "processes": 1,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "error",
+          "error": "no_memory_intent",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "b727c7eea79f4b3386eb6cfab1daacb1aa4c37327b2b1689661857752d042bb6"
+    },
+    {
+      "name": "tool-origin",
+      "processes": 1,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "error",
+          "error": "untrusted_origin",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "3c5ab09bfb97b21415e6c3644ed700b1fe933d116094b8b5759ca0252e85a6d3"
+    },
+    {
+      "name": "unknown-key",
+      "processes": 1,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "error",
+          "error": "unknown_key",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "f5c97dfc3534999b373299ff0dbd672f9d394d1acd5be2a0845b0919c4e8f4b2"
+    },
+    {
+      "name": "corrupt",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "b5f1ed3681d9b13f239705b23f50b46c643d7eb591dce18eedee1cdcdb7e7967"
+    },
+    {
+      "name": "truncated",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "b5f1ed3681d9b13f239705b23f50b46c643d7eb591dce18eedee1cdcdb7e7967"
+    },
+    {
+      "name": "schema",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "unsupported_schema",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "unsupported_schema",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "21fff99f2d7d48829dde02d9ec2d5a279eea24971698dbc1b710fad370a759e6"
+    },
+    {
+      "name": "revision-gap",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "invalid_revision",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "invalid_revision",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "7cdb1781dbfdcf23dc9ec6b6764c43161b46aa0fc37db482be01489388cd8e66"
+    },
+    {
+      "name": "forged-record",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "invalid_record",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "invalid_record",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "b699f323424ee5403f28e7aea034f9053b3337536e209c71fc80f808146b4e76"
+    },
+    {
+      "name": "unknown-field",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "corrupt_store",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "b5f1ed3681d9b13f239705b23f50b46c643d7eb591dce18eedee1cdcdb7e7967"
+    },
+    {
+      "name": "lock",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "store_busy",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "043408156b5c9cf70ef632e19afeb76adea954e635ff4363b7f8425de7914157"
+    },
+    {
+      "name": "pending",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "pending_unavailable",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "2abeb632f3c781722c476d07b7f12b85fccd7bc18358cb259932bfa02d184b07"
+    },
+    {
+      "name": "save-failure",
+      "processes": 3,
+      "steps": [
+        {
+          "label": "apply session-A expected=0",
+          "status": "saved",
+          "error": null,
+          "revision": 1,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=1",
+          "status": "error",
+          "error": "injected_before_rename",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 1,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 1,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "a6d7395ae0d451bac8b7ac051da4bc7fdac7b8e0c87a8f69039ef44b990cc7de"
+    },
+    {
+      "name": "size-limit",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "recall new-process project-a",
+          "status": "error",
+          "error": "size_limit",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "apply session-A expected=0",
+          "status": "error",
+          "error": "size_limit",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "2b3c1cd809fea6e87a0cbdb38d4e5fcc7df87d827fe0d642594e98ed74e962ae"
+    },
+    {
+      "name": "event-limit",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "apply session-A expected=64",
+          "status": "error",
+          "error": "event_limit",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "recall new-process project-a",
+          "status": "found",
+          "error": null,
+          "revision": 64,
+          "fact": {
+            "action": {
+              "kind": "set",
+              "value": "中文"
+            },
+            "key": "reply_language",
+            "revision": 64,
+            "scope": "project-a",
+            "source": {
+              "quote": "请记住：reply_language=中文",
+              "role": "user",
+              "session": "session-A",
+              "turn": 1
+            }
+          }
+        }
+      ],
+      "stdout_sha256": "1a8ef40972dbbe7c89efd636df863915e7247026d6dc8d32a9926a37c53cddd5"
+    },
+    {
+      "name": "invalid-cli",
+      "processes": 2,
+      "steps": [
+        {
+          "label": "invalid command",
+          "status": "error",
+          "error": "usage",
+          "revision": null,
+          "fact": null
+        },
+        {
+          "label": "extra argument",
+          "status": "error",
+          "error": "usage",
+          "revision": null,
+          "fact": null
+        }
+      ],
+      "stdout_sha256": "e52c71882a90ebe676ac3f7fdce4d2c1d70937b0dfa3e1e493a3627d3068eeed"
+    }
+  ]
+}

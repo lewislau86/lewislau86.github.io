@@ -1,0 +1,12 @@
+resolve America/New_York 2026-11-01 01:30
+{"chosen":"2026-11-01T05:30:00Z","date":"2026-11-01","local_time":"01:30","mapping":"fold","status":"resolved","utc":["2026-11-01T05:30:00Z","2026-11-01T06:30:00Z"],"zone":"America/New_York"}
+init DB
+{"schema":1,"status":"initialized"}
+add DB report America/New_York 01:30 coalesce --start 2026-11-01T04:00:00Z
+{"cursor":"2026-11-01T04:00:00Z","id":"report","local_time":"01:30","misfire":"coalesce","status":"added","timezone":"America/New_York"}
+tick DB 2026-11-01T05:30:00Z
+{"now":"2026-11-01T05:30:00Z","reports":[{"before":"2026-11-01T04:00:00Z","cursor":"2026-11-01T05:30:00Z","discarded":0,"due_count":1,"id":"report","inserted":1,"selected":"2026-11-01T05:30:00Z"}],"status":"committed"}
+tick DB 2026-11-01T06:30:00Z
+{"now":"2026-11-01T06:30:00Z","reports":[{"before":"2026-11-01T05:30:00Z","cursor":"2026-11-01T06:30:00Z","discarded":0,"due_count":0,"id":"report","inserted":0,"selected":null}],"status":"committed"}
+show DB
+{"schedules":[{"cursor":"2026-11-01T06:30:00Z","id":"report","local_time":"01:30","misfire":"coalesce","timezone":"America/New_York"}],"status":"snapshot","tasks":[{"due":"2026-11-01T05:30:00Z","kind":"daily_report","schedule_id":"report","state":"queued","trigger_id":"report@1793511000"}]}

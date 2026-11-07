@@ -1,0 +1,52 @@
+name: Check Agent memory tutorial
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/memory.md"
+      - "docs/public/learn-agent-rust/code/memory/**"
+      - "docs/public/learn-agent-rust/outputs/r09-*"
+      - "docs/public/learn-agent-rust/figures/r09-*"
+      - "docs/public/learn-agent-rust/memory-lab.zip"
+      - "scripts/verify-agent-memory.py"
+      - "scripts/learn-agent-rust-memory-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r09-results.json"
+      - ".github/workflows/check-agent-memory.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/memory.md"
+      - "docs/public/learn-agent-rust/code/memory/**"
+      - "docs/public/learn-agent-rust/outputs/r09-*"
+      - "docs/public/learn-agent-rust/figures/r09-*"
+      - "docs/public/learn-agent-rust/memory-lab.zip"
+      - "scripts/verify-agent-memory.py"
+      - "scripts/learn-agent-rust-memory-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r09-results.json"
+      - ".github/workflows/check-agent-memory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust and rustfmt
+        run: rustup toolchain install stable --profile minimal --component rustfmt
+      - name: Verify independent processes, contracts, excerpts and extracted download
+        run: python3 scripts/verify-agent-memory.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson R09
+          git diff --exit-code -- docs/public/learn-agent-rust/figures/r09-*.svg

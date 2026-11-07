@@ -1,0 +1,3800 @@
+{
+  "scope": "R05 session todo mechanics; scripted model; real temporary README reads; memory only; no framework integration",
+  "source_sha256": {
+    "Cargo.toml": "5b7e5d9e103fe6e8ed7c40f7de3ca7d30222fab952525b31dd6129a7164fcffe",
+    "Cargo.lock": "4cf64d81ad783a4fe184a48434d602243d7bdbbf9775a9218c7953dcb971d04c",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "README.md": "0323963cce8b3a867344c1a2dcb646971e0ab855dcac1ee437b9daef66d98a21",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "src/main.rs": "2021016e6a2a52fcd600980a5c96fe6f624c5305126e70ba7cccf60b6e6d0227"
+  },
+  "archive_sha256": "c4e80ac09a0f072afeaaf9d5fece7d00ca57a0268508decca0e1d236f1aebe01",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "scenarios": [
+    {
+      "all_completed": true,
+      "answer": "启动说明：\n项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n",
+      "goal_verified": true,
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-2",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-2",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"path\":\"README.md\"}",
+            "call_id": "call-3",
+            "tool": "read_file"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-3",
+            "code": "ok",
+            "data": {
+              "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-4",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-4",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 3
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+            "call_id": "call-5",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-5",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "completed"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "in_progress"
+                }
+              ],
+              "revision": 4
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":4,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"completed\"}]}",
+            "call_id": "call-6",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-6",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "completed"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "completed"
+                }
+              ],
+              "revision": 5
+            },
+            "ok": true
+          },
+          "role": "tool"
+        }
+      ],
+      "inputs": [
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [],
+            "revision": 0
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "pending"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 1
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"path\":\"README.md\"}",
+                "call_id": "call-3",
+                "tool": "read_file"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"path\":\"README.md\"}",
+                "call_id": "call-3",
+                "tool": "read_file"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "in_progress"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 3
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"path\":\"README.md\"}",
+                "call_id": "call-3",
+                "tool": "read_file"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+                "call_id": "call-5",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-5",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "in_progress"
+                    }
+                  ],
+                  "revision": 4
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "completed"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "in_progress"
+              }
+            ],
+            "revision": 4
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"path\":\"README.md\"}",
+                "call_id": "call-3",
+                "tool": "read_file"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+                "call_id": "call-5",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-5",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "in_progress"
+                    }
+                  ],
+                  "revision": 4
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":4,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"completed\"}]}",
+                "call_id": "call-6",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-6",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "completed"
+                    }
+                  ],
+                  "revision": 5
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "completed"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "completed"
+              }
+            ],
+            "revision": 5
+          }
+        }
+      ],
+      "model_turns": 7,
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "completed"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "completed"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "completed"
+          }
+        ],
+        "revision": 5
+      },
+      "reads": 1,
+      "scenario": "normal",
+      "stop": "answer",
+      "tool_calls": 6
+    },
+    {
+      "all_completed": true,
+      "answer": "清单已完成，但缺少 README 读取证据。",
+      "goal_verified": false,
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-2",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-2",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{}",
+            "call_id": "call-3",
+            "tool": "todo_read"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-3",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-4",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-4",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 3
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+            "call_id": "call-5",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-5",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "completed"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "in_progress"
+                }
+              ],
+              "revision": 4
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":4,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"completed\"}]}",
+            "call_id": "call-6",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-6",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "completed"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "completed"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "completed"
+                }
+              ],
+              "revision": 5
+            },
+            "ok": true
+          },
+          "role": "tool"
+        }
+      ],
+      "inputs": [
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [],
+            "revision": 0
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "pending"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 1
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{}",
+                "call_id": "call-3",
+                "tool": "todo_read"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{}",
+                "call_id": "call-3",
+                "tool": "todo_read"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "in_progress"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 3
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{}",
+                "call_id": "call-3",
+                "tool": "todo_read"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+                "call_id": "call-5",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-5",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "in_progress"
+                    }
+                  ],
+                  "revision": 4
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "completed"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "in_progress"
+              }
+            ],
+            "revision": 4
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{}",
+                "call_id": "call-3",
+                "tool": "todo_read"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-3",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":2,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"in_progress\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-4",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-4",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 3
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":3,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"in_progress\"}]}",
+                "call_id": "call-5",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-5",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "in_progress"
+                    }
+                  ],
+                  "revision": 4
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":4,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"completed\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"completed\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"completed\"}]}",
+                "call_id": "call-6",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-6",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "completed"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "completed"
+                    }
+                  ],
+                  "revision": 5
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "completed"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "completed"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "completed"
+              }
+            ],
+            "revision": 5
+          }
+        }
+      ],
+      "model_turns": 7,
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "completed"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "completed"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "completed"
+          }
+        ],
+        "revision": 5
+      },
+      "reads": 0,
+      "scenario": "claims-only",
+      "stop": "answer",
+      "tool_calls": 6
+    },
+    {
+      "all_completed": false,
+      "answer": null,
+      "goal_verified": false,
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-2",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-2",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"path\":\"README.md\"}",
+            "call_id": "call-3",
+            "tool": "read_file"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-3",
+            "code": "read_error",
+            "data": null,
+            "ok": false
+          },
+          "role": "tool"
+        }
+      ],
+      "inputs": [
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [],
+            "revision": 0
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "pending"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 1
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        }
+      ],
+      "model_turns": 3,
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "in_progress"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "reads": 0,
+      "scenario": "read-error",
+      "stop": "tool_error",
+      "tool_calls": 3
+    },
+    {
+      "all_completed": false,
+      "answer": null,
+      "goal_verified": false,
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-2",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-2",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"path\":\"README.md\"}",
+            "call_id": "call-3",
+            "tool": "read_file"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-3",
+            "code": "ok",
+            "data": {
+              "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+            },
+            "ok": true
+          },
+          "role": "tool"
+        }
+      ],
+      "inputs": [
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [],
+            "revision": 0
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "pending"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 1
+          }
+        },
+        {
+          "goal": "读取 README，整理启动说明",
+          "history": [
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-1",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-1",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 1
+                },
+                "ok": true
+              },
+              "role": "tool"
+            },
+            {
+              "call": {
+                "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+                "call_id": "call-2",
+                "tool": "todo_write"
+              },
+              "role": "assistant"
+            },
+            {
+              "result": {
+                "call_id": "call-2",
+                "code": "ok",
+                "data": {
+                  "goal": "读取 README，整理启动说明",
+                  "items": [
+                    {
+                      "content": "读取 README",
+                      "id": "read",
+                      "status": "in_progress"
+                    },
+                    {
+                      "content": "整理启动说明",
+                      "id": "summarize",
+                      "status": "pending"
+                    },
+                    {
+                      "content": "核对说明与原文",
+                      "id": "check",
+                      "status": "pending"
+                    }
+                  ],
+                  "revision": 2
+                },
+                "ok": true
+              },
+              "role": "tool"
+            }
+          ],
+          "plan": {
+            "goal": "读取 README，整理启动说明",
+            "items": [
+              {
+                "content": "读取 README",
+                "id": "read",
+                "status": "in_progress"
+              },
+              {
+                "content": "整理启动说明",
+                "id": "summarize",
+                "status": "pending"
+              },
+              {
+                "content": "核对说明与原文",
+                "id": "check",
+                "status": "pending"
+              }
+            ],
+            "revision": 2
+          }
+        }
+      ],
+      "model_turns": 3,
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "in_progress"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "reads": 1,
+      "scenario": "budget-stop",
+      "stop": "turn_limit",
+      "tool_calls": 3
+    },
+    {
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [],
+        "revision": 0
+      },
+      "previous_revision": 5,
+      "scenario": "fresh-session"
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "multiple_active",
+      "result": {
+        "call_id": "candidate",
+        "code": "multiple_active",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "two-active",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "invalid_transition",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_transition",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "skip-completion",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "invalid_arguments",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_arguments",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "unknown-status",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "duplicate_id",
+      "result": {
+        "call_id": "candidate",
+        "code": "duplicate_id",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "duplicate-id",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "invalid_content",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_content",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "empty-content",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "item_count",
+      "result": {
+        "call_id": "candidate",
+        "code": "item_count",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "too-many",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "removed_item",
+      "result": {
+        "call_id": "candidate",
+        "code": "removed_item",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "remove-item",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "content_changed",
+      "result": {
+        "call_id": "candidate",
+        "code": "content_changed",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "changed-content",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "revision_conflict",
+      "result": {
+        "call_id": "candidate",
+        "code": "revision_conflict",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "stale-revision",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "completed"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 3
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "completed"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 3
+      },
+      "expected_code": "invalid_transition",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_transition",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "reopen-completed",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          },
+          {
+            "content": "补查环境要求",
+            "id": "verify-env",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "ok",
+      "result": {
+        "call_id": "candidate",
+        "code": "ok",
+        "data": {
+          "goal": "读取 README，整理启动说明",
+          "items": [
+            {
+              "content": "读取 README",
+              "id": "read",
+              "status": "pending"
+            },
+            {
+              "content": "整理启动说明",
+              "id": "summarize",
+              "status": "pending"
+            },
+            {
+              "content": "核对说明与原文",
+              "id": "check",
+              "status": "pending"
+            },
+            {
+              "content": "补查环境要求",
+              "id": "verify-env",
+              "status": "pending"
+            }
+          ],
+          "revision": 2
+        },
+        "ok": true
+      },
+      "scenario": "append-step",
+      "summary_exists": false,
+      "unchanged": false
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "in_progress"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 3
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "in_progress"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "expected_code": "ok",
+      "result": {
+        "call_id": "candidate",
+        "code": "ok",
+        "data": {
+          "goal": "读取 README，整理启动说明",
+          "items": [
+            {
+              "content": "读取 README",
+              "id": "read",
+              "status": "pending"
+            },
+            {
+              "content": "整理启动说明",
+              "id": "summarize",
+              "status": "in_progress"
+            },
+            {
+              "content": "核对说明与原文",
+              "id": "check",
+              "status": "pending"
+            }
+          ],
+          "revision": 3
+        },
+        "ok": true
+      },
+      "scenario": "yield-step",
+      "summary_exists": false,
+      "unchanged": false
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          },
+          {
+            "content": "写入 summary.txt",
+            "id": "write",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          },
+          {
+            "content": "写入 summary.txt",
+            "id": "write",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      },
+      "expected_code": "permission_denied",
+      "result": {
+        "call_id": "candidate",
+        "code": "permission_denied",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "permission-denied",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "invalid_arguments",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_arguments",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "invalid-json",
+      "summary_exists": false,
+      "unchanged": true
+    },
+    {
+      "after": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "before": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      },
+      "expected_code": "invalid_arguments",
+      "result": {
+        "call_id": "candidate",
+        "code": "invalid_arguments",
+        "data": null,
+        "ok": false
+      },
+      "scenario": "unknown-field",
+      "summary_exists": false,
+      "unchanged": true
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+name: Check R10 prompt assembly experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/system-prompts.md"
+      - "docs/public/learn-agent-rust/code/system-prompts/**"
+      - "docs/public/learn-agent-rust/outputs/r10-*"
+      - "docs/public/learn-agent-rust/system-prompts.zip"
+      - "scripts/data/learn-agent-rust/r10-results.json"
+      - "scripts/verify-agent-prompts.py"
+      - ".github/workflows/check-agent-prompts.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/system-prompts.md"
+      - "docs/public/learn-agent-rust/code/system-prompts/**"
+      - "docs/public/learn-agent-rust/outputs/r10-*"
+      - "docs/public/learn-agent-rust/system-prompts.zip"
+      - "scripts/data/learn-agent-rust/r10-results.json"
+      - "scripts/verify-agent-prompts.py"
+      - ".github/workflows/check-agent-prompts.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prompts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Verify scenarios, input contracts and final download
+        run: python scripts/verify-agent-prompts.py --check

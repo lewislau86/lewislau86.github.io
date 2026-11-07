@@ -1,0 +1,1517 @@
+{
+  "scope": "R14 fixed-clock scans, named timezones, real SQLite transactions and separate CLI processes; bounded real-clock poll; no Agent or task execution",
+  "files_sha256": {
+    "Cargo.toml": "6a84f6a22d068f7f5c86b3b6921d64011c972cb4de25f660456fbd9d93d1408d",
+    "Cargo.lock": "c8e32c1cf80d8f137bd5d75b25dbe3229dc6f21aa12b0d9bd9baaea333cb3130",
+    ".gitignore": "ee79c8e3eee39a018348904ff412ace3207aa5e5ec2077a7494ea79921779101",
+    "README.md": "4a970a0f0a43957f4119711cc98d4d646abffcd26f59ad2f3dda973a4cbeff26",
+    "src/main.rs": "8c6b26eb7af9f187a2be87bf3b2c27c4b4ee93d1d77c859c07695478471d2a22",
+    "src/scheduler.rs": "86d1061440cb37f8a05857429ba5cc18d8a77b926e3ed6cbd04e00b7a50228e7"
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "libraries": {
+    "sqlite": "3.50.2",
+    "status": "versions",
+    "tzdb": "2025b"
+  },
+  "contract_tests_passed": 10,
+  "scenarios": [
+    {
+      "name": "normal",
+      "processes": 6,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T00:59:59Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T00:59:59Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:59Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T01:00:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "7668672c3d499a47794072256e89b7dcd3c707d8ec5ed0700b9bde08a829dada"
+    },
+    {
+      "name": "restart",
+      "processes": 6,
+      "queued": 2,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        },
+        {
+          "now": "2026-11-08T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T01:00:00Z",
+              "cursor": "2026-11-08T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-08T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-08T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            },
+            {
+              "due": "2026-11-08T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794099600"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "21622faad3ddbf3e6a53ba501e3844366a2374c8cad132655b914074f7136432"
+    },
+    {
+      "name": "coalesce",
+      "processes": 4,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-06T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-08T01:05:00Z",
+          "reports": [
+            {
+              "before": "2026-11-06T00:59:00Z",
+              "cursor": "2026-11-08T01:05:00Z",
+              "discarded": 2,
+              "due_count": 3,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-08T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-08T01:05:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-08T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794099600"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "9d2f92785fa2fe77f78d2db09f978d98f7f3237ad9f8360859e0c46b9f5d90b1"
+    },
+    {
+      "name": "skip",
+      "processes": 4,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-06T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "skip",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-08T01:05:00Z",
+          "reports": [
+            {
+              "before": "2026-11-06T00:59:00Z",
+              "cursor": "2026-11-08T01:05:00Z",
+              "discarded": 3,
+              "due_count": 3,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-08T01:05:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "skip",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "b52ec6927a69ea4f1031bc64e8b13982357beafcad14bbf458393109397515f0"
+    },
+    {
+      "name": "grace",
+      "processes": 4,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "skip",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T01:01:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:01:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:01:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "skip",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "7e9fe4df3891efb7fda16e6444b5ab8b7ca48d655ed4f5a86f59d1983c32a9e7"
+    },
+    {
+      "name": "grace-expired",
+      "processes": 4,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "skip",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T01:01:01Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:01:01Z",
+              "discarded": 1,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:01:01Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "skip",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "833ec816bff1ff01a92693227964a6df824e41840a0280a773c18745adf1a6ef"
+    },
+    {
+      "name": "not-due",
+      "processes": 4,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T00:59:59Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T00:59:59Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:59Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "8ee95f182c16d691e68341df4b4da0e5b197ac0d25d1186ca3db3f65ff5f4163"
+    },
+    {
+      "name": "dst-gap",
+      "processes": 5,
+      "queued": 0,
+      "steps": [
+        {
+          "chosen": null,
+          "date": "2026-03-08",
+          "local_time": "02:30",
+          "mapping": "gap",
+          "status": "resolved",
+          "utc": [],
+          "zone": "America/New_York"
+        },
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-03-08T05:00:00Z",
+          "id": "report",
+          "local_time": "02:30",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "America/New_York"
+        },
+        {
+          "now": "2026-03-09T03:59:59Z",
+          "reports": [
+            {
+              "before": "2026-03-08T05:00:00Z",
+              "cursor": "2026-03-09T03:59:59Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-03-09T03:59:59Z",
+              "id": "report",
+              "local_time": "02:30",
+              "misfire": "coalesce",
+              "timezone": "America/New_York"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "6e25caa4ee9be8d8cf592aee3dd70c84c4a7d80db4b9d909da6c2ee6cafb5ddd"
+    },
+    {
+      "name": "dst-fold",
+      "processes": 6,
+      "queued": 1,
+      "steps": [
+        {
+          "chosen": "2026-11-01T05:30:00Z",
+          "date": "2026-11-01",
+          "local_time": "01:30",
+          "mapping": "fold",
+          "status": "resolved",
+          "utc": [
+            "2026-11-01T05:30:00Z",
+            "2026-11-01T06:30:00Z"
+          ],
+          "zone": "America/New_York"
+        },
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-01T04:00:00Z",
+          "id": "report",
+          "local_time": "01:30",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "America/New_York"
+        },
+        {
+          "now": "2026-11-01T05:30:00Z",
+          "reports": [
+            {
+              "before": "2026-11-01T04:00:00Z",
+              "cursor": "2026-11-01T05:30:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-01T05:30:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "now": "2026-11-01T06:30:00Z",
+          "reports": [
+            {
+              "before": "2026-11-01T05:30:00Z",
+              "cursor": "2026-11-01T06:30:00Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-01T06:30:00Z",
+              "id": "report",
+              "local_time": "01:30",
+              "misfire": "coalesce",
+              "timezone": "America/New_York"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-01T05:30:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1793511000"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "6a6ce2c19af792f507691d5fe5f2288a353ea3a6fbe10f2413329c9ba8f25548"
+    },
+    {
+      "name": "rollback",
+      "processes": 7,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "injected_after_insert",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "10d6cb7c70c8c01180869c27f74a48619e2f71aba0611d3bd38641b301c95bda"
+    },
+    {
+      "name": "exit-before-commit",
+      "processes": 7,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "status": "process_exit",
+          "code": 73
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "839a54c9003fd5b138e8c2dc30b52debe83c9b07f0f149161896585164cedef0"
+    },
+    {
+      "name": "exit-after-commit",
+      "processes": 6,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "status": "process_exit",
+          "code": 74
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T01:00:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 0,
+              "id": "report",
+              "inserted": 0,
+              "selected": null
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "f9ff5444105bc3da14b745d481dc6dec6c085ef300605a83c07cacf8ef99bd15"
+    },
+    {
+      "name": "duplicate-identity",
+      "processes": 5,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 0,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "c99957572e224188ac98b31b7da2d0b645417448b775d7791cd6c6ac634d4504"
+    },
+    {
+      "name": "clock-regression",
+      "processes": 5,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "clock_regression",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "a7981ed6e0e1d7a0d98dac6fbe9b2937c1a8638bb696e402f6d75fc5a393d1b8"
+    },
+    {
+      "name": "window-limit",
+      "processes": 5,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "scan_window_limit",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "09397e94e1454f9818b2d15de90a847802566b6252fc2b0dee4ca4e1ea4e3397"
+    },
+    {
+      "name": "rollback-all",
+      "processes": 6,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "a-valid",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "cursor": "2026-11-07T02:00:00Z",
+          "id": "z-future",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "a-valid",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            },
+            {
+              "cursor": "2026-11-07T02:00:00Z",
+              "id": "z-future",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "clock_regression",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "a-valid",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            },
+            {
+              "cursor": "2026-11-07T02:00:00Z",
+              "id": "z-future",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "88181df0dd0d9a586940ac719d238c3d68b384d49bffec3a0184b1b1aa3bc3aa"
+    },
+    {
+      "name": "busy",
+      "processes": 7,
+      "queued": 1,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "store_busy",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "now": "2026-11-07T01:00:00Z",
+          "reports": [
+            {
+              "before": "2026-11-07T00:59:00Z",
+              "cursor": "2026-11-07T01:00:00Z",
+              "discarded": 0,
+              "due_count": 1,
+              "id": "report",
+              "inserted": 1,
+              "selected": "2026-11-07T01:00:00Z"
+            }
+          ],
+          "status": "committed"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T01:00:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": [
+            {
+              "due": "2026-11-07T01:00:00Z",
+              "kind": "daily_report",
+              "schedule_id": "report",
+              "state": "queued",
+              "trigger_id": "report@1794013200"
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "30ae71ab79effeef6d716fd6cd85280c78c3ba181a36ee5a0916ccae738066fa"
+    },
+    {
+      "name": "duplicate-schedule",
+      "processes": 5,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "duplicate_schedule",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "9972b39e6df395800dc292849dbbd6044acace44e82c74dee45fa9a4afc31740"
+    },
+    {
+      "name": "invalid-config",
+      "processes": 7,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "schedules": [],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "invalid_timezone",
+          "status": "error"
+        },
+        {
+          "error": "invalid_local_time",
+          "status": "error"
+        },
+        {
+          "error": "invalid_id",
+          "status": "error"
+        },
+        {
+          "error": "invalid_misfire",
+          "status": "error"
+        },
+        {
+          "schedules": [],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "f04a01445409965a5129ee885101e3fda679240b10a6b65892695248597dddea"
+    },
+    {
+      "name": "invalid-time",
+      "processes": 7,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "invalid_timestamp",
+          "status": "error"
+        },
+        {
+          "error": "unsupported_timestamp",
+          "status": "error"
+        },
+        {
+          "error": "unsupported_timestamp",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "0c024511c361b3ca361ad31f2b63d21635104b23cd59904aac8ef63f5799a6b4"
+    },
+    {
+      "name": "missing",
+      "processes": 1,
+      "queued": null,
+      "steps": [
+        {
+          "error": "database_error",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "8865b7aaea39387fb42562f83eb6aed2dd4c437c5f90f81a4a5f113d2c83d318"
+    },
+    {
+      "name": "corrupt",
+      "processes": 1,
+      "queued": null,
+      "steps": [
+        {
+          "error": "database_error",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "c9317f3b1e6155b41dffd934e0e78a7f866e7f759eea8b087d736fdb3785404c"
+    },
+    {
+      "name": "schema",
+      "processes": 3,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "error": "unsupported_schema",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "e50d58b4bfac38d2d401d93cd906e98dbf3a07220c7ee66c79a19bcd7b04a6bf"
+    },
+    {
+      "name": "invalid-cursor",
+      "processes": 4,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "error": "invalid_cursor",
+          "status": "error"
+        },
+        {
+          "error": "invalid_cursor",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "50beee95f4a40f0fd318233957ad4e06363f0fe6da49e26a594ea0b833201120"
+    },
+    {
+      "name": "queue-limit",
+      "processes": 3,
+      "queued": 4096,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "error": "queue_limit",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "7708781bba6f1e840d93e266585e74bc349fa4841235d8d6a271ebc845845e78"
+    },
+    {
+      "name": "invalid-cli",
+      "processes": 9,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "cursor": "2026-11-07T00:59:00Z",
+          "id": "report",
+          "local_time": "09:00",
+          "misfire": "coalesce",
+          "status": "added",
+          "timezone": "Asia/Shanghai"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        },
+        {
+          "error": "database_exists",
+          "status": "error"
+        },
+        {
+          "error": "usage",
+          "status": "error"
+        },
+        {
+          "error": "usage",
+          "status": "error"
+        },
+        {
+          "error": "usage",
+          "status": "error"
+        },
+        {
+          "error": "invalid_ticks",
+          "status": "error"
+        },
+        {
+          "schedules": [
+            {
+              "cursor": "2026-11-07T00:59:00Z",
+              "id": "report",
+              "local_time": "09:00",
+              "misfire": "coalesce",
+              "timezone": "Asia/Shanghai"
+            }
+          ],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "4ab6068f62056dcbf86caa8b50e14b0443cd3d96b660706e54cec5ba372dc258"
+    },
+    {
+      "name": "real-clock-poll",
+      "processes": 3,
+      "queued": 0,
+      "steps": [
+        {
+          "schema": 1,
+          "status": "initialized"
+        },
+        {
+          "status": "polling_stopped",
+          "ticks": 2
+        },
+        {
+          "schedules": [],
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "da16b5a7e24bcc33adfe5b5a5b61601b7e37842a96f6ff6c0a80a17389e67e43"
+    }
+  ]
+}

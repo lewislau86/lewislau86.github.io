@@ -1,0 +1,10 @@
+resolve America/New_York 2026-03-08 02:30
+{"chosen":null,"date":"2026-03-08","local_time":"02:30","mapping":"gap","status":"resolved","utc":[],"zone":"America/New_York"}
+init DB
+{"schema":1,"status":"initialized"}
+add DB report America/New_York 02:30 coalesce --start 2026-03-08T05:00:00Z
+{"cursor":"2026-03-08T05:00:00Z","id":"report","local_time":"02:30","misfire":"coalesce","status":"added","timezone":"America/New_York"}
+tick DB 2026-03-09T03:59:59Z
+{"now":"2026-03-09T03:59:59Z","reports":[{"before":"2026-03-08T05:00:00Z","cursor":"2026-03-09T03:59:59Z","discarded":0,"due_count":0,"id":"report","inserted":0,"selected":null}],"status":"committed"}
+show DB
+{"schedules":[{"cursor":"2026-03-09T03:59:59Z","id":"report","local_time":"02:30","misfire":"coalesce","timezone":"America/New_York"}],"status":"snapshot","tasks":[]}

@@ -1,0 +1,13 @@
+scenario=resume-cooldown
+clock=virtual attempt_duration_ms=10 jitter=disabled
+limits calls=6 wait_ms=600 deadline_ms=2000 max_attempts=3
+trace[0] attempt call_id=read-1 attempt=1 started_ms=0
+trace[1] failure call_id=read-1 kind=Transient { retry_after_ms: None }
+trace[2] schedule call_id=read-1 delay_ms=100 due_ms=110
+trace[3] pause attempts=1 calls=1 waited_ms=0 due_ms=110
+trace[4] wake call_id=read-1 now_ms=110
+trace[5] attempt call_id=read-1 attempt=2 started_ms=110
+trace[6] result call_id=read-1 status=completed
+last_failure=Some(Transient { retry_after_ms: None })
+read_value_matches=true
+stats stop=completed calls=2 last_attempts=2 waited_ms=100 now_ms=120 results=1 logical_calls=1 reads=1 appends=0 lines=0 paused=true

@@ -1,0 +1,10 @@
+apply session-A expected=0
+{"revision":1,"status":"saved"}
+recall new-process project-b
+{"fact":null,"revision":1,"status":"missing"}
+apply session-B expected=1
+{"revision":2,"status":"saved"}
+recall new-process project-a
+{"fact":{"action":{"kind":"set","value":"中文"},"key":"reply_language","revision":1,"scope":"project-a","source":{"quote":"请记住：reply_language=中文","role":"user","session":"session-A","turn":1}},"revision":2,"status":"found"}
+recall new-process project-b
+{"fact":{"action":{"kind":"set","value":"English"},"key":"reply_language","revision":2,"scope":"project-b","source":{"quote":"请记住：reply_language=English","role":"user","session":"session-B","turn":1}},"revision":2,"status":"found"}

@@ -1,0 +1,9 @@
+scenario=append-unknown
+clock=virtual attempt_duration_ms=10 jitter=disabled
+limits calls=6 wait_ms=600 deadline_ms=2000 max_attempts=3
+trace[0] attempt call_id=append-1 attempt=1 started_ms=0
+trace[1] failure call_id=append-1 kind=OutcomeUnknown
+trace[2] result call_id=append-1 status=needs_reconciliation
+last_failure=Some(OutcomeUnknown)
+read_value_matches=false
+stats stop=needs_reconciliation calls=1 last_attempts=1 waited_ms=0 now_ms=10 results=1 logical_calls=1 reads=0 appends=1 lines=1 paused=false

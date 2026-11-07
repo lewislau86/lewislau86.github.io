@@ -1,0 +1,20 @@
+normal: stop=answer turns=7 calls=6 revision=5 reads=1 completed=true goal_verified=true
+claims-only: stop=answer turns=7 calls=6 revision=5 reads=0 completed=true goal_verified=false
+read-error: stop=tool_error turns=3 calls=3 revision=2 reads=0 completed=false goal_verified=false
+budget-stop: stop=turn_limit turns=3 calls=3 revision=2 reads=1 completed=false goal_verified=false
+fresh-session: previous_revision=5 new_revision=0
+two-active: code=multiple_active unchanged=true
+skip-completion: code=invalid_transition unchanged=true
+unknown-status: code=invalid_arguments unchanged=true
+duplicate-id: code=duplicate_id unchanged=true
+empty-content: code=invalid_content unchanged=true
+too-many: code=item_count unchanged=true
+remove-item: code=removed_item unchanged=true
+changed-content: code=content_changed unchanged=true
+stale-revision: code=revision_conflict unchanged=true
+reopen-completed: code=invalid_transition unchanged=true
+append-step: code=ok unchanged=false
+yield-step: code=ok unchanged=false
+permission-denied: code=permission_denied unchanged=true
+invalid-json: code=invalid_arguments unchanged=true
+unknown-field: code=invalid_arguments unchanged=true

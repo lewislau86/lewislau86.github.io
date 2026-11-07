@@ -1,0 +1,3 @@
+scenario=history-system stop=prompt_error error=history_system model_turns=0 reads=0 write_attempts=0 goal_verified=false
+graph=AssemblePrompt
+summary_exists=false source_unchanged=true

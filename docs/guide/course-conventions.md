@@ -13,7 +13,7 @@
 | TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
 | mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
-| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/{code,outputs,figures}/`，R02 独立工程与章节 zip | `learn-agent-rust-sidebar.json` | R00–R02 已成文，其他章节规划中 |
+| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/{code,outputs,figures}/`，独立工程与章节 zip | `learn-agent-rust-sidebar.json` | 正文状态以章节清单为准，实验状态见各章 |
 
 ## 2. 文件名与 URL
 
@@ -31,6 +31,28 @@
 - 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表（新增章节还要在 `nodes` 里给它一个框、在 `io` 里写出本章的输入和输出）和总览页的“已成文的章节”表。
 - Learn Agent by Rust 的章节顺序、主题路径、前置关系和正文状态维护在 `scripts/learn-agent-rust-lessons.json`，运行 `python3 scripts/sync-learn-agent-rust-course.py` 更新侧栏、总览目录和学习路径的标记区。脚本只为缺失章节建立规划提纲，不覆盖已有章节正文；`--check` 检查是否过期。标为 `written` 前先完成正文与相应验证，实验状态另在章内记录。
 - 该课程用 `<LearnAgentRustMap active="章节主题名" />` 展示章节位置，课程地图从同一章节清单读取状态。R00 标准库源码在 `docs/public/learn-agent-rust/code/`，运行 `python3 scripts/verify-learn-agent-rust.py` 更新输出与配图输入，`--check` 重新执行并检查是否过期；该脚本当前只验证 R00，不代表两库集成通过。 R02 两库工程用 `python3 scripts/verify-learn-agent-rust-r02.py` 在临时解压目录运行，生成输出、证据与章节 zip；`--check` 检查产物是否过期，自制图用 `python3 scripts/generate-learn-agent-rust-figures.py --r02` 刷新。
+
+R05 会话内清单使用 `python3 scripts/verify-learn-agent-rust-r05.py` 生成独立下载工程、20 个场景的输出与源码校验记录；`--check` 从下载包解压后重新执行并检查产物是否过期。运行 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R05` 刷新本章自制图。实验使用脚本模型与真实临时文件读取，清单只存在于当前运行时内存中。
+
+R04 的标准库 Hook 实验用 `python3 scripts/verify-agent-hooks.py` 更新学习包、输出与实验数据，`--check` 重新运行并检查产物；配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R04`。它验证单次工具轮次、固定已批准动作和直属故障 worker，不代表真实模型或图调度集成通过。
+
+R06 子任务实验使用 `python3 scripts/verify-agent-subagents.py` 生成 16 个场景输出、证据与独立标准库学习包；`--check` 重新运行 9 个 Rust 测试、检查片段与结果表，并独立解压编译下载包。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R06` 刷新。实验验证脚本模型的消息分离、共享预算、工具权限与协作取消；线程与工作区清理单独检查，不代表真实模型、进程沙箱或框架集成通过。
+
+R09 跨会话事实存储使用 `python3 scripts/verify-agent-memory.py` 生成独立 Cargo 工程下载包、22 个场景输出与源码校验记录；`--check` 运行 8 个 Rust 测试，通过独立 CLI 进程核对保存、召回、版本冲突、逻辑遗忘、损坏与保存失败，并实际解压重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R09`。提取采用确定性规则，实验范围为真实磁盘与跨进程事实读取，未接入真实模型、框架会话恢复或数据库。
+
+R10 提示词组装使用 `python3 scripts/verify-agent-prompts.py` 生成两库独立下载工程、14 个场景输出与来源摘要记录；`--check` 复核 8 个 Rust 测试、完整消息输入、角色、配对、前缀缓存以及最终下载包的离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R10`。实验验证真实框架接线与临时来源文件，模型采用确定性脚本，未验证真实 provider 或知识召回质量。
+
+R11 错误恢复实验使用 `python3 scripts/verify-agent-recovery.py` 生成 21 个场景输出、证据与标准库独立学习包；`--check` 重跑 13 个 Rust 测试、核对正文结果表与实际文件，并解压下载包重跑全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R11` 刷新。故障与时间由程序注入，文件操作真实；恢复只在同一进程内转移原状态并复用累计账本。
+
+R08 上下文压缩使用 `python3 scripts/verify-agent-compaction.py` 生成两库独立工程下载包、17 个场景输出和证据；`--check` 运行 Rust 测试、Clippy，核对配对、事实、预算、回滚与归档，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R08`。预算按序列化消息字节计数，Agent 与摘要器均为脚本模型；临时归档不提供跨进程恢复。
+
+R12 持久化任务系统使用 `python3 scripts/verify-agent-tasks.py` 生成 26 个场景输出、独立 Cargo 学习包与源码校验记录；`--check` 重跑 14 个 Rust 测试、Clippy 和每轮 119 次独立 CLI 进程，并解压最终下载包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R12`。实验使用真实本地文件与检查点终止子进程，验证任务元数据、依赖与保存边界；不执行任务标题、不恢复完整 Agent，也不证明物理断电耐久性。
+
+R13 后台任务使用 `python3 scripts/verify-agent-background.py` 生成 14 个场景输出、线程与文件证据及独立标准库学习包；`--check` 重跑 12 个 Rust 测试、核对正文计数和实际产物，并解压最终包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R13`。检查点由条件变量控制，线程与文件操作真实；记录仅在本进程内，未接入模型、框架或持久化恢复。
+
+R14 定时调度使用 `python3 scripts/verify-agent-scheduling.py` 生成独立 Cargo 工程下载包、27 个场景输出与证据；`--check` 运行 10 个 Rust 测试、Clippy、独立进程和退出点实验，并解压最终包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R14`。实验验证具名时区的每日规则、SQLite 中任务与游标的原子保存、补触发与去重；固定时间测试和两次真实时钟轮询分别记录，尚未接入 Agent 消费者、外部动作或长期守护服务。
+
+R15 Agent 团队使用 `python3 scripts/verify-agent-teams.py` 生成两库独立工程下载包、22 个场景输出与源码证据；`--check` 复核 Rust 测试、Clippy、私有历史、邮箱回执、共享预算、取消与句柄回收，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R15`。实验使用单进程 Tokio 并发任务与脚本模型，不代表跨进程消息恢复或真实模型协作质量通过。
 
 ## 4. 章节模板
 

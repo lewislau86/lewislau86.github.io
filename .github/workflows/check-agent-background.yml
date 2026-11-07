@@ -1,0 +1,52 @@
+name: Check R13 background lifecycle
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/background-tasks.md"
+      - "docs/public/learn-agent-rust/code/background-tasks*"
+      - "docs/public/learn-agent-rust/outputs/r13-*.txt"
+      - "docs/public/learn-agent-rust/figures/r13-*.svg"
+      - "docs/public/learn-agent-rust/background-tasks-lab.zip"
+      - "scripts/data/learn-agent-rust/r13-results.json"
+      - "scripts/verify-agent-background.py"
+      - "scripts/learn-agent-rust-background-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-background.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/background-tasks.md"
+      - "docs/public/learn-agent-rust/code/background-tasks*"
+      - "docs/public/learn-agent-rust/outputs/r13-*.txt"
+      - "docs/public/learn-agent-rust/figures/r13-*.svg"
+      - "docs/public/learn-agent-rust/background-tasks-lab.zip"
+      - "scripts/data/learn-agent-rust/r13-results.json"
+      - "scripts/verify-agent-background.py"
+      - "scripts/learn-agent-rust-background-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-background.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install minimum supported Rust
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Verify workers, artifacts, cancellation and extracted package
+        env:
+          RUSTUP_TOOLCHAIN: "1.85.0"
+        run: python scripts/verify-agent-background.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R13
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r13-*.svg'

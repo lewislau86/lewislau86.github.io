@@ -1,0 +1,8 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply add guide expected=1 (new process)
+revision=2 ready=readme reconcile=- tasks=readme:pending#0,guide:pending#0
+apply start guide expected=2 (new process)
+error=dependency_incomplete committed=false

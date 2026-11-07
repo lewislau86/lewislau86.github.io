@@ -1,0 +1,42 @@
+name: Check Agent subagent tutorial
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/subagents.md"
+      - "docs/public/learn-agent-rust/code/subagents*"
+      - "docs/public/learn-agent-rust/outputs/r06-*"
+      - "docs/public/learn-agent-rust/subagents-lab.zip"
+      - "scripts/verify-agent-subagents.py"
+      - "scripts/data/learn-agent-rust/r06-results.json"
+      - ".github/workflows/check-agent-subagents.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/subagents.md"
+      - "docs/public/learn-agent-rust/code/subagents*"
+      - "docs/public/learn-agent-rust/outputs/r06-*"
+      - "docs/public/learn-agent-rust/subagents-lab.zip"
+      - "scripts/verify-agent-subagents.py"
+      - "scripts/data/learn-agent-rust/r06-results.json"
+      - ".github/workflows/check-agent-subagents.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  subagents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust and rustfmt
+        run: rustup toolchain install stable --profile minimal --component rustfmt
+      - name: Verify scenarios, contracts, excerpts and extracted download
+        run: python3 scripts/verify-agent-subagents.py --check

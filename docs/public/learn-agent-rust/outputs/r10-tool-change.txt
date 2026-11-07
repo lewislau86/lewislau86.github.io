@@ -1,0 +1,9 @@
+scenario=tool-change stop=answer error=none model_turns=1 reads=0 write_attempts=0 goal_verified=false
+graph=AssemblePrompt -> ModelTurn
+input=1 messages=3 system=1 serialized_bytes=1257 prefix_cache_hit=false
+source=policy/core version=1.0.0 placement=system text_bytes=167
+source=memory/project version=1.0.0 placement=human/reference-data text_bytes=65
+source=skill/startup-guide version=1.0.0 placement=human/reference-data text_bytes=70
+probe_same_input=false probe_cache_hit=false
+summary_exists=false source_unchanged=true
+当前没有启用读取工具，无法读取 README。

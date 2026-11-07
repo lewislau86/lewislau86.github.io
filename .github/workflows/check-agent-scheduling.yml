@@ -1,0 +1,52 @@
+name: Check Agent scheduling tutorial
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/scheduling.md"
+      - "docs/public/learn-agent-rust/code/scheduling/**"
+      - "docs/public/learn-agent-rust/outputs/r14-*"
+      - "docs/public/learn-agent-rust/figures/r14-*"
+      - "docs/public/learn-agent-rust/scheduling-lab.zip"
+      - "scripts/verify-agent-scheduling.py"
+      - "scripts/learn-agent-rust-scheduling-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r14-results.json"
+      - ".github/workflows/check-agent-scheduling.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/scheduling.md"
+      - "docs/public/learn-agent-rust/code/scheduling/**"
+      - "docs/public/learn-agent-rust/outputs/r14-*"
+      - "docs/public/learn-agent-rust/figures/r14-*"
+      - "docs/public/learn-agent-rust/scheduling-lab.zip"
+      - "scripts/verify-agent-scheduling.py"
+      - "scripts/learn-agent-rust-scheduling-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r14-results.json"
+      - ".github/workflows/check-agent-scheduling.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scheduling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust, rustfmt and Clippy
+        run: rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+      - name: Verify timezone cases, separate processes, exit points and extracted download
+        run: python3 scripts/verify-agent-scheduling.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson R14
+          git diff --exit-code -- docs/public/learn-agent-rust/figures/r14-*.svg

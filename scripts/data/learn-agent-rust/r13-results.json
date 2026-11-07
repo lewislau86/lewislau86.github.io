@@ -1,0 +1,219 @@
+{
+  "scope": "R13 native threads and local file I/O; controlled permits; process-local manager; no model or framework integration",
+  "source_sha256": "c0ecaee2712b68e1c60630456932f17703284ed08495bb56b0194b3fe77ab718",
+  "readme_sha256": "f2d69504efeb4ce247930d5010f49b431f670450223316332d07935f066c3558",
+  "environment": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "platform": "macOS-27.2-arm64-arm-64bit"
+  },
+  "limits": {
+    "active": 2,
+    "history": 4,
+    "notification_buffer": 1,
+    "chunks_per_job": 3
+  },
+  "regression_tests": [
+    "bounded_notification_overflow_keeps_queryable_state",
+    "cancel_after_partial_write_removes_partial_and_joins",
+    "cancellation_before_last_permit_wins",
+    "drop_waits_before_workspace_is_removed",
+    "existing_workspace_is_preserved",
+    "failure_and_panic_cleanup_and_release_capacity",
+    "history_and_results_are_bounded_and_ids_never_reused",
+    "poll_collects_completed_worker_once",
+    "publication_wins_before_poll_and_cannot_be_cancelled",
+    "repeated_cancel_does_not_create_another_result",
+    "shutdown_wakes_all_joins_and_refuses_more_work",
+    "start_returns_while_two_workers_are_waiting"
+  ],
+  "scenarios": [
+    {
+      "name": "normal",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 1,
+      "published_ids": [
+        1
+      ],
+      "stdout_sha256": "7d656ba44e66b806aa4751402ceb1ec04ff30daae6ad9b6a5e07fe07fdc8ebeb"
+    },
+    {
+      "name": "cancel",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "8b33aa5396046ccbf7891ae0a1f6f5f917e088321f60810ea9edef25a4a60dd7"
+    },
+    {
+      "name": "cancel-before-work",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "187eeb3a95c09917fb3c4127f7db767ec951c0ba0c6510eb0c2f46a6cb07067b"
+    },
+    {
+      "name": "late-cancel",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 1,
+      "published_ids": [
+        1
+      ],
+      "stdout_sha256": "ba95ae24829057272e72630c8ce3ac7a01918800708cf3da270cad196e04c47e"
+    },
+    {
+      "name": "repeat-cancel",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "943347d5786605883d13a9cb71c2daf7b295441da068a5ae1e329636e248972a"
+    },
+    {
+      "name": "capacity",
+      "started": 3,
+      "joined": 3,
+      "peak": 2,
+      "active": 0,
+      "records": 3,
+      "dropped_notices": 2,
+      "partial_files": 0,
+      "result_files": 1,
+      "published_ids": [
+        1
+      ],
+      "stdout_sha256": "4f310c26e94b0fe266d92f0dec3f9441d594fa63f87ad94840f443ecec3649db"
+    },
+    {
+      "name": "failure",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "9a47d9e295347b01c0728ef6e721f5e36a47efa0bf43e82198f62b87ddeaa0d3"
+    },
+    {
+      "name": "panic",
+      "started": 1,
+      "joined": 1,
+      "peak": 1,
+      "active": 0,
+      "records": 1,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "4d478873ae64e9049d51484a535fcdd564cbc745ff52a0d3a6f8e7dd1a1fa73f"
+    },
+    {
+      "name": "notifications",
+      "started": 2,
+      "joined": 2,
+      "peak": 2,
+      "active": 0,
+      "records": 2,
+      "dropped_notices": 1,
+      "partial_files": 0,
+      "result_files": 2,
+      "published_ids": [
+        1,
+        2
+      ],
+      "stdout_sha256": "e2f7367164b8f4cf7bccdf6698923eb7276d28ca114f36cc431752722e73bb79"
+    },
+    {
+      "name": "unknown",
+      "started": 0,
+      "joined": 0,
+      "peak": 0,
+      "active": 0,
+      "records": 0,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "802dfa5d5d2eb8ef0037a64801fa2933788a46741f13dfdfca25957fe82820fb"
+    },
+    {
+      "name": "shutdown",
+      "started": 2,
+      "joined": 2,
+      "peak": 2,
+      "active": 0,
+      "records": 2,
+      "dropped_notices": 1,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "798d196ee06721be0adfb4f17465cd499bc5f8242366d6c92495596faa6f12c0"
+    },
+    {
+      "name": "drop",
+      "published_ids": [],
+      "stdout_sha256": "04bc34b7a92285afba994ea5fa89eb2bf59f5a9618b57ed02f58d13c1356e6a8"
+    },
+    {
+      "name": "history",
+      "started": 6,
+      "joined": 6,
+      "peak": 1,
+      "active": 0,
+      "records": 4,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 4,
+      "published_ids": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "stdout_sha256": "ca2ecd4a8f5c8ed3f2581c1b7c76f918784868ad1f0152a3ca28dac63fd7b64a"
+    },
+    {
+      "name": "closed",
+      "started": 0,
+      "joined": 0,
+      "peak": 0,
+      "active": 0,
+      "records": 0,
+      "dropped_notices": 0,
+      "partial_files": 0,
+      "result_files": 0,
+      "published_ids": [],
+      "stdout_sha256": "b9644deec7761c4bf4640e9f5dba71a5bab3cca71e3e1b5144e89ddb0d736682"
+    }
+  ]
+}

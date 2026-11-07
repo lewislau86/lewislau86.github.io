@@ -1,0 +1,5 @@
+{
+  "id": "skill/sql-style",
+  "version": "1.0.0",
+  "text": "UNSELECTED_SQL_BODY：SQL 查询规范，与当前任务无关。"
+}

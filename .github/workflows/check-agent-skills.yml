@@ -1,0 +1,44 @@
+name: Check R07 skill loading experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/skill-loading.md"
+      - "docs/public/learn-agent-rust/code/skill-loading/**"
+      - "docs/public/learn-agent-rust/outputs/r07-*.txt"
+      - "docs/public/learn-agent-rust/skill-loading.zip"
+      - "scripts/data/learn-agent-rust/r07-results.json"
+      - "scripts/verify-agent-skills.py"
+      - "scripts/learn-agent-rust-skills-figures.py"
+      - ".github/workflows/check-agent-skills.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/skill-loading.md"
+      - "docs/public/learn-agent-rust/code/skill-loading/**"
+      - "docs/public/learn-agent-rust/outputs/r07-*.txt"
+      - "docs/public/learn-agent-rust/skill-loading.zip"
+      - "scripts/data/learn-agent-rust/r07-results.json"
+      - "scripts/verify-agent-skills.py"
+      - "scripts/learn-agent-rust-skills-figures.py"
+      - ".github/workflows/check-agent-skills.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  skills:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install native TLS build dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Check scenarios, tests, Clippy and final download
+        run: python scripts/verify-agent-skills.py --check

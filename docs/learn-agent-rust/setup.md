@@ -1,6 +1,6 @@
 ---
 title: 环境准备
-description: 安装 Rust 与系统编译工具，运行基础环境自检，明确模型和数据库的准备时机。
+description: 安装 Rust、graph-flow 与 langchain-rust，获取课程固定依赖，分别验证基础工具链与两库集成。
 pageClass: learn-agent-rust-course
 prev:
   text: 学习路径 · 能力演化
@@ -17,7 +17,8 @@ next:
 ::: tip 本章学习目标
 - 准备 Rust、Cargo、格式化工具、Clippy 和系统链接器。
 - 编译运行一个没有第三方依赖的小程序，确认基础工具链可用。
-- 说明课程源码、模型服务与数据库分别在什么时候准备。
+- 获取并编译 `graph-flow` 与 `langchain-rust`，核对课程固定版本与两库运行结果。
+- 说明模型服务与数据库分别在什么时候准备。
 
 **前置：** 能打开终端、切换目录；Rust 语法可在后续章节中补齐。
 
@@ -37,7 +38,7 @@ next:
 | Rust、Cargo、rustfmt、Clippy | 现在 | 编译、运行、格式化与静态检查。 |
 | 系统 C 编译工具与链接器 | 现在 | 链接可执行程序，支持需要编译本地代码的依赖。 |
 | Git、终端和文本编辑器 | 现在 | 阅读源码、记录修改并执行命令。 |
-| 课程 Rust 工程与固定依赖 | 完成自检后进入 R02 | [R02 独立工程](./tools-and-graph.md)已提供工具链、锁文件与下载包。 |
+| `graph-flow`、`langchain-rust` 与课程工程 | 完成基础自检后，按本页第 4 节准备 | 下载 R02 工程，通过 Cargo 获取并编译固定依赖；R00、R01 仍可独立运行标准库示例。 |
 | 支持工具调用的模型服务与凭据 | 真实模型实验前 | 在脚本模型实验通过后，验证请求、响应和工具协议。 |
 | PostgreSQL | P01 等数据库实验前 | 验证检查点保存与跨进程恢复。 |
 
@@ -76,10 +77,10 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
 ```sh
 sudo apt update
-sudo apt install build-essential git curl ca-certificates
+sudo apt install build-essential git curl ca-certificates unzip pkg-config libssl-dev
 ```
 
-然后执行上面的 rustup 安装命令，完成后重新打开终端。其他发行版按其包管理器安装 GCC 或 Clang 与链接器，具体参照 [Rust 安装章节](https://doc.rust-lang.org/book/ch01-01-installation.html)。
+`unzip` 用于解压课程工程；`pkg-config` 与 `libssl-dev` 用于两库传递依赖中 OpenSSL 的发现和编译。然后执行上面的 rustup 安装命令，完成后重新打开终端。其他发行版按其包管理器安装 GCC 或 Clang 与链接器，具体参照 [Rust 安装章节](https://doc.rust-lang.org/book/ch01-01-installation.html)。
 
 ### Windows 原生环境
 
@@ -126,13 +127,123 @@ Environment check passed: Rust + Cargo + rustfmt + Clippy.
 
 这里的通过条件是程序输出符合预期，并且格式检查与 Clippy 均成功退出。失败时脚本会停在具体命令处，可按下节的排查表处理。
 
-## 4. 固定版本与课程依赖怎样准备
+## 4. 安装 graph-flow 与 langchain-rust {#install-frameworks}
 
-环境自检使用 stable 来确认基础安装。正式课程工程发布后，进入其根目录，优先遵循工程自带的 `rust-toolchain.toml` 和 `Cargo.lock`：前者选择 Rust 工具链，后者记录依赖解析结果。选择规则见 [rustup overrides](https://rust-lang.github.io/rustup/overrides.html)。
+基础自检通过后，接下来把架构图中的两个库接进一个实际工程。这里的“安装”是**把库声明为项目依赖，由 Cargo 下载并编译**。`cargo install` 用于安装命令行可执行程序；本课程通过 `Cargo.toml` 使用这两个库。
 
-`langchain-rust` 与 `graph-flow` 是课程程序的库依赖，由 [R02 独立工程](./tools-and-graph.md)的 `Cargo.toml` 声明固定 Git revision，并通过 Cargo 获取。该工程固定 Rust 1.99.1、关闭两库的默认 feature，按 `Cargo.lock` 构建；进入工程后运行 `cargo run --locked`。本页基础自检仍只检查标准库程序，两库集成由 R02 单独验证。
+| 库 | 在课程里负责什么 | 课程固定来源 | Rust 中的引用名 |
+| --- | --- | --- | --- |
+| `graph-flow` | 图节点、路由、会话与执行状态 | `a-agmon/rs-graph-llm`，revision `9bbca193f20a8c4ba23289621549ecb3d35fee64`；锁文件记录版本 `0.8.1` | `graph_flow` |
+| `langchain-rust` | 模型接口、消息与工具调用数据 | `Abraxas-365/langchain-rust`，revision `5fc3f5aca4380da48829f95d6e2fd0217b1f2013`；锁文件记录版本 `8.0.0` | `langchain_rust` |
 
-现在可以下载 <a href="/learn-agent-rust/tools-and-graph.zip" download>R02 章节工程</a>，其中含源码、锁文件、工具链与运行说明，已在独立临时解压目录验证。读者无需复制作者电脑上的相邻仓库或个人路径。全课程学习包随后续章节补齐。
+这些是当前课程工程验证过的源码版本。依赖名中的连字符在 Rust `use` 路径里写成下划线；版本核对以课程文件为准。
+
+### 4.1 下载并解压课程工程
+
+推荐先使用 <a href="/learn-agent-rust/tools-and-graph.zip" download>R02 章节工程 tools-and-graph.zip</a>。它已经包含源码、`Cargo.toml`、`Cargo.lock`、`rust-toolchain.toml` 和 README，无需提前克隆两个上游仓库。
+
+macOS、Linux 与 WSL 可以在自己选定的学习目录执行以下命令。解压目标应是一个尚未存在的 `tools-and-graph` 目录：
+
+```sh
+curl -fL https://lewislau86.github.io/learn-agent-rust/tools-and-graph.zip -o tools-and-graph.zip
+unzip tools-and-graph.zip
+cd tools-and-graph
+```
+
+Windows 原生环境可通过上面的下载链接保存 zip，使用资源管理器“全部解压”，再在包含 `Cargo.toml` 的 `tools-and-graph` 目录打开 PowerShell。后续 Cargo 命令在各平台相同。若刚更新了本站而线上下载包尚未部署，先等待 Pages 发布完成。
+
+如果已经克隆网站源码，直接进入仓库中的 `docs/public/learn-agent-rust/code/tools-and-graph/`，不必再下载一份。
+
+### 4.2 选择工程固定的 Rust 工具链
+
+在工程目录执行：
+
+```sh
+rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+rustup show active-toolchain
+rustc --version
+```
+
+本工程的工具链文件如下，直接引用下载包对应的原文件：
+
+<<< @/public/learn-agent-rust/code/tools-and-graph/rust-toolchain.toml
+
+在没有环境变量或显式命令覆盖时，进入这个目录，rustup 会按该文件选择 `1.99.1`。若仍显示 `stable` 或其他版本，先检查是否设置过 `RUSTUP_TOOLCHAIN`；也可用 `cargo +1.99.1 …` 为单条命令明确选择工具链。本页先前的 `RUSTUP_TOOLCHAIN=stable bash check-environment.sh` 只对那次脚本调用生效。
+
+### 4.3 获取两个库及其传递依赖
+
+仍在同一个工程根目录执行：
+
+```sh
+cargo fetch --locked
+cargo build --locked
+```
+
+`cargo fetch --locked` 按现有锁文件获取 Git 源码和 registry 依赖；`cargo build --locked` 将它们和课程程序一起编译。首次执行需要网络与磁盘空间，终端可能长时间显示依赖下载或编译进度。两条命令均以退出码 0 结束，才完成“依赖已取得并可编译”的验收。
+
+工程中的依赖声明直接引用这里的唯一来源：
+
+<<< @/public/learn-agent-rust/code/tools-and-graph/Cargo.toml
+
+读这份文件时注意三件事：
+
+- `git` 指向源码仓库，`rev` 固定具体提交；Cargo 会在仓库中找到对应 crate，`graph-flow` 位于上游工作区的子目录。
+- 两库都设置 `default-features = false`。课程按当前实验所需能力接入，暂时关闭默认 feature；数据库能力在后续实验单独启用和验证。
+- `tokio`、`serde` 等依赖服务于课程程序。`Cargo.toml` 声明依赖要求，随包提供的 `Cargo.lock` 固定完整解析结果；复现时保留锁文件并使用 `--locked`。
+
+Cargo 通常把下载的 registry 与 Git 源码缓存在 `~/.cargo/`，编译产物放在工程的 `target/`；配置了 `CARGO_HOME` 或 `CARGO_TARGET_DIR` 时位置会改变。读者无需手工把库复制进工程。
+
+### 4.4 核对版本，再运行一次两库集成
+
+先检查依赖树，确认当前工程实际使用的是哪两个库：
+
+```sh
+cargo tree --locked -i graph-flow
+cargo tree --locked -i langchain-rust
+```
+
+输出应分别包含表中记录的 `graph-flow v0.8.1`、`langchain-rust v8.0.0`，Git 来源的提交缩写分别为 `9bbca193`、`5fc3f5ac`。如果显示其他来源或版本，先核对是否进入了下载包的工程目录，以及是否保留了原始 `Cargo.toml` 与 `Cargo.lock`。
+
+然后运行实际调用两库的课程程序与测试：
+
+```sh
+cargo run --locked
+cargo test --locked
+```
+
+默认运行会比较显式循环和 `graph-flow` 图执行的结果。以下是该工程验证脚本保存的完整输出；每种场景的 `equal=true` 表示两种实现的状态一致，正常场景还应出现从 README 读取的启动命令：
+
+<<< @/public/learn-agent-rust/outputs/r02-summary.txt
+
+这里的脚本模型实现了 `langchain-rust` 的模型接口，图版通过 `graph-flow` 实际调度节点。它使用程序自建的临时文件，无需 API Key、GPU 或 PostgreSQL。失败场景中的 `tool_error` 等停止原因是刻意触发的实验结果，具体含义在[第 2 章](./tools-and-graph.md)展开。
+
+依赖和工具链已完整下载后，可以验证离线重跑：
+
+```sh
+cargo run --locked --offline
+```
+
+基础自检通过、两库编译通过、两库集成运行通过分别记录；以上步骤完成后，才可认为本机已准备好 R02 的课程环境。
+
+第 7 章提供另一个可独立下载的<a href="/learn-agent-rust/skill-loading.zip" download>技能加载工程</a>，使用相同两库源码版本与工具链，并增加 YAML 解析和 SHA-256 依赖。进入其 `skill-loading` 目录，沿用本节的 `cargo fetch --locked`、构建与运行流程；具体场景见[第 7 章](./skill-loading.md)。
+
+第 8 章提供独立的<a href="/learn-agent-rust/context-compaction.zip" download>上下文压缩工程</a>，使用相同工具链与两库源码版本。进入 `context-compaction` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。Agent 与摘要器使用脚本模型，归档只写入自建临时目录；具体预算、对照场景和运行边界见[第 8 章](./context-compaction.md)。
+
+第 15 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 15 章](./agent-teams.md)。
+
+### 4.5 自己新建项目时，怎样添加这两个库？
+
+这一节用于想从空项目开始练习的读者。已完成上面课程工程安装的读者可直接进入下一节。在一个新的学习目录执行：
+
+```sh
+cargo +1.99.1 new --edition 2024 agent-lab
+cd agent-lab
+cargo +1.99.1 add graph-flow --git https://github.com/a-agmon/rs-graph-llm.git --rev 9bbca193f20a8c4ba23289621549ecb3d35fee64 --no-default-features
+cargo +1.99.1 add langchain-rust --git https://github.com/Abraxas-365/langchain-rust.git --rev 5fc3f5aca4380da48829f95d6e2fd0217b1f2013 --no-default-features
+cargo +1.99.1 build --locked
+```
+
+`cargo add` 将依赖写入新项目的 `Cargo.toml` 并解析依赖。此时新项目仍只有 Cargo 生成的 Hello World；还需要按 R02 接入模型、工具和图节点。新项目生成的传递依赖锁定结果可能与课程包不同，完整复现课程实验时使用原包及其 `Cargo.lock`，后续引入模型服务或数据库 feature 时再核对新增依赖。
 
 ## 5. 模型与数据库按实验阶段配置
 
@@ -160,6 +271,11 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 | 找不到 `fmt` 或 `clippy` 子命令 | 为实际使用的工具链安装 `rustfmt` 与 `clippy`，核对 `rustup show active-toolchain`。 |
 | edition 2024 不受支持 | 核对是否选中了旧工具链，按本页命令准备 stable 后重跑自检。 |
 | 工具链或依赖下载失败 | 检查网络、代理与证书；`--offline` 只使用本地已具备的工具和依赖。 |
+| 提示找不到 `Cargo.toml` | 先 `cd tools-and-graph`，确认当前目录包含解压得到的 `Cargo.toml`。 |
+| `failed to run custom build command for openssl-sys` | Debian / Ubuntu 安装 `pkg-config libssl-dev`，并核对系统链接器；其他平台按该平台原生 TLS 依赖的首条错误排查。 |
+| `--locked` 提示锁文件缺失或需要更新 | 使用课程包原始 `Cargo.toml` 和 `Cargo.lock`；不要通过删锁文件来跳过复现要求。 |
+| `--offline` 报缺少 crate 或 Git revision | 联网执行 `cargo fetch --locked`，再构建并离线重跑；同时确认工程固定工具链已安装。 |
+| Git 依赖获取失败，但 `git` 命令可以正常访问上游 | 可尝试 `cargo --config net.git-fetch-with-cli=true fetch --locked`，让 Cargo 使用系统 Git 获取源码，再检查代理与证书配置。 |
 | 自检成功，但课程工程构建失败 | 单独检查课程固定工具链、依赖与 feature，保留第一条错误；两项验证分别处理。 |
 
 ::: warning 常见误区
@@ -168,7 +284,7 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 
 ## 本章结论
 
-现在应具备终端、Git、Rust 编译器、Cargo 和所需检查工具，并能运行无第三方依赖的 Cargo 程序。后续按章节引入课程工程、模型和存储，每增加一层都保留自己的验证结果。
+现在应能完成两层验收：基础工具链可运行标准库程序；课程工程可按锁文件获取并编译 `graph-flow`、`langchain-rust`，运行两库集成用例。之后再按章节引入真实模型和存储，每增加一层都保留自己的验证结果。
 
 ## 检查理解
 
@@ -188,11 +304,19 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 
    </details>
 
-3. 自检通过后，能否认为两库组合的 Agent 循环已经通过？
+3. 为什么添加 `graph-flow` 和 `langchain-rust` 使用 `cargo add` 或 `Cargo.toml`，而不使用 `cargo install`？
 
    <details><summary>参考答案</summary>
 
-   自检只执行 Cargo 生成的小程序。两库的固定依赖、模型与工具消息、图路由和停止条件，需要在 R00–R02 的课程工程中逐项运行与核对。
+   这里需要的是供 Rust 程序引用的库依赖。`cargo add` 修改项目依赖声明，构建时 Cargo 下载并编译这些库；`cargo install` 用于安装可执行程序。复现本课程时，直接使用原始工程与锁文件。
+
+   </details>
+
+4. 自检通过后，能否认为两库组合的 Agent 循环已经通过？
+
+   <details><summary>参考答案</summary>
+
+   自检只执行 Cargo 生成的小程序。还要按第 4 节获取固定依赖、编译并运行 R02 两库工程，核对模型与工具消息、图路由和停止条件。R00、R01 的标准库示例可独立运行。
 
    </details>
 
@@ -203,5 +327,8 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 - [rustup：Components](https://rust-lang.github.io/rustup/concepts/components.html)
 - [rustup：Toolchain overrides](https://rust-lang.github.io/rustup/overrides.html)
 - [Cargo：cargo new](https://doc.rust-lang.org/cargo/commands/cargo-new.html) 与 [cargo run](https://doc.rust-lang.org/cargo/commands/cargo-run.html)
+- [Cargo：声明 Git 依赖](https://doc.rust-lang.org/cargo/reference/specifying-dependencies.html#specifying-dependencies-from-git-repositories)、[cargo add](https://doc.rust-lang.org/cargo/commands/cargo-add.html) 与 [cargo fetch](https://doc.rust-lang.org/cargo/commands/cargo-fetch.html)
+- [Cargo：cargo install](https://doc.rust-lang.org/cargo/commands/cargo-install.html)：用于安装可执行程序。
+- [graph-flow 固定源码](https://github.com/a-agmon/rs-graph-llm/tree/9bbca193f20a8c4ba23289621549ecb3d35fee64/graph-flow) 与 [langchain-rust 固定源码](https://github.com/Abraxas-365/langchain-rust/tree/5fc3f5aca4380da48829f95d6e2fd0217b1f2013)
 
 下一篇：[课程架构与框架分工](./architecture.md)，把运行环境放回模型、工具与状态的数据流中。

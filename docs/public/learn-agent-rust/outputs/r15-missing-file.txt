@@ -1,0 +1,10 @@
+R15 | scenario=missing-file | scripted LLM + graph-flow + bounded Tokio mailboxes
+limits members=2 mailbox=2 messages=16 model_calls=16 tool_calls=8 context_bytes=16000
+receipt id=core-1 member=core status=tool_error
+summary=审查未完成：missing_file；未运行被审查项目的测试。
+member=config lifecycle=closed notes=0 reads=0 history_messages=1 pairs=true
+events=idle -> closing -> closed
+member=core lifecycle=closed notes=0 reads=0 history_messages=5 pairs=true
+events=idle -> busy -> idle -> closing -> closed
+usage accepted=1 models=2 tools=1 reads=0 spawned=2 active=0 joined=2 aborted=0
+checks isolation=true source_unchanged=true shared_files=true no_write_output=true workspace_removed=true

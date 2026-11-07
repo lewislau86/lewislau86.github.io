@@ -1,0 +1,50 @@
+name: Check R12 persistent task experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/task-system.md"
+      - "docs/public/learn-agent-rust/code/task-system/**"
+      - "docs/public/learn-agent-rust/outputs/r12-*.txt"
+      - "docs/public/learn-agent-rust/figures/r12-*.svg"
+      - "docs/public/learn-agent-rust/task-system-lab.zip"
+      - "scripts/data/learn-agent-rust/r12-results.json"
+      - "scripts/verify-agent-tasks.py"
+      - "scripts/learn-agent-rust-task-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-tasks.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/task-system.md"
+      - "docs/public/learn-agent-rust/code/task-system/**"
+      - "docs/public/learn-agent-rust/outputs/r12-*.txt"
+      - "docs/public/learn-agent-rust/figures/r12-*.svg"
+      - "docs/public/learn-agent-rust/task-system-lab.zip"
+      - "scripts/data/learn-agent-rust/r12-results.json"
+      - "scripts/verify-agent-tasks.py"
+      - "scripts/learn-agent-rust-task-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-tasks.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tasks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the pinned toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify task transitions, process restarts and extracted download
+        run: python scripts/verify-agent-tasks.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R12
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r12-*.svg'
