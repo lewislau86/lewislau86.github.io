@@ -1,0 +1,11 @@
+scenario=corrupt-intent tickets=0 checkpoints=0 attempts=0 apply_commits=0 queries=0
+local_state=pending
+
+$ prepare CLIENT_DB {"tenant":"course","operation_id":"review-42","title":"Review Rust timeout handling"} key 0 none
+{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","operation_id":"review-42","prepared":true}
+$ dispatch CLIENT_DB PROVIDER_DB course review-42 1 none
+{"error":"corrupt_intent"}
+$ inspect-client CLIENT_DB
+{"actions":1,"checkpoints":0,"completed_actions":0,"outbox":[{"attempts":0,"operation_id":"review-42","receipt":null,"state":"pending","tenant":"course"}]}
+$ inspect-provider PROVIDER_DB
+{"committed_apply_calls":0,"keys":0,"query_calls":0,"ticket_count":0,"tickets":[]}
