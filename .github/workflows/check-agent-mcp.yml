@@ -1,0 +1,50 @@
+name: Check R19 MCP tools experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/mcp-tools.md"
+      - "docs/public/learn-agent-rust/code/mcp-tools/**"
+      - "docs/public/learn-agent-rust/outputs/r19-*"
+      - "docs/public/learn-agent-rust/figures/r19-*.svg"
+      - "docs/public/learn-agent-rust/mcp-tools-lab.zip"
+      - "scripts/data/learn-agent-rust/r19-results.json"
+      - "scripts/verify-agent-mcp.py"
+      - "scripts/learn-agent-rust-mcp-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-mcp.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/mcp-tools.md"
+      - "docs/public/learn-agent-rust/code/mcp-tools/**"
+      - "docs/public/learn-agent-rust/outputs/r19-*"
+      - "docs/public/learn-agent-rust/figures/r19-*.svg"
+      - "docs/public/learn-agent-rust/mcp-tools-lab.zip"
+      - "scripts/data/learn-agent-rust/r19-results.json"
+      - "scripts/verify-agent-mcp.py"
+      - "scripts/learn-agent-rust-mcp-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-mcp.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mcp:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify local stdio services, wire protocol, effects and extracted archive
+        run: python scripts/verify-agent-mcp.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R19
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r19-*.svg'

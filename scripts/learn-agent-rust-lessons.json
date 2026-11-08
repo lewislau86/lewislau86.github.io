@@ -136,35 +136,35 @@
       "prerequisites": ["R12", "R16"]
     },
     {
-      "id": "R18", "slug": "worktree-isolation", "title": "工作区隔离", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R18", "slug": "worktree-isolation", "title": "工作区隔离", "part": "tasks", "domain": "多 Agent 平台", "status": "written",
       "question": "并发代码任务怎样拥有独立文件与变更归属？",
       "addition": "任务绑定的练习 worktree 与资源回收策略。",
       "outcome": "在专用练习仓库验证创建、绑定、保留和回收，不覆盖已有修改。",
       "prerequisites": ["R03", "R17"]
     },
     {
-      "id": "R19", "slug": "mcp-tools", "title": "MCP 外部工具", "part": "integration", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R19", "slug": "mcp-tools", "title": "MCP 外部工具", "part": "integration", "domain": "多 Agent 平台", "status": "written",
       "question": "外部服务怎样进入同一工具注册与调用体系？",
       "addition": "工具发现、命名空间、schema 映射与连接生命周期。",
       "outcome": "锁定协议与客户端版本，用本地真实服务验证发现、调用、超时与退出。",
       "prerequisites": ["R02", "R03", "R11"]
     },
     {
-      "id": "R20", "slug": "integrated-agent", "title": "完整 Agent 集成", "part": "integration", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R20", "slug": "integrated-agent", "title": "完整 Agent 集成", "part": "integration", "domain": "多 Agent 平台", "status": "written",
       "question": "工具、策略、上下文、任务与团队怎样围绕同一个循环工作？",
       "addition": "统一事件、累计预算和跨机制的端到端路径。",
       "outcome": "重新验收完整任务与故障路径，分别记录模块通过与集成通过。",
       "prerequisites": ["R04", "R05", "R06", "R07", "R08", "R09", "R10", "R11", "R14", "R16", "R18", "R19"]
     },
     {
-      "id": "P01", "slug": "postgres-checkpoints", "title": "PostgreSQL 检查点", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "id": "P01", "slug": "postgres-checkpoints", "title": "PostgreSQL 检查点", "part": "reliability", "domain": "可靠性专题", "status": "written",
       "question": "一个模型轮次或工具步骤怎样成为可恢复的检查点？",
       "addition": "版本化会话、逐轮和逐工具保存边界。",
       "outcome": "用独立进程与故障注入验证恢复，并明确工具成功而保存失败的窗口。",
       "prerequisites": ["R02", "R11", "R12"]
     },
     {
-      "id": "P02", "slug": "side-effect-reliability", "title": "外部操作的可靠性", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "id": "P02", "slug": "side-effect-reliability", "title": "外部操作的可靠性", "part": "reliability", "domain": "可靠性专题", "status": "written",
       "question": "工具已产生业务结果、检查点却未保存时，怎样重放？",
       "addition": "操作身份、业务幂等、Outbox 与对账。",
       "outcome": "在指定故障窗口重试，核对重复调用与最终业务结果。",

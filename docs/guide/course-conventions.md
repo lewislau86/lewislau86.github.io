@@ -54,6 +54,14 @@ R14 定时调度使用 `python3 scripts/verify-agent-scheduling.py` 生成独立
 
 R15 Agent 团队使用 `python3 scripts/verify-agent-teams.py` 生成两库独立工程下载包、22 个场景输出与源码证据；`--check` 复核 Rust 测试、Clippy、私有历史、邮箱回执、共享预算、取消与句柄回收，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R15`。实验使用单进程 Tokio 并发任务与脚本模型，不代表跨进程消息恢复或真实模型协作质量通过。
 
+R19 MCP 外部工具使用 `python3 scripts/verify-agent-mcp.py` 生成独立 Cargo 下载工程、25 个场景输出、线协议与文件证据；`--check` 复核 8 个 Rust 测试、Clippy、每轮 26 个真实直属服务进程的回收，并解压最终包离线重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R19`。固定 `rmcp 3.9.0` 与 MCP `2025-11-25`，真实 stdio 与文件效果，调用和批准由固定脚本提供；真实模型、框架、HTTP 与任意服务沙箱另验。
+
+P02 外部操作可靠性使用 `python3 scripts/verify-agent-effects.py` 生成独立 Rust 学习包、29 个场景输出与源码记录；`--check` 重跑 11 项 Rust 测试、Clippy、独立客户端和服务进程、退出点、SQL 核对及最终下载包全场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P02`。实验验证两份本地 SQLite 的业务意图、幂等、Outbox 和对账，不代表 HTTP、完整 Agent、PostgreSQL 集成或物理断电恢复通过。
+
+P01 PostgreSQL 检查点使用 `python3 scripts/verify-agent-checkpoints.py` 生成独立 Cargo 学习包、25 个真实 PostgreSQL 场景输出与源码证据；`--check` 运行 10 个 Rust 测试、Clippy、每轮 108 个独立 Rust CLI 进程，并解压最终包重新编译复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P01`。需要 PostgreSQL 18 服务端工具，验证器自动创建与清理专用临时集群；验证快照、修订冲突、保存身份、工具边界与数据库进程恢复，未接入框架 Storage 或真实模型。
+
+R20 完整 Agent 集成使用 `python3 scripts/verify-agent-integration.py` 生成两库独立下载工程、18 个场景输出与证据；`--check` 复核 10 个 Rust 测试、Clippy、实际 SQLite、Git 工作区、文件、消息配对、归档、MCP 协议与 PID 回收，并独立解压最终包离线编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R20`。父子采用脚本模型，集成固定任务、单审查者与单工具服务的最小契约；写后错误和终态保存失败分别核对，事件事后落盘，跨进程恢复与真实 provider 另验。
+
 ## 4. 章节模板
 
 ### 已成文的章节
@@ -248,7 +256,7 @@ TinyLLM 的 `chapterN_*.md`、mini-redis 的 `NN-*.md`、Burn 的旧编号页都
 
 ## 9. 发布前检查
 
-`npm run docs:build` 会先检查正文里 `<<< @/…` 引用的文件是否存在且已纳入 Git。章节引用的代码、运行输出和配图要随正文一起提交，避免本地构建成功而 CI 缺文件。也可单独运行 `npm run docs:check-snippets`；该检查需在 Git 工作区内执行。
+`npm run docs:build` 会先检查正文里 `<<< @/…` 引用的文件，以及正文中根路径 Markdown 图片是否存在且已纳入 Git。章节引用的代码、运行输出和配图要随正文一起提交，避免本地构建成功而 CI 缺文件。也可单独运行 `npm run docs:check-snippets`；该检查需在 Git 工作区内执行。
 
 ```sh
 python scripts/generate-tinyllm-figures.py   # 改了配图时

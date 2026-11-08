@@ -1,0 +1,12 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "exit_code": 73,
+    "final_checkpoints": 2,
+    "retry_replayed": false,
+    "revision_after_exit": 0
+  },
+  "passed": true,
+  "processes": 4,
+  "scenario": "exit-before-commit"
+}

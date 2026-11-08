@@ -103,6 +103,38 @@
       {
         "text": "第 15 章 · Agent 团队",
         "link": "/learn-agent-rust/agent-teams"
+      },
+      {
+        "text": "第 18 章 · 工作区隔离",
+        "link": "/learn-agent-rust/worktree-isolation"
+      }
+    ]
+  },
+  {
+    "text": "第四部分 · 外部工具与集成",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "第 19 章 · MCP 外部工具",
+        "link": "/learn-agent-rust/mcp-tools"
+      },
+      {
+        "text": "第 20 章 · 完整 Agent 集成",
+        "link": "/learn-agent-rust/integrated-agent"
+      }
+    ]
+  },
+  {
+    "text": "第五部分 · 可靠性专题",
+    "collapsed": true,
+    "items": [
+      {
+        "text": "专题 1 · PostgreSQL 检查点",
+        "link": "/learn-agent-rust/postgres-checkpoints"
+      },
+      {
+        "text": "专题 2 · 外部操作的可靠性",
+        "link": "/learn-agent-rust/side-effect-reliability"
       }
     ]
   },
@@ -121,24 +153,6 @@
           {
             "text": "第 17 章 · 自主任务领取",
             "link": "/learn-agent-rust/autonomous-workers"
-          },
-          {
-            "text": "第 18 章 · 工作区隔离",
-            "link": "/learn-agent-rust/worktree-isolation"
-          }
-        ]
-      },
-      {
-        "text": "第四部分 · 外部工具与集成",
-        "collapsed": true,
-        "items": [
-          {
-            "text": "第 19 章 · MCP 外部工具",
-            "link": "/learn-agent-rust/mcp-tools"
-          },
-          {
-            "text": "第 20 章 · 完整 Agent 集成",
-            "link": "/learn-agent-rust/integrated-agent"
           }
         ]
       },
@@ -146,14 +160,6 @@
         "text": "第五部分 · 可靠性专题",
         "collapsed": true,
         "items": [
-          {
-            "text": "专题 1 · PostgreSQL 检查点",
-            "link": "/learn-agent-rust/postgres-checkpoints"
-          },
-          {
-            "text": "专题 2 · 外部操作的可靠性",
-            "link": "/learn-agent-rust/side-effect-reliability"
-          },
           {
             "text": "专题 3 · 模型协议与质量评估",
             "link": "/learn-agent-rust/model-evaluation"

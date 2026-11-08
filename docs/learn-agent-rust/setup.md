@@ -40,7 +40,7 @@ next:
 | Git、终端和文本编辑器 | 现在 | 阅读源码、记录修改并执行命令。 |
 | `graph-flow`、`langchain-rust` 与课程工程 | 完成基础自检后，按本页第 4 节准备 | 下载 R02 工程，通过 Cargo 获取并编译固定依赖；R00、R01 仍可独立运行标准库示例。 |
 | 支持工具调用的模型服务与凭据 | 真实模型实验前 | 在脚本模型实验通过后，验证请求、响应和工具协议。 |
-| PostgreSQL | P01 等数据库实验前 | 验证检查点保存与跨进程恢复。 |
+| PostgreSQL 18 服务端工具 | [P01 检查点实验](./postgres-checkpoints.md)前 | 在专用临时集群验证保存与跨进程恢复。 |
 
 基础学习路线按 CPU 环境设计。本页自检只运行标准库程序，无需 GPU、模型密钥或数据库。首次安装 Rust 和后续首次获取 Cargo 依赖需要网络；运行时不请求模型，与安装阶段是否联网是两个条件。
 
@@ -230,6 +230,8 @@ cargo run --locked --offline
 第 8 章提供独立的<a href="/learn-agent-rust/context-compaction.zip" download>上下文压缩工程</a>，使用相同工具链与两库源码版本。进入 `context-compaction` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。Agent 与摘要器使用脚本模型，归档只写入自建临时目录；具体预算、对照场景和运行边界见[第 8 章](./context-compaction.md)。
 
 第 15 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 15 章](./agent-teams.md)。
+
+专题 2 提供独立的<a href="/learn-agent-rust/side-effect-reliability.zip" download>外部操作可靠性工程</a>。进入 `side-effect-reliability` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 和 `cargo test --locked`。它固定 Rust 1.99.1，使用随工程编译的 SQLite，需要本机 C 编译工具链；无需安装数据库服务或配置 API Key。默认演示仅操作自建临时目录，独立客户端与 provider 进程通过本机 CLI JSON 通信；详细故障实验见[专题 2](./side-effect-reliability.md)。
 
 ### 4.5 自己新建项目时，怎样添加这两个库？
 

@@ -1,6 +1,10 @@
 ---
 title: "第 18 章：工作区隔离"
 description: "把代码任务绑定到独立 Git worktree，分开文件与索引，并在回收前保护未合入的成果。"
+prev: false
+next:
+  text: 第 19 章 · MCP 外部工具
+  link: /learn-agent-rust/mcp-tools
 pageClass: learn-agent-rust-course
 ---
 

@@ -267,11 +267,23 @@ def r02_figures():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
-    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R18", "all"], default="all")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R18", "R19", "R20", "P02", "P01", "all"], default="all")
     args = parser.parse_args()
     if args.r02:
         args.lesson = "R02"
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    if args.lesson in ("P01", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("checkpoint_figures", ROOT / "scripts/learn-agent-rust-checkpoint-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("R19", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("mcp_figures", ROOT / "scripts/learn-agent-rust-mcp-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
     if args.lesson in ("R18", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("worktree_figures", ROOT / "scripts/learn-agent-rust-worktree-figures.py")
@@ -375,6 +387,22 @@ def main():
     if args.lesson in ("R15", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("teams_figures", ROOT / "scripts/learn-agent-rust-teams-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+
+
+    if args.lesson in ("P02", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("effects_figures", ROOT / "scripts/learn-agent-rust-effects-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+
+
+    if args.lesson in ("R20", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("integration_figures", ROOT / "scripts/learn-agent-rust-integration-figures.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.generate(ROOT, text, panel, arrow, save_figure)

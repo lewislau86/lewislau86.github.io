@@ -1,0 +1,7 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {},
+  "passed": true,
+  "processes": 3,
+  "scenario": "format-version"
+}

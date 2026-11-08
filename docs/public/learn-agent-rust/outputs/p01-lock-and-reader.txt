@@ -1,0 +1,10 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "reader_revision_during_write": 0,
+    "revision_after_commit": 1
+  },
+  "passed": true,
+  "processes": 4,
+  "scenario": "lock-and-reader"
+}
