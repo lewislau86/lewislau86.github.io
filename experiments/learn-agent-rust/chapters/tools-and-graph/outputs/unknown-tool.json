@@ -1,0 +1,58 @@
+{
+  "equal": true,
+  "graph_nodes": [
+    "ModelTurn",
+    "ExecuteTools",
+    "ModelTurn"
+  ],
+  "scenario": "unknown-tool",
+  "state": {
+    "max_turns": 4,
+    "messages": [
+      {
+        "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+        "id": null,
+        "images": null,
+        "message_type": "human",
+        "tool_calls": null
+      },
+      {
+        "content": "",
+        "id": null,
+        "images": null,
+        "message_type": "ai",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{}",
+              "name": "delete_file"
+            },
+            "id": "bad-1",
+            "type": "function"
+          }
+        ]
+      },
+      {
+        "content": "{\"error\":\"unknown_tool\",\"ok\":false}",
+        "id": "bad-1",
+        "images": null,
+        "message_type": "tool",
+        "tool_calls": null
+      },
+      {
+        "content": "工具返回错误，任务未完成。",
+        "id": null,
+        "images": null,
+        "message_type": "ai",
+        "tool_calls": null
+      }
+    ],
+    "model_turns": 2,
+    "pending": [],
+    "seen_ids": [
+      "bad-1"
+    ],
+    "stop": "tool_error",
+    "tool_dispatches": 1
+  }
+}

@@ -1,0 +1,1 @@
+{"old_sessions": 2, "passed": true, "scenario": "migration-rollback", "schema": 1, "workflow_columns": 0}

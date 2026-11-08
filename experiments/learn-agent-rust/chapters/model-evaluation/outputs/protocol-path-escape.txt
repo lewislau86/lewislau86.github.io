@@ -1,0 +1,5 @@
+scenario=path-escape adapter_ok=true stop=permission_denied
+model_attempts=1 file_reads=0 received_http=1
+answer_correct=false task_pass=false
+usage={"completion_tokens":20,"prompt_tokens":100}
+cost_usd=unknown live_provider=not_run

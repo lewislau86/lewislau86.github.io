@@ -34,6 +34,12 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="error-recovery" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#error-recovery)下载；解压后进入 `chapters/error-recovery/`，或在代码库根目录运行 `python3 run.py run R11`。
+
+<!-- experiment-library:end -->
+
 ## 1. 把一次调用与多次尝试分开
 
 用户提出“读取项目说明”，模型给出一个工具请求，应用为它保留 `call_id=read-1`。读取临时失败后，运行时可以在内部尝试多次。这个过程中，逻辑请求仍是同一个；变化的是 `attempt`。
@@ -328,6 +334,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R11
 - 将虚拟时钟当实测延迟，将进程内续跑当作重启恢复。这里的文件效果真实；故障、时间和暂停由程序控制。
 - 用这份实验推断真实模型压缩、切换、网络超时或数据库恢复已经通过。它们需要各自的适配与验证。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：未知结果需要对账
+
+写操作返回超时，能否按网络错误直接重试？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+先问请求是否到达与效果是否已发生；有幂等身份则按合同重放，否则进入查询或人工确认。
+
+把“失败”和“结果未知”分开，恢复策略才不会制造第二笔业务。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

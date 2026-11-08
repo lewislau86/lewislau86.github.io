@@ -34,6 +34,12 @@ next:
 
 <LearnAgentRustMap active="tools-and-graph" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#tools-and-graph)下载；解压后进入 `chapters/tools-and-graph/`，或在代码库根目录运行 `python3 run.py run R02`。
+
+<!-- experiment-library:end -->
+
 ## 1. 先预测这次任务需要几轮
 
 练习工程会自行创建临时目录，放入 `Cargo.toml` 和 `README.md`。README 中写着启动命令 `cargo run`。模型每次只能看到传入的消息；要获得文件内容，必须先提出工具请求，再由程序执行。
@@ -269,6 +275,24 @@ cargo clippy --locked --all-targets -- -D warnings
 - 调用 ID 关联请求和结果，不能据此推断业务动作具有幂等性。
 - Context 中的状态、图的 Completed、业务成功与跨进程恢复，需要分别观察。本章只验证内存中的脚本模型与两库接线。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：比较语义而非画法
+
+显式版与图版都得到相同答案，足以认定行为等价吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+还要比较消息顺序、调用身份、累计预算与错误终态。最终文字相同可能掩盖一次重复执行。
+
+换框架时先保留行为契约与故障样例，再替换调度机制。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

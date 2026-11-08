@@ -32,6 +32,12 @@ next:
 
 <LearnAgentRustMap active="subagents" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#subagents)下载；解压后进入 `chapters/subagents/`，或在代码库根目录运行 `python3 run.py run R06`。
+
+<!-- experiment-library:end -->
+
 ## 1. 先运行：父模型最后看到了什么？
 
 解压学习包，在其中打开终端。先编译，再运行正常场景：
@@ -305,6 +311,24 @@ python3 scripts/verify-agent-subagents.py --check
 - **发出取消就立即删除工作区。** 子任务可能还持有资源，应先让它退出并等待，再检查清理结果。
 - **把测试标记检查当作通用防泄漏机制。** 本章验证特定数据流；真实模型可能在摘要中复述内容，任务输入选择与返回内容策略仍需独立设计。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：隔离信息与回收执行者
+
+父会话看不到子会话历史，子任务就无法影响父任务了吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+检查共享预算、允许工具、结果大小与取消后的句柄。独立历史仍可能共享文件和额度。
+
+审查隔离方案时列出所有共享资源，不只看消息列表。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

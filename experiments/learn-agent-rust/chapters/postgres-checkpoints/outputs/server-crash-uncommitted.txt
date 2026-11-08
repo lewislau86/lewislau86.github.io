@@ -1,0 +1,10 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "checkpoints_after_retry": 2,
+    "revision_after_recovery": 0
+  },
+  "passed": true,
+  "processes": 4,
+  "scenario": "server-crash-uncommitted"
+}

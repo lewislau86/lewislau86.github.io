@@ -1,0 +1,1 @@
+{"error": "TenantDenied", "passed": true, "private_spent": "9", "scenario": "tenant-isolation"}

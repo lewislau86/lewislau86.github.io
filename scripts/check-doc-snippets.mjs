@@ -10,6 +10,11 @@ const docs = join(root, 'docs')
 const tracked = new Set(execFileSync('git', ['ls-files', '-z'], {
   cwd: root, encoding: 'utf8',
 }).split('\0'))
+// `git add -N` lists paths without staging their contents. Those files still
+// disappear from a fresh checkout, so they must not satisfy this check.
+for (const path of execFileSync('git', [
+  'diff', '--name-only', '--diff-filter=A', '--ita-invisible-in-index', '-z',
+], { cwd: root, encoding: 'utf8' }).split('\0')) tracked.delete(path)
 const errors = []
 const imports = new Set()
 const images = new Set()

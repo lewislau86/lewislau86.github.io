@@ -1,0 +1,1 @@
+{"live": true, "passed": true, "ready": false, "reason": "DatabaseUnavailable", "scenario": "database-outage"}

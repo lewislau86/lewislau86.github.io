@@ -1,0 +1,12 @@
+scenario=replay-write
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Completed
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+errors=not_approved
+wire plan-1:Core->Lead:accepted
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=1 active=0 joined=2 aborted=0
+after_cleanup plan-1=Completed
+artifact=review.txt sha256=ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9
+Review: check values.first() and timeout_ms > 0.
+escape_absent=true workspace_removed=true

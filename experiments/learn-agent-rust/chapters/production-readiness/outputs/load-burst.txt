@@ -1,0 +1,1 @@
+{"accepted": 4, "active": 4, "attempted": 12, "capacity": 4, "passed": true, "ready": true, "rejected": 8, "scenario": "load-burst"}

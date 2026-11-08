@@ -1,0 +1,18 @@
+SCENARIO already-satisfied
+{
+  "status": "completed",
+  "reason": "already_satisfied",
+  "goal_verified": true,
+  "normal_returns": 0,
+  "used": {
+    "episodes": 0,
+    "model_calls": 0,
+    "tools": 0,
+    "write_bytes": 0
+  },
+  "reads": 0,
+  "writes": 0,
+  "evaluations": [],
+  "report": "apples=7\npears=11\ntotal=18\n",
+  "handoff_saved": false
+}

@@ -1,0 +1,52 @@
+name: Check P05 workflow and goal control
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/workflow-and-goal-control.md"
+      - "docs/public/learn-agent-rust/code/workflow-and-goal-control/**"
+      - "docs/public/learn-agent-rust/outputs/p05-*"
+      - "docs/public/learn-agent-rust/figures/p05-*.svg"
+      - "docs/public/learn-agent-rust/workflow-and-goal-control-lab.zip"
+      - "scripts/data/learn-agent-rust/p05-results.json"
+      - "scripts/verify-agent-goals.py"
+      - "scripts/learn-agent-rust-goal-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-goals.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/workflow-and-goal-control.md"
+      - "docs/public/learn-agent-rust/code/workflow-and-goal-control/**"
+      - "docs/public/learn-agent-rust/outputs/p05-*"
+      - "docs/public/learn-agent-rust/figures/p05-*.svg"
+      - "docs/public/learn-agent-rust/workflow-and-goal-control-lab.zip"
+      - "scripts/data/learn-agent-rust/p05-results.json"
+      - "scripts/verify-agent-goals.py"
+      - "scripts/learn-agent-rust-goal-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-goals.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  goals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: "1.99.1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust, rustfmt and Clippy
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify independent goals, cumulative budgets, handoff and extracted archive
+        run: python3 scripts/verify-agent-goals.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson P05
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/p05-*.svg'

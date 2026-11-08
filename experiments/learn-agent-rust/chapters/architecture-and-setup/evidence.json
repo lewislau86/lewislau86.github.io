@@ -1,0 +1,58 @@
+{
+  "scope": "R00 standard-library wiring; scripted model; no HTTP or database",
+  "source_sha256": "90aeb31e08a599d25e6114bf0f6549e74a53d755634adfe2fa08ddef5e8166cc",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "scenarios": [
+    {
+      "name": "normal",
+      "model_turns": 2,
+      "tool_requests": 1,
+      "read_attempts": 1,
+      "read_successes": 1,
+      "messages": 4,
+      "roles": [
+        "user",
+        "assistant",
+        "tool",
+        "assistant"
+      ],
+      "outcome": "completed",
+      "stdout_sha256": "bfe697bd2aba98d3a61b03ed2f5ade2f9d4798037132aed800d4c0729967d900",
+      "exit_code": 0
+    },
+    {
+      "name": "deny",
+      "model_turns": 2,
+      "tool_requests": 1,
+      "read_attempts": 0,
+      "read_successes": 0,
+      "messages": 4,
+      "roles": [
+        "user",
+        "assistant",
+        "tool",
+        "assistant"
+      ],
+      "outcome": "denied",
+      "stdout_sha256": "67133849208b602f9303a5dcf52f6e31cf3917080b7a85949fd9784c7f73bab1",
+      "exit_code": 0
+    },
+    {
+      "name": "missing-file",
+      "model_turns": 2,
+      "tool_requests": 1,
+      "read_attempts": 1,
+      "read_successes": 0,
+      "messages": 4,
+      "roles": [
+        "user",
+        "assistant",
+        "tool",
+        "assistant"
+      ],
+      "outcome": "missing_file",
+      "stdout_sha256": "f6324726302c4424c218b873f7ddad0b8f8f3d30058cb1329cbffefc6aad77e1",
+      "exit_code": 0
+    }
+  ]
+}

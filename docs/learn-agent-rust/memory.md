@@ -5,12 +5,11 @@ pageClass: learn-agent-rust-course
 prev:
   text: 第 8 章 · 上下文压缩
   link: /learn-agent-rust/context-compaction
-next: false
 ---
 
 # 第 9 章：跨会话记忆
 
-[课程总览](./index.md) · [上一章](./context-compaction.md) · [学习路径](./learning-path.md#r09) · [下一章提纲](./system-prompts.md)
+[课程总览](./index.md) · [上一章](./context-compaction.md) · [学习路径](./learning-path.md#r09) · [下一章](./system-prompts.md)
 
 ::: tip 本章学习目标
 - 从一条明确的用户要求提取事实，保留作用域、来源原话和修订号。
@@ -30,11 +29,21 @@ next: false
 
 <LearnAgentRustMap active="memory" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#memory)下载；解压后进入 `chapters/memory/`，或在代码库根目录运行 `python3 run.py run R09`。
+
+<!-- experiment-library:end -->
+
 ::: info 本章实验状态
 已验证确定性提取、真实磁盘文件、独立 CLI 进程之间的保存与召回。完整实验包含 22 个场景和 8 个 Rust 测试，下载包会被实际解压、重新编译并复验全部场景。
 
 本章把存储层单独实现为小型 Cargo 工程，未接入 `graph-flow` 或 `langchain-rust`，也没有调用真实模型。提取器只识别明确语法；自动判断“哪些偏好值得长期保留”的质量需要另行评估。
 :::
+
+## 与 RAG 的分工
+
+[K01：RAG](./retrieval-augmented-generation.md)按问题检索当前资料；本章保存过去明确确认的事实，再按 `(scope, key)` 精确召回。记忆系统可以在召回阶段采用语义检索，但本实验没有向量索引或相关度排序。无论用哪种召回方式，来源、修订、冲突和忘记仍要独立设计。四种输入与连接的关系见[概念导读](./knowledge-and-capabilities.md)。
 
 ## 1. 先结束进程，再问一次
 
@@ -263,6 +272,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R09
 - **把逻辑遗忘当物理删除。** `forget` 停止当前召回，历史事件仍保留原文。
 - **把一次故障注入当崩溃恢复证明。** 当前验证覆盖替换前主动失败、已有锁与临时文件；断电、强制终止及多机竞争仍需专门演练。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：记住的事实有时间和来源
+
+旧会话说项目用 Python，新提交改成 Rust，召回时应信哪一个？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+展示来源修订、观察时间与冲突，按明确规则更新；别让召回排序悄悄承担事实裁决。
+
+企业知识库要能解释“根据哪个版本得出”，而不仅是找到相似句子。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

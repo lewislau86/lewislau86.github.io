@@ -1,0 +1,41 @@
+SCENARIO invalid-report
+{
+  "status": "needs_human",
+  "reason": "no_progress",
+  "goal_verified": false,
+  "normal_returns": 2,
+  "used": {
+    "episodes": 2,
+    "model_calls": 5,
+    "tools": 3,
+    "write_bytes": 72
+  },
+  "reads": 1,
+  "writes": 2,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "report:unknown_or_duplicate_key"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    },
+    {
+      "episode": 2,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "report:unknown_or_duplicate_key"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    }
+  ],
+  "report": "apples=7\napples=7\npears=11\ntotal=18\n",
+  "handoff_saved": true
+}

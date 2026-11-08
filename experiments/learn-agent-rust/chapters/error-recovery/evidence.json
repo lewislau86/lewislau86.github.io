@@ -1,0 +1,565 @@
+{
+  "scope": "R11 typed read retry and ambiguous append; injected faults and virtual clock; real file I/O; same-process continuation",
+  "source_sha256": "8809a00d35cdc8d6c669162636c8edefe859a2b6339df3abf91dd3a86d470c71",
+  "environment": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "platform": "macOS-27.2-arm64-arm-64bit"
+  },
+  "regression_tests": [
+    "ambiguous_append_is_never_replayed",
+    "backoff_caps_and_handles_large_attempts",
+    "cancellation_and_revocation_prevent_wait_and_dispatch",
+    "continuation_preserves_attempts_due_time_and_ledger",
+    "deadline_equality_rejects_next_attempt",
+    "exhausted_shared_budget_skips_pending_wait",
+    "failed_attempts_consume_total_call_budget",
+    "io_classification_is_conservative",
+    "max_attempts_includes_first_dispatch",
+    "new_call_inherits_exhausted_task_budget",
+    "permanent_error_does_not_wait",
+    "rejected_wait_is_not_partially_charged",
+    "transient_label_alone_does_not_authorize_write_retry"
+  ],
+  "scenarios": [
+    {
+      "name": "normal",
+      "stop": "completed",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "result call_id=read-1 status=completed"
+      ],
+      "stdout_sha256": "4b3d31db7af102b375fe58396efc2cf4ca48d481118cfb147f6a33f4f3eb5eae"
+    },
+    {
+      "name": "transient",
+      "stop": "completed",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 100,
+      "now_ms": 120,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "result call_id=read-1 status=completed"
+      ],
+      "stdout_sha256": "6389f0a0cfd4d6900382d8b5964e3d7558fe03fe953edf7741abcceef3e62fed"
+    },
+    {
+      "name": "backoff",
+      "stop": "completed",
+      "calls": 3,
+      "last_attempts": 3,
+      "waited_ms": 300,
+      "now_ms": 330,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110,
+        320
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=200 due_ms=320",
+        "wake call_id=read-1 now_ms=320",
+        "attempt call_id=read-1 attempt=3 started_ms=320",
+        "result call_id=read-1 status=completed"
+      ],
+      "stdout_sha256": "03fec4ad55d61f760ce7df300130419726fc3e049020d798a65ff43b2e0227e1"
+    },
+    {
+      "name": "attempt-limit",
+      "stop": "attempt_limit",
+      "calls": 3,
+      "last_attempts": 3,
+      "waited_ms": 300,
+      "now_ms": 330,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110,
+        320
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=200 due_ms=320",
+        "wake call_id=read-1 now_ms=320",
+        "attempt call_id=read-1 attempt=3 started_ms=320",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "result call_id=read-1 status=attempt_limit"
+      ],
+      "stdout_sha256": "c19dc893d63dc80b5a6654d5c07cc9fe365465f430d09e8e6602ca25c0d5d93a"
+    },
+    {
+      "name": "call-budget",
+      "stop": "call_budget",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 100,
+      "now_ms": 120,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "result call_id=read-1 status=call_budget"
+      ],
+      "stdout_sha256": "135ec3900623f294ee3c51fe3407449a050b11d14a4b51173f1cf5a407241df8"
+    },
+    {
+      "name": "wait-budget",
+      "stop": "wait_budget",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 100,
+      "now_ms": 120,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=200 due_ms=320",
+        "result call_id=read-1 status=wait_budget"
+      ],
+      "stdout_sha256": "9861f9ac2029754429da401c87565636f7345909f00e70fd00f65ba0314c2a3e"
+    },
+    {
+      "name": "deadline",
+      "stop": "deadline",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "result call_id=read-1 status=deadline"
+      ],
+      "stdout_sha256": "ffaad742d85cae301ec28b87a46756b83a4899b743b5dd5cc5d13852cef82f21"
+    },
+    {
+      "name": "retry-after",
+      "stop": "completed",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 250,
+      "now_ms": 270,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        260
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: Some(250) }",
+        "schedule call_id=read-1 delay_ms=250 due_ms=260",
+        "wake call_id=read-1 now_ms=260",
+        "attempt call_id=read-1 attempt=2 started_ms=260",
+        "result call_id=read-1 status=completed"
+      ],
+      "stdout_sha256": "ec678cdd26b65c1782f04bed5e124d64b9ae3a63a74e2a4bddba213efb4ac286"
+    },
+    {
+      "name": "retry-after-too-long",
+      "stop": "deadline",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: Some(2000) }",
+        "schedule call_id=read-1 delay_ms=2000 due_ms=2010",
+        "result call_id=read-1 status=deadline"
+      ],
+      "stdout_sha256": "5d7942a516bcab7efd543659fc31d07990aa7f19ffa8a4b6d03dc359d74acb8e"
+    },
+    {
+      "name": "permission-denied",
+      "stop": "failed",
+      "calls": 0,
+      "last_attempts": 0,
+      "waited_ms": 0,
+      "now_ms": 0,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [],
+      "trace": [
+        "result call_id=read-1 status=failed"
+      ],
+      "stdout_sha256": "8ffb944a8d3c66b33282a5cd865d79de71982ce6b025ad69735c93a16d9f2633"
+    },
+    {
+      "name": "invalid-input",
+      "stop": "failed",
+      "calls": 0,
+      "last_attempts": 0,
+      "waited_ms": 0,
+      "now_ms": 0,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [],
+      "trace": [
+        "result call_id=read-1 status=failed"
+      ],
+      "stdout_sha256": "29ff28b8feac2855c63832d86dabd0969922e8629a7b00976d4ecfd3cc05bf26"
+    },
+    {
+      "name": "missing-file",
+      "stop": "failed",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Permanent",
+        "result call_id=read-1 status=failed"
+      ],
+      "stdout_sha256": "e7204e1ade688a07621dc2b87786df92e25331d7457f0a23039de72a7896a02f"
+    },
+    {
+      "name": "permanent",
+      "stop": "failed",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Permanent",
+        "result call_id=read-1 status=failed"
+      ],
+      "stdout_sha256": "1244e212ab04cbc5e436cbd90f38263bc5ef8437f7920992f1c727c694f69736"
+    },
+    {
+      "name": "append-ok",
+      "stop": "completed",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 1,
+      "lines": 1,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=append-1 attempt=1 started_ms=0",
+        "result call_id=append-1 status=completed"
+      ],
+      "stdout_sha256": "06e55f63b17b1e0e2f5ea084d37251a8a6e37e7a48c7658cad3ab43e1634d281"
+    },
+    {
+      "name": "append-unknown",
+      "stop": "needs_reconciliation",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 1,
+      "lines": 1,
+      "paused": false,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=append-1 attempt=1 started_ms=0",
+        "failure call_id=append-1 kind=OutcomeUnknown",
+        "result call_id=append-1 status=needs_reconciliation"
+      ],
+      "stdout_sha256": "8115fdda78c3bf1d92b7718ec80cbc4c6387faa7266749ac66970a021b4a85b2"
+    },
+    {
+      "name": "resume-budget",
+      "stop": "call_budget",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 100,
+      "now_ms": 120,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": true,
+      "starts_ms": [
+        0,
+        110
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "pause attempts=1 calls=1 waited_ms=0 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "result call_id=read-1 status=call_budget"
+      ],
+      "stdout_sha256": "75e3e566f73a7a82beb3b3aabb65c744d4f12c9ec0ed8cd82eaa7a58be0e0c15"
+    },
+    {
+      "name": "resume-cooldown",
+      "stop": "completed",
+      "calls": 2,
+      "last_attempts": 2,
+      "waited_ms": 100,
+      "now_ms": 120,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": true,
+      "starts_ms": [
+        0,
+        110
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "pause attempts=1 calls=1 waited_ms=0 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "result call_id=read-1 status=completed"
+      ],
+      "stdout_sha256": "e4939280dcca901ad8207456fccb7eff2d047327445325be5e6e7a3590b5f1d3"
+    },
+    {
+      "name": "resume-expired",
+      "stop": "deadline",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 200,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": true,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "pause attempts=1 calls=1 waited_ms=0 due_ms=110",
+        "result call_id=read-1 status=deadline"
+      ],
+      "stdout_sha256": "9b9b09a9751066ee9bac1dd535cc8bf1372f69d3e4c842606ea64bd3d2bfe09e"
+    },
+    {
+      "name": "cancelled-backoff",
+      "stop": "cancelled",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": true,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "pause attempts=1 calls=1 waited_ms=0 due_ms=110",
+        "result call_id=read-1 status=cancelled"
+      ],
+      "stdout_sha256": "7b9f0db4d5a4e7f5460b80fbab64b473bce49dad1bdf1724710dcdae029b0dfd"
+    },
+    {
+      "name": "revoked-backoff",
+      "stop": "failed",
+      "calls": 1,
+      "last_attempts": 1,
+      "waited_ms": 0,
+      "now_ms": 10,
+      "results": 1,
+      "logical_calls": 1,
+      "reads": 0,
+      "appends": 0,
+      "lines": 0,
+      "paused": true,
+      "starts_ms": [
+        0
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "pause attempts=1 calls=1 waited_ms=0 due_ms=110",
+        "result call_id=read-1 status=failed"
+      ],
+      "stdout_sha256": "c736cb8bc491010b75b66a84047c08c390423ff2fefab21530b972d6d2e84521"
+    },
+    {
+      "name": "shared-budget",
+      "stop": "call_budget",
+      "calls": 3,
+      "last_attempts": 0,
+      "waited_ms": 300,
+      "now_ms": 330,
+      "results": 2,
+      "logical_calls": 2,
+      "reads": 1,
+      "appends": 0,
+      "lines": 0,
+      "paused": false,
+      "starts_ms": [
+        0,
+        110,
+        320
+      ],
+      "trace": [
+        "attempt call_id=read-1 attempt=1 started_ms=0",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=100 due_ms=110",
+        "wake call_id=read-1 now_ms=110",
+        "attempt call_id=read-1 attempt=2 started_ms=110",
+        "failure call_id=read-1 kind=Transient { retry_after_ms: None }",
+        "schedule call_id=read-1 delay_ms=200 due_ms=320",
+        "wake call_id=read-1 now_ms=320",
+        "attempt call_id=read-1 attempt=3 started_ms=320",
+        "result call_id=read-1 status=completed",
+        "result call_id=read-2 status=call_budget"
+      ],
+      "stdout_sha256": "66d265b99e280cf69070f54679fa85664b4aab499f713aa6dbc3965c4ec534c9"
+    }
+  ]
+}

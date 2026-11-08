@@ -1,0 +1,30 @@
+SCENARIO denied-path
+{
+  "status": "needs_human",
+  "reason": "policy_denied",
+  "goal_verified": false,
+  "normal_returns": 0,
+  "used": {
+    "episodes": 1,
+    "model_calls": 2,
+    "tools": 2,
+    "write_bytes": 0
+  },
+  "reads": 1,
+  "writes": 0,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": false,
+      "verdict": {
+        "feedback": [
+          "report:file_unreadable"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    }
+  ],
+  "report": null,
+  "handoff_saved": true
+}

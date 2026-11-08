@@ -2,8 +2,6 @@
 title: "专题 1：PostgreSQL 检查点"
 description: "保存消息、下一步和累计预算，用真实 PostgreSQL 与独立进程验证恢复、并发拒写和不确定动作。"
 pageClass: learn-agent-rust-course
-prev: false
-next: false
 ---
 
 # 专题 1：PostgreSQL 检查点
@@ -27,6 +25,12 @@ next: false
 本章继续使用“核对启动命令”的小任务。脚本模型一次提出两条调用，程序分别读取 README.md 和 Cargo.toml，再把结果交回模型。每次 `step` 都由新进程执行，结束后只剩数据库和练习文件。
 
 <LearnAgentRustMap active="postgres-checkpoints" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#postgres-checkpoints)下载；解压后进入 `chapters/postgres-checkpoints/`，或在代码库根目录运行 `python3 run.py run P01`。
+
+<!-- experiment-library:end -->
 
 ## 1. 恢复一次任务，需要留下什么？
 
@@ -261,6 +265,24 @@ npm run docs:build
 - 状态校验保证本例数据形状与内部一致性。save 是可信应用接口，不提供用户认证，也不验证任意调用方提出的业务迁移是否合法。
 - 本例没有自动重试不确定动作、快照清理、旧格式迁移或框架适配。实验通过范围以清单和证据为准。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：检查点是可重建的承诺
+
+消息保存了但工具游标没保存，下次从哪里执行？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+同时核对位置、调用、结果与累计额度；只保存聊天记录无法唯一确定下一步。
+
+为恢复设计状态时，先写重启算法，再判断保存的信息是否充分。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：把下一步和已消耗额度一起保存
 

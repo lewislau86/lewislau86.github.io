@@ -1,0 +1,9 @@
+R07 | scenario=no-skill | scripted LLM + graph-flow + real skill files
+目录（只含元信息）：
+- rust-review@1.0.0: 审查 Rust 函数的边界条件，适用于代码审查任务。
+- sql-style@1.0.0: 编写与审查 SQL 查询，适用于数据库查询任务。
+bytes catalog=170 all_instructions=671 injected=0 context_before=489 context_after=1023
+assistant call_id=call-1 tool=read_file args={"path":"src/lib.rs"}
+tool_result call_id=call-1 {"data":{"path":"src/lib.rs","text":"pub fn first(values: &[u8]) -> u8 { values[0] }\n"},"ok":true}
+assistant answer=读取完成：函数使用 values[0]。本次没有加载专门的审查说明。
+stats loads=0 unique=0 reads=1 writes=0 model_turns=2 stop=completed source_unchanged=true review_file_exists=false

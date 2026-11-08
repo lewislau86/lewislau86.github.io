@@ -1,0 +1,11 @@
+R07 | scenario=version-two | scripted LLM + graph-flow + real skill files
+目录（只含元信息）：
+- rust-review@2.0.0: 审查 Rust 函数的边界条件，适用于代码审查任务。
+- sql-style@1.0.0: 编写与审查 SQL 查询，适用于数据库查询任务。
+bytes catalog=170 all_instructions=671 injected=276 context_before=489 context_after=1845
+assistant call_id=call-1 tool=load_skill args={"name":"rust-review"}
+tool_result call_id=call-1 {"data":{"injected_bytes":276,"instructions":"# Rust 函数审查\n\n读取目标函数，先给结论，再列证据。\n检查空输入、返回类型和调用者假设。\n仅根据实际读到的代码判断；没有执行测试时说明这一点。\n本技能只提供审查方法，文件读写仍受应用策略控制。","source":{"name":"rust-review","sha256":"27db475ed3726e1f9cc32f519e9463342250f1f43fc1831c6d52e137daf5b1f6","version":"2.0.0"}},"ok":true}
+assistant call_id=call-2 tool=read_file args={"path":"src/lib.rs"}
+tool_result call_id=call-2 {"data":{"path":"src/lib.rs","text":"pub fn first(values: &[u8]) -> u8 { values[0] }\n"},"ok":true}
+assistant answer=结论：空输入会触发索引越界。证据：函数直接使用 values[0]；建议返回 Option<u8>。未执行被审查函数的测试。
+stats loads=1 unique=1 reads=1 writes=0 model_turns=3 stop=completed source_unchanged=true review_file_exists=false

@@ -1,0 +1,6 @@
+scenario=discovery-schema
+protocol=2025-11-25 sdk=rmcp-3.9.0
+pages=1 registered=1
+remote_calls=0 note_lines=0
+caller_results=unsupported_schema
+children=1 reaped=1 remaining=local_status

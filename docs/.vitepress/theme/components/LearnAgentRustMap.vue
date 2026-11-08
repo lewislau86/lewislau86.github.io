@@ -20,7 +20,7 @@ const parts = computed(() => course.parts.map(part => ({
         <a :href="withBase('/learn-agent-rust/learning-path.html#' + part.lessons[0].id.toLowerCase())">
           {{ part.title }}
         </a>
-        <span>{{ part.lessons[0].id }}—{{ part.lessons[part.lessons.length - 1].id }}</span>
+        <span>{{ part.lessons.length }} 个学习节点</span>
       </li>
     </ol>
     <details>

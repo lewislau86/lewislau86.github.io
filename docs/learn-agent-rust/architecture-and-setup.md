@@ -5,7 +5,6 @@ pageClass: learn-agent-rust-course
 prev:
   text: 课程架构与框架分工
   link: /learn-agent-rust/architecture
-next: false
 ---
 
 # 第 0 章：整体架构与环境
@@ -31,6 +30,12 @@ next: false
 后面的章节会逐个增加能力。第 0 章先把一次最短的往返走完：看见请求、看见执行、看见结果怎样回到上下文，再把每一段对上全书的架构位置。暂时不需要记住所有 trait 和框架 API。
 
 <LearnAgentRustMap active="architecture-and-setup" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#architecture-and-setup)下载；解压后进入 `chapters/architecture-and-setup/`，或在代码库根目录运行 `python3 run.py run R00`。
+
+<!-- experiment-library:end -->
 
 ## 1. 模型说“读取文件”，文件就被读取了吗？
 
@@ -206,6 +211,24 @@ Agent 循环要让模型参与选择下一步：继续请求一个工具，还�
 
 本章 `run` 把两次模型响应与一次读取显式接在一起，属于固定的教学路线。下一章才会把这段接线变成真正有停止条件的循环，并用更多输入检查消息与工具契约。之后再把同一行为映射到图节点，方便对照显式循环与框架执行。
 
+<!-- transfer-thinking:start -->
+
+## 迁移思考：接线正确与推理有效
+
+把脚本模型换成总说“读到了”的模型，工具往返还能算完成吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+核对真实 read_file 调用、对应结果与最终引用。没有读取证据时，只能确认模型返回了文字。
+
+换成客服系统后，同样要把“口头承诺”与真实订单查询分开。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
 ## 本章结论：先看清往返，再增加能力
 
 一次最短的任务可以拆成：**用户提出目标 → 模型请求工具 → 应用检查并执行 → 结果进入历史 → 模型生成回答**。模型接口、应用策略、工具执行、图调度与存储分别承接其中一段工作。
@@ -268,4 +291,4 @@ Agent 循环要让模型参与选择下一步：继续请求一个工具，还�
 - 模型与图节点的固定源码入口见本章第 4 节；正式工程的联合验证将随章节提供。
 - [Learn Claude Code：Agent 循环](https://learn.shareai.run/zh/s01/)；参考原图的[来源与许可](./architecture.md#reference-assets)。
 
-下一章预告：[第 1 章 · 最小 Agent 循环](./agent-loop.md)（规划中），把本章固定的接线改成有预算与停止条件的循环。当前也可以回到[学习路径](./learning-path.md)查看后续能力的位置。
+下一章预告：[第 1 章 · 最小 Agent 循环](./agent-loop.md)，把本章固定的接线改成有预算与停止条件的循环。当前也可以回到[学习路径](./learning-path.md)查看后续能力的位置。

@@ -2,11 +2,46 @@
   "title": "Learn Agent by Rust",
   "subtitle": "使用 Rust 构建可理解、可恢复的 Agent",
   "parts": [
-    {"id": "execution", "title": "第一部分 · 工具与执行"},
-    {"id": "context", "title": "第二部分 · 规划、上下文与恢复"},
-    {"id": "tasks", "title": "第三部分 · 长任务与协作"},
-    {"id": "integration", "title": "第四部分 · 外部工具与集成"},
-    {"id": "reliability", "title": "第五部分 · 可靠性专题"}
+    {
+      "id": "execution", "title": "第一部分 · 基础循环与执行边界",
+      "purpose": "先完成一次模型与工具往返，再把权限、审批和生命周期放到宿主控制的边界。",
+      "transition": "有了可控动作，下一步为长任务保留计划，并隔离子任务的历史。"
+    },
+    {
+      "id": "planning", "title": "第二部分 · 计划与上下文隔离",
+      "purpose": "用可见清单记录意图，用独立子会话限制一次委派携带的上下文。",
+      "transition": "任务拆开以后，还要决定每次执行应当带入哪些方法、资料与历史事实。"
+    },
+    {
+      "id": "knowledge", "title": "第三部分 · 方法、知识与记忆",
+      "purpose": "区分 Skills 的操作方法、RAG 的当前证据和 Memory 的长期事实，再用压缩与提示词组装控制输入。",
+      "transition": "输入来源明确以后，进入失败恢复和跨进程长任务。"
+    },
+    {
+      "id": "tasks", "title": "第四部分 · 恢复、长任务与调度",
+      "purpose": "从有限重试走向持久化任务、后台执行和定时触发，逐步处理时间与进程边界。",
+      "transition": "单个任务可以持续推进以后，才讨论多个执行者如何共享工作。"
+    },
+    {
+      "id": "collaboration", "title": "第五部分 · 团队协作与资源归属",
+      "purpose": "先建立邮箱和协作协议，再约束任务所有权、租约与独立工作区。",
+      "transition": "协作边界具备以后，把外部能力接进来，并在同一任务中验收选定契约。"
+    },
+    {
+      "id": "integration", "title": "第六部分 · 外部能力与整体集成",
+      "purpose": "用 MCP 管理外部工具的发现、调用和连接，再组合此前已经验证的部分机制。",
+      "transition": "组合能运行以后，还需要恢复、效果、质量与目标完成的独立证据。"
+    },
+    {
+      "id": "reliability", "title": "第七部分 · 可靠性与目标验收",
+      "purpose": "分别验证检查点、外部效果、模型协议与质量、生产演练和有界目标控制。",
+      "transition": "验收方法明确以后，才评估自我改进与新研究是否带来可信收益。"
+    },
+    {
+      "id": "evolution", "title": "第八部分 · 受控演进与研究",
+      "purpose": "在固定评估边界内尝试改进，并将近期研究转换成可以复现的后续问题。",
+      "transition": "从研究补充页选择实验，保留基线、独立判分与清楚的未验证边界。"
+    }
   ],
   "lessons": [
     {
@@ -45,49 +80,56 @@
       "prerequisites": ["R03"]
     },
     {
-      "id": "R05", "slug": "todo-planning", "title": "可见的任务清单", "part": "context", "domain": "规划与控制", "status": "written",
+      "id": "R05", "slug": "todo-planning", "title": "可见的任务清单", "part": "planning", "domain": "规划与控制", "status": "written",
       "question": "长任务怎样记录目标、步骤和当前进度？",
       "addition": "会话内待办清单与合法状态迁移。",
       "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R06", "slug": "subagents", "title": "子 Agent 与上下文隔离", "part": "context", "domain": "规划与控制", "status": "written",
+      "id": "R06", "slug": "subagents", "title": "子 Agent 与上下文隔离", "part": "planning", "domain": "规划与控制", "status": "written",
       "question": "怎样把一次子任务放进独立的消息历史？",
       "addition": "子会话输入输出契约与父子预算。",
       "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R07", "slug": "skill-loading", "title": "按需加载技能", "part": "context", "domain": "规划与控制", "status": "written",
+      "id": "R07", "slug": "skill-loading", "title": "按需加载技能", "part": "knowledge", "domain": "方法、知识与记忆", "status": "written",
       "question": "怎样只在任务需要时加入专业说明？",
       "addition": "技能目录、版本与按需内容注入。",
       "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
       "prerequisites": ["R02", "R03"]
     },
     {
-      "id": "R08", "slug": "context-compaction", "title": "上下文压缩", "part": "context", "domain": "记忆管理", "status": "written",
+      "id": "K01", "slug": "retrieval-augmented-generation", "title": "RAG：检索、证据与回答", "part": "knowledge", "domain": "方法、知识与记忆", "status": "written",
+      "question": "怎样只把当前有权访问、与问题相关且可追溯的资料交给回答环节？",
+      "addition": "文档切块、BM25、范围过滤、上下文预算、引用校验与索引更新。",
+      "outcome": "运行真实词法检索，观察同义表达缺口、资料更新与删除；用固定摘录夹具检查回答边界，真实模型质量另验。",
+      "prerequisites": ["R02", "R03", "R07"]
+    },
+    {
+      "id": "R08", "slug": "context-compaction", "title": "上下文压缩", "part": "knowledge", "domain": "方法、知识与记忆", "status": "written",
       "question": "对话历史太长时，怎样保留继续行动需要的事实？",
       "addition": "上下文预算、裁剪与历史摘要。",
       "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
       "prerequisites": ["R01", "R07"]
     },
     {
-      "id": "R09", "slug": "memory", "title": "跨会话记忆", "part": "context", "domain": "记忆管理", "status": "written",
+      "id": "R09", "slug": "memory", "title": "跨会话记忆", "part": "knowledge", "domain": "方法、知识与记忆", "status": "written",
       "question": "哪些事实应当在新会话中仍然可用？",
       "addition": "有来源和版本的事实存储、提取与召回。",
       "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
       "prerequisites": ["R08"]
     },
     {
-      "id": "R10", "slug": "system-prompts", "title": "系统提示词组装", "part": "context", "domain": "规划与控制", "status": "written",
+      "id": "R10", "slug": "system-prompts", "title": "系统提示词组装", "part": "knowledge", "domain": "方法、知识与记忆", "status": "written",
       "question": "策略、工具、技能和环境怎样组成一次模型请求？",
       "addition": "运行时提示词组装与各部分的来源和版本。",
       "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
       "prerequisites": ["R07", "R09"]
     },
     {
-      "id": "R11", "slug": "error-recovery", "title": "错误分类与恢复", "part": "context", "domain": "规划与控制", "status": "written",
+      "id": "R11", "slug": "error-recovery", "title": "错误分类与恢复", "part": "tasks", "domain": "规划与控制", "status": "written",
       "question": "什么错误值得重试，重试何时应该结束？",
       "addition": "类型化错误、有限重试、退避与累计预算。",
       "outcome": "区分临时和永久错误，验证重试或恢复后仍受总预算约束。",
@@ -115,28 +157,28 @@
       "prerequisites": ["R12", "R13"]
     },
     {
-      "id": "R15", "slug": "agent-teams", "title": "Agent 团队", "part": "tasks", "domain": "多 Agent 平台", "status": "written",
+      "id": "R15", "slug": "agent-teams", "title": "Agent 团队", "part": "collaboration", "domain": "多 Agent 平台", "status": "written",
       "question": "多个执行者怎样分工，并保留各自的上下文？",
       "addition": "独立会话、有界邮箱与队友生命周期。",
       "outcome": "观察消息投递、队友等待与退出，明确单进程和跨进程能力范围。",
       "prerequisites": ["R06", "R12", "R13"]
     },
     {
-      "id": "R16", "slug": "team-protocols", "title": "团队协作协议", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R16", "slug": "team-protocols", "title": "团队协作协议", "part": "collaboration", "domain": "多 Agent 平台", "status": "written",
       "question": "队友怎样批准、拒绝、汇报和退出？",
       "addition": "类型化消息、关联身份与协议状态迁移。",
       "outcome": "拒绝非法协议消息，验证关闭握手、超时和失败退出。",
       "prerequisites": ["R15"]
     },
     {
-      "id": "R17", "slug": "autonomous-workers", "title": "自主任务领取", "part": "tasks", "domain": "多 Agent 平台", "status": "planned",
+      "id": "R17", "slug": "autonomous-workers", "title": "自主任务领取", "part": "collaboration", "domain": "多 Agent 平台", "status": "written",
       "question": "谁有权执行任务，原执行者退出后谁来接管？",
       "addition": "原子领取、所有权、租约与接管。",
       "outcome": "验证竞争领取、租约过期和旧执行者拒写，单独核对外部动作重放。",
       "prerequisites": ["R12", "R16"]
     },
     {
-      "id": "R18", "slug": "worktree-isolation", "title": "工作区隔离", "part": "tasks", "domain": "多 Agent 平台", "status": "written",
+      "id": "R18", "slug": "worktree-isolation", "title": "工作区隔离", "part": "collaboration", "domain": "多 Agent 平台", "status": "written",
       "question": "并发代码任务怎样拥有独立文件与变更归属？",
       "addition": "任务绑定的练习 worktree 与资源回收策略。",
       "outcome": "在专用练习仓库验证创建、绑定、保留和回收，不覆盖已有修改。",
@@ -171,25 +213,32 @@
       "prerequisites": ["P01", "R17"]
     },
     {
-      "id": "P03", "slug": "model-evaluation", "title": "模型协议与质量评估", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "id": "P03", "slug": "model-evaluation", "title": "模型协议与质量评估", "part": "reliability", "domain": "可靠性专题", "status": "written",
       "question": "协议正确与任务真正完成，分别怎样验证？",
       "addition": "provider fixture、真实服务与固定任务集。",
       "outcome": "分别报告协议、完成率、延迟和成本，并记录模型与实验环境。",
       "prerequisites": ["R01", "R11", "R20"]
     },
     {
-      "id": "P04", "slug": "production-readiness", "title": "生产准入与演练", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "id": "P04", "slug": "production-readiness", "title": "生产准入与演练", "part": "reliability", "domain": "可靠性专题", "status": "written",
       "question": "实验通过以后，长期服务还需要哪些证据？",
       "addition": "授权、迁移、版本兼容、监控与故障恢复。",
       "outcome": "按明确环境执行负载、旧会话升级、故障接管和备份恢复演练。",
       "prerequisites": ["P01", "P02", "P03"]
     },
     {
-      "id": "P05", "slug": "workflow-and-goal-control", "title": "固定工作流与目标控制", "part": "reliability", "domain": "可靠性专题", "status": "planned",
+      "id": "P05", "slug": "workflow-and-goal-control", "title": "固定工作流与目标控制", "part": "reliability", "domain": "可靠性专题", "status": "written",
       "question": "固定业务编排与自主循环怎样结合，目标何时算完成？",
       "addition": "工作流边界、独立目标判断与有上限的继续策略。",
       "outcome": "区分正常返回与目标完成，验证不可完成、续跑上限和人工接管路径。",
       "prerequisites": ["R11", "R20", "P03"]
+    },
+    {
+      "id": "P06", "slug": "agent-rsi", "title": "Agent RSI 与受控自我改进", "part": "evolution", "domain": "研究与演进", "status": "written",
+      "question": "怎样判断自我改进真的有效，改进机制自身又能否改进？",
+      "addition": "任务与元改进分层、独立验收、有限候选、版本发布与回滚。",
+      "outcome": "运行有限策略门控实验，拒绝过拟合、评分器篡改与越权，核对预算和发布回滚；递归元改进另验。",
+      "prerequisites": ["R18", "P03", "P04", "P05"]
     }
   ]
 }

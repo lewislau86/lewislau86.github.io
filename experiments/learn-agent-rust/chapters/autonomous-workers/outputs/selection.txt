@@ -1,0 +1,12 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+TASKS {"id":"aaa","max_claims":1,"op":"add","title":"先读取说明"}
+{"status":"added","task":{"id":"aaa","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"先读取说明","token":0}}
+TASKS {"now":100,"op":"claim","owner":"worker-a","ttl":10}
+{"now":100,"status":"claimed","task":{"id":"aaa","lease_until":110,"max_claims":1,"owner":"worker-a","result":null,"state":"running","title":"先读取说明","token":1}}
+TASKS {"now":100,"op":"claim","owner":"worker-b","ttl":10}
+{"now":100,"status":"claimed","task":{"id":"report","lease_until":110,"max_claims":3,"owner":"worker-b","result":null,"state":"running","title":"整理日报","token":1}}
+TASKS {"now":100,"op":"claim","owner":"worker-c","ttl":10}
+{"now":100,"status":"empty"}

@@ -1,0 +1,4 @@
+scenario=busy
+before_join=busy
+after_join=removed
+stats bindings=1 linked=0 retained=0 removed=1 primary_baseline=true

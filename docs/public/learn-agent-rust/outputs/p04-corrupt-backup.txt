@@ -1,0 +1,1 @@
+{"passed": true, "ready": false, "restore_failed": true, "scenario": "corrupt-backup"}

@@ -1,0 +1,4 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"op":"show"}
+{"error":"schema_version","status":"error"}

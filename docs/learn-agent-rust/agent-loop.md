@@ -32,6 +32,12 @@ next:
 
 <LearnAgentRustMap active="agent-loop" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#agent-loop)下载；解压后进入 `chapters/agent-loop/`，或在代码库根目录运行 `python3 run.py run R01`。
+
+<!-- experiment-library:end -->
+
 ::: info 本章实验状态
 正文与独立 Rust 实验已完成。脚本模型用固定规则返回工具请求或最终回答，文件工具实际读取程序新建的临时目录；验证脚本会核对全部实验输出。
 
@@ -290,6 +296,24 @@ rustc --edition=2024 -D warnings --test agent-loop.rs -o agent-r01-tests
 - **把调用 ID 当作业务幂等键。** 本章只在单次内存运行里检查 ID 唯一。跨进程重试和外部副作用仍需专门的恢复契约。
 - **把固定规则实验当作真实模型验证。** 本章验证的是控制流、文件数据流和停止行为，真实协议、模型选择工具的能力与任务质量需要后续证据。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：终止性是一种业务约束
+
+模型每次都提出合法读取，是否应让它一直运行？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+让重复读取先耗尽累计额度，再观察停止原因；每个动作合法，整段执行仍可能没有进展。
+
+循环需要同时回答动作能否执行、何时应交回控制权；继续策略见专题 5。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：主线采用有界的显式循环
 

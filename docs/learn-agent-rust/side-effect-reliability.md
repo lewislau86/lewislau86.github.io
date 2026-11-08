@@ -2,20 +2,18 @@
 title: "专题 2：外部操作的可靠性"
 description: "用独立客户端与工单服务复现提交后的未知结果，验证操作身份、幂等、Outbox 和对账。"
 pageClass: learn-agent-rust-course
-prev: false
-next: false
 ---
 
 # 专题 2：外部操作的可靠性
 
-[课程总览](./index.md) · [专题 1 提纲](./postgres-checkpoints.md) · [学习路径](./learning-path.md#p02) · [专题 3 提纲](./model-evaluation.md)
+[课程总览](./index.md) · [上一专题：PostgreSQL 检查点](./postgres-checkpoints.md) · [学习路径](./learning-path.md#p02) · [下一专题：模型协议与质量评估](./model-evaluation.md)
 
 ::: tip 本章学习目标
 - 沿一次创建工单的过程，指出外部提交、结果接收和本地检查点之间的故障窗口。
 - 让同一业务操作跨重试保留身份，验证同键同参数复用、同键不同参数拒绝。
 - 运行进程退出实验，分别检查 Outbox、服务端业务行和本地检查点，决定重发、对账或停止。
 
-**前置：** [错误分类与恢复](./error-recovery.md)、[持久化任务系统](./task-system.md)、[自主任务领取](./autonomous-workers.md)。[专题 1](./postgres-checkpoints.md)规划完整 PostgreSQL 会话检查点；本章提供独立 SQLite 实验，可先运行。
+**前置：** [错误分类与恢复](./error-recovery.md)、[持久化任务系统](./task-system.md)、[自主任务领取](./autonomous-workers.md)。[专题 1](./postgres-checkpoints.md)使用 PostgreSQL 保存会话检查点；本章提供独立 SQLite 实验，可先运行。
 
 **实践方式：** 下载<a href="/learn-agent-rust/side-effect-reliability.zip" download>完整 side-effect-reliability.zip</a>，进入解压后的同名目录执行 `cargo run --locked`。固定 Rust 1.99.1，SQLite 随 `rusqlite` 编译，需要本机 C 编译工具链；无需 API Key 或数据库服务。
 :::
@@ -27,6 +25,12 @@ next: false
 本章围绕这张工单往前走：先制造重复，再为操作分配稳定身份，把发送意图保存下来，最后查询服务端结果，恢复本地记录。
 
 <LearnAgentRustMap active="side-effect-reliability" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#side-effect-reliability)下载；解压后进入 `chapters/side-effect-reliability/`，或在代码库根目录运行 `python3 run.py run P02`。
+
+<!-- experiment-library:end -->
 
 ::: info 本章实验状态
 已验证独立 Rust 客户端与 provider 进程、两份真实 SQLite 数据库、事务提交前后直接退出、重启重放及对账。默认演示使用本机子进程 JSON 通信；模型、HTTP、真实第三方服务、完整 Agent 会话恢复和 PostgreSQL 集成尚未接入。
@@ -238,6 +242,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson P02
 - 本实验没有实际网络、完整 Agent、跨 worker 调度或 PostgreSQL 集成；两份 SQLite 的验证不能代替这些系统的验收。
 :::
 
+<!-- transfer-thinking:start -->
+
+## 迁移思考：业务身份比重试次数稳定
+
+同一业务意图重试时生成新 operation_id，会绕过幂等吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+检查唯一约束针对的身份是否跨重试稳定，且相同身份携带不同内容时明确拒绝。
+
+可靠性依赖双方共享的业务合同；客户端少重试几次无法替代服务端去重。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
 ## 本章结论
 
 先把同一业务意图的身份和参数保存下来，再发送。服务把幂等键、业务结果和回执原子保存；客户端通过 Outbox 找回待处理意图，通过合法回执和检查点记录进度。结果不明时，按服务契约重放或对账，证据不足就保留 unknown。
@@ -294,4 +316,4 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson P02
 - [SQLite 原子提交](https://www.sqlite.org/atomiccommit.html)与[隔离性](https://www.sqlite.org/isolation.html)：本实验事务所依赖的数据库语义。
 - <a href="/learn-agent-rust/code/side-effect-reliability/README.md" download>完整实验运行说明</a>：命令、退出码、期限、计数与未验证范围。
 
-下一篇规划为[专题 3：模型协议与质量评估](./model-evaluation.md)，分别验证协议完成与业务任务完成。
+下一专题是[模型协议与质量评估](./model-evaluation.md)，分别验证协议完成与业务任务完成。

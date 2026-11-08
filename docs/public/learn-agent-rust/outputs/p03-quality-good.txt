@@ -1,0 +1,5 @@
+profile=quality-good tasks=12 distinct_tasks=4 repeats=3
+adapter_pass=12/12 task_pass=12/12
+http_requests=24 file_reads=12
+usage_origin=fixture_synthetic prompt_tokens=2400 completion_tokens=480
+cost_usd=unknown latency_scope=local_loopback live_provider=not_run

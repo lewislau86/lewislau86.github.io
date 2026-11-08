@@ -1,0 +1,30 @@
+SCENARIO tool-write-failed
+{
+  "status": "needs_human",
+  "reason": "tool_write_failed",
+  "goal_verified": false,
+  "normal_returns": 0,
+  "used": {
+    "episodes": 1,
+    "model_calls": 2,
+    "tools": 2,
+    "write_bytes": 27
+  },
+  "reads": 1,
+  "writes": 0,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": false,
+      "verdict": {
+        "feedback": [
+          "report:not_regular_file"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    }
+  ],
+  "report": null,
+  "handoff_saved": true
+}

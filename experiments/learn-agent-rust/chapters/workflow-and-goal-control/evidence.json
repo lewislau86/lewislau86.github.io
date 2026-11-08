@@ -1,0 +1,2171 @@
+{
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "status": "completed",
+      "reason": "goal_satisfied",
+      "goal_verified": true,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "goal_satisfied",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "scenario": "false-final",
+      "status": "needs_human",
+      "reason": "no_progress",
+      "goal_verified": false,
+      "normal_returns": 2,
+      "reads": 0,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 2,
+        "tools": 0,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 2,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "best_score": 0,
+          "feedback": [
+            "report:file_unreadable"
+          ],
+          "phase": "continue",
+          "stagnant": 1
+        },
+        {
+          "call": 2,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "no_progress",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "continue-success",
+      "status": "completed",
+      "reason": "goal_satisfied",
+      "goal_verified": true,
+      "normal_returns": 2,
+      "reads": 1,
+      "writes": 2,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 5,
+        "tools": 3,
+        "write_bytes": 45
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 5,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "goal_satisfied",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "scenario": "wrong-total",
+      "status": "completed",
+      "reason": "goal_satisfied",
+      "goal_verified": true,
+      "normal_returns": 2,
+      "reads": 1,
+      "writes": 2,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 5,
+        "tools": 3,
+        "write_bytes": 54
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "wrong:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "wrong:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 5,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "goal_satisfied",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "scenario": "no-progress",
+      "status": "needs_human",
+      "reason": "no_progress",
+      "goal_verified": false,
+      "normal_returns": 3,
+      "reads": 1,
+      "writes": 3,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 3,
+        "model_calls": 7,
+        "tools": 4,
+        "write_bytes": 54
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 2,
+        "feedback": [
+          "missing:total"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 5,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 1
+        },
+        {
+          "call": 6,
+          "episode": 3,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 7,
+          "episode": 3,
+          "phase": "model"
+        },
+        {
+          "episode": 3,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "no_progress",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "episode-limit",
+      "status": "needs_human",
+      "reason": "episode_limit",
+      "goal_verified": false,
+      "normal_returns": 2,
+      "reads": 1,
+      "writes": 2,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 5,
+        "tools": 3,
+        "write_bytes": 36
+      },
+      "limits": {
+        "episodes": 2,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 2,
+        "feedback": [
+          "missing:total"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 5,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "episode_limit",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "model-budget",
+      "status": "needs_human",
+      "reason": "model_budget",
+      "goal_verified": false,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 18
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 3,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 2,
+        "feedback": [
+          "missing:total"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "episode": 2,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "model_budget",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "tool-budget",
+      "status": "needs_human",
+      "reason": "tool_budget",
+      "goal_verified": false,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 4,
+        "tools": 2,
+        "write_bytes": 18
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 2,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 2,
+        "feedback": [
+          "missing:total"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "tool_budget",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "byte-budget",
+      "status": "needs_human",
+      "reason": "byte_budget",
+      "goal_verified": false,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 4,
+        "tools": 3,
+        "write_bytes": 18
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 18,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 2,
+        "feedback": [
+          "missing:total"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 18,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "best_score": 2,
+          "feedback": [
+            "missing:total"
+          ],
+          "phase": "continue",
+          "stagnant": 0
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "missing:total"
+            ],
+            "kind": "repairable",
+            "score": 2
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "byte_budget",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "cancelled-after-read",
+      "status": "needs_human",
+      "reason": "cancelled",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 1,
+        "tools": 1,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "cancelled",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "explicit-handoff",
+      "status": "needs_human",
+      "reason": "explicit_handoff",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 2,
+        "tools": 1,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "explicit_handoff",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "missing-source",
+      "status": "needs_human",
+      "reason": "input_blocked",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 0,
+      "writes": 0,
+      "contract": null,
+      "used": {
+        "episodes": 0,
+        "model_calls": 0,
+        "tools": 0,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "blocked",
+        "score": 0,
+        "feedback": [
+          "source:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "terminal",
+          "reason": "input_blocked",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "malformed-source",
+      "status": "needs_human",
+      "reason": "input_blocked",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 0,
+      "writes": 0,
+      "contract": null,
+      "used": {
+        "episodes": 0,
+        "model_calls": 0,
+        "tools": 0,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "blocked",
+        "score": 0,
+        "feedback": [
+          "source:invalid_count"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "terminal",
+          "reason": "input_blocked",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "denied-path",
+      "status": "needs_human",
+      "reason": "policy_denied",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 2,
+        "tools": 2,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "policy_denied",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "tool-write-failed",
+      "status": "needs_human",
+      "reason": "tool_write_failed",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 2,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:not_regular_file"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:not_regular_file"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:not_regular_file"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "tool_write_failed",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "model-error",
+      "status": "needs_human",
+      "reason": "model_error",
+      "goal_verified": false,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 2,
+        "tools": 1,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:file_unreadable"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "model_error",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "valid-then-model-error",
+      "status": "needs_human",
+      "reason": "model_error",
+      "goal_verified": true,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "model_error",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "invalid-report",
+      "status": "needs_human",
+      "reason": "no_progress",
+      "goal_verified": false,
+      "normal_returns": 2,
+      "reads": 1,
+      "writes": 2,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 2,
+        "model_calls": 5,
+        "tools": 3,
+        "write_bytes": 72
+      },
+      "limits": {
+        "episodes": 2,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "repairable",
+        "score": 0,
+        "feedback": [
+          "report:unknown_or_duplicate_key"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 36,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:unknown_or_duplicate_key"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "best_score": 0,
+          "feedback": [
+            "report:unknown_or_duplicate_key"
+          ],
+          "phase": "continue",
+          "stagnant": 1
+        },
+        {
+          "call": 4,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "bytes": 36,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 5,
+          "episode": 2,
+          "phase": "model"
+        },
+        {
+          "episode": 2,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "report:unknown_or_duplicate_key"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "no_progress",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "changed-source",
+      "status": "needs_human",
+      "reason": "goal_blocked",
+      "goal_verified": false,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "blocked",
+        "score": 0,
+        "feedback": [
+          "source_changed"
+        ]
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [
+              "source_changed"
+            ],
+            "kind": "blocked",
+            "score": 0
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "goal_blocked",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "already-satisfied",
+      "status": "completed",
+      "reason": "already_satisfied",
+      "goal_verified": true,
+      "normal_returns": 0,
+      "reads": 0,
+      "writes": 0,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 0,
+        "model_calls": 0,
+        "tools": 0,
+        "write_bytes": 0
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "already_satisfied",
+          "status": "completed"
+        }
+      ]
+    },
+    {
+      "scenario": "missing-final",
+      "status": "needs_human",
+      "reason": "invalid_response",
+      "goal_verified": true,
+      "normal_returns": 0,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 4,
+        "model_calls": 12,
+        "tools": 8,
+        "write_bytes": 256,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": false,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "invalid_response",
+          "status": "needs_human"
+        }
+      ]
+    },
+    {
+      "scenario": "exact-budget",
+      "status": "completed",
+      "reason": "goal_satisfied",
+      "goal_verified": true,
+      "normal_returns": 1,
+      "reads": 1,
+      "writes": 1,
+      "contract": {
+        "expected": {
+          "apples": 7,
+          "pears": 11,
+          "total": 18
+        },
+        "source": "apples=7\npears=11\n"
+      },
+      "used": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27
+      },
+      "limits": {
+        "episodes": 1,
+        "model_calls": 3,
+        "tools": 2,
+        "write_bytes": 27,
+        "stagnant": 2
+      },
+      "verdict": {
+        "kind": "satisfied",
+        "score": 3,
+        "feedback": []
+      },
+      "trace": [
+        {
+          "phase": "prepare"
+        },
+        {
+          "phase": "precheck",
+          "verdict": {
+            "feedback": [
+              "report:file_unreadable"
+            ],
+            "kind": "repairable",
+            "score": 0
+          }
+        },
+        {
+          "call": 1,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "name": "read_source",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 2,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "bytes": 27,
+          "name": "write_report",
+          "ok": true,
+          "phase": "tool"
+        },
+        {
+          "call": 3,
+          "episode": 1,
+          "phase": "model"
+        },
+        {
+          "episode": 1,
+          "normal": true,
+          "phase": "evaluate",
+          "verdict": {
+            "feedback": [],
+            "kind": "satisfied",
+            "score": 3
+          }
+        },
+        {
+          "phase": "terminal",
+          "reason": "goal_satisfied",
+          "status": "completed"
+        }
+      ]
+    }
+  ],
+  "cli_processes": 24,
+  "rejected_cli": [
+    "existing_workspace",
+    "unknown_scenario"
+  ],
+  "observation": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "host": "aarch64-apple-darwin"
+  },
+  "rust_tests": 11,
+  "files_sha256": {
+    "Cargo.toml": "31d736e93565a138ea49772b0a4df294e56bd6e9e74c28315388ce3a7d662fe5",
+    "Cargo.lock": "510d7148c98d68fb9e823b0d89566cfe95c82d6ad7f2416d5147ef1c5ce37db6",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "README.md": "87941ead8ed0c3b346dfa308318999b128903dfe3692236ec23e1cd7be8408d7",
+    "lab.py": "5044c250b6b82e6cb7964510f44d179dc9b745ca2d0e5458a47e6c518a9e6401",
+    "src/main.rs": "987239e32829ab7de48ff5ab107808bbc1d73b2b63f6fab7f3ad218a93bfc49d",
+    "src/controller.rs": "c511028661de406cd00128e7fedbb7bf5a6510d582da891581a8ec88d9abbbef",
+    "src/fixture.rs": "493c7a3a4b0c5f944c4b030cab9e9c81d05ce16d7f4cd5b8147f2d845e369f8e",
+    "src/goal.rs": "5b3386ddf8e6c7aa7b70a0d1eaf29b8007a9e4d6138abcf5c1b31dae3cfef04a",
+    "src/tests.rs": "b5eff963bcca8b404d07d156b27b32c1d0be8858f7b5465efc595cb7390ff808"
+  },
+  "scope": "Single-process fixed workflow and scripted proposal loop; bounded cumulative ledger, independent actual-file verifier, local handoff; no provider, framework integration, durable restart or remote actions"
+}

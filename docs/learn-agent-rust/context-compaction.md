@@ -3,8 +3,8 @@ title: "第 8 章：上下文压缩"
 description: "沿一次连续代码审查，使用真实归档、结构化摘要和图节点，验证预算、事实保留、工具配对与压缩后的技能重载。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 7 章 · 按需加载技能
-  link: /learn-agent-rust/skill-loading
+  text: 知识专题 1 · RAG
+  link: /learn-agent-rust/retrieval-augmented-generation
 next:
   text: 第 9 章 · 跨会话记忆
   link: /learn-agent-rust/memory
@@ -12,7 +12,7 @@ next:
 
 # 第 8 章：上下文压缩
 
-[课程总览](./index.md) · [上一章](./skill-loading.md) · [学习路径](./learning-path.md#r08) · [下一章](./memory.md)
+[课程总览](./index.md) · [上一章](./retrieval-augmented-generation.md) · [学习路径](./learning-path.md#r08) · [下一章](./memory.md)
 
 ::: tip 本章学习目标
 - 区分旧结果占位、大结果落盘和历史摘要，解释每一步保留了什么。
@@ -24,13 +24,19 @@ next:
 **实践方式：** 下载<a href="/learn-agent-rust/context-compaction.zip" download>完整 context-compaction.zip</a>，进入解压后的 `context-compaction` 执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02、R07 的 graph-flow 与 langchain-rust Git revisions；首次获取依赖需要网络。
 :::
 
-上一章把审查方法按需放进了消息历史。接下来，助手又读了几份文档、记下调查过程，再继续审查。此时，每一轮请求都会携带这些旧内容；新读一份文件，还会继续增加输入。
+前面的技能章节把审查方法按需放进消息历史，紧接着的 [RAG 专题](./retrieval-augmented-generation.md)解释如何选取当前证据。本章沿用技能审查实验，观察助手又读了几份文档、记下调查过程后怎样继续；RAG 工具与本章两库工程的接线需要单独验收。此时，每一轮请求都会携带这些旧内容；新读一份文件，还会继续增加输入。
 
 我们延续一个具体任务：审查 `src/first.rs`，确认空输入会发生什么。用户明确要求：禁止修改文件；没有运行测试，就要说明“未运行测试”。旧工具结果里已经出现了目标路径和 `values[0]`，但最近几条消息只是在整理文档目录。
 
 现在需要腾出空间。先猜一猜：只留下最近几条消息，助手还能知道该读哪个文件吗？如果摘要写着“测试通过”，我们又靠什么发现它没有依据？
 
 <LearnAgentRustMap active="context-compaction" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#context-compaction)下载；解压后进入 `chapters/context-compaction/`，或在代码库根目录运行 `python3 run.py run R08`。
+
+<!-- experiment-library:end -->
 
 ::: info 本章实验状态
 Agent 与摘要器都实现固定版本 `langchain-rust` 的 `LLM` trait，`graph-flow` 实际推进三个节点。程序真实创建、读取练习文件与归档，脚本模型根据收到的消息继续行动；不请求外部模型服务。
@@ -284,6 +290,24 @@ npm run docs:build
 - 本实验的归档注册表与会话都在本次进程中，退出后清理；跨会话记忆、崩溃恢复和数据库检查点需要分别实现。
 - 保留用户消息会持续占用空间，摘要也可能失败。本例会有界停止，要求应用调整任务或输入。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：压缩优化的是充分信息
+
+摘要缩短一半，却遗漏一次写入的 operation_id，会更好吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+比较后续能否正确判断已执行动作，而不只比较字节数；关键身份必须留在结构化状态或可追溯归档中。
+
+压缩、缓存和检索都应围绕下一步决策所需信息定义保真指标。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

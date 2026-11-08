@@ -1,0 +1,31 @@
+{
+  "scenario": "stale-source",
+  "graph_nodes": [
+    "AssemblePrompt"
+  ],
+  "probe": null,
+  "source_unchanged": true,
+  "summary_exists": false,
+  "goal_verified": false,
+  "state": {
+    "history": [
+      {
+        "content": "读取 README，解释启动命令与环境要求。",
+        "message_type": "human",
+        "id": null,
+        "tool_calls": null,
+        "images": null
+      }
+    ],
+    "prepared": null,
+    "inputs": [],
+    "pending": [],
+    "model_turns": 0,
+    "read_attempts": 0,
+    "successful_reads": 0,
+    "write_attempts": 0,
+    "stop": "prompt_error",
+    "error": "stale_source",
+    "answer": null
+  }
+}

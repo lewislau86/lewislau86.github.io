@@ -1,0 +1,7 @@
+scenario=budget order_seed=1
+baseline dev=2/4 validation=1/4
+decision=reject reason=search_budget current=Baseline
+audit baseline_test=2/6 selected_test=2/6 deployed=Baseline
+search_attempts=0 candidate_case_evaluations=0 remaining=0
+baseline_preserved=true pointer_matches_policy=true
+workspace_removed=true

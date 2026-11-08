@@ -1,0 +1,8 @@
+R08 | scenario=naive-trim | scripted LLM + graph-flow + real temporary files
+measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
+prepare[1] before=11939 externalized=5010 micro=4833 after=867 decision=naive_trim summary_input=0
+artifact=a1 kind=transcript bytes=12192 integrity=true
+artifact=a2 kind=tool_output bytes=7180 integrity=true
+answer=缺少目标文件路径，请重新提供证据。未运行测试。
+stats summary_calls=0 agent_calls=1 reloads=0 reads=0 retrievals=0 stop=missing_evidence
+checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true

@@ -27,6 +27,10 @@ next:
 
 先让电脑编译出一个能打印文字的程序。这个过程会经过 Rust 编译器、Cargo 和系统链接器，能够尽早发现安装与路径问题。完成这一步后，再进入模型与工具循环的学习。
 
+## 下载全书实验代码
+
+<a href="/learn-agent-rust/learn-agent-rust-experiments.zip" download>全书实验代码库（zip）</a>收录每章的完整工程、夹具、输出与 README。解压后运行 `python3 run.py list` 查看对应关系；先按本页安装环境，再用 `python3 run.py run R01` 或 `python3 run.py test R01` 运行。统一入口需要 Python 3.9+，只用标准库；各章仍可按自己的 README 独立执行。全部条件与逐章入口见[实验代码库索引](./experiments.md)。
+
 ## 1. 现在需要准备哪些东西
 
 ![应用策略与图执行器位于 Rust 进程中，模型服务、会话存储和工作区从各自的边界接入。](/learn-agent-rust/figures/runtime-architecture.svg)
@@ -231,6 +235,8 @@ cargo run --locked --offline
 
 第 15 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 15 章](./agent-teams.md)。
 
+第 16 章提供独立的<a href="/learn-agent-rust/team-protocols.zip" download>团队协作协议工程</a>。进入解压后的 `team-protocols` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`，固定 Rust 1.99.1 与 Tokio 1.54.1，另用 Serde、SHA-256 和 tempfile。它直接验证请求身份、计划审批、期限、关闭握手与队友回收，首次需下载依赖，运行时无需模型密钥、数据库、graph-flow 或 langchain-rust；实验范围见[第 16 章](./team-protocols.md)。
+
 专题 2 提供独立的<a href="/learn-agent-rust/side-effect-reliability.zip" download>外部操作可靠性工程</a>。进入 `side-effect-reliability` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 和 `cargo test --locked`。它固定 Rust 1.99.1，使用随工程编译的 SQLite，需要本机 C 编译工具链；无需安装数据库服务或配置 API Key。默认演示仅操作自建临时目录，独立客户端与 provider 进程通过本机 CLI JSON 通信；详细故障实验见[专题 2](./side-effect-reliability.md)。
 
 ### 4.5 自己新建项目时，怎样添加这两个库？
@@ -334,3 +340,9 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 - [graph-flow 固定源码](https://github.com/a-agmon/rs-graph-llm/tree/9bbca193f20a8c4ba23289621549ecb3d35fee64/graph-flow) 与 [langchain-rust 固定源码](https://github.com/Abraxas-365/langchain-rust/tree/5fc3f5aca4380da48829f95d6e2fd0217b1f2013)
 
 下一篇：[课程架构与框架分工](./architecture.md)，把运行环境放回模型、工具与状态的数据流中。
+
+## Agent RSI 专题的独立环境 {#rsi-lab}
+
+[专题 6](./agent-rsi.md)使用 Rust 1.99.1 标准库，不增加 Cargo 依赖，不需要模型密钥或数据库。解压[学习包](/learn-agent-rust/agent-rsi-lab.zip)后进入 agent-rsi，先运行 `cargo test --locked --offline`，再按 README 用尚不存在的临时目录运行七类场景。指定工具链首次安装需要网络，实验本身离线运行。
+
+下载包实现的是有界策略搜索、固定验收与发布回滚；递归元改进属于后续研究边界。课程基线与最新一手资料的差异统一记录在[技术跟踪](./technology-radar.md)，不要为了追随版本号直接改动所有学习包。

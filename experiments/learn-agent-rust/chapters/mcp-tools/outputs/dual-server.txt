@@ -1,0 +1,6 @@
+scenario=dual-server
+protocol=2025-11-25 sdk=rmcp-3.9.0
+pages=4 registered=15
+remote_calls=2 note_lines=0
+caller_results=ok,ok
+children=2 reaped=2 remaining=local_status

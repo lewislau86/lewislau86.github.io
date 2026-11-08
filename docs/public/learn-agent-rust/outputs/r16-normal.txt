@@ -1,0 +1,18 @@
+scenario=normal
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Completed
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=stop-config kind=Shutdown Lead->Config deadline=10 state=Approved
+request=stop-core kind=Shutdown Lead->Core deadline=10 state=Approved
+errors=none
+wire plan-1:Core->Lead:accepted
+wire stop-core:Core->Lead:accepted
+wire stop-config:Config->Lead:accepted
+join Core=graceful aborted=false
+join Config=graceful aborted=false
+writes=1 active=0 joined=2 aborted=0
+after_cleanup plan-1=Completed
+after_cleanup stop-config=Approved
+after_cleanup stop-core=Approved
+artifact=review.txt sha256=ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9
+Review: check values.first() and timeout_ms > 0.
+escape_absent=true workspace_removed=true

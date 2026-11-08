@@ -1,0 +1,15 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+barrier=before_rename (child still holds file lock)
+show (new process)
+error=store_busy committed=false
+child killed and reaped; next process reopens store
+show (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply start readme expected=1 (new process)
+error=pending_unavailable committed=false
+fixture cleanup: checked candidate revision=2; removed uncommitted pending
+apply start readme expected=1 (new process)
+revision=2 ready=- reconcile=readme tasks=readme:running#1

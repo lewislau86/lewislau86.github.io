@@ -1,8 +1,6 @@
 ---
 title: "第 5 章：可见的任务清单"
 description: "用 Rust 实现会话内待办、整批校验和版本检查，让计划变化可见，并用执行证据核对任务结果。"
-prev: false
-next: false
 pageClass: learn-agent-rust-course
 ---
 
@@ -25,6 +23,12 @@ pageClass: learn-agent-rust-course
 假设工具已经读到了 README，助手的清单却仍显示“读取 README：进行中”。程序应该自动把它改成完成吗？再换一种情况：助手把三项都标成完成，却一次也没读文件。用户应该接受这个结果吗？本章用同一份可运行代码检查这两种情况。
 
 <LearnAgentRustMap active="todo-planning" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#todo-planning)下载；解压后进入 `chapters/todo-planning/`，或在代码库根目录运行 `python3 run.py run R05`。
+
+<!-- experiment-library:end -->
 
 ## 1. 先把步骤从对话里拿出来
 
@@ -218,6 +222,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 - **用一个进行中条目代替并发控制。** 这里没有执行者、锁或租约，也没有跨进程协调。
 - **把新实例误当成恢复。** 当前计划在运行时内存中；下载包验证了独立运行，没有验证重启续跑。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：计划不是完成证据
+
+把所有待办标成 completed，报告一定存在吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+对照计划状态与真实文件。状态迁移合法只证明清单一致，仍需独立产物验收。
+
+把“记录工作”和“接受交付”交给不同契约，可减少自报进度造成的误判。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：把计划变成可检查的会话状态
 

@@ -1,0 +1,517 @@
+{
+  "schema_version": 1,
+  "lessons": [
+    {
+      "id": "R00",
+      "slug": "architecture-and-setup",
+      "kind": "rustc",
+      "archive": null,
+      "verifier": "scripts/verify-learn-agent-rust.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R01",
+      "slug": "agent-loop",
+      "kind": "rustc",
+      "archive": null,
+      "verifier": "scripts/verify-learn-agent-rust-loop.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R02",
+      "slug": "tools-and-graph",
+      "kind": "cargo",
+      "archive": "tools-and-graph.zip",
+      "verifier": "scripts/verify-learn-agent-rust-r02.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R03",
+      "slug": "permissions",
+      "kind": "rustc",
+      "archive": "permissions-lab.zip",
+      "verifier": "scripts/verify-agent-permissions.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "approve"
+        ]
+      ]
+    },
+    {
+      "id": "R04",
+      "slug": "hooks",
+      "kind": "rustc",
+      "archive": "hooks-lab.zip",
+      "verifier": "scripts/verify-agent-hooks.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ]
+      ]
+    },
+    {
+      "id": "R05",
+      "slug": "todo-planning",
+      "kind": "cargo",
+      "archive": "todo-planning.zip",
+      "verifier": "scripts/verify-learn-agent-rust-r05.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R06",
+      "slug": "subagents",
+      "kind": "rustc",
+      "archive": "subagents-lab.zip",
+      "verifier": "scripts/verify-agent-subagents.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ]
+      ]
+    },
+    {
+      "id": "R07",
+      "slug": "skill-loading",
+      "kind": "cargo",
+      "archive": "skill-loading.zip",
+      "verifier": "scripts/verify-agent-skills.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "K01",
+      "slug": "retrieval-augmented-generation",
+      "kind": "cargo",
+      "archive": "retrieval-augmented-generation.zip",
+      "verifier": "scripts/verify-agent-rag.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite",
+          "{run}/corpus"
+        ]
+      ]
+    },
+    {
+      "id": "R08",
+      "slug": "context-compaction",
+      "kind": "cargo",
+      "archive": "context-compaction.zip",
+      "verifier": "scripts/verify-agent-compaction.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R09",
+      "slug": "memory",
+      "kind": "cargo",
+      "archive": "memory-lab.zip",
+      "verifier": "scripts/verify-agent-memory.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "apply",
+          "{run}/store",
+          "project-a",
+          "session-A",
+          "1",
+          "0",
+          "user",
+          "--message",
+          "{run}/message.txt"
+        ],
+        [
+          "{binary}",
+          "recall",
+          "{run}/store",
+          "project-a",
+          "reply_language"
+        ]
+      ],
+      "inputs": {
+        "message.txt": "请记住：reply_language=中文\n"
+      }
+    },
+    {
+      "id": "R10",
+      "slug": "system-prompts",
+      "kind": "cargo",
+      "archive": "system-prompts.zip",
+      "verifier": "scripts/verify-agent-prompts.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R11",
+      "slug": "error-recovery",
+      "kind": "rustc",
+      "archive": "error-recovery-lab.zip",
+      "verifier": "scripts/verify-agent-recovery.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "backoff",
+          "{run}/case"
+        ]
+      ]
+    },
+    {
+      "id": "R12",
+      "slug": "task-system",
+      "kind": "cargo",
+      "archive": "task-system-lab.zip",
+      "verifier": "scripts/verify-agent-tasks.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "{run}/tasks",
+          "init"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks",
+          "apply",
+          "0",
+          "{\"op\":\"add\",\"id\":\"readme\",\"title\":\"Read README\",\"depends_on\":[],\"max_attempts\":2}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks",
+          "apply",
+          "1",
+          "{\"op\":\"start\",\"id\":\"readme\"}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks",
+          "apply",
+          "2",
+          "{\"op\":\"complete\",\"id\":\"readme\",\"attempt\":1,\"result\":\"checked\"}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks",
+          "show"
+        ]
+      ]
+    },
+    {
+      "id": "R13",
+      "slug": "background-tasks",
+      "kind": "rustc",
+      "archive": "background-tasks-lab.zip",
+      "verifier": "scripts/verify-agent-background.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal",
+          "{run}/case"
+        ]
+      ]
+    },
+    {
+      "id": "R14",
+      "slug": "scheduling",
+      "kind": "cargo",
+      "archive": "scheduling-lab.zip",
+      "verifier": "scripts/verify-agent-scheduling.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "init",
+          "{run}/schedule.db"
+        ],
+        [
+          "{binary}",
+          "add",
+          "{run}/schedule.db",
+          "report",
+          "Asia/Shanghai",
+          "09:00",
+          "coalesce",
+          "--start",
+          "2026-11-07T00:59:00Z"
+        ],
+        [
+          "{binary}",
+          "tick",
+          "{run}/schedule.db",
+          "2026-11-07T01:00:00Z"
+        ],
+        [
+          "{binary}",
+          "tick",
+          "{run}/schedule.db",
+          "2026-11-07T01:00:00Z"
+        ],
+        [
+          "{binary}",
+          "show",
+          "{run}/schedule.db"
+        ]
+      ]
+    },
+    {
+      "id": "R15",
+      "slug": "agent-teams",
+      "kind": "cargo",
+      "archive": "agent-teams.zip",
+      "verifier": "scripts/verify-agent-teams.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R16",
+      "slug": "team-protocols",
+      "kind": "cargo",
+      "archive": "team-protocols.zip",
+      "verifier": "scripts/verify-agent-protocols.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "R17",
+      "slug": "autonomous-workers",
+      "kind": "cargo",
+      "archive": "autonomous-workers-lab.zip",
+      "verifier": "scripts/verify-agent-workers.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "{run}/tasks.db",
+          "{\"op\":\"init\"}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks.db",
+          "{\"op\":\"add\",\"id\":\"report\",\"title\":\"Review\",\"max_claims\":3}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks.db",
+          "{\"op\":\"claim\",\"owner\":\"worker-a\",\"now\":100,\"ttl\":10}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks.db",
+          "{\"op\":\"complete\",\"id\":\"report\",\"owner\":\"worker-a\",\"token\":1,\"now\":101,\"result\":\"checked\"}"
+        ],
+        [
+          "{binary}",
+          "{run}/tasks.db",
+          "{\"op\":\"show\"}"
+        ]
+      ]
+    },
+    {
+      "id": "R18",
+      "slug": "worktree-isolation",
+      "kind": "rustc",
+      "archive": "worktree-isolation-lab.zip",
+      "verifier": "scripts/verify-agent-worktrees.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "parallel",
+          "{run}/case"
+        ]
+      ]
+    },
+    {
+      "id": "R19",
+      "slug": "mcp-tools",
+      "kind": "cargo",
+      "archive": "mcp-tools-lab.zip",
+      "verifier": "scripts/verify-agent-mcp.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal",
+          "{run}/case"
+        ]
+      ]
+    },
+    {
+      "id": "R20",
+      "slug": "integrated-agent",
+      "kind": "cargo",
+      "archive": "integrated-agent.zip",
+      "verifier": "scripts/verify-agent-integration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal",
+          "{run}/case"
+        ]
+      ]
+    },
+    {
+      "id": "P01",
+      "slug": "postgres-checkpoints",
+      "kind": "cargo",
+      "archive": "postgres-checkpoints-lab.zip",
+      "verifier": "scripts/verify-agent-checkpoints.py",
+      "requires_postgres": true,
+      "demo": [
+        [
+          "{python}",
+          "lab.py",
+          "--binary",
+          "{binary}",
+          "--output",
+          "{run}/results"
+        ]
+      ]
+    },
+    {
+      "id": "P02",
+      "slug": "side-effect-reliability",
+      "kind": "cargo",
+      "archive": "side-effect-reliability.zip",
+      "verifier": "scripts/verify-agent-effects.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ]
+      ]
+    },
+    {
+      "id": "P03",
+      "slug": "model-evaluation",
+      "kind": "cargo",
+      "archive": "model-evaluation-lab.zip",
+      "verifier": "scripts/verify-agent-evaluation.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{python}",
+          "lab.py",
+          "fixture",
+          "{binary}",
+          "{run}/results"
+        ]
+      ]
+    },
+    {
+      "id": "P04",
+      "slug": "production-readiness",
+      "kind": "cargo",
+      "archive": "production-readiness-lab.zip",
+      "verifier": "scripts/verify-agent-production.py",
+      "requires_postgres": true,
+      "demo": [
+        [
+          "{python}",
+          "lab.py",
+          "--binary",
+          "{binary}",
+          "--output",
+          "{run}/results"
+        ]
+      ]
+    },
+    {
+      "id": "P05",
+      "slug": "workflow-and-goal-control",
+      "kind": "cargo",
+      "archive": "workflow-and-goal-control-lab.zip",
+      "verifier": "scripts/verify-agent-goals.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{python}",
+          "lab.py",
+          "--binary",
+          "{binary}",
+          "--output",
+          "{run}/results"
+        ]
+      ]
+    },
+    {
+      "id": "P06",
+      "slug": "agent-rsi",
+      "kind": "cargo",
+      "archive": "agent-rsi-lab.zip",
+      "verifier": "scripts/verify-agent-rsi.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal",
+          "{run}/case",
+          "1"
+        ],
+        [
+          "{binary}",
+          "overfit",
+          "{run}/overfit",
+          "1"
+        ],
+        [
+          "{binary}",
+          "rollback",
+          "{run}/rollback",
+          "1"
+        ]
+      ]
+    }
+  ]
+}

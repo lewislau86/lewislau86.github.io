@@ -1,0 +1,50 @@
+name: Check R16 team protocols experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/team-protocols.md"
+      - "docs/public/learn-agent-rust/code/team-protocols/**"
+      - "docs/public/learn-agent-rust/outputs/r16-*.txt"
+      - "docs/public/learn-agent-rust/team-protocols.zip"
+      - "docs/public/learn-agent-rust/figures/r16-*.svg"
+      - "scripts/data/learn-agent-rust/r16-results.json"
+      - "scripts/verify-agent-protocols.py"
+      - "scripts/learn-agent-rust-protocol-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-protocols.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/team-protocols.md"
+      - "docs/public/learn-agent-rust/code/team-protocols/**"
+      - "docs/public/learn-agent-rust/outputs/r16-*.txt"
+      - "docs/public/learn-agent-rust/team-protocols.zip"
+      - "docs/public/learn-agent-rust/figures/r16-*.svg"
+      - "scripts/data/learn-agent-rust/r16-results.json"
+      - "scripts/verify-agent-protocols.py"
+      - "scripts/learn-agent-rust-protocol-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-protocols.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  protocols:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Check protocol decisions, file effects and final archive
+        run: python scripts/verify-agent-protocols.py --check
+      - name: Check generated protocol figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R16
+          git diff --exit-code -- docs/public/learn-agent-rust/figures/r16-*.svg

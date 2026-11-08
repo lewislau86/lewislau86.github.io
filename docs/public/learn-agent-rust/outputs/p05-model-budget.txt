@@ -1,0 +1,41 @@
+SCENARIO model-budget
+{
+  "status": "needs_human",
+  "reason": "model_budget",
+  "goal_verified": false,
+  "normal_returns": 1,
+  "used": {
+    "episodes": 2,
+    "model_calls": 3,
+    "tools": 2,
+    "write_bytes": 18
+  },
+  "reads": 1,
+  "writes": 1,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    },
+    {
+      "episode": 2,
+      "normal": false,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\n",
+  "handoff_saved": true
+}

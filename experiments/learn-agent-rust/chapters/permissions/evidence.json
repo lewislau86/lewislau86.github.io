@@ -1,0 +1,216 @@
+{
+  "scope": "R03; scripted tool requests and trusted simulated human replies; std::fs; in-memory only",
+  "source_sha256": "94af1a33502f46f0445a00498f2e79357f5afc068fffa9cbf58436b95d1b2c26",
+  "environment": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "platform": "macOS-27.2-arm64-arm-64bit"
+  },
+  "regression_tests": [
+    "another_session_cannot_use_the_same_call_and_sequence",
+    "approval_binds_every_field_and_preserves_original_pending_call",
+    "decline_returns_a_paired_result_without_writing",
+    "deny_unknown_paths_and_oversized_content_before_any_io",
+    "failure_consumes_approval_and_does_not_claim_success",
+    "waiting_blocks_new_calls_and_has_no_tool_result"
+  ],
+  "scenarios": [
+    {
+      "name": "read",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 1,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ]
+      ],
+      "stdout_sha256": "f40aed5f70879c99877646c7a290690f8f8358b125db756d80b9012dd096ca34"
+    },
+    {
+      "name": "deny",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "denied"
+        ]
+      ],
+      "stdout_sha256": "050e60b577b59ff2dd69838e49a6d8731c41979cc37e36cc64d167b457ab8513"
+    },
+    {
+      "name": "invalid-path",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "denied"
+        ]
+      ],
+      "stdout_sha256": "2aba8249a06864dcc39f2dfe726ab902219a5afd33731bcbab77ec62cb6da0c7"
+    },
+    {
+      "name": "unknown",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "denied"
+        ]
+      ],
+      "stdout_sha256": "0931e8041c5fa3172ef0adbc5cc7c6f908019ed5193dafe2137e788594cbbce8"
+    },
+    {
+      "name": "wait",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 1,
+      "pending": true,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ]
+      ],
+      "stdout_sha256": "b874ee34fca7839f4fd153e0e861e938fa149c0f35bcbb5636ff97248646b209"
+    },
+    {
+      "name": "approve",
+      "read_attempts": 1,
+      "write_attempts": 1,
+      "write_successes": 1,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": true,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "ok"
+        ]
+      ],
+      "stdout_sha256": "8d241dacc581f7f75cb1406a4b592dad0ddb55f6cd9e88c2a8fba9b6cfd15959"
+    },
+    {
+      "name": "decline",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "declined"
+        ]
+      ],
+      "stdout_sha256": "15e01d6bc0e74716646ff0732007cdf403048786192bf889bf983278c40eda6b"
+    },
+    {
+      "name": "tamper",
+      "read_attempts": 1,
+      "write_attempts": 0,
+      "write_successes": 0,
+      "tool_results": 1,
+      "pending": true,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ]
+      ],
+      "stdout_sha256": "74e07e743a3cbd24ff07a016cd6a8df87f01a305d203c9c7c8491ccb542154f7"
+    },
+    {
+      "name": "replay",
+      "read_attempts": 1,
+      "write_attempts": 1,
+      "write_successes": 1,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": true,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "ok"
+        ]
+      ],
+      "stdout_sha256": "ab4363e4f5d757ca2baa7f2313bf22d3b128c15c3796e9caa2e505aca59c5b16"
+    },
+    {
+      "name": "write-error",
+      "read_attempts": 1,
+      "write_attempts": 1,
+      "write_successes": 0,
+      "tool_results": 2,
+      "pending": false,
+      "summary_matches": false,
+      "readme_unchanged": true,
+      "statuses": [
+        [
+          "read-1",
+          "ok"
+        ],
+        [
+          "write-1",
+          "tool_error"
+        ]
+      ],
+      "stdout_sha256": "ef3917d8a57331d44b0981e43fd70c6b52819d5a08eaa5e8f99556e9cf551f45"
+    }
+  ]
+}

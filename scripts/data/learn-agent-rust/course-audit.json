@@ -1,0 +1,561 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-11-08T03:18:10+00:00",
+  "scope": "Every chapter's original --check verifier; deterministic model fixtures; no live external provider",
+  "environment": {
+    "python": "3.9.6",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "host": "aarch64-apple-darwin"
+  },
+  "passed": 28,
+  "total": 28,
+  "lessons": [
+    {
+      "id": "R00",
+      "slug": "architecture-and-setup",
+      "verifier": "scripts/verify-learn-agent-rust.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.6,
+      "summary": "R00: normal, denied-before-read and missing-file scenarios passed; evidence checked",
+      "inputs_sha256": {
+        "code/architecture-and-setup.rs": "90aeb31e08a599d25e6114bf0f6549e74a53d755634adfe2fa08ddef5e8166cc",
+        "scripts/verify-learn-agent-rust.py": "f69612e33ea1c15b57cff482d6729ac6e52f0838694ca79f0d3ddf8c89688377",
+        "scripts/data/learn-agent-rust/r00-results.json": "d3711417f7a52cfc1fe4b19f72132bc475969e893212586faf3963e1ae49c416"
+      }
+    },
+    {
+      "id": "R01",
+      "slug": "agent-loop",
+      "verifier": "scripts/verify-learn-agent-rust-loop.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.2,
+      "summary": "R01: 13 scenarios, 6 Rust contract tests and 3 invalid CLI cases passed; evidence checked",
+      "inputs_sha256": {
+        "code/agent-loop.rs": "61a4bb00da71cc662a2e84bf23d7cc5aa3defca9fccf6b00e9e5562949202d9f",
+        "scripts/verify-learn-agent-rust-loop.py": "59c1f54287d051a73913e071e0d527f22fb7bd75a8995b7e2a1a22ab67837f7d",
+        "scripts/data/learn-agent-rust/r01-results.json": "3e49c23891df24d6d943eb9f02413fd5f97c2d61bfbbbea464048ee29772de4b"
+      }
+    },
+    {
+      "id": "R02",
+      "slug": "tools-and-graph",
+      "verifier": "scripts/verify-learn-agent-rust-r02.py",
+      "exit_code": 0,
+      "elapsed_seconds": 6.6,
+      "summary": "R02: 9 scenario pairs, message contracts, fmt, tests and Clippy passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "612dae4398578aad139de171994b0009c12f5d8ff59090fae6783cb1d72a4c7f",
+        "code/Cargo.toml": "5ce4a3c87aa3bdcdd3d80dcee4f9088bdf50750b99673e0a061a5114c15251fc",
+        "code/README.md": "3ab3fd13c2110f1dae3b3bf6c839bd99fc2ba47b5b1987cf662e668639a9c73b",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "f51fab47e6223dd4e94a17f80c1e158924510d5e249416177dcaaf1ea6ffbbe5",
+        "scripts/verify-learn-agent-rust-r02.py": "b1c296a16e9966490ae42cc111a6a4e98ed82c3e68169d6d3c74a5e3d1dd8f13",
+        "scripts/data/learn-agent-rust/r02-results.json": "2944a63897882b0485a758790a8bc1254b6b7613f93479727f6054bd23be3302",
+        "archive/tools-and-graph.zip": "5555bceb8dd6753c443de14c22fb0ac1e690a05d7222275e1b1b9f0adbd3e6e8"
+      }
+    },
+    {
+      "id": "R03",
+      "slug": "permissions",
+      "verifier": "scripts/verify-agent-permissions.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.5,
+      "summary": "R03: 10 scenarios, 6 regression tests, extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/permissions.rs": "94af1a33502f46f0445a00498f2e79357f5afc068fffa9cbf58436b95d1b2c26",
+        "scripts/verify-agent-permissions.py": "b669c8e68abbe9a09ad0bee425afbe82590a6bc6db3c616201825b31d242c191",
+        "scripts/data/learn-agent-rust/r03-results.json": "dfa2b8d460afc4a24b0f920fec7abadf0605a96c8dff60a59485c95d42f8a28e",
+        "archive/permissions-lab.zip": "13e59796d183d78f604b4abac1c1cdc9af08fd68d3c104731072838d78083ca1"
+      }
+    },
+    {
+      "id": "R04",
+      "slug": "hooks",
+      "verifier": "scripts/verify-agent-hooks.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.7,
+      "summary": "R04: 14 scenarios, 8 regression tests and extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/hooks.rs": "277cdf33ad8caed2c6d9329b31a55b14161fb895db3e4100a2a0c1c54779b4f9",
+        "scripts/verify-agent-hooks.py": "9dfc09eb84f48cf792673b3b444ad9f84c3d669d2d38a0c492efaa6ac836c620",
+        "scripts/data/learn-agent-rust/r04-results.json": "80dd46f96aafb1c9cd92f5cf38007a754040622429edca322699e3e4864668d8",
+        "archive/hooks-lab.zip": "c29be4b68969306b626c53a568049de7ab526d8f3904f98d113b26d644164e18"
+      }
+    },
+    {
+      "id": "R05",
+      "slug": "todo-planning",
+      "verifier": "scripts/verify-learn-agent-rust-r05.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.6,
+      "summary": "R05: 20 scenarios, 6 Rust tests, message contracts, fmt and Clippy passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "4cf64d81ad783a4fe184a48434d602243d7bdbbf9775a9218c7953dcb971d04c",
+        "code/Cargo.toml": "5b7e5d9e103fe6e8ed7c40f7de3ca7d30222fab952525b31dd6129a7164fcffe",
+        "code/README.md": "0323963cce8b3a867344c1a2dcb646971e0ab855dcac1ee437b9daef66d98a21",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "2021016e6a2a52fcd600980a5c96fe6f624c5305126e70ba7cccf60b6e6d0227",
+        "scripts/verify-learn-agent-rust-r05.py": "72e6100fbacf45c5ad615ea5b391d6b03fa34e2179a86103bcd5901dde8e833c",
+        "scripts/data/learn-agent-rust/r05-results.json": "ff4f2ae388348297ef62fff6f4557a026c35ef347e348501e77ee0cd3760253c",
+        "archive/todo-planning.zip": "c4e80ac09a0f072afeaaf9d5fece7d00ca57a0268508decca0e1d236f1aebe01"
+      }
+    },
+    {
+      "id": "R06",
+      "slug": "subagents",
+      "verifier": "scripts/verify-agent-subagents.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.5,
+      "summary": "R06: 16 scenarios, 9 Rust contract tests, 2 invalid CLI cases and extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/subagents.rs": "dcea552777b11421818aca1180c0688d18e85187fceb443fc35235ba39fb5531",
+        "code/README.md": "7ded6b33628a2a487237add431b694bfc1db52f8f50057fbe836d1c7815eed6a",
+        "scripts/verify-agent-subagents.py": "6bfe38b771245e124419749f69818e2abae966e4f222fcd0b9ca26bc4b3d585c",
+        "scripts/data/learn-agent-rust/r06-results.json": "841a2bc60e236d7754272f81b24be2e3a7a8e636f3352175077aa43bc3125ecd",
+        "archive/subagents-lab.zip": "b2d6667c725e90fcb69f8e489c3d0c9a463c5a4de9e29922966d644661cbf87a"
+      }
+    },
+    {
+      "id": "R07",
+      "slug": "skill-loading",
+      "verifier": "scripts/verify-agent-skills.py",
+      "exit_code": 0,
+      "elapsed_seconds": 12.0,
+      "summary": "R07: 12 scenarios, Rust tests, Clippy, pairing/bytes/permission assertions, offline and final download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "20719f66b06d7e0e036f91e991500a51176b243ad6a19100a5d26ef4b2595dbc",
+        "code/Cargo.toml": "704474146e7f37d26ade33927cfb3762aaf062640a6ef3c76e111d7f8d09eb9b",
+        "code/README.md": "90bb791502e29f8c37992b2383a7ec61b5458d52ff579acdf61cf178d73a0741",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/skills/rust-review/SKILL.md": "6721fc65ecfac760212800f4ecda073e68a40420c0ccc59162aecacfc234fda3",
+        "code/skills/sql-style/SKILL.md": "942de3e9a647d384d3a57bad770e233b91f50c6cce113ce836bfdb25ba65442f",
+        "code/src/main.rs": "d66af0a10c2bca244dd080000159aa84891a30a72ee3681cff3f70694c33b9be",
+        "code/src/skills.rs": "e6634fdc0f3cf62182e5eaf76013cf48d5c4cf4e244ad97b7c86afa5b01018ad",
+        "scripts/verify-agent-skills.py": "f9eeea169d07ea948a522b0bdc413475ae4ee44eefbc9deea8fceb6e26287f53",
+        "scripts/data/learn-agent-rust/r07-results.json": "4df5faab109ea4cdf00e19f7adeb88cca0a1677e7250a56c7232549bc829dfed",
+        "archive/skill-loading.zip": "68d16bbd38492c0c44b1ae423a830599bb404e345daa0d680cec7ca03930c24a"
+      }
+    },
+    {
+      "id": "K01",
+      "slug": "retrieval-augmented-generation",
+      "verifier": "scripts/verify-agent-rag.py",
+      "exit_code": 0,
+      "elapsed_seconds": 3.3,
+      "summary": "K01 verified: 8 Rust tests, 11 scenarios, 4 labeled queries, source and extracted archive; outputs and hashes match",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "db5fd400523b24d8faa79ca52060a19199976840f0907107f38b358b7f8dee0d",
+        "code/Cargo.toml": "4775b379f060170d02bbb51fa0afc0601c7080e30b70db66d5827c5b2cb3f84a",
+        "code/README.md": "a3525083d7552cf8e35e5a3f32959c9c727bd7bc8dd09adbe72f06c14555b3dc",
+        "code/corpus/operations.md": "2a9af58777f6d998be91b7de0cc29dfbfb026f0f67eb49dfbd50cd82716313b7",
+        "code/corpus/private.md": "5c8842fed4f79a6d4d61fd0068b7a472599fbfcd043f62d0cf08a2db7e0a8ab0",
+        "code/corpus/release.md": "b10ed6970f10546e7d7cfd05b75ffa991c6cebb89b07bc9750bd2b8d83bfc820",
+        "code/corpus/untrusted.md": "a4d8fb706bd04fc45bf8a4d1a37a86c3c3ae36a8e71f942163a99525da1382ae",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "6cc2f1777a4791e003b658697daa32cdf04e1286f1992c1000c2b081d2f31bd8",
+        "scripts/verify-agent-rag.py": "a8b6f026730c56a08719851ed3af8fb7c9a0f3d84bc4babea8f9529d55462182",
+        "scripts/data/learn-agent-rust/k01-results.json": "5059657a14c314d91f5f61c6d8c3676b760130d540527ce7b83533e4fb100247",
+        "archive/retrieval-augmented-generation.zip": "d1b317ec1d922af50ef1c6ea327a9a156991cff0630eb6a30638b411f4be6110"
+      }
+    },
+    {
+      "id": "R08",
+      "slug": "context-compaction",
+      "verifier": "scripts/verify-agent-compaction.py",
+      "exit_code": 0,
+      "elapsed_seconds": 14.5,
+      "summary": "R08: 17 scenarios, 17 Rust tests, Clippy, pairs/facts/budgets/rollback, offline and final download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "bb138b8579220ad617632943e87c769a27f7e3f9dab3a533464df5bf9dc66082",
+        "code/Cargo.toml": "f13a909edea48e3b8b3c3b6c58b4d375fcd3ac160fce4972800294cc3448aa0b",
+        "code/README.md": "fa093ad639729dff941b46366ba237adf13cb513c8e3d1dbfe32e810a1f44f62",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/compact.rs": "820d182da9a351385f655940e32eadbc7a71c10b7a45bdbc1dae98ea285da2bf",
+        "code/src/main.rs": "71ecbf515118178abc00f26e4848be53d488182ac5c731cf90fc996595354f9c",
+        "code/src/tests.rs": "7e0050ff18ca237851a3b56cbc315806fe1198bcc06829e58b06e379282b19af",
+        "scripts/verify-agent-compaction.py": "6487dfa8332110a92470dffc177f96fbf26e3559125152d645af35efb589c42d",
+        "scripts/data/learn-agent-rust/r08-results.json": "108e1e33f7a37d77904fdc48ebc09f96f3b3e33b24620590f27839f9a210b635",
+        "archive/context-compaction.zip": "e0ed07b78a3b9d69d6033ce3e0ca4ed21388a698d649193155a2f1ad99b16301"
+      }
+    },
+    {
+      "id": "R09",
+      "slug": "memory",
+      "verifier": "scripts/verify-agent-memory.py",
+      "exit_code": 0,
+      "elapsed_seconds": 7.6,
+      "summary": "R09: 22 scenarios / 57 separate CLI processes, 8 Rust tests, all scenarios repeated from extracted archive; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "92232a06667b4b5c0b7aa20f1035ac18838f7035c392df92d223be0ab7f42052",
+        "code/Cargo.lock": "2b0407b51d4683ced5ccaab51c1462e2dfa3b67f3472c9dc9806dfb16db8aaa6",
+        "code/Cargo.toml": "fa629e3796be0e002c1ffed6e13c953e8f5ca7448b24d356eec9d84f8485e5d7",
+        "code/README.md": "ae4b17462048cc04cb27a38f109ed7e8fcf888f8b3165236b01a512dc4975e34",
+        "code/src/main.rs": "c1ed95ca60aa124c55d544b548a55b59028ef02f8981e058972e8ebc701a0393",
+        "scripts/verify-agent-memory.py": "5c993a86963b026a4170eaa7531d371143b91f1acfe4fa3db36127d8dcf781c2",
+        "scripts/data/learn-agent-rust/r09-results.json": "640a8049637a89066b161fa7a5d27b6d2650b54105e9a0e99f77fc8f5615cc7d",
+        "archive/memory-lab.zip": "a2e99315fa7fb42c7a2b144543c1839f132aa3f3c85a26e11f337e177cf60216"
+      }
+    },
+    {
+      "id": "R10",
+      "slug": "system-prompts",
+      "verifier": "scripts/verify-agent-prompts.py",
+      "exit_code": 0,
+      "elapsed_seconds": 12.4,
+      "summary": "R10: 14 scenarios, 8 Rust tests, fmt, Clippy, source/role/pairing/cache contracts, offline and final archive passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "04c444d927420c5e5ddb238eb7ea6e548ee315effa5c93792e022dcaf49e4a0b",
+        "code/Cargo.toml": "17c33387dc73c4c95af2e7e893eaa3b3eed19ad5edbd9924296a1cf78e20607a",
+        "code/README.md": "b27628ec63cdf9cc6735daf9cc2454c28d5c25a7ce8108936884fbddc5de238f",
+        "code/fixtures/memory.json": "fdda614acca3f435d7b08f52849882be3276b7bfb79841053800203cd85d0c2d",
+        "code/fixtures/policy.json": "44103fc0da6287920d80f48e12b8ab94d80745b6f1bc4f4869caf0b0c4217aaf",
+        "code/fixtures/skill.json": "f008834fd2b0263e151dcb1e0cbbe7869fc374b663fd2dcac322700048323af8",
+        "code/fixtures/unused.json": "61a8103b22894fdf9589091643f4fb859c6c56e35f3818106f1379fc3bc82f44",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "2f18546466da46bc9620f8a68489eb605317e0dd73d0f744345b212ee29bcfbe",
+        "code/src/prompt.rs": "ba19aeeb9a592e661259d3db2047e505ba6081b53c56f171449a0c1b00dcd738",
+        "code/src/tests.rs": "460573bbbde8b9d4716f2b73db7fd24f6ae223dbcdead239043f9b3d12d2b731",
+        "scripts/verify-agent-prompts.py": "7c5d38488d7f0a9b3cd0b2a9b08e2923ed90c02f8ef76ba857c03eeecfe23bb5",
+        "scripts/data/learn-agent-rust/r10-results.json": "17635fa1a815ef02ad6debafaefd51ed87deae2dbe7cae15e121a050b4c643ea",
+        "archive/system-prompts.zip": "e579e5145956360617e677ce70dfabb78710d9d6771f7f2e16606f6a1f2fa61d"
+      }
+    },
+    {
+      "id": "R11",
+      "slug": "error-recovery",
+      "verifier": "scripts/verify-agent-recovery.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.4,
+      "summary": "R11: 21 scenarios, 13 Rust tests, actual file assertions and extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/error-recovery.rs": "8809a00d35cdc8d6c669162636c8edefe859a2b6339df3abf91dd3a86d470c71",
+        "scripts/verify-agent-recovery.py": "a23fdb13524d04bc8bae3eaa13c32b1bafd04ff3481b3b3bbf84e74823e533fc",
+        "scripts/data/learn-agent-rust/r11-results.json": "6fce1e058eaec2244dfcdf4a5f0eb97fc398cc78fe29ecf0469430a801d679f7",
+        "archive/error-recovery-lab.zip": "30ee7fb144e1a44d3887306bb4e2f877c6fcd0ed5ebd932f42850882d854a843"
+      }
+    },
+    {
+      "id": "R12",
+      "slug": "task-system",
+      "verifier": "scripts/verify-agent-tasks.py",
+      "exit_code": 0,
+      "elapsed_seconds": 10.8,
+      "summary": "R12: 26 scenarios / 119 independent CLI processes, 14 Rust tests, Clippy and published archive rerun passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "d44bdcdeee6e14edcab9c62c62e991c1c3112f383cf799b78c7900acadd73e4a",
+        "code/Cargo.lock": "4a3ba2aa02bc319519464fbb801584436fc4a5b1a2866d70caeb8e799039e905",
+        "code/Cargo.toml": "4a3a0b26d90b2d5c56bcab65182da04e1c54c76f8cf08c15ab5022d3734156a9",
+        "code/README.md": "7698bb5f5700e13747963aa06bc21e1f729ca71c69cad7fc7a2c0f6a30659329",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "d1bc0090791aad407727cc1cc5946e2ae887c90d49764a87bae0f7c6f8adc118",
+        "code/src/storage.rs": "c9a7c1f00a154989d25b9e257e1e720fe86d47b2917be0463340c8011cd248c8",
+        "code/src/tasks.rs": "2475f58abdd38a814a86e63900a0ad08e92bcc8c8d310ad696544a303c2c2acf",
+        "code/src/tests.rs": "e473f42bf1c30a0bd23d37a428f5f88f8ff7875ec860a363c44b4f718d31380d",
+        "scripts/verify-agent-tasks.py": "88ef3f203fb52555e0c8bcf46879727836b3fb584b12a970df7586efccde9f90",
+        "scripts/data/learn-agent-rust/r12-results.json": "2f7ad1128ff41a2c1c274a01c9c0a0f7275ab4abb27fbe7a5663fe86759768c2",
+        "archive/task-system-lab.zip": "cc6da8ef400df474ea8c22fceae26db5694d03293c785c8cd32b99d7f4428497"
+      }
+    },
+    {
+      "id": "R13",
+      "slug": "background-tasks",
+      "verifier": "scripts/verify-agent-background.py",
+      "exit_code": 0,
+      "elapsed_seconds": 1.6,
+      "summary": "R13: 14 scenarios, 12 Rust tests, actual files and extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/background-tasks.rs": "c0ecaee2712b68e1c60630456932f17703284ed08495bb56b0194b3fe77ab718",
+        "code/README.md": "f2d69504efeb4ce247930d5010f49b431f670450223316332d07935f066c3558",
+        "scripts/verify-agent-background.py": "7861eca74115563c2ea1143525fb3a8c1fd26ede5116011dbd766d939e794e5d",
+        "scripts/data/learn-agent-rust/r13-results.json": "2aa3bc940c4303e2bd60031a14c9fc5de88acb532ae1f46ed19cdf2172a1e480",
+        "archive/background-tasks-lab.zip": "e637657f8e24771d0359fa18a9e4e14703992015c51f7d28366b09041bc93882"
+      }
+    },
+    {
+      "id": "R14",
+      "slug": "scheduling",
+      "verifier": "scripts/verify-agent-scheduling.py",
+      "exit_code": 0,
+      "elapsed_seconds": 14.3,
+      "summary": "R14: 27 scenarios / 134 independent CLI processes, 10 Rust tests, Clippy and extracted archive replay passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "ee79c8e3eee39a018348904ff412ace3207aa5e5ec2077a7494ea79921779101",
+        "code/Cargo.lock": "c8e32c1cf80d8f137bd5d75b25dbe3229dc6f21aa12b0d9bd9baaea333cb3130",
+        "code/Cargo.toml": "6a84f6a22d068f7f5c86b3b6921d64011c972cb4de25f660456fbd9d93d1408d",
+        "code/README.md": "4a970a0f0a43957f4119711cc98d4d646abffcd26f59ad2f3dda973a4cbeff26",
+        "code/src/main.rs": "8c6b26eb7af9f187a2be87bf3b2c27c4b4ee93d1d77c859c07695478471d2a22",
+        "code/src/scheduler.rs": "86d1061440cb37f8a05857429ba5cc18d8a77b926e3ed6cbd04e00b7a50228e7",
+        "scripts/verify-agent-scheduling.py": "06b1bc6eaf4ec9343a4aa4acb6d75f7a446160aa8b8098043f2492bfc2b4a818",
+        "scripts/data/learn-agent-rust/r14-results.json": "48713427621cb56229b26df7053526b895e2abe2dd32bb1ad477a9f95cb8ab08",
+        "archive/scheduling-lab.zip": "fa0c3699f5b8d86c5ce591211f1680baaa8877631d1e9540475e5593a3f75f1e"
+      }
+    },
+    {
+      "id": "R15",
+      "slug": "agent-teams",
+      "verifier": "scripts/verify-agent-teams.py",
+      "exit_code": 0,
+      "elapsed_seconds": 18.3,
+      "summary": "R15: 22 scenarios, 11 Rust tests, Clippy, mailboxes/private histories/budgets/cancellation/join, offline and final download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "cbfb5911fb91483f90eee32ea7039c58a79215af5a59cde5fb11272106f9fca4",
+        "code/Cargo.toml": "f55c5181b8215fa455b02aaa5849d5b991160e8e9f5fbc5db17ce583ece311bd",
+        "code/README.md": "7aa38f2965f5a6fe72bab045e892143b56ae56bedd372e3c68e357c4c5b3fef4",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "b438abf6e5d7a0b959c7f3af63377e47c57b4e0022679909053b90fe227601e6",
+        "code/src/team.rs": "8823bc7ae9f968039f65454d07156d04a29abc0549f6d0f88b3f1e7ded5a1241",
+        "code/src/tests.rs": "53caafae1ab29a62c2ae22b92d1dd60f13417bfaa98a9e99ecc90805678974e5",
+        "code/src/worker.rs": "a92c488153c2b8d9dceb79fe2823cf27ea57041f92457d96574425936ce362bd",
+        "scripts/verify-agent-teams.py": "03c950fa9caac287733bd10c60688df388435d4595017719da0c0a3d1b73bf44",
+        "scripts/data/learn-agent-rust/r15-results.json": "e0cb740c83acca3d68a42c7c9dde38dd1554456711897a5114ac6b89b9913feb",
+        "archive/agent-teams.zip": "febbcd6addfcbb186a149ee4fed614afa7be1e8fd30519bfe29da18b53c4912d"
+      }
+    },
+    {
+      "id": "R16",
+      "slug": "team-protocols",
+      "verifier": "scripts/verify-agent-protocols.py",
+      "exit_code": 0,
+      "elapsed_seconds": 21.3,
+      "summary": "R16: 28 scenarios, 15 Rust tests, Clippy, exact approval/identity/deadlines/shutdown/join, offline and all final-download scenarios passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "446e7e12892b5560b4a7151a7d6d915bd57b60573efb7d61f941d372f1c970be",
+        "code/Cargo.toml": "874d56cb03440ee15e0e5464ef38fd4ec2d6ed949d97c6da54fa3830a371ef77",
+        "code/README.md": "d586571ef66f443dd75ca5a96007eead6f6f7a01ad84b33725081b1236d42b07",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "e5a02f865d5ae631e9027d88ab7d61986b48a7bbe7fb3145bfa56c746069723f",
+        "code/src/protocol.rs": "709e01a4818c46d88f35ee2e54959b99339f0cccaf2688b0cacc9a74d095ec56",
+        "code/src/runtime.rs": "309f8a8fc2be18e3628399113a25c21d8008c1e3f0ee822357c5c79ec2778beb",
+        "code/src/tests.rs": "e23423ec9ae70cfbe42bb54094e445d2a13d267a424768d31f3f71163f6e1571",
+        "scripts/verify-agent-protocols.py": "8f996abc666302e54522d535d106ae4195b8d8db636b2e5992531a41ebb83cf9",
+        "scripts/data/learn-agent-rust/r16-results.json": "b03048cb63dfa98fa878e578bfd0fda37cbea00e302a7dbaf107897cd9a124c9",
+        "archive/team-protocols.zip": "e341ee9acbcb92b3f951749b52000452bb5884e3513df286ead3891e03336aa6"
+      }
+    },
+    {
+      "id": "R17",
+      "slug": "autonomous-workers",
+      "verifier": "scripts/verify-agent-workers.py",
+      "exit_code": 0,
+      "elapsed_seconds": 10.0,
+      "summary": "R17: 25 scenarios / 169 independent CLI processes, 12 Rust tests, Clippy and extracted archive replay passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "068e1dc356ef3127c94bd76801f17b4680eafc165e79ae21fb0902f3b31c3fda",
+        "code/Cargo.lock": "328956165f33fa75569bf70c336a9c88bc547abf3f3a8c11963a286e547b0975",
+        "code/Cargo.toml": "eb88a15e95901380d3590ff0534c569246f73a2ffed7e6340a8a03b6411afef5",
+        "code/README.md": "b7ee461f40bf4746b0dca6f1aa86d936652d944e708a426b67def03b2607ed2d",
+        "code/src/effects.rs": "7a551bccf7b350959f0117ad10ccbe5be0fe65f84b79df2ba676cc33785842cc",
+        "code/src/main.rs": "40490a3b099113f5b58e525a573d713b1647e42dbe4f66b291b9911e7e3d1c9f",
+        "code/src/queue.rs": "8e10c817466f0e37608486b040c127eba19a310295c871f2e62552c1d5f62f3e",
+        "code/src/tests.rs": "cede6aa3836ba4ba0414606a83cdc129ac8983ec5fd15c28fe158cd574512729",
+        "scripts/verify-agent-workers.py": "554b27f7782b9cad3e1da0883d52ec3927de346c7007a107dac83e56d8cec71d",
+        "scripts/data/learn-agent-rust/r17-results.json": "5729c471444efe8c1b584ca36db97b0420644c3fb8cb7ef06a4c9fc6b113eec6",
+        "archive/autonomous-workers-lab.zip": "cb6272d59dea811d3dc9c8bc2a2a5bd206d0bd98b24a3f50d2d6e1bae241672a"
+      }
+    },
+    {
+      "id": "R18",
+      "slug": "worktree-isolation",
+      "verifier": "scripts/verify-agent-worktrees.py",
+      "exit_code": 0,
+      "elapsed_seconds": 8.8,
+      "summary": "R18: 19 scenarios, 12 Rust tests, real Git/files/index checks and extracted download passed; artifacts checked",
+      "inputs_sha256": {
+        "code/worktree-isolation.rs": "f99909cd42594cc67e561fc8954f85cdbf5effab569db6936253a38ad5549e35",
+        "code/README.md": "8465b71ab544eb030a4cca0c103a78f0c2c355b261b45d7dd62fe835b6475b20",
+        "scripts/verify-agent-worktrees.py": "36b02356656fb400e398a6f45e9a05f67a1ad1b5f3d6d9425e8d18e9bd50579d",
+        "scripts/data/learn-agent-rust/r18-results.json": "4fe9deea14407dff96f65a0895041d2704462fc6ea130e2b386d99cf4ec79033",
+        "archive/worktree-isolation-lab.zip": "ac63907fd6308503fd4187bfe44a463eeedcb3a46a7c41e0330791ab508b89b5"
+      }
+    },
+    {
+      "id": "R19",
+      "slug": "mcp-tools",
+      "verifier": "scripts/verify-agent-mcp.py",
+      "exit_code": 0,
+      "elapsed_seconds": 42.9,
+      "summary": "R19: 25 scenarios / 26 real child servers, 8 Rust tests, Clippy, wire/file/PID checks and extracted archive rerun passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "cf8a04f1d8223da5ac629389b637c2e9b4941ff2bdcd1e907b593b978e247cce",
+        "code/Cargo.lock": "bbedfd65c67177b77acd0e56c23d4e3dd9a7fd2773e58791519b8aefe7b89fa1",
+        "code/Cargo.toml": "116748cf08202b4769337e20012c02a91df5ce04ddb2ae51fed3e25c3d1efc5e",
+        "code/README.md": "2f2dfce33b530b4555c2b1212e1d7ff0e16385fe481cc0f1d969cb0af4c41322",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/adapter.rs": "f3ed68416363491ae6ef91fcda416b3c9f879c9a8be910513caae57a307c3c94",
+        "code/src/connection.rs": "e2ea9c07b88e4670c05b596a84723a9bedf7b0a9fb8c1cd0ebea8282b74c1287",
+        "code/src/lab.rs": "87d4241a673c5635dabcedabc69a28ef24b7be269644a07ab829703ac2e7802d",
+        "code/src/main.rs": "40b079edb4a7f2412eb301f4fde0cc8a1ce18e77e638f2d794264eb5f96753fb",
+        "code/src/schema.rs": "3efc40f05c3d87749a06e8a230968bbd04faa2df46fb35d09480e25d7609289a",
+        "code/src/server.rs": "9432670ae05d1cca786b313f801705837220a267c4e25227bcba9fc6a85722c5",
+        "code/src/tests.rs": "28a30c37735834d935caaa6bcbba6d2dff4de193c91eee37876416be16130f85",
+        "scripts/verify-agent-mcp.py": "a12cb10bb56d39d0b36dd8ba50c48187fccfecf1ded97b5e36578e8784b9f5e2",
+        "scripts/data/learn-agent-rust/r19-results.json": "0b3ca8f613c17fd3fb698755f286c72d680f892972baf52cb43cb4093845d9a3",
+        "archive/mcp-tools-lab.zip": "4d6bb71dad300d42a60a9f86c76e2a73b12de17262476a33bdd009c8b456cc55"
+      }
+    },
+    {
+      "id": "R20",
+      "slug": "integrated-agent",
+      "verifier": "scripts/verify-agent-integration.py",
+      "exit_code": 0,
+      "elapsed_seconds": 18.0,
+      "summary": "R20: 18 scenarios, 10 Rust tests, Clippy, actual SQLite/Git/files/messages/MCP/PID checks, extracted final archive offline rerun and JSON CLI passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "b48085e557348c4c420aa81d2b7796a06da1dd869ec97fe333738980baa9eb3c",
+        "code/Cargo.toml": "b851538695a98c9782e4e21ed55024f9d803d6050c2271a8779eb83c7eee1d7e",
+        "code/README.md": "9662a0cc5b7faf378057a8bb880bf2cd94ad8185bb9d7439c35b0c330e5f4ecf",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/agent.rs": "d9bc0b659b8551eeaa06a3f451f46aa1ee25b1f130fe88b6174477d2b0c0573a",
+        "code/src/connection.rs": "e55cbb5b5469138b169d85f725221e33e0e2602511f5d7a6b60781fda455c032",
+        "code/src/main.rs": "5a0b9761c4f857e0a710d480e538ad3019e1ee733a60fa9fe31f32f7aa45ee63",
+        "code/src/runtime.rs": "53a5d4d1693c85be851e29ab53c52821055f766f31e516efedc720453dc255e0",
+        "code/src/server.rs": "b541217597dc992f9aec1dbe7e2c01381ee7dcc9495120a09384dc3d749c1a18",
+        "code/src/store.rs": "bec7a02c62c9fd782a098b021899059d1925b8e6784ff65b295158479452a4f3",
+        "code/src/tests.rs": "5890b7f0917839e13e12c8de9ad60f8ca8e5582ba7ba9a000fd42a3558da0f22",
+        "scripts/verify-agent-integration.py": "32e33af9954594d971ab477991c069add9e93bd226b4c1f79370ba2b42a26c6d",
+        "scripts/data/learn-agent-rust/r20-results.json": "1277286e79bd3e0cb971066b2c1aef2bb2ece07cdfa92eca2e7a2ec67f63776b",
+        "archive/integrated-agent.zip": "8ed2fd331a02d7b31117e8cabef6cf8dfae58ff82de678ebd099a50f54915ce7"
+      }
+    },
+    {
+      "id": "P01",
+      "slug": "postgres-checkpoints",
+      "verifier": "scripts/verify-agent-checkpoints.py",
+      "exit_code": 0,
+      "elapsed_seconds": 17.9,
+      "summary": "P01: 10 Rust tests, Clippy, 25 real PostgreSQL scenarios, 108 CLI processes per pass, extracted package replay; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "edd2d6ff92d4ef8515bb702e0bb91ac5309b59dd82ea178e9c90ac2f489a3dad",
+        "code/Cargo.lock": "d877d9478b44be19eb73f187fe6a3bb8c9327126187b751e31c1cc44165de03e",
+        "code/Cargo.toml": "5e08385a8aa9f50604c69ca08541c65035b8a1171a1f7cb8a16530a38f5d09fc",
+        "code/README.md": "53b479f7f6f8c3cecf90828283b5aa31b21bb116ec9d14e35672ffe4fd2c4c91",
+        "code/lab.py": "105088b907123f85d9a9a3335d9f75065eef3aa93fe2f9aacdceb843d8af08b6",
+        "code/src/driver.rs": "aefb714c01216c65dd5e39d738dcedfe3a3d221f28c63669414d5b8160ebb1d4",
+        "code/src/main.rs": "da251f370b791789eea22be85c7c70fc85eba82fda06c741f760a96f93b6a1ba",
+        "code/src/state.rs": "72a46f6d17aa3f6154401267f1971330bdcc6a8b645cbe02b47a214d29c94318",
+        "code/src/store.rs": "9991fb871b0019a17688708834182b631df4a81a4c86ecfbc91ca62297cad810",
+        "code/src/tests.rs": "af7870d5fec49a5c880ecdf159b3b75899a35d31437a7834d87947de57de8e26",
+        "scripts/verify-agent-checkpoints.py": "d4dcefd7ce11b91770b158f83ec10e3f45ff4fe749166cb21748d1ede5670f0d",
+        "scripts/data/learn-agent-rust/p01-results.json": "8996e3282eb255aed1c285c18cc5eb11049e305c1bf5e149f92ac112e1778347",
+        "archive/postgres-checkpoints-lab.zip": "3ae8b5109a7095c5280a830fa3dc7b265960558ab8bf1ea16ea9b3e2a343544f"
+      }
+    },
+    {
+      "id": "P02",
+      "slug": "side-effect-reliability",
+      "verifier": "scripts/verify-agent-effects.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.5,
+      "summary": "P02: 29 scenarios, 11 Rust tests, Clippy, independent SQL verification, process exits, offline demo and all final-download scenarios passed; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "fecfc195d731ca6d896c5f1111d6e60dc470ff13baa0d960ee450453d909ea0c",
+        "code/Cargo.lock": "fe91ebf086f16a6959e6552a1ce4e95e1c075c316e4ca440561c9c7446cae2d1",
+        "code/Cargo.toml": "f9137ad57fb047129806530b2258180f06d7ad7953f92bd97b0c1a53086ac8a2",
+        "code/README.md": "a0059fae6c4e8ad2f668e0d5248a70898e6e86637a6d799ebae653b20e8b6805",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/client.rs": "42c10e66002e8c970cc7a577120b98af91ad6737801650203d6779b832b4275c",
+        "code/src/main.rs": "3405fead94c90f2f06abea9047f85b5c4fbde52059501e0234058784b088ec6c",
+        "code/src/provider.rs": "e059fe302932cae9341cff6491e3fb6548b314aa3de520756157e6d6048518d0",
+        "code/src/tests.rs": "fa291347355a6cfc314f81820317b5d54a41cc9c0381a2502eccaaf11cbb55ec",
+        "scripts/verify-agent-effects.py": "01df90cd07943013ba3627fa9eda31a8ca0e4359feded26cd57304c9fa2b520c",
+        "scripts/data/learn-agent-rust/p02-results.json": "5b4d73f20f19cfc589a406b5bde246357435666b599ff1c2e175e4bbf6e50904",
+        "archive/side-effect-reliability.zip": "eb213713f15a0e88b1ac626b4a394a3bfa6ec4bb29d6780879e6e9f1fdb042b0"
+      }
+    },
+    {
+      "id": "P03",
+      "slug": "model-evaluation",
+      "verifier": "scripts/verify-agent-evaluation.py",
+      "exit_code": 0,
+      "elapsed_seconds": 11.6,
+      "summary": "P03: 27 protocol/host cases + 24 graded tasks, 80 real HTTP requests per round; 10 Rust tests, Clippy, independent grades/wire/files, fixture thread cleanup and extracted final archive offline rerun passed; artifacts checked; live provider NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "f2f16db0b50d66db39bc1c1a4e3d10dec8f10e20ed8d1ababfae5a29c218a076",
+        "code/Cargo.toml": "7ca58170673fe1b6a0cfae9eea243cba1d20ca48b3a8512de0ae2c82803276ac",
+        "code/README.md": "c4615175f75ee6108dafc1a0849a0536f55e81bc513d912a41db15fd3c18d091",
+        "code/cases.json": "6f995e2f3559e437f9a65bfe1d6dc2148598354dfb9e90777f6fec86a5636459",
+        "code/lab.py": "8ca9ab6e2f74047f7424c9b3eef5c6ce4cacc2e3099ef92d01ddd8d5e85a8132",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/agent.rs": "ab83417728e628211f7b1ded5d5e01d612087ae6a22564373120a91f103eb53f",
+        "code/src/main.rs": "b85168aefd1a438ae9fbbd2b905f6ddb6fc76ce201c14f551f54241bf90380bf",
+        "code/src/provider.rs": "f74c3008eb2b9b6f159ccbc685e7c63b87b38228687f6483999325eb09ae3857",
+        "code/src/tests.rs": "99cdc7f26aab418464008b4ec07627a23e748615afda9d791b00ec808c67e3b8",
+        "scripts/verify-agent-evaluation.py": "2a6726978f997d6f28a3ca1fc559ca93b7e2b8f57f28df48210cfa881ac3cd02",
+        "scripts/data/learn-agent-rust/p03-results.json": "1593d7549931a90831e9a64034ec42e52bb4253b690ea7469c543d401b8f4782",
+        "archive/model-evaluation-lab.zip": "b5a0c12f91581c0f1661af60c2f89fdf89237168544bbdec33f34b62fa17b75b"
+      }
+    },
+    {
+      "id": "P04",
+      "slug": "production-readiness",
+      "verifier": "scripts/verify-agent-production.py",
+      "exit_code": 0,
+      "elapsed_seconds": 25.2,
+      "summary": "P04: 4 Rust tests, Clippy, 24 scenarios / 62 CLI processes per pass, extracted download replay; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "635514137c414fe259dfd8dc36968d48acd0fe957accc1379173f737acbd315f",
+        "code/Cargo.lock": "2bddbccb982b93d32355714bbff7af54ceeb7d781602947d6ab52f2be8e0b3eb",
+        "code/Cargo.toml": "ddaab07a7b8d54d5e1a6e0c28259f898d8f775bdf1e9e49a67c08ba8b15781ab",
+        "code/README.md": "26b7a42f8067a9cd8b7f059399782fab9e5517c8371033c9eaea29f99ecd95bf",
+        "code/lab.py": "fd22a9551e2e9b2355c4bebaf0cb309951163a8c802dbb2316883f05fea46f1e",
+        "code/src/main.rs": "f7228da28b53b58f55ba55da4300fe7ad006585a66c4fde9e6e13e651ef510ad",
+        "code/src/schema.sql": "b3cb477854714105ec007d8c14f827943dba12c14259cad7f70e827eaeeb034c",
+        "scripts/verify-agent-production.py": "886cffa67735beefbdd853d2aa54e6762da702383fbf67010955271b675f5001",
+        "scripts/data/learn-agent-rust/p04-results.json": "c4cac47f56f3edc49413ab07964a9695f8af070ddce51147097a5ac11c47325c",
+        "archive/production-readiness-lab.zip": "cc1e650e33394f2370ac0850343a93427ae97f91d6fa5eeceb41ed736e54137c"
+      }
+    },
+    {
+      "id": "P05",
+      "slug": "workflow-and-goal-control",
+      "verifier": "scripts/verify-agent-goals.py",
+      "exit_code": 0,
+      "elapsed_seconds": 8.1,
+      "summary": "P05: 11 Rust tests, Clippy, 22 scenarios / 24 CLI processes per pass, extracted archive replay; artifacts checked",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "510d7148c98d68fb9e823b0d89566cfe95c82d6ad7f2416d5147ef1c5ce37db6",
+        "code/Cargo.toml": "31d736e93565a138ea49772b0a4df294e56bd6e9e74c28315388ce3a7d662fe5",
+        "code/README.md": "87941ead8ed0c3b346dfa308318999b128903dfe3692236ec23e1cd7be8408d7",
+        "code/lab.py": "5044c250b6b82e6cb7964510f44d179dc9b745ca2d0e5458a47e6c518a9e6401",
+        "code/src/controller.rs": "c511028661de406cd00128e7fedbb7bf5a6510d582da891581a8ec88d9abbbef",
+        "code/src/fixture.rs": "493c7a3a4b0c5f944c4b030cab9e9c81d05ce16d7f4cd5b8147f2d845e369f8e",
+        "code/src/goal.rs": "5b3386ddf8e6c7aa7b70a0d1eaf29b8007a9e4d6138abcf5c1b31dae3cfef04a",
+        "code/src/main.rs": "987239e32829ab7de48ff5ab107808bbc1d73b2b63f6fab7f3ad218a93bfc49d",
+        "code/src/tests.rs": "b5eff963bcca8b404d07d156b27b32c1d0be8858f7b5465efc595cb7390ff808",
+        "scripts/verify-agent-goals.py": "933592c0a2c1db0a6478265e79a2d9cefa4466e203762d1daba0f205554cb290",
+        "scripts/data/learn-agent-rust/p05-results.json": "47e02f887b8554631239d289f7593315a6ad3f11a5a823fb01c6d51919eeda1f",
+        "archive/workflow-and-goal-control-lab.zip": "d9d90c657371c7e38e8dc9ad9cbe5358f2baf6590378b36d7e5147f17db98bfb"
+      }
+    },
+    {
+      "id": "P06",
+      "slug": "agent-rsi",
+      "verifier": "scripts/verify-agent-rsi.py",
+      "exit_code": 0,
+      "elapsed_seconds": 2.8,
+      "summary": "P06 verified: 4 Rust tests, 9 runs + 2 CLI refusals, source and extracted archive; outputs and hashes match",
+      "inputs_sha256": {
+        "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+        "code/Cargo.lock": "ee6eb00929cca5af3d805b09b6ba58e16869c0187b575801065eed4b78efe833",
+        "code/Cargo.toml": "7bd5273852adf8183049c631029ea92b5828bbb969b06f7fdec8ee485ac93e42",
+        "code/README.md": "d90ed67ee5bc977a491806109d7468e1d67ab1158842f98a43a30c6727d25e87",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "bcbbfdec663e4b5477b32e4a9aa1f7bf67b925cb7c7eebad8f6b2db822888d1e",
+        "scripts/verify-agent-rsi.py": "9805c6b5121391ced06bd65ed85f66d0579e150e9a3a1fa71f97a7e23cf3ffbd",
+        "scripts/data/learn-agent-rust/p06-results.json": "ba35e54c8fbf30fa1e0b19c0f221971a9fcdf716277de395ce9a9dd4756a7ae5",
+        "archive/agent-rsi-lab.zip": "388224ff831e146e4a0b9d6231b8040d18023bfe96ef40e3cfca39aeb6068c74"
+      }
+    }
+  ]
+}

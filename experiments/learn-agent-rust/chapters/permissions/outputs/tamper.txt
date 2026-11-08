@@ -1,0 +1,5 @@
+scenario=tamper source=scripted_tool_requests storage=in_memory
+tool_result call_id=read-1 status=ok content="启动命令：cargo run\n"
+awaiting_approval approval=1 scope=this_session call_id=write-1 action=Write { path: "notes/summary.txt", content: "启动命令：cargo run\n" }
+rejected_input reason=approval_mismatch
+stats read_attempts=1 write_attempts=0 write_successes=0 tool_results=1 pending=true summary_matches=false readme_unchanged=true

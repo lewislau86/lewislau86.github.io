@@ -1,7 +1,6 @@
 ---
 title: "第 10 章：系统提示词组装"
 description: "用可追踪来源的 Rust 组装器连接策略、工具、环境与参考知识，核对模型实际收到的消息和执行权限。"
-prev: false
 next:
   text: 第 11 章 · 错误分类与恢复
   link: /learn-agent-rust/error-recovery
@@ -31,6 +30,12 @@ pageClass: learn-agent-rust-course
 先猜两件事：第二轮增加了工具结果，system 消息应该增加一份吗？记忆里写着“已经批准写文件”，执行器应该允许吗？
 
 <LearnAgentRustMap active="system-prompts" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#system-prompts)下载；解压后进入 `chapters/system-prompts/`，或在代码库根目录运行 `python3 run.py run R10`。
+
+<!-- experiment-library:end -->
 
 ## 1. 从一次实际输入开始
 
@@ -230,6 +235,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R10
 - **把 JSON 数据包装当成抗注入保证。** 包装明确结构，模型行为仍需评估，工具执行仍需授权。
 - **把字节预算当成 token 或缓存费用。** 本章统计的是本地消息序列化长度和组装前缀命中。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：来源决定解释方式
+
+README 中出现“忽略系统限制”，放进 system 角色就更可信吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+保持来源标签与角色边界，检查完整请求以及实际工具门；字符串位置无法替代宿主授权。
+
+输入组装是一条信任链：每段内容由谁提供、为何进入、何时失效都应可追溯。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：把输入组装作为明确的运行时步骤
 

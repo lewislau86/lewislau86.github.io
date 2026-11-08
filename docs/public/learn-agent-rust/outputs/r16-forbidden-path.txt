@@ -1,0 +1,10 @@
+scenario=forbidden-path
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Approved
+  plan_sha256=e1f680c8af275bbc55e75e70b36e9df9010a32c19b1b9a987c846006a50ea06d
+errors=permission_denied
+wire plan-1:Core->Lead:accepted
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+after_cleanup plan-1=Cancelled
+escape_absent=true workspace_removed=true

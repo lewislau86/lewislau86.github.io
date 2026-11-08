@@ -1,0 +1,9 @@
+scenario=shutdown-panic
+request=stop-core kind=Shutdown Lead->Core deadline=10 state=Pending
+errors=none
+check task_finished_before_join=true
+join Core=panic aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+after_cleanup stop-core=Failed
+escape_absent=true workspace_removed=true

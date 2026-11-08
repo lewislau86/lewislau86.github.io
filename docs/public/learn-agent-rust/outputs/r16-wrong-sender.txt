@@ -1,0 +1,10 @@
+scenario=wrong-sender
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+errors=wrong_identity
+wire plan-1:Core->Lead:accepted
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+after_cleanup plan-1=Cancelled
+escape_absent=true workspace_removed=true

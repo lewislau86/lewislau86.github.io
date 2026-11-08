@@ -1,0 +1,10 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply add check expected=1 (new process)
+revision=2 ready=readme reconcile=- tasks=readme:pending#0,check:pending#0
+apply add guide expected=2 (new process)
+revision=3 ready=readme reconcile=- tasks=readme:pending#0,check:pending#0,guide:pending#0
+apply set_dependencies readme expected=3 (new process)
+error=dependency_cycle committed=false

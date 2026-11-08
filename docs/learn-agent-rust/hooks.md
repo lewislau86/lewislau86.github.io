@@ -34,6 +34,12 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="hooks" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#hooks)下载；解压后进入 `chapters/hooks/`，或在代码库根目录运行 `python3 run.py run R04`。
+
+<!-- experiment-library:end -->
+
 ## 1. 沿一次写入找到四个位置
 
 Hook 首先是一份调用约定：到达某个位置时，运行时提供什么信息，按什么顺序调用回调，如何解释返回值。
@@ -252,6 +258,24 @@ python3 scripts/verify-agent-hooks.py --check
 - 以为 timeout 会停止任意内联代码。本章故障回调使用直属子进程，验证其终止与回收，不提供通用沙箱或进程树管理。
 - 依赖 Stop 完成所有资源清理。显式收尾只覆盖受控返回，资源本身仍应管理所有权与退出清理。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：观察者也会成为故障源
+
+日志 Hook 在写入成功后抛错，重跑整轮会发生什么？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+先确认写入效果，再分别记录动作状态与观察状态；后置回调失败不自动抹掉既有动作。
+
+监控与审计应有明确失败策略，否则观察机制会改变业务语义。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

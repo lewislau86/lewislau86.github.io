@@ -1,0 +1,4 @@
+scenario=capacity
+simultaneously_ready=2 rejected=capacity
+replacement_id=3
+stats started=3 joined=3 peak=2 active=0 records=3 dropped_notices=2 partial_files=0 result_files=1

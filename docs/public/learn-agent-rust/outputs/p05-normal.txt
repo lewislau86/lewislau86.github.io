@@ -1,0 +1,28 @@
+SCENARIO normal
+{
+  "status": "completed",
+  "reason": "goal_satisfied",
+  "goal_verified": true,
+  "normal_returns": 1,
+  "used": {
+    "episodes": 1,
+    "model_calls": 3,
+    "tools": 2,
+    "write_bytes": 27
+  },
+  "reads": 1,
+  "writes": 1,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [],
+        "kind": "satisfied",
+        "score": 3
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\ntotal=18\n",
+  "handoff_saved": false
+}

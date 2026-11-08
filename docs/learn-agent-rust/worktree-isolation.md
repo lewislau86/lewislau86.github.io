@@ -1,7 +1,6 @@
 ---
 title: "第 18 章：工作区隔离"
 description: "把代码任务绑定到独立 Git worktree，分开文件与索引，并在回收前保护未合入的成果。"
-prev: false
 next:
   text: 第 19 章 · MCP 外部工具
   link: /learn-agent-rust/mcp-tools
@@ -17,7 +16,7 @@ pageClass: learn-agent-rust-course
 - 将一次执行尝试绑定到固定工作区，拒绝旧凭据、重复绑定与路径覆盖。
 - 依据运行中的写入者、文件变化和提交是否合入，决定保留还是回收工作区。
 
-**前置：** [R03 工具权限与审批](./permissions.md)、[R17 自主任务领取](./autonomous-workers.md)的所有权概念，以及 [R13 后台任务](./background-tasks.md)的句柄回收。R17 目前仍为规划章节，本章用固定的 `owner + epoch` 凭据模拟领取结果，独立提供实验所需代码。
+**前置：** [R03 工具权限与审批](./permissions.md)、[R17 自主任务领取](./autonomous-workers.md)的所有权概念，以及 [R13 后台任务](./background-tasks.md)的句柄回收。R17 已提供独立的领取与租约实验；本章仍用固定的 `owner + epoch` 凭据模拟领取结果，独立验证工作区归属。两个实验之间的真实接线需要另行验收。
 
 **实践方式：** <a href="/learn-agent-rust/worktree-isolation-lab.zip" download>下载独立 Rust 学习包</a>。Rust 1.85+、Git 2.28+；只用标准库调用本地 Git，无需模型密钥、数据库或网络。
 :::
@@ -27,6 +26,12 @@ pageClass: learn-agent-rust-course
 前一章讨论“谁有权领取任务”。本章再给每次执行一个明确的落脚点：固定基线、独立目录、独立分支与索引，执行结束后根据实际成果决定是否回收。我们仍让两项任务修改同名文件，观察隔离解决了什么，以及合并时还需要面对什么。
 
 <LearnAgentRustMap active="worktree-isolation" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#worktree-isolation)下载；解压后进入 `chapters/worktree-isolation/`，或在代码库根目录运行 `python3 run.py run R18`。
+
+<!-- experiment-library:end -->
 
 ## 1. 两份文件、两个索引，共用一个对象库
 
@@ -280,6 +285,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R18
 - 凭据与检查只约束本实验单宿主的固定工具。外部进程并发操作目录会引入检查与使用之间的竞争，需要额外执行隔离和协调。
 - Git 子进程没有内置超时；验收脚本的外层超时不代表管理器已具备进程树终止能力。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：文件隔离没有隔离全部世界
+
+两个 worktree 分别运行迁移，会不会修改同一个数据库？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+列出数据库、端口、缓存、凭据与外部服务等共享资源；只拥有独立目录仍会共享它们。
+
+隔离清单应随操作范围扩展，接收变更与清理目录也应分别决定。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：隔离执行，明确接收，谨慎回收
 

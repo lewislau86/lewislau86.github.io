@@ -32,6 +32,12 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="permissions" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#permissions)下载；解压后进入 `chapters/permissions/`，或在代码库根目录运行 `python3 run.py run R03`。
+
+<!-- experiment-library:end -->
+
 ## 1. 同一份请求，先走权限分支
 
 练习工作区中的 `README.md` 只有一行：“启动命令：cargo run”。请求来源固定提出两个结构化动作：先读取 README，再把同一行写入 `notes/summary.txt`。我们用固定输入观察运行时行为，把注意力放在权限和审批上。
@@ -223,6 +229,24 @@ python3 scripts/verify-agent-permissions.py --check
 - 把固定路径规则当成通用沙箱。本实验使用自己管理的新建工作区，没有验证恶意进程并发替换路径、符号链接竞态或任意 shell 命令隔离。
 - 把进程内去重当成跨进程恰好执行一次。本章没有数据库、远程授权服务或故障恢复，测试结论限于当前实例。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：授权绑定的是动作
+
+用户批准写 report.txt 后，模型把路径换成配置文件，批准还有效吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+把批准绑定到规范化路径、内容摘要与计划修订；任一关键字段变化都应重新判断。
+
+付款、发邮件和发布内容同样需要批准具体对象与数量，而非一个泛化的“同意”。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

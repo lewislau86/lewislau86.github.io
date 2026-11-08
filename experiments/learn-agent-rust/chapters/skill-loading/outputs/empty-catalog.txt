@@ -1,0 +1,8 @@
+R07 | scenario=empty-catalog | scripted LLM + graph-flow + real skill files
+目录（只含元信息）：
+
+bytes catalog=0 all_instructions=0 injected=0 context_before=317 context_after=767
+assistant call_id=call-1 tool=load_skill args={"name":"rust-review"}
+tool_result call_id=call-1 {"error":"unknown_skill","ok":false}
+assistant answer=任务未完成：工具返回错误，请检查具体错误码。
+stats loads=1 unique=0 reads=0 writes=0 model_turns=2 stop=tool_error source_unchanged=true review_file_exists=false

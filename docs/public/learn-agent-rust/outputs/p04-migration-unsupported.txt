@@ -1,0 +1,1 @@
+{"error": "UnmigratableSession", "passed": true, "scenario": "migration-unsupported", "schema": 1}

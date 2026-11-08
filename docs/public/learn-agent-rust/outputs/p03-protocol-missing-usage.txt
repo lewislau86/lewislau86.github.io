@@ -1,0 +1,5 @@
+scenario=missing-usage adapter_ok=true stop=answered
+model_attempts=2 file_reads=1 received_http=2
+answer_correct=true task_pass=true
+usage=unknown
+cost_usd=unknown live_provider=not_run

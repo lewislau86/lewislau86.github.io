@@ -1,0 +1,10 @@
+R08 | scenario=artifact-tamper | scripted LLM + graph-flow + real temporary files
+measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
+prepare[1] before=11939 externalized=5010 micro=4833 after=1848 decision=summarized summary_input=12649
+prepare[2] before=2418 externalized=2418 micro=2418 after=2418 decision=unchanged summary_input=0
+prepare[3] before=2744 externalized=2744 micro=2744 after=2744 decision=unchanged summary_input=0
+artifact=a1 kind=transcript bytes=12192 integrity=true
+artifact=a2 kind=tool_output bytes=7180 integrity=false
+answer=任务未完成：工具错误，未运行测试。
+stats summary_calls=1 agent_calls=3 reloads=1 reads=0 retrievals=1 stop=tool_error
+checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true

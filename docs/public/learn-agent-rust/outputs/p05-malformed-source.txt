@@ -1,0 +1,18 @@
+SCENARIO malformed-source
+{
+  "status": "needs_human",
+  "reason": "input_blocked",
+  "goal_verified": false,
+  "normal_returns": 0,
+  "used": {
+    "episodes": 0,
+    "model_calls": 0,
+    "tools": 0,
+    "write_bytes": 0
+  },
+  "reads": 0,
+  "writes": 0,
+  "evaluations": [],
+  "report": null,
+  "handoff_saved": true
+}

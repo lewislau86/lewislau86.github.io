@@ -5,19 +5,21 @@ pageClass: learn-agent-rust-course
 prev:
   text: 第 14 章 · 定时调度
   link: /learn-agent-rust/scheduling
-next: false
+next:
+  text: 第 16 章 · 团队协作协议
+  link: /learn-agent-rust/team-protocols
 ---
 
 # 第 15 章：Agent 团队
 
-[课程总览](./index.md) · [上一章](./scheduling.md) · [学习路径](./learning-path.md#r15) · [下一章提纲](./team-protocols.md)
+[课程总览](./index.md) · [上一章](./scheduling.md) · [学习路径](./learning-path.md#r15) · [下一章](./team-protocols.md)
 
 ::: tip 本章学习目标
 - 说明一次性子任务与持续存在的队友，在上下文和生命周期上有什么区别。
 - 沿一条消息追踪发送者、接收邮箱、处理结果和回执，区分入队成功与工作完成。
 - 验证满邮箱、共享预算、队友取消和句柄回收，并说明单进程实验的适用范围。
 
-**前置：** [第 6 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 12 章任务系统](./task-system.md)与[第 13 章后台任务](./background-tasks.md)是架构前置。R12 目前仍为提纲，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
+**前置：** [第 6 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 12 章任务系统](./task-system.md)与[第 13 章后台任务](./background-tasks.md)是架构前置。R12 已有持久化任务实验，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
 
 **实践方式：** 下载<a href="/learn-agent-rust/agent-teams.zip" download>完整 agent-teams.zip</a>，进入解压后的 `agent-teams` 执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02 的两库 Git revisions，锁文件中的 Tokio 为 1.54.1；首次获取依赖需要网络。
 :::
@@ -29,6 +31,12 @@ next: false
 先想一想：`core` 回答了一次，是否就应该退出？一条消息进入 `config` 的邮箱，是否意味着它已经看过？团队要求退出时，如果邮箱刚好满了，取消命令还能送进去吗？
 
 <LearnAgentRustMap active="agent-teams" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#agent-teams)下载；解压后进入 `chapters/agent-teams/`，或在代码库根目录运行 `python3 run.py run R15`。
+
+<!-- experiment-library:end -->
 
 ::: info 本章实验状态
 已验证一个 Rust 进程内的两个 Tokio 异步队友。每个队友有私有消息历史，实际使用 `graph-flow` 推进模型与工具节点，并实现 `langchain-rust` 的 `LLM` trait。文件读取、有界邮箱、取消通道与任务句柄都是真实运行的。
@@ -83,7 +91,7 @@ Lead 是本实验的应用控制器，负责创建队友、投递工作、等待
 
 `Envelope` 保存消息 ID、绑定的发送者、正文和回执发送端。`Ticket` 是调用方拿到的等待入口；`Receipt` 才表示消费后的状态。`JoinHandle` 则属于成员生命周期，必须由团队保管，不能跟着一条工作消息用完就丢。
 
-这里的 `Work` 只在当前进程里排队，与第十二章计划实现的持久化业务任务不同。它没有任务依赖、租约或执行权转移；这些机制分别在[任务系统](./task-system.md)和[自主任务领取](./autonomous-workers.md)处理。
+这里的 `Work` 只在当前进程里排队，与第十二章的持久化业务任务不同。它没有任务依赖、租约或执行权转移；这些机制分别在[任务系统](./task-system.md)和[自主任务领取](./autonomous-workers.md)处理。
 
 ## 3. 邮箱满了，发送方应该知道
 
@@ -297,6 +305,24 @@ npm run docs:build
 - 接收方看到 Note 不代表同意其中的声明，更不代表执行权限变更。真实模型的理解与协作质量需要另行评估。
 - 本章不包含磁盘邮箱、重启恢复、任务租约或跨机器投递；这些能力需要独立的存储、协议和故障实验。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：并行是否值得其协调成本
+
+增加队友后每人更快返回，整体任务就一定更快更准吗？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+比较同一任务的最终验收、总调用、等待与取消成本；本章脚本协作不能替真实模型团队质量下结论。
+
+先划清可独立验收的子问题，再决定是否增加执行者。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

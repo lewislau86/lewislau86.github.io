@@ -1,0 +1,52 @@
+SCENARIO no-progress
+{
+  "status": "needs_human",
+  "reason": "no_progress",
+  "goal_verified": false,
+  "normal_returns": 3,
+  "used": {
+    "episodes": 3,
+    "model_calls": 7,
+    "tools": 4,
+    "write_bytes": 54
+  },
+  "reads": 1,
+  "writes": 3,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    },
+    {
+      "episode": 2,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    },
+    {
+      "episode": 3,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\n",
+  "handoff_saved": true
+}

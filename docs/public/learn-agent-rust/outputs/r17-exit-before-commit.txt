@@ -1,0 +1,10 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+TASKS {"now":100,"op":"claim","owner":"worker-a","ttl":10} --exit-before-commit
+{"code":73,"status":"process_exit"}
+TASKS {"op":"show"}
+{"last_now":0,"status":"snapshot","tasks":[{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}]}
+TASKS {"now":100,"op":"claim","owner":"worker-a","ttl":10}
+{"now":100,"status":"claimed","task":{"id":"report","lease_until":110,"max_claims":3,"owner":"worker-a","result":null,"state":"running","title":"整理日报","token":1}}

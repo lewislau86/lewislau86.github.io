@@ -26,6 +26,16 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="integrated-agent" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#integrated-agent)下载；解压后进入 `chapters/integrated-agent/`，或在代码库根目录运行 `python3 run.py run R20`。
+
+<!-- experiment-library:end -->
+
+::: info 技术版本与复现基线
+本章 MCP 接线沿用 R19 的 **2025-11-25** 协议基线。当前规范与迁移验收要求见[技术跟踪](./technology-radar.md#mcp-migration)；本章通过不代表新版 MCP 或真实模型生产集成通过。
+:::
+
 ## 1. 先预测：这份报告需要多少次调用？
 
 练习仓库的 `README.md` 只有两行。下面是实验夹具的原文，程序会实际创建并读取这个文件：
@@ -291,6 +301,24 @@ npm run docs:build
 - 写后错误可能留下真实文件；关闭连接、取消任务或回滚 SQLite 不会撤销这份文件。不要盲目重放写入。
 - 工作区检查和 MCP 进程管理针对可信练习程序。任意服务权限、子孙进程、启动失败、SIGKILL 和物理断电均不在这 18 个场景的通过范围内。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：接缝是新的故障位置
+
+各模块单测都通过，为什么完整循环仍可能重复写入？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+沿写入成功、结果保存、终态提交逐段注入故障，核对原预算、操作身份与实际产物。
+
+集成验收应沿用户目标跨模块追踪，而不是把模块通过率相加。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：把接缝变成可检查的契约
 

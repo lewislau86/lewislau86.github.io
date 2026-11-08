@@ -24,6 +24,12 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="background-tasks" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#background-tasks)下载；解压后进入 `chapters/background-tasks/`，或在代码库根目录运行 `python3 run.py run R13`。
+
+<!-- experiment-library:end -->
+
 ## 1. 先分清：业务任务、执行句柄与工具调用
 
 上一章计划解决“这项工作在重启后还记得吗”。本章解决“这次工作正在由谁执行”。例如业务任务 `report-2026` 可以有多次执行尝试；本次进程中的 `job_id=1` 只指向其中一次后台执行。
@@ -237,6 +243,24 @@ R12 的业务任务可以记录“本次执行关联哪个后台 ID”，但进�
 - 本地文件的受控取消与清理实验，不能推导出任意阻塞 I/O、外部进程或远端副作用都能被撤销。
 - 清理删除使用尽力而为策略；实验在正常临时文件系统中验证成功，未模拟删除失败或验证断电持久性。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：取消是一段生命周期
+
+cancel 标记已设置，为何文件仍可能继续增长？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+观察 worker 的取消检查点，并等待 join 后再验证资源静止；标记只是请求，不是退出事实。
+
+后台下载、索引与模型调用都需要明确谁拥有句柄、谁负责最后回收。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论：让后台执行有明确的主人
 

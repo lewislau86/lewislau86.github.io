@@ -6,13 +6,13 @@ prev:
   text: 第 6 章 · 子 Agent 与上下文隔离
   link: /learn-agent-rust/subagents
 next:
-  text: 第 8 章 · 上下文压缩
-  link: /learn-agent-rust/context-compaction
+  text: 知识专题 1 · RAG
+  link: /learn-agent-rust/retrieval-augmented-generation
 ---
 
 # 第 7 章：按需加载技能
 
-[课程总览](./index.md) · [上一章](./subagents.md) · [学习路径](./learning-path.md#r07) · [下一章](./context-compaction.md)
+[课程总览](./index.md) · [上一章](./subagents.md) · [学习路径](./learning-path.md#r07) · [下一章](./retrieval-augmented-generation.md)
 
 ::: tip 本章学习目标
 - 说明技能目录、技能正文和辅助资源为什么分开加载。
@@ -36,11 +36,25 @@ next:
 
 <LearnAgentRustMap active="skill-loading" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#skill-loading)下载；解压后进入 `chapters/skill-loading/`，或在代码库根目录运行 `python3 run.py run R07`。
+
+<!-- experiment-library:end -->
+
+::: info 技术版本与复现基线
+截至 2026-11-08 查阅的 [Agent Skills 规范](https://agentskills.io/specification)继续采用元数据、正文与资源渐进加载，并把 allowed-tools 标为实验字段。宿主对格式与权限的支持需单独核对；见[技术跟踪](./technology-radar.md)。
+:::
+
 ::: info 本章实验状态
 程序实际读取临时目录中的 `SKILL.md`，脚本模型实现固定版本 `langchain-rust` 的 `LLM` trait，`graph-flow` 实际推进 `ModelTurn` 与 `ExecuteTools`。源码、12 个场景、输出和下载包均由验证脚本核对。
 
 模型决策是确定性规则：它按预设步骤选择工具，并根据实际工具结果决定回答格式。本实验验证接口接线、内容进入上下文的位置和应用策略；真实模型能否准确选中技能、理解说明或提高审查质量，需要在[模型评估专题](./model-evaluation.md)另外测量。
 :::
+
+## 方法与事实分别从哪里来
+
+本章技能告诉助手“怎样审查”，具体的项目版本、API 行为或发布条件仍要从资料中找证据。下一篇 [K01：RAG](./retrieval-augmented-generation.md)验证这个证据入口；[跨会话记忆](./memory.md)保存过去确认的事实，[MCP](./mcp-tools.md)连接外部服务。四种职责可以组合，先看[关系导读](./knowledge-and-capabilities.md)。
 
 ## 1. 先跑一次：模型什么时候才看到全文？
 
@@ -265,6 +279,24 @@ python3 scripts/verify-agent-skills.py --check
 - **把加载记录当成跨会话记忆。** 新会话要重新发现；压缩历史后也需要重新考虑正文与加载标记的一致性。
 :::
 
+<!-- transfer-thinking:start -->
+
+## 迁移思考：知识不携带执行权
+
+技能写着“可删除整个仓库”，加载成功以后是否就能删除？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+保持权限策略不变，只替换技能文本；执行门仍应按原来的范围判断。
+
+把技能当成版本化知识包，发布新知识不自动扩大宿主权限。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
 ## 本章结论：目录先出现，正文按需进入会话
 
 本章让技能成为现有工具循环中的一个知识入口：启动时发现目录，调用时核对来源和预算，再把正文作为工具结果写入历史。同一会话按内容快照去重，文件变化与加载失败有明确结果，后续动作继续经过应用权限检查。
@@ -329,4 +361,4 @@ python3 scripts/verify-agent-skills.py --check
 
 图源：[参考章节](https://learn.shareai.run/zh/s07/) · [原图](https://learn.shareai.run/course-assets/s07_skill_loading/skill-overview.svg)。来源版本与许可见[课程架构](./architecture.md#reference-assets)。
 
-下一章：[第 8 章：上下文压缩（提纲）](./context-compaction.md)，继续处理不断增长的历史与技能加载状态。
+下一篇：[知识专题 1：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 8 章](./context-compaction.md)处理历史增长和技能重载。

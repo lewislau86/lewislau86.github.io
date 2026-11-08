@@ -48,7 +48,9 @@ def load_course():
 
 def label(row):
     number = int(row["id"][1:])
-    prefix = "第 {} 章".format(number) if row["id"].startswith("R") else "专题 {}".format(number)
+    prefix = ("第 {} 章".format(number) if row["id"].startswith("R")
+              else "知识专题 {}".format(number) if row["id"].startswith("K")
+              else "专题 {}".format(number))
     return prefix + " · " + row["title"]
 
 
@@ -59,7 +61,7 @@ def reference(row):
 def render_catalog(course):
     lines = []
     for part in course["parts"]:
-        lines.extend(["### " + part["title"], "", "| 章节 | 本章问题 | 状态 |", "| --- | --- | --- |"])
+        lines.extend(["### " + part["title"], "", part.get("purpose", ""), "", "| 章节 | 本章问题 | 状态 |", "| --- | --- | --- |"])
         for row in course["lessons"]:
             if row["part"] == part["id"]:
                 status = "规划中" if row["status"] == "planned" else "正文已成文；实验见章内说明"
@@ -71,7 +73,7 @@ def render_catalog(course):
 def render_timeline(course):
     lines = []
     for part in course["parts"]:
-        lines.extend(["## " + part["title"], ""])
+        lines.extend(["## " + part["title"], "", part.get("purpose", ""), ""])
         for row in course["lessons"]:
             if row["part"] != part["id"]:
                 continue
@@ -80,12 +82,14 @@ def render_timeline(course):
             status = "规划中 · 正文与实验待完成" if row["status"] == "planned" else "正文已成文 · 实验状态见章内"
             lines.extend(["> {} · {}".format(row["domain"], status), "", "**本章问题：** " + row["question"], "", "**新增机制：** " + row["addition"], ""])
             dependencies = "、".join("[{}](#{})".format(item, item.lower()) for item in row["prerequisites"])
-            lines.extend(["**前置与基础：** " + (dependencies or "Rust 基础、JSON 与基本 async/await；从本章建立全貌。"), "", "**计划验收：** " + row["outcome"], ""])
+            lines.extend(["**前置与基础：** " + (dependencies or "Rust 基础、JSON 与基本 async/await；从本章建立全貌。"), "", "**验收目标：** " + row["outcome"], ""])
             if row["status"] == "written":
                 lines.append("[阅读正文 →](./{}.md)".format(row["slug"]))
             else:
                 lines.append("[查看章节提纲（规划中） →](./{}.md)".format(row["slug"]))
             lines.append("")
+        if part.get("transition"):
+            lines.extend([part["transition"], ""])
     return "\n".join(lines).rstrip()
 
 
@@ -93,9 +97,14 @@ def sidebar(course):
     output = [{"text": course["title"], "items": [
         {"text": "返回知识库", "link": "/"},
         {"text": "课程总览", "link": "/learn-agent-rust/"},
+        {"text": "概念导读 · Skills、MCP、RAG 与 Memory", "link": "/learn-agent-rust/knowledge-and-capabilities"},
         {"text": "学习路径 · 能力演化", "link": "/learn-agent-rust/learning-path"},
         {"text": "环境准备", "link": "/learn-agent-rust/setup"},
+        {"text": "全书实验代码库", "link": "/learn-agent-rust/experiments"},
         {"text": "课程架构与框架分工", "link": "/learn-agent-rust/architecture"},
+        {"text": "全书审查与学习方法", "link": "/learn-agent-rust/course-review"},
+        {"text": "技术跟踪与迁移边界", "link": "/learn-agent-rust/technology-radar"},
+        {"text": "Agent 研究补充与实验选题", "link": "/learn-agent-rust/research-updates"},
     ]}]
 
     def groups(status):
@@ -104,13 +113,13 @@ def sidebar(course):
             items = [{"text": label(row), "link": "/learn-agent-rust/" + row["slug"]}
                      for row in course["lessons"] if row["part"] == part["id"] and row["status"] == status]
             if items:
-                result.append({"text": part["title"], "collapsed": True, "items": items})
+                result.append({"text": part["title"], "collapsed": False, "items": items})
         return result
 
     output.extend(groups("written"))
     planned = groups("planned")
     if planned:
-        output.append({"text": "规划中（尚未成文）", "collapsed": True, "items": planned})
+        output.append({"text": "规划中（尚未成文）", "collapsed": False, "items": planned})
     return json.dumps(output, ensure_ascii=False, indent=2) + "\n"
 
 

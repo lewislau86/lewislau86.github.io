@@ -1,0 +1,1 @@
+{"passed": true, "readable": true, "scenario": "new-reader-old-session"}

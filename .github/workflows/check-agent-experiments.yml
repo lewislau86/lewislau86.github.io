@@ -1,0 +1,62 @@
+name: Check full-course experiment download
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "experiments/learn-agent-rust/**"
+      - "docs/public/learn-agent-rust/**"
+      - "docs/learn-agent-rust/experiments.md"
+      - "scripts/*agent*.py"
+      - "scripts/learn-agent-rust-*.json"
+      - "scripts/data/learn-agent-rust/**"
+      - "scripts/templates/agent-experiments-run.py"
+      - ".github/workflows/check-agent-experiments.yml"
+  pull_request:
+    paths:
+      - "experiments/learn-agent-rust/**"
+      - "docs/public/learn-agent-rust/**"
+      - "docs/learn-agent-rust/experiments.md"
+      - "scripts/*agent*.py"
+      - "scripts/learn-agent-rust-*.json"
+      - "scripts/data/learn-agent-rust/**"
+      - "scripts/templates/agent-experiments-run.py"
+      - ".github/workflows/check-agent-experiments.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  download:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      P01_PG_BIN: /usr/lib/postgresql/18/bin
+      P04_PG_BIN: /usr/lib/postgresql/18/bin
+      CARGO_BUILD_JOBS: "4"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/agent-download-target
+          key: agent-book-${{ runner.os }}-${{ hashFiles('docs/public/learn-agent-rust/code/**/Cargo.lock') }}
+      - name: Install PostgreSQL 18 server tools
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18
+      - name: Check chapter mapping, source provenance and generated download
+        run: python3 scripts/package-agent-experiments.py --check
+      - name: Run all chapters from the extracted final zip
+        run: python3 scripts/check-agent-experiment-download.py

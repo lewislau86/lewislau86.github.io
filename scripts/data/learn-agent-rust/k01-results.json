@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "rust": "1.99.1",
+  "rust_tests": 8,
+  "scope": "actual lexical retrieval; deterministic extractive generation fixture",
+  "model": "no neural model",
+  "scenarios": 11,
+  "labeled_queries": 4,
+  "recall_at_2": 0.75,
+  "mrr_at_2": 0.75,
+  "held_out": false,
+  "archive_replayed": true,
+  "cli_refusals": 2,
+  "files_sha256": {
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.toml": "4775b379f060170d02bbb51fa0afc0601c7080e30b70db66d5827c5b2cb3f84a",
+    "Cargo.lock": "db5fd400523b24d8faa79ca52060a19199976840f0907107f38b358b7f8dee0d",
+    "README.md": "a3525083d7552cf8e35e5a3f32959c9c727bd7bc8dd09adbe72f06c14555b3dc",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "6cc2f1777a4791e003b658697daa32cdf04e1286f1992c1000c2b081d2f31bd8",
+    "corpus/release.md": "b10ed6970f10546e7d7cfd05b75ffa991c6cebb89b07bc9750bd2b8d83bfc820",
+    "corpus/operations.md": "2a9af58777f6d998be91b7de0cc29dfbfb026f0f67eb49dfbd50cd82716313b7",
+    "corpus/untrusted.md": "a4d8fb706bd04fc45bf8a4d1a37a86c3c3ae36a8e71f942163a99525da1382ae",
+    "corpus/private.md": "5c8842fed4f79a6d4d61fd0068b7a472599fbfcd043f62d0cf08a2db7e0a8ab0"
+  },
+  "outputs_sha256": {
+    "k01-suite.txt": "a62c39e201e31d2e1e7e5f8401e12ecdbb9f6c75209f83be2ba8db8f1637ab89",
+    "k01-query.txt": "990e149925e1286829e8b3a10eac0436ff18f9fab0ccaa65fab1d6523ad0eae8",
+    "k01-lexical-gap.txt": "9888243bc8a37ba4f31693a4e527605a7d41822d1ae283e991f7fe456dc507de"
+  }
+}

@@ -1,0 +1,1865 @@
+{
+  "scope": "R17 real single-host SQLite and CLI processes; fixture seconds plus actual system-clock smoke test; local separate business DB; no model, multi-host service or R12/R16 integration",
+  "files_sha256": {
+    "Cargo.toml": "eb88a15e95901380d3590ff0534c569246f73a2ffed7e6340a8a03b6411afef5",
+    "Cargo.lock": "328956165f33fa75569bf70c336a9c88bc547abf3f3a8c11963a286e547b0975",
+    ".gitignore": "068e1dc356ef3127c94bd76801f17b4680eafc165e79ae21fb0902f3b31c3fda",
+    "README.md": "b7ee461f40bf4746b0dca6f1aa86d936652d944e708a426b67def03b2607ed2d",
+    "src/main.rs": "40490a3b099113f5b58e525a573d713b1647e42dbe4f66b291b9911e7e3d1c9f",
+    "src/queue.rs": "8e10c817466f0e37608486b040c127eba19a310295c871f2e62552c1d5f62f3e",
+    "src/effects.rs": "7a551bccf7b350959f0117ad10ccbe5be0fe65f84b79df2ba676cc33785842cc",
+    "src/tests.rs": "cede6aa3836ba4ba0414606a83cdc129ac8983ec5fd15c28fe158cd574512729"
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "libraries": {
+    "rusqlite": "0.37.0",
+    "sqlite": "3.50.2"
+  },
+  "contract_tests_passed": 12,
+  "scenarios": [
+    {
+      "name": "normal",
+      "processes": 7,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 109,
+          "status": "completed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": "已核对",
+            "state": "done",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "last_now": 109,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": 110,
+              "max_claims": 3,
+              "owner": "worker-a",
+              "result": "已核对",
+              "state": "done",
+              "title": "整理日报",
+              "token": 1
+            }
+          ]
+        },
+        {
+          "now": 110,
+          "status": "empty"
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "f7bfebdac75c8d3e024f92711bdc19fe248e8447bb59dd34b7444d51e435457c"
+    },
+    {
+      "name": "restart-takeover",
+      "processes": 6,
+      "metrics": {
+        "first_token": 1,
+        "takeover_token": 2,
+        "first_deadline": 110,
+        "takeover_now": 110
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 109,
+          "status": "empty"
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        },
+        {
+          "now": 111,
+          "status": "completed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": "已核对",
+            "state": "done",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "5bc4ac0b46263ac0fe6f15df7324fb46c9fafc2cbfd921ebd8cf56f36208ff4c"
+    },
+    {
+      "name": "renewal",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 105,
+          "status": "renewed",
+          "task": {
+            "id": "report",
+            "lease_until": 115,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 110,
+          "status": "empty"
+        },
+        {
+          "now": 115,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 125,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "c0c6b105d21f33966d05a8b4193335e972f74881bf0b8cbf1d35677da718b452"
+    },
+    {
+      "name": "expiry-boundary",
+      "processes": 5,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "4683280776a155a11e6e9d4561c6469199bb27954adc435400d323a5c50751c2"
+    },
+    {
+      "name": "late-renewal",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "f751ec86f32753f19c6c7107a59ec864bb5038adcc528dcbf341ca7437169795"
+    },
+    {
+      "name": "stale-live-process",
+      "processes": 6,
+      "metrics": {
+        "old_process_rejected": true,
+        "final_token": 2
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "status": "checkpoint",
+          "old_process_alive": true
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "now": 111,
+          "status": "completed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": "已核对",
+            "state": "done",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "2d9af15c88ca4972808dc1e9f8eaa324cd5a1cfb5f54f2c865b870888afa76a8"
+    },
+    {
+      "name": "same-name",
+      "processes": 7,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        },
+        {
+          "now": 111,
+          "status": "completed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": "已核对",
+            "state": "done",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "44ee286e5e52db7dad327321f4083354c65f297df2bc69fd827c7c111e94c729"
+    },
+    {
+      "name": "claim-budget",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 2,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 2,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 2,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        },
+        {
+          "now": 120,
+          "status": "empty"
+        },
+        {
+          "last_now": 120,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": 120,
+              "max_claims": 2,
+              "owner": "worker-b",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 2
+            }
+          ]
+        }
+      ],
+      "stdout_sha256": "639b76af64045ae99ac850dc8f50d7387b17c8579a6a5cafbad19f812133186c"
+    },
+    {
+      "name": "selection",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "aaa",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "先读取说明",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "aaa",
+            "lease_until": 110,
+            "max_claims": 1,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "先读取说明",
+            "token": 1
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 100,
+          "status": "empty"
+        }
+      ],
+      "stdout_sha256": "5cd2298e0e9484378e3eca0534eb97c6f83d79639df17109873331bf9b468c0c"
+    },
+    {
+      "name": "empty",
+      "processes": 3,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "now": 100,
+          "status": "empty"
+        },
+        {
+          "last_now": 100,
+          "status": "snapshot",
+          "tasks": []
+        }
+      ],
+      "stdout_sha256": "09ef4ebecab12dfe3ab26a0009c50916b51b995567cf21a93495fb181ebcf4b4"
+    },
+    {
+      "name": "clock-regression",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "error": "clock_regression",
+          "status": "error"
+        },
+        {
+          "error": "clock_regression",
+          "status": "error"
+        },
+        {
+          "now": 105,
+          "status": "renewed",
+          "task": {
+            "id": "report",
+            "lease_until": 115,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        }
+      ],
+      "stdout_sha256": "c22ad196c002049d1a4ef4e8c947a53f01f79d835bcf76ec5b8577dbfece1920"
+    },
+    {
+      "name": "invalid-input",
+      "processes": 13,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "error": "invalid_command",
+          "status": "error"
+        },
+        {
+          "error": "invalid_owner",
+          "status": "error"
+        },
+        {
+          "error": "invalid_ttl",
+          "status": "error"
+        },
+        {
+          "error": "invalid_ttl",
+          "status": "error"
+        },
+        {
+          "error": "invalid_time",
+          "status": "error"
+        },
+        {
+          "error": "time_limit",
+          "status": "error"
+        },
+        {
+          "error": "invalid_task",
+          "status": "error"
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "error": "invalid_result",
+          "status": "error"
+        },
+        {
+          "error": "invalid_credential",
+          "status": "error"
+        },
+        {
+          "error": "lease_rejected",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "af2be8717f9503186f1cd89c16d8e86ff7a7a4d66a6ee9c8dab8dc0620548352"
+    },
+    {
+      "name": "duplicate-id",
+      "processes": 5,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 109,
+          "status": "completed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": "已核对",
+            "state": "done",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "error": "duplicate_id",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "efcd2ee2ff3bc5c741948e1d44d6107b54dfc8f74f137488c12f9504c92e5b00"
+    },
+    {
+      "name": "task-limit",
+      "processes": 34,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t0",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t1",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t2",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t3",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t4",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t5",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t6",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t7",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t8",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t9",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t10",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t11",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t12",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t13",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t14",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t15",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t16",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t17",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t18",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t19",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t20",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t21",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t22",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t23",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t24",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t25",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t26",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t27",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t28",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t29",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "t30",
+            "lease_until": null,
+            "max_claims": 1,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "task",
+            "token": 0
+          }
+        },
+        {
+          "error": "task_limit",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "5856543c93411cbc2fd81c0ed0a56b3fe9d3a29f351b3238301e21bab79f0a5b"
+    },
+    {
+      "name": "rollback",
+      "processes": 4,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "error": "injected_failure",
+          "status": "error"
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        }
+      ],
+      "stdout_sha256": "cd8eea190bcae5c1ef12c7ba76c832f91485e113245f22905bd3a81d26fe6088"
+    },
+    {
+      "name": "exit-before-commit",
+      "processes": 5,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "process_exit",
+          "code": 73
+        },
+        {
+          "last_now": 0,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": null,
+              "max_claims": 3,
+              "owner": null,
+              "result": null,
+              "state": "pending",
+              "title": "整理日报",
+              "token": 0
+            }
+          ]
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        }
+      ],
+      "stdout_sha256": "bcb10b2e6714945023079b9f9f2353f7e4fa5cb63d21bb0b188ba233c5a17c0d"
+    },
+    {
+      "name": "exit-after-commit",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "process_exit",
+          "code": 74
+        },
+        {
+          "last_now": 100,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": 110,
+              "max_claims": 3,
+              "owner": "worker-a",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 1
+            }
+          ]
+        },
+        {
+          "now": 100,
+          "status": "empty"
+        },
+        {
+          "now": 110,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 120,
+            "max_claims": 3,
+            "owner": "worker-b",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 2
+          }
+        }
+      ],
+      "stdout_sha256": "c1294f06573403aa045f7ee36cd2471ac884d299d8cf05215f358b8c4501110f"
+    },
+    {
+      "name": "held-write-lock",
+      "processes": 6,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "last_now": 0,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": null,
+              "max_claims": 3,
+              "owner": null,
+              "result": null,
+              "state": "pending",
+              "title": "整理日报",
+              "token": 0
+            }
+          ]
+        },
+        {
+          "error": "store_busy",
+          "status": "error"
+        },
+        {
+          "now": 100,
+          "status": "claimed",
+          "task": {
+            "id": "report",
+            "lease_until": 110,
+            "max_claims": 3,
+            "owner": "worker-a",
+            "result": null,
+            "state": "running",
+            "title": "整理日报",
+            "token": 1
+          }
+        },
+        {
+          "now": 100,
+          "status": "empty"
+        }
+      ],
+      "stdout_sha256": "42580bcd5f2f87383b32dcbf25bdccff8676f8ade271cb9d3440b5972307118b"
+    },
+    {
+      "name": "race-four",
+      "processes": 10,
+      "metrics": {
+        "live_processes": 4,
+        "first_round_claimed": 1,
+        "first_round_other_empty_or_busy": 3,
+        "retry_empty": 4,
+        "persisted_token": 1
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "race_verified",
+          "live_processes": 4,
+          "first_round_claimed": 1,
+          "first_round_other_empty_or_busy": 3,
+          "retry_empty": 4,
+          "persisted_token": 1
+        }
+      ],
+      "stdout_sha256": "4eb46d8c67c9e003bae8f706cef941db6e4ce23d98cf91ff26e2ecd29c7cad18"
+    },
+    {
+      "name": "effect-replay",
+      "processes": 7,
+      "metrics": {
+        "calls": 2,
+        "reports": 2,
+        "queue_token": 2,
+        "operation": "report:report"
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "process_exit",
+          "code": 75
+        },
+        {
+          "last_now": 100,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": 110,
+              "max_claims": 3,
+              "owner": "worker-a",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 1
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "operation": "report:report",
+              "token": 1
+            }
+          ],
+          "reports": [
+            {
+              "operation": "report:report",
+              "token": 1
+            }
+          ],
+          "status": "effects"
+        },
+        {
+          "action": {
+            "dedupe": false,
+            "inserted": true,
+            "operation": "report:report",
+            "token": 2
+          },
+          "claim": {
+            "now": 110,
+            "status": "claimed",
+            "task": {
+              "id": "report",
+              "lease_until": 120,
+              "max_claims": 3,
+              "owner": "worker-b",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 2
+            }
+          },
+          "completion": {
+            "now": 110,
+            "status": "completed",
+            "task": {
+              "id": "report",
+              "lease_until": 120,
+              "max_claims": 3,
+              "owner": "worker-b",
+              "result": "local report delivered",
+              "state": "done",
+              "title": "整理日报",
+              "token": 2
+            }
+          },
+          "status": "worked"
+        },
+        {
+          "calls": [
+            {
+              "operation": "report:report",
+              "token": 1
+            },
+            {
+              "operation": "report:report",
+              "token": 2
+            }
+          ],
+          "reports": [
+            {
+              "operation": "report:report",
+              "token": 1
+            },
+            {
+              "operation": "report:report",
+              "token": 2
+            }
+          ],
+          "status": "effects"
+        }
+      ],
+      "stdout_sha256": "ce55eeb500e92cf4cde411198f0caad53a2af45be3482ebb3a970c9c14eefe68"
+    },
+    {
+      "name": "effect-dedupe",
+      "processes": 7,
+      "metrics": {
+        "calls": 2,
+        "reports": 1,
+        "queue_token": 2,
+        "operation": "report:report"
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "process_exit",
+          "code": 75
+        },
+        {
+          "last_now": 100,
+          "status": "snapshot",
+          "tasks": [
+            {
+              "id": "report",
+              "lease_until": 110,
+              "max_claims": 3,
+              "owner": "worker-a",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 1
+            }
+          ]
+        },
+        {
+          "calls": [
+            {
+              "operation": "report:report",
+              "token": 1
+            }
+          ],
+          "reports": [
+            {
+              "operation": "report:report",
+              "token": 1
+            }
+          ],
+          "status": "effects"
+        },
+        {
+          "action": {
+            "dedupe": true,
+            "inserted": false,
+            "operation": "report:report",
+            "token": 2
+          },
+          "claim": {
+            "now": 110,
+            "status": "claimed",
+            "task": {
+              "id": "report",
+              "lease_until": 120,
+              "max_claims": 3,
+              "owner": "worker-b",
+              "result": null,
+              "state": "running",
+              "title": "整理日报",
+              "token": 2
+            }
+          },
+          "completion": {
+            "now": 110,
+            "status": "completed",
+            "task": {
+              "id": "report",
+              "lease_until": 120,
+              "max_claims": 3,
+              "owner": "worker-b",
+              "result": "local report delivered",
+              "state": "done",
+              "title": "整理日报",
+              "token": 2
+            }
+          },
+          "status": "worked"
+        },
+        {
+          "calls": [
+            {
+              "operation": "report:report",
+              "token": 1
+            },
+            {
+              "operation": "report:report",
+              "token": 2
+            }
+          ],
+          "reports": [
+            {
+              "operation": "report:report",
+              "token": 1
+            }
+          ],
+          "status": "effects"
+        }
+      ],
+      "stdout_sha256": "ea0353dfbded3a50d1a3c503834ff3d44fbb1293cd8d961dffe57e30258c2bdc"
+    },
+    {
+      "name": "system-clock",
+      "processes": 4,
+      "metrics": {
+        "within_host_clock_bounds": true,
+        "lease_seconds": 60,
+        "completed": true
+      },
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "status": "added",
+          "task": {
+            "id": "report",
+            "lease_until": null,
+            "max_claims": 3,
+            "owner": null,
+            "result": null,
+            "state": "pending",
+            "title": "整理日报",
+            "token": 0
+          }
+        },
+        {
+          "status": "system_clock_verified",
+          "within_host_clock_bounds": true,
+          "lease_seconds": 60,
+          "completed": true
+        }
+      ],
+      "stdout_sha256": "963eccd4fff7283c13ee911466b931c0bfbb82adfcf122b358e6393406b5775d"
+    },
+    {
+      "name": "corrupt-store",
+      "processes": 1,
+      "metrics": {},
+      "steps": [
+        {
+          "error": "store_error",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "c23b41d654d995945c3b1cd6f37f3cef8afae37283978ea10eb6e5409306b6d5"
+    },
+    {
+      "name": "schema-version",
+      "processes": 2,
+      "metrics": {},
+      "steps": [
+        {
+          "status": "initialized"
+        },
+        {
+          "error": "schema_version",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "2527a62d992a6779fafe39a40d728c902a82aa05ed209abb8b1d823088fbfa59"
+    },
+    {
+      "name": "missing-store",
+      "processes": 1,
+      "metrics": {},
+      "steps": [
+        {
+          "error": "store_error",
+          "status": "error"
+        }
+      ],
+      "stdout_sha256": "c23b41d654d995945c3b1cd6f37f3cef8afae37283978ea10eb6e5409306b6d5"
+    }
+  ]
+}

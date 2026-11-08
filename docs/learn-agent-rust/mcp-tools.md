@@ -4,13 +4,12 @@ description: "用固定版本的官方 Rust SDK 连接真实 stdio 服务，把�
 prev:
   text: 第 18 章 · 工作区隔离
   link: /learn-agent-rust/worktree-isolation
-next: false
 pageClass: learn-agent-rust-course
 ---
 
 # 第 19 章：MCP 外部工具
 
-[课程总览](./index.md) · [上一章：工作区隔离](./worktree-isolation.md) · [下一章提纲：完整 Agent 集成](./integrated-agent.md)
+[课程总览](./index.md) · [上一章：工作区隔离](./worktree-isolation.md) · [下一章：完整 Agent 集成](./integrated-agent.md)
 
 ::: tip 本章学习目标
 - 追踪工具发现、命名空间映射和一次跨进程调用，分清应用调用 ID 与协议请求 ID。
@@ -30,11 +29,25 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="mcp-tools" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#mcp-tools)下载；解压后进入 `chapters/mcp-tools/`，或在代码库根目录运行 `python3 run.py run R19`。
+
+<!-- experiment-library:end -->
+
+::: info 技术版本与复现基线
+本章代码与 initialize 讲解固定对应 MCP **2025-11-25**、rmcp 3.9.0。核对于 2026-11-08 的官方当前规范是 **2026-07-28**，已改为请求携带版本与能力，并改变发现、结果和通知机制。新版实验尚未验收；先看[迁移对照](./technology-radar.md#mcp-migration)，再决定采用哪个合同。
+:::
+
 ::: info 源码与验证范围
 Rust 片段直接导入[完整工程源码](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/learn-agent-rust/code/mcp-tools)；[下载工程、输出与证据](/learn-agent-rust/mcp-tools-lab.zip)。`server.rs` 提供服务，`connection.rs` 管连接，`adapter.rs` 管注册与分发，`schema.rs` 管受限参数规则，`lab.rs` 编排场景。
 
 本章使用官方 `rmcp` 的真实客户端与服务端，跨真实子进程的 stdio 管道通信，真实读写文件。调用请求由固定脚本提供，写入批准也是模拟的可信输入。本章尚未接入真实模型、`langchain-rust` 或 `graph-flow`；统一入口的端到端 Agent 集成留到第 20 章。
 :::
+
+## MCP 在方法与知识链路中的位置
+
+MCP 把外部能力接到宿主；[Skills](./skill-loading.md)给出工作方法，[RAG](./retrieval-augmented-generation.md)选择当前证据，[Memory](./memory.md)保留历史事实。服务器可以把检索实现暴露为搜索工具，技能也可以要求调用该工具，但协议接通后仍要分别检查证据和授权。本章验证外部工具与连接契约，K01 的搜索尚未作为 MCP 工具集成。整体关系见[概念导读](./knowledge-and-capabilities.md)。
 
 ## 1. 从进程内函数，走到独立工具服务
 
@@ -264,6 +277,24 @@ npm run docs:build
 - **关闭客户端对象就完成清理。** 显式等待协议任务、直属子进程和中继；服务进程的更强隔离需要额外机制。
 :::
 
+<!-- transfer-thinking:start -->
+
+## 迁移思考：协议兼容与业务可靠性
+
+服务返回符合 schema 的成功文本，是否代表效果可确认且可重放？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+核对真实文件或业务回执，再按操作身份判断重试；MCP 调用身份与业务幂等身份分别管理。
+
+升级协议先验生命周期与错误路径；新规范差异见技术跟踪页。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
 ## 本章结论
 
 本章保留统一工具入口，把远端部分交给显式连接与命名空间映射。目录先完整校验再发布，调用先检查参数和权限，再通过官方 SDK 发往服务；结果仍保留应用身份与协议含义。
@@ -329,4 +360,4 @@ npm run docs:build
 
 </details>
 
-下一章是[第 20 章：完整 Agent 集成](./integrated-agent.md)（规划提纲），将围绕同一个循环重新验收模型、策略、工具、上下文和任务的协作。
+下一章进入[第 20 章：完整 Agent 集成](./integrated-agent.md)，沿同一任务核对已实现的模型、策略、工具、上下文和任务契约，明确模块通过与集成通过的区别。

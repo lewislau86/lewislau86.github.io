@@ -1,0 +1,12 @@
+scenario=normal order_seed=3
+baseline dev=2/4 validation=1/4
+candidate=Trim dev=3/4 validation=2/4
+decision=promote revision=1 previous=Baseline current=Trim
+candidate=Memorize dev=4/4 validation=1/4
+decision=reject reason=no_validated_gain current=Trim
+candidate=Robust dev=4/4 validation=4/4
+decision=promote revision=2 previous=Trim current=Robust
+audit baseline_test=2/6 selected_test=6/6 deployed=Robust
+search_attempts=3 candidate_case_evaluations=24 remaining=0
+baseline_preserved=true pointer_matches_policy=true
+workspace_removed=true

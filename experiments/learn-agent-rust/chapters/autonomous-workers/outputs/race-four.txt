@@ -1,0 +1,6 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+验证器摘要：四个真实进程均到达门闩后放行；胜者名字与 busy/empty 分布由调度决定
+{"first_round_claimed":1,"first_round_other_empty_or_busy":3,"live_processes":4,"persisted_token":1,"retry_empty":4,"status":"race_verified"}

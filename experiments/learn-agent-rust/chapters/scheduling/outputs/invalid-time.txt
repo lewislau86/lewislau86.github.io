@@ -1,0 +1,14 @@
+init DB
+{"schema":1,"status":"initialized"}
+add DB report Asia/Shanghai 09:00 coalesce --start 2026-11-07T00:59:00Z
+{"cursor":"2026-11-07T00:59:00Z","id":"report","local_time":"09:00","misfire":"coalesce","status":"added","timezone":"Asia/Shanghai"}
+show DB
+{"schedules":[{"cursor":"2026-11-07T00:59:00Z","id":"report","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"}],"status":"snapshot","tasks":[]}
+tick DB 2026-11-07T01:00:00
+{"error":"invalid_timestamp","status":"error"}
+tick DB 2026-11-07T01:00:00.1Z
+{"error":"unsupported_timestamp","status":"error"}
+tick DB 1999-01-01T00:00:00Z
+{"error":"unsupported_timestamp","status":"error"}
+show DB
+{"schedules":[{"cursor":"2026-11-07T00:59:00Z","id":"report","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"}],"status":"snapshot","tasks":[]}

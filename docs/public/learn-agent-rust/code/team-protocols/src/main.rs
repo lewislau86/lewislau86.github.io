@@ -439,6 +439,11 @@ pub async fn scenario(name: &str) -> Report {
         });
     let escape_absent = !temporary.path().join("escape.txt").exists();
     let original_path = temporary.path().to_owned();
+    let active = rt.active();
+    assert_eq!(
+        active, 0,
+        "all actor futures must be dropped before cleanup"
+    );
     temporary.close().unwrap();
     Report {
         scenario: name.into(),
@@ -447,7 +452,7 @@ pub async fn scenario(name: &str) -> Report {
         before_cleanup,
         after_cleanup,
         wire_received: rt.received,
-        active: 0,
+        active,
         joined,
         artifact,
         escape_absent,

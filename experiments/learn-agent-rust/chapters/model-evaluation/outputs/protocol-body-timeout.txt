@@ -1,0 +1,5 @@
+scenario=body-timeout adapter_ok=false stop=timeout
+model_attempts=1 file_reads=0 received_http=1
+answer_correct=false task_pass=false
+usage=unknown
+cost_usd=unknown live_provider=not_run

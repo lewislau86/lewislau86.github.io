@@ -1,0 +1,530 @@
+{
+  "scope": "R02 pinned two-library integration; scripted LLM; real temporary filesystem; memory only",
+  "source_sha256": {
+    "Cargo.toml": "5ce4a3c87aa3bdcdd3d80dcee4f9088bdf50750b99673e0a061a5114c15251fc",
+    "Cargo.lock": "612dae4398578aad139de171994b0009c12f5d8ff59090fae6783cb1d72a4c7f",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "README.md": "3ab3fd13c2110f1dae3b3bf6c839bd99fc2ba47b5b1987cf662e668639a9c73b",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "src/main.rs": "f51fab47e6223dd4e94a17f80c1e158924510d5e249416177dcaaf1ea6ffbbe5"
+  },
+  "archive_sha256": "5555bceb8dd6753c443de14c22fb0ac1e690a05d7222275e1b1b9f0adbd3e6e8",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "scenarios": [
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "normal",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\".\"}",
+                  "name": "list_files"
+                },
+                "id": "list-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
+            "id": "list-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\"README.md\"}",
+                  "name": "read_file"
+                },
+                "id": "read-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"data\":{\"text\":\"# Demo\\n启动命令：cargo run\\n\"},\"ok\":true}",
+            "id": "read-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "README 里的启动命令是：cargo run",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 3,
+        "pending": [],
+        "seen_ids": [
+          "list-1",
+          "read-1"
+        ],
+        "stop": "completed",
+        "tool_dispatches": 2
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "batch",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\".\"}",
+                  "name": "list_files"
+                },
+                "id": "list-1",
+                "type": "function"
+              },
+              {
+                "function": {
+                  "arguments": "{\"path\":\"README.md\"}",
+                  "name": "read_file"
+                },
+                "id": "read-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
+            "id": "list-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "{\"data\":{\"text\":\"# Demo\\n启动命令：cargo run\\n\"},\"ok\":true}",
+            "id": "read-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "README 里的启动命令是：cargo run",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 2,
+        "pending": [],
+        "seen_ids": [
+          "list-1",
+          "read-1"
+        ],
+        "stop": "completed",
+        "tool_dispatches": 2
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "unknown-tool",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{}",
+                  "name": "delete_file"
+                },
+                "id": "bad-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"error\":\"unknown_tool\",\"ok\":false}",
+            "id": "bad-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "工具返回错误，任务未完成。",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 2,
+        "pending": [],
+        "seen_ids": [
+          "bad-1"
+        ],
+        "stop": "tool_error",
+        "tool_dispatches": 1
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "invalid-json",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{",
+                  "name": "read_file"
+                },
+                "id": "bad-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"error\":\"invalid_json\",\"ok\":false}",
+            "id": "bad-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "工具返回错误，任务未完成。",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 2,
+        "pending": [],
+        "seen_ids": [
+          "bad-1"
+        ],
+        "stop": "tool_error",
+        "tool_dispatches": 1
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "invalid-args",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":42}",
+                  "name": "read_file"
+                },
+                "id": "bad-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"error\":\"invalid_arguments\",\"ok\":false}",
+            "id": "bad-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "工具返回错误，任务未完成。",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 2,
+        "pending": [],
+        "seen_ids": [
+          "bad-1"
+        ],
+        "stop": "tool_error",
+        "tool_dispatches": 1
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "missing-file",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\".\"}",
+                  "name": "list_files"
+                },
+                "id": "list-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"data\":{\"entries\":[\"Cargo.toml\"]},\"ok\":true}",
+            "id": "list-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\"README.md\"}",
+                  "name": "read_file"
+                },
+                "id": "read-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"error\":\"file_unavailable\",\"ok\":false}",
+            "id": "read-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          },
+          {
+            "content": "工具返回错误，任务未完成。",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 3,
+        "pending": [],
+        "seen_ids": [
+          "list-1",
+          "read-1"
+        ],
+        "stop": "tool_error",
+        "tool_dispatches": 2
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn"
+      ],
+      "scenario": "duplicate-id",
+      "state": {
+        "max_turns": 4,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 1,
+        "pending": [],
+        "seen_ids": [],
+        "stop": "invalid_call_id",
+        "tool_dispatches": 0
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn"
+      ],
+      "scenario": "zero-budget",
+      "state": {
+        "max_turns": 0,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 0,
+        "pending": [],
+        "seen_ids": [],
+        "stop": "turn_limit",
+        "tool_dispatches": 0
+      }
+    },
+    {
+      "equal": true,
+      "graph_nodes": [
+        "ModelTurn",
+        "ExecuteTools",
+        "ModelTurn"
+      ],
+      "scenario": "turn-limit",
+      "state": {
+        "max_turns": 1,
+        "messages": [
+          {
+            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+            "id": null,
+            "images": null,
+            "message_type": "human",
+            "tool_calls": null
+          },
+          {
+            "content": "",
+            "id": null,
+            "images": null,
+            "message_type": "ai",
+            "tool_calls": [
+              {
+                "function": {
+                  "arguments": "{\"path\":\".\"}",
+                  "name": "list_files"
+                },
+                "id": "list-1",
+                "type": "function"
+              }
+            ]
+          },
+          {
+            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
+            "id": "list-1",
+            "images": null,
+            "message_type": "tool",
+            "tool_calls": null
+          }
+        ],
+        "model_turns": 1,
+        "pending": [],
+        "seen_ids": [
+          "list-1"
+        ],
+        "stop": "turn_limit",
+        "tool_dispatches": 1
+      }
+    }
+  ]
+}

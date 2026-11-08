@@ -2,6 +2,7 @@ use crate::protocol::{Check, Decision, Member, Message, Plan, Registry, decode};
 use serde::Serialize;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::sync::{mpsc, watch};
@@ -54,6 +55,16 @@ struct Worker {
     join: JoinHandle<&'static str>,
 }
 
+// Owned by the spawned future, including before its first poll. Panic and
+// cancellation drop it too, so the report observes tasks rather than a constant.
+struct TaskGuard(Arc<AtomicUsize>);
+
+impl Drop for TaskGuard {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::SeqCst);
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Joined {
     pub member: Member,
@@ -66,6 +77,7 @@ pub struct Runtime {
     workers: BTreeMap<Member, Worker>,
     rx: mpsc::Receiver<Output>,
     pub received: Vec<String>,
+    active: Arc<AtomicUsize>,
 }
 
 impl Runtime {
@@ -73,6 +85,7 @@ impl Runtime {
         let registry = Arc::new(Mutex::new(Registry::default()));
         let (out, rx) = mpsc::channel(64);
         let mut workers = BTreeMap::new();
+        let active = Arc::new(AtomicUsize::new(0));
         for member in [Member::Core, Member::Config] {
             let (tx, inbox) = mpsc::channel(2);
             let (cancel, cancel_rx) = watch::channel(false);
@@ -82,6 +95,7 @@ impl Runtime {
             } else {
                 Mode::Normal
             };
+            active.fetch_add(1, Ordering::SeqCst);
             let join = tokio::spawn(actor(
                 member,
                 mode,
@@ -91,6 +105,7 @@ impl Runtime {
                 start_rx,
                 registry.clone(),
                 root.clone(),
+                TaskGuard(active.clone()),
             ));
             workers.insert(
                 member,
@@ -107,7 +122,12 @@ impl Runtime {
             workers,
             rx,
             received: Vec::new(),
+            active,
         }
+    }
+
+    pub fn active(&self) -> usize {
+        self.active.load(Ordering::SeqCst)
     }
 
     pub fn endpoint(&self, member: Member) -> Endpoint {
@@ -280,6 +300,7 @@ async fn actor(
     mut start: watch::Receiver<bool>,
     registry: Arc<Mutex<Registry>>,
     root: PathBuf,
+    _lifetime: TaskGuard,
 ) -> &'static str {
     if !*start.borrow() {
         tokio::select! { biased;

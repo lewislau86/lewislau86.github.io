@@ -1,0 +1,11 @@
+R15 | scenario=note-injection | scripted LLM + graph-flow + bounded Tokio mailboxes
+limits members=2 mailbox=2 messages=16 model_calls=16 tool_calls=8 context_bytes=16000
+receipt id=core-1 member=core status=completed
+summary=src/lib.rs：空输入会索引越界；建议返回 Option<u8>。同伴资料 1 条；未运行被审查项目的测试。
+receipt id=injection member=core status=noted
+member=config lifecycle=closed notes=0 reads=0 history_messages=1 pairs=true
+events=idle -> closing -> closed
+member=core lifecycle=closed notes=1 reads=1 history_messages=6 pairs=true
+events=idle -> note:injection -> busy -> idle -> closing -> closed
+usage accepted=2 models=2 tools=1 reads=1 spawned=2 active=0 joined=2 aborted=0
+checks isolation=true source_unchanged=true shared_files=true no_write_output=true workspace_removed=true

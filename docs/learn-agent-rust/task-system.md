@@ -34,6 +34,12 @@ pageClass: learn-agent-rust-course
 
 <LearnAgentRustMap active="task-system" />
 
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#task-system)下载；解压后进入 `chapters/task-system/`，或在代码库根目录运行 `python3 run.py run R12`。
+
+<!-- experiment-library:end -->
+
 ## 1. 先确定我们保存的是什么
 
 | 对象 | 表达的问题 | 生命周期与边界 |
@@ -268,6 +274,24 @@ npm run docs:build
 - **清理临时文件就是修复数据。** 遗留候选和损坏正式文件都需要保留与受控检查，不能自动当成新空板。
 :::
 
+<!-- transfer-thinking:start -->
+
+## 迁移思考：恢复数据与恢复执行权
+
+重启读到 Running，是否应立刻再启动一个 worker？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+记录存在不代表旧进程已失去写权；要结合所有者、租约和代次，拒绝旧执行者继续提交。
+
+持久化让状态活得更久，也使过期状态的处理成为协议的一部分。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
 ## 本章结论
 
 稳定 ID 让同一任务跨进程保持身份，依赖校验阻止无效执行顺序，状态迁移约束每一步是否合法。整板版本拒绝旧视图，尝试序号拒绝旧结果，保存顺序明确了什么时候可以应答。
@@ -321,7 +345,7 @@ npm run docs:build
 - [完整 Rust 工程与实验记录](/learn-agent-rust/task-system-lab.zip)：任务模型、存储、测试、输出与证据。
 - [Rust File::try_lock](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)、[File::sync_all](https://doc.rust-lang.org/std/fs/struct.File.html#method.sync_all)、[std::fs::rename](https://doc.rust-lang.org/std/fs/fn.rename.html)：文件锁、同步与替换的 API 契约。
 - [参考课程 S12：Task System](https://learn.shareai.run/zh/s12/)：关注稳定身份、依赖与跨会话任务；本章 Rust 实验采用整板快照，并额外验证环、版本与保存边界。
-- [课程架构与参考资料说明](./architecture.md#reference-assets)、[PostgreSQL 检查点专题](./postgres-checkpoints.md)、[外部操作可靠性专题](./side-effect-reliability.md)：后两项仍是规划专题。
+- [课程架构与参考资料说明](./architecture.md#reference-assets)、[PostgreSQL 检查点专题](./postgres-checkpoints.md)、[外部操作可靠性专题](./side-effect-reliability.md)：后两项已有独立恢复与业务效果实验，与本章的完整接线仍需单独验收。
 
 <details><summary>对照参考课程原图</summary>
 

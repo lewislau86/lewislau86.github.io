@@ -267,11 +267,35 @@ def r02_figures():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
-    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R18", "R19", "R20", "P02", "P01", "all"], default="all")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R16", "R18", "R19", "R20", "P02", "P01", "R17", "P04", "P03", "P05", "P06", "K01", "all"], default="all")
     args = parser.parse_args()
     if args.r02:
         args.lesson = "R02"
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    if args.lesson in ("P05", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("goal_figures", ROOT / "scripts/learn-agent-rust-goal-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("R16", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("protocol_figures", ROOT / "scripts/learn-agent-rust-protocol-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("R17", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("worker_figures", ROOT / "scripts/learn-agent-rust-worker-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("P04", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("production_figures", ROOT / "scripts/learn-agent-rust-production-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
     if args.lesson in ("P01", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("checkpoint_figures", ROOT / "scripts/learn-agent-rust-checkpoint-figures.py")
@@ -329,6 +353,12 @@ def main():
     if args.lesson in ("R01", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("loop_figures", ROOT / "scripts/learn-agent-rust-loop-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("K01", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rag_figures", ROOT / "scripts/learn-agent-rust-rag-figures.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.generate(ROOT, text, panel, arrow, save_figure)
@@ -403,6 +433,22 @@ def main():
     if args.lesson in ("R20", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("integration_figures", ROOT / "scripts/learn-agent-rust-integration-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+
+
+    if args.lesson in ("P03", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("evaluation_figures", ROOT / "scripts/learn-agent-rust-evaluation-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+
+
+    if args.lesson in ("P06", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("review_figures", ROOT / "scripts/learn-agent-rust-review-figures.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.generate(ROOT, text, panel, arrow, save_figure)

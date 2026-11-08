@@ -301,7 +301,7 @@ def scenarios(binary, directory):
             elif name == "corrupt-store":
                 lab.db.write_bytes(b"invalid sqlite file")
                 before=lab.db.read_bytes()
-                lab.show() if False else lab.call({"op":"show"},error="store_error")
+                lab.call({"op":"show"},error="store_error")
                 require(lab.db.read_bytes()==before,"Corrupt store overwritten")
             elif name == "schema-version":
                 lab.call({"op":"init"})

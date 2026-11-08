@@ -1,0 +1,60 @@
+name: Check P04 production readiness
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/production-readiness.md"
+      - "docs/public/learn-agent-rust/code/production-readiness/**"
+      - "docs/public/learn-agent-rust/outputs/p04-*"
+      - "docs/public/learn-agent-rust/figures/p04-*"
+      - "docs/public/learn-agent-rust/production-readiness-lab.zip"
+      - "scripts/verify-agent-production.py"
+      - "scripts/learn-agent-rust-production-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/p04-results.json"
+      - ".github/workflows/check-agent-production.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/production-readiness.md"
+      - "docs/public/learn-agent-rust/code/production-readiness/**"
+      - "docs/public/learn-agent-rust/outputs/p04-*"
+      - "docs/public/learn-agent-rust/figures/p04-*"
+      - "docs/public/learn-agent-rust/production-readiness-lab.zip"
+      - "scripts/verify-agent-production.py"
+      - "scripts/learn-agent-rust-production-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/p04-results.json"
+      - ".github/workflows/check-agent-production.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  production:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      P04_PG_BIN: /usr/lib/postgresql/18/bin
+      RUSTUP_TOOLCHAIN: "1.99.1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Install PostgreSQL 18 tools from PostgreSQL Apt repository
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18
+      - name: Verify authorization, migration, admission, worker failover and independent restore
+        run: python3 scripts/verify-agent-production.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson P04
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/p04-*.svg'

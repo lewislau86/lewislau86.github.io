@@ -2,7 +2,6 @@
 title: "第 14 章：定时调度"
 description: "用具名时区、稳定触发身份和 SQLite 事务，验证每日计划的重启补触发、去重与提交边界。"
 pageClass: learn-agent-rust-course
-prev: false
 next:
   text: 第 15 章 · Agent 团队
   link: /learn-agent-rust/agent-teams
@@ -17,7 +16,7 @@ next:
 - 验证错过触发时补哪一次、重复扫描是否重复入队，以及进程退出后怎样继续。
 - 在同一个数据库事务里保存待执行任务和扫描进度，区分入队成功与任务完成。
 
-**前置：** 理解[第 9 章的跨进程存储](./memory.md)与[第 11 章的有限重试](./error-recovery.md)。课程上的前置为[持久化任务系统](./task-system.md)、[后台任务](./background-tasks.md)，R12 目前仍为提纲，R13 已提供独立后台实验；本章也提供独立的调度与队列实验，可以直接运行。
+**前置：** 理解[第 9 章的跨进程存储](./memory.md)与[第 11 章的有限重试](./error-recovery.md)。课程上的前置为[持久化任务系统](./task-system.md)、[后台任务](./background-tasks.md)，R12 已有持久化任务实验，R13 已提供独立后台实验；本章也提供独立的调度与队列实验，可以直接运行。
 
 **实践方式：** 下载 [scheduling-lab.zip](/learn-agent-rust/scheduling-lab.zip)，进入解压后的 `scheduling-lab` 执行 `cargo build --locked`。本机验证使用 Rust 1.99.1、edition 2024。SQLite 随依赖编译，首次构建需要网络和 C 编译器；运行时无需模型密钥或数据库服务。
 :::
@@ -31,6 +30,12 @@ next:
 这一章沿着这一个计划向前走。先把时间规则存下来，再由程序定期检查到期点，将工作写入持久队列。模型是否有空、怎样生成日报，是消费队列之后的下一段流程。
 
 <LearnAgentRustMap active="scheduling" />
+
+<!-- experiment-library:start -->
+
+全书实验可从[统一代码库](./experiments.md#scheduling)下载；解压后进入 `chapters/scheduling/`，或在代码库根目录运行 `python3 run.py run R14`。
+
+<!-- experiment-library:end -->
 
 ::: info 本章实验状态
 已验证真实 SQLite 文件、独立 CLI 进程、具名时区换算与两个明确的进程退出点。配套验证覆盖 27 个场景、10 个 Rust 测试和 Clippy，并实际解压最终学习包、独立编译与复验全部场景。
@@ -285,6 +290,24 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R14
 - **把唯一入队理解成外部操作恰好执行一次。** 消费者、幂等与完成确认属于后续执行协议。
 - **把短轮询当长期服务。** 本包提供有界前台程序，没有安装守护服务，也没有验证长期准点率与断电恢复。
 :::
+
+<!-- transfer-thinking:start -->
+
+## 迁移思考：时间事件需要稳定身份
+
+服务宕机错过每日任务，重启后补跑两次会怎样？先给出你的判断，再展开下面的推演。
+
+<details><summary>推演与应用</summary>
+
+先定义补触发策略，再让游标与触发身份共同提交；检查重复触发是否生成同一业务任务。
+
+按日调度涉及业务日、时区和重启语义，不能仅依赖 sleep 间隔。
+
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
 
 ## 本章结论
 

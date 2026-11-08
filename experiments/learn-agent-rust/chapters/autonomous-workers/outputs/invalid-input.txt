@@ -1,0 +1,26 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+TASKS {"extra":1,"op":"show"}
+{"error":"invalid_command","status":"error"}
+TASKS {"now":100,"op":"claim","owner":"../a","ttl":10}
+{"error":"invalid_owner","status":"error"}
+TASKS {"now":100,"op":"claim","owner":"a","ttl":0}
+{"error":"invalid_ttl","status":"error"}
+TASKS {"now":100,"op":"claim","owner":"a","ttl":3601}
+{"error":"invalid_ttl","status":"error"}
+TASKS {"now":-1,"op":"claim","owner":"a","ttl":10}
+{"error":"invalid_time","status":"error"}
+TASKS {"now":4000000000,"op":"claim","owner":"a","ttl":1}
+{"error":"time_limit","status":"error"}
+TASKS {"id":"new","max_claims":1,"op":"add","title":" "}
+{"error":"invalid_task","status":"error"}
+TASKS {"now":100,"op":"claim","owner":"worker-a","ttl":10}
+{"now":100,"status":"claimed","task":{"id":"report","lease_until":110,"max_claims":3,"owner":"worker-a","result":null,"state":"running","title":"整理日报","token":1}}
+TASKS {"id":"report","now":109,"op":"complete","owner":"worker-a","result":"中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中中","token":1}
+{"error":"invalid_result","status":"error"}
+TASKS {"id":"report","now":109,"op":"complete","owner":"worker-a","result":"已核对","token":0}
+{"error":"invalid_credential","status":"error"}
+TASKS {"id":"report","now":109,"op":"complete","owner":"other","result":"已核对","token":1}
+{"error":"lease_rejected","status":"error"}

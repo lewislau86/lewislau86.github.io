@@ -1,0 +1,51 @@
+name: Check Agent RSI and teaching coverage
+
+on:
+  push:
+    branches: [master]
+    paths: &paths
+      - 'docs/learn-agent-rust/**'
+      - 'docs/public/learn-agent-rust/code/agent-rsi/**'
+      - 'docs/public/learn-agent-rust/outputs/p06-*'
+      - 'docs/public/learn-agent-rust/figures/p06-*'
+      - 'docs/public/learn-agent-rust/figures/review-*'
+      - 'docs/public/learn-agent-rust/agent-rsi-lab.zip'
+      - 'scripts/data/learn-agent-rust/p06-results.json'
+      - 'scripts/data/learn-agent-rust/review-*.json'
+      - 'scripts/verify-agent-rsi.py'
+      - 'scripts/review-learn-agent-rust.py'
+      - 'scripts/learn-agent-rust-review-figures.py'
+      - 'scripts/learn-agent-rust-lessons.json'
+      - 'scripts/sync-learn-agent-rust-course.py'
+      - 'scripts/generate-learn-agent-rust-figures.py'
+      - '.github/workflows/check-agent-rsi.yml'
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rsi-and-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: '1.99.1'
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare Rust tools
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify source, search boundaries and extracted learning package
+        run: python3 scripts/verify-agent-rsi.py --check
+      - name: Check chapter coverage and generated navigation
+        run: |
+          python3 scripts/review-learn-agent-rust.py --check
+          python3 scripts/sync-learn-agent-rust-course.py --check
+      - name: Check generated teaching figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson P06
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/p06-*.svg' 'docs/public/learn-agent-rust/figures/review-*.svg'

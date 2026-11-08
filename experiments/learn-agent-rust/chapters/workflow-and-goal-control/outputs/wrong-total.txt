@@ -1,0 +1,39 @@
+SCENARIO wrong-total
+{
+  "status": "completed",
+  "reason": "goal_satisfied",
+  "goal_verified": true,
+  "normal_returns": 2,
+  "used": {
+    "episodes": 2,
+    "model_calls": 5,
+    "tools": 3,
+    "write_bytes": 54
+  },
+  "reads": 1,
+  "writes": 2,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "wrong:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    },
+    {
+      "episode": 2,
+      "normal": true,
+      "verdict": {
+        "feedback": [],
+        "kind": "satisfied",
+        "score": 3
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\ntotal=18\n",
+  "handoff_saved": false
+}
