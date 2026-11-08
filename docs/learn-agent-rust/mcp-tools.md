@@ -31,6 +31,38 @@ pageClass: learn-agent-rust-course
 
 锁定协议与客户端版本，用本地真实服务验证发现、调用、超时与退出。
 
+<!-- r19-results:start -->
+
+| 场景 | 远端调用 | 写入行数 | 验证结果 |
+| --- | --- | --- | --- |
+| `normal` | 1 | 0 | `ok,ok` |
+| `dual-server` | 2 | 0 | `ok,ok` |
+| `denied-write` | 0 | 0 | `approval_required` |
+| `approved-write` | 1 | 1 | `ok` |
+| `approval-mismatch` | 0 | 0 | `approval_required` |
+| `invalid-arguments` | 0 | 0 | `invalid_arguments` |
+| `unknown-tool` | 0 | 0 | `unknown_tool` |
+| `duplicate-call` | 1 | 0 | `ok,duplicate_call` |
+| `tool-error` | 1 | 0 | `tool_error` |
+| `protocol-error` | 1 | 0 | `protocol_error` |
+| `timeout` | 1 | 0 | `timeout,connection_unavailable` |
+| `write-timeout` | 1 | 1 | `outcome_unknown,connection_unavailable` |
+| `server-crash` | 1 | 0 | `transport_error,connection_unavailable` |
+| `discovery-duplicate` | 0 | 0 | `duplicate_alias` |
+| `discovery-schema` | 0 | 0 | `unsupported_schema` |
+| `discovery-name` | 0 | 0 | `unsupported_name` |
+| `cursor-loop` | 0 | 0 | `cursor_loop` |
+| `missing-capability` | 0 | 0 | `capability_or_version` |
+| `startup-exit` | 0 | 0 | `handshake_failed` |
+| `startup-timeout` | 0 | 0 | `startup_timeout` |
+| `dirty-stdout` | 0 | 0 | `handshake_failed` |
+| `list-timeout` | 0 | 0 | `discovery_failed` |
+| `result-limit` | 1 | 0 | `result_limit` |
+| `closed-registry` | 0 | 0 | `unknown_tool` |
+| `call-budget` | 8 | 0 | `ok,ok,ok,ok,ok,ok,ok,ok,call_budget` |
+
+<!-- r19-results:end -->
+
 ## 保留的参考原图
 
 以下图片原样保留自参考课程，展示其 Python/Claude 教学实现；图中接口、编号和统计沿用原图。Rust 版按本章计划实现后另行验证。

@@ -1,0 +1,4 @@
+scenario=accepted
+integration=fast_forward
+retire=removed
+stats bindings=1 linked=0 retained=0 removed=1 primary_baseline=false

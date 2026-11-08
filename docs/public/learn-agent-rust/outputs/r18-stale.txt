@@ -1,0 +1,4 @@
+scenario=stale
+writer=stale_owner
+edit=stale_owner retire=stale_owner
+stats bindings=1 linked=1 retained=0 removed=0 primary_baseline=true

@@ -1,0 +1,3 @@
+scenario=existing-path
+allocate=path_exists
+stats bindings=0 linked=0 retained=0 removed=0 primary_baseline=true

@@ -1,0 +1,4 @@
+scenario=conflict
+integration=conflict preserved_for_review=true
+retire_alpha=target_dirty retire_beta=target_dirty
+stats bindings=2 linked=2 retained=2 removed=0 primary_baseline=false

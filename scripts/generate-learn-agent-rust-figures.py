@@ -267,11 +267,17 @@ def r02_figures():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
-    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "all"], default="all")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R18", "all"], default="all")
     args = parser.parse_args()
     if args.r02:
         args.lesson = "R02"
     OUT.parent.mkdir(parents=True, exist_ok=True)
+    if args.lesson in ("R18", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("worktree_figures", ROOT / "scripts/learn-agent-rust-worktree-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
     if args.lesson in ("R13", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("background_figures", ROOT / "scripts/learn-agent-rust-background-figures.py")

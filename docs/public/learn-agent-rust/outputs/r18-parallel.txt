@@ -1,0 +1,5 @@
+scenario=parallel
+writers_ready=2 separate_directories=true
+alpha=startup=alpha beta=startup=beta
+retire_alpha=changes retire_beta=changes
+stats bindings=2 linked=2 retained=2 removed=0 primary_baseline=true

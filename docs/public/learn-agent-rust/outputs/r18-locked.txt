@@ -1,0 +1,3 @@
+scenario=locked
+retire=git_refused
+stats bindings=1 linked=1 retained=1 removed=0 primary_baseline=true
