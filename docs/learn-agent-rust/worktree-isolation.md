@@ -1,13 +1,16 @@
 ---
-title: "第 18 章：工作区隔离"
+title: "第 22 章：工作区隔离"
 description: "把代码任务绑定到独立 Git worktree，分开文件与索引，并在回收前保护未合入的成果。"
-next:
-  text: 第 19 章 · MCP 外部工具
-  link: /learn-agent-rust/mcp-tools
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 21 章 · 自主任务领取
+  link: /learn-agent-rust/autonomous-workers
+next:
+  text: 第 23 章 · MCP 外部工具
+  link: /learn-agent-rust/mcp-tools
 ---
 
-# 第 18 章：工作区隔离
+# 第 22 章：工作区隔离
 
 [课程总览](./index.md) · [上一章：自主任务领取](./autonomous-workers.md) · [下一章：MCP 外部工具](./mcp-tools.md)
 
@@ -360,4 +363,4 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R18
 - [Learn Claude Code · Worktree Isolation](https://learn.shareai.run/zh/s18/)，通用机制与原图参考。
 - <a href="/learn-agent-rust/code/worktree-isolation.rs" download>完整源码</a> · <a href="/learn-agent-rust/code/worktree-isolation-README.md" download>运行说明</a> · <a href="/learn-agent-rust/worktree-isolation-lab.zip" download>独立学习包</a>。
 
-下一章：[第 19 章：MCP 外部工具](./mcp-tools.md)。把执行范围从本地固定工具扩展到外部服务时，继续核对工具身份、连接和生命周期。
+下一章：[第 23 章：MCP 外部工具](./mcp-tools.md)。把执行范围从本地固定工具扩展到外部服务时，继续核对工具身份、连接和生命周期。

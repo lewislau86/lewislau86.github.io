@@ -3,8 +3,11 @@ title: "第 0 章：整体架构与环境"
 description: "沿一次读取 README 的任务，看清模型请求、工具执行、消息历史、图调度与存储分别负责什么。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 课程架构与框架分工
-  link: /learn-agent-rust/architecture
+  text: 环境准备
+  link: /learn-agent-rust/setup
+next:
+  text: 第 1 章 · 最小 Agent 循环
+  link: /learn-agent-rust/agent-loop
 ---
 
 # 第 0 章：整体架构与环境

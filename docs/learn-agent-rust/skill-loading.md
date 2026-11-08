@@ -1,16 +1,16 @@
 ---
-title: "第 7 章：按需加载技能"
+title: "第 10 章：按需加载技能"
 description: "用真实技能文件、langchain-rust 消息和 graph-flow 图执行，验证目录发现、按需注入、版本核对与权限边界。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 6 章 · 子 Agent 与上下文隔离
+  text: 第 9 章 · 子 Agent 与上下文隔离
   link: /learn-agent-rust/subagents
 next:
-  text: 知识专题 1 · RAG
+  text: 第 11 章 · RAG：检索、证据与回答
   link: /learn-agent-rust/retrieval-augmented-generation
 ---
 
-# 第 7 章：按需加载技能
+# 第 10 章：按需加载技能
 
 [课程总览](./index.md) · [上一章](./subagents.md) · [学习路径](./learning-path.md#r07) · [下一章](./retrieval-augmented-generation.md)
 
@@ -163,7 +163,7 @@ cargo run --locked -- repeat
 
 看后两条柱的长度：加载请求从 1 次变成 2 次，累计正文仍为 276 字节。重复请求仍增加工具消息和调用开销，因此完整上下文从输出中的 1845 字节变成 2263 字节。这里统计的是 UTF-8 或 JSON 序列化字节，**不是 token 数，也不是模型费用**。
 
-正文一旦加入历史，就会随后续请求继续发送。本章没有自动撤回或遗忘它；`loaded` 也只在本次内存会话内生效。如何压缩历史、同时维护已加载状态，是[下一章](./context-compaction.md)继续处理的问题。
+正文一旦加入历史，就会随后续请求继续发送。本章没有自动撤回或遗忘它；`loaded` 也只在本次内存会话内生效。如何压缩历史、同时维护已加载状态，由[第 12 章](./context-compaction.md)继续处理。下一章先加入[RAG 检索证据](./retrieval-augmented-generation.md)。
 
 ## 5. 技能说“允许写入”，应用就会允许吗？
 
@@ -337,7 +337,7 @@ python3 scripts/verify-agent-skills.py --check
 
    </details>
 
-5. 假如下一章丢掉了技能正文，却保留 `loaded`，会出现什么问题？
+5. 假如压缩历史时丢掉了技能正文，却保留 `loaded`，会出现什么问题？
 
    <details><summary>参考答案</summary>
 
@@ -361,4 +361,4 @@ python3 scripts/verify-agent-skills.py --check
 
 图源：[参考章节](https://learn.shareai.run/zh/s07/) · [原图](https://learn.shareai.run/course-assets/s07_skill_loading/skill-overview.svg)。来源版本与许可见[课程架构](./architecture.md#reference-assets)。
 
-下一篇：[知识专题 1：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 8 章](./context-compaction.md)处理历史增长和技能重载。
+下一篇：[第 11 章：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 12 章](./context-compaction.md)处理历史增长和技能重载。

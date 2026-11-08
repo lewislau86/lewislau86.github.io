@@ -1,0 +1,10 @@
+call=1 before=prepare after=check status=paused
+call=2 before=check after=repair status=paused
+call=3 before=repair after=check status=paused
+call=4 before=check after=repair status=paused
+call=5 before=repair after=check status=paused
+call=6 before=check after=repair status=paused
+call=7 before=repair after=handoff status=paused
+call=8 before=handoff after=handoff status=completed
+scenario=exhausted outcome=needs_human repairs=2 calls=8
+trace=prepare>check>repair>check>repair>check>repair>handoff

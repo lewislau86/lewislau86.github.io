@@ -1,16 +1,16 @@
 ---
-title: "第 15 章：Agent 团队"
+title: "第 19 章：Agent 团队"
 description: "让两个队友保留独立历史，通过有界邮箱协作，验证持续会话、消息投递、共享预算和可等待的退出。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 14 章 · 定时调度
+  text: 第 18 章 · 定时调度
   link: /learn-agent-rust/scheduling
 next:
-  text: 第 16 章 · 团队协作协议
+  text: 第 20 章 · 团队协作协议
   link: /learn-agent-rust/team-protocols
 ---
 
-# 第 15 章：Agent 团队
+# 第 19 章：Agent 团队
 
 [课程总览](./index.md) · [上一章](./scheduling.md) · [学习路径](./learning-path.md#r15) · [下一章](./team-protocols.md)
 
@@ -19,7 +19,7 @@ next:
 - 沿一条消息追踪发送者、接收邮箱、处理结果和回执，区分入队成功与工作完成。
 - 验证满邮箱、共享预算、队友取消和句柄回收，并说明单进程实验的适用范围。
 
-**前置：** [第 6 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 12 章任务系统](./task-system.md)与[第 13 章后台任务](./background-tasks.md)是架构前置。R12 已有持久化任务实验，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
+**前置：** [第 9 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 16 章任务系统](./task-system.md)与[第 17 章后台任务](./background-tasks.md)是架构前置。R12 已有持久化任务实验，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
 
 **实践方式：** 下载<a href="/learn-agent-rust/agent-teams.zip" download>完整 agent-teams.zip</a>，进入解压后的 `agent-teams` 执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02 的两库 Git revisions，锁文件中的 Tokio 为 1.54.1；首次获取依赖需要网络。
 :::

@@ -1,0 +1,12 @@
+[package]
+name = "graph-parallel-lab"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+graph-flow = { git = "https://github.com/a-agmon/rs-graph-llm.git", rev = "9bbca193f20a8c4ba23289621549ecb3d35fee64", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "rt", "sync", "time"] }

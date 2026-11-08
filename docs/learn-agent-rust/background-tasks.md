@@ -1,10 +1,16 @@
 ---
-title: "第 13 章：后台任务"
+title: "第 17 章：后台任务"
 description: "用有界线程、任务句柄、协作取消和完成通知，让慢工具拥有可查询、可回收的生命周期。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 16 章 · 持久化任务系统
+  link: /learn-agent-rust/task-system
+next:
+  text: 第 18 章 · 定时调度
+  link: /learn-agent-rust/scheduling
 ---
 
-# 第 13 章：后台任务
+# 第 17 章：后台任务
 
 [课程总览](./index.md) · [上一章：持久化任务系统](./task-system.md) · [下一章：定时调度](./scheduling.md)
 
@@ -318,4 +324,4 @@ cancel 标记已设置，为何文件仍可能继续增长？先给出你的判�
 - [Learn Claude Code · Background Tasks](https://learn.shareai.run/zh/s13/)，通用机制参考，原图按上游语境保留。
 - <a href="/learn-agent-rust/code/background-tasks.rs" download>本章完整源码</a> · <a href="/learn-agent-rust/code/background-tasks-README.md" download>运行说明</a> · <a href="/learn-agent-rust/background-tasks-lab.zip" download>独立实验包</a>。
 
-下一章：[第 14 章：定时调度](./scheduling.md)。有了后台执行的生命周期，再讨论一次定时触发怎样生成可追踪、可恢复的执行请求。
+下一章：[第 18 章：定时调度](./scheduling.md)。有了后台执行的生命周期，再讨论一次定时触发怎样生成可追踪、可恢复的执行请求。

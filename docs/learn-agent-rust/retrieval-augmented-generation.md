@@ -1,16 +1,16 @@
 ---
-title: "知识专题 1：RAG——检索、证据与回答"
+title: "第 11 章：RAG：检索、证据与回答"
 description: "用独立 Rust 实验学习真实文档切块、BM25、范围过滤、上下文预算、引用校验和索引更新，并区分检索指标与生成质量。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 7 章 · 按需加载技能
+  text: 第 10 章 · 按需加载技能
   link: /learn-agent-rust/skill-loading
 next:
-  text: 第 8 章 · 上下文压缩
+  text: 第 12 章 · 上下文压缩
   link: /learn-agent-rust/context-compaction
 ---
 
-# 知识专题 1：RAG——检索、证据与回答
+# 第 11 章：RAG：检索、证据与回答
 
 [课程总览](./index.md) · [上一章](./skill-loading.md) · [学习路径](./learning-path.md#k01) · [下一章](./context-compaction.md)
 
@@ -21,7 +21,7 @@ next:
 
 **前置：** [工具注册与图调度](./tools-and-graph.md)、[工具权限](./permissions.md)、[按需加载技能](./skill-loading.md)。概念区别先看[关系导读](./knowledge-and-capabilities.md)。
 
-**实践方式：** 下载<a href="/learn-agent-rust/retrieval-augmented-generation.zip" download>独立 RAG 工程</a>，Rust 1.99.1，仅标准库；无需密钥、网络或数据库。统一实验包对应 K01。
+**实践方式：** 下载<a href="/learn-agent-rust/retrieval-augmented-generation.zip" download>独立 RAG 工程</a>，Rust 1.99.1，仅标准库；无需密钥、网络或数据库。本章为主线第 11 章；统一实验包保留稳定标识 K01，供原命令与证据定位。
 :::
 
 上一章让助手按需读取“怎样做升级审查”。现在它要回答一个具体问题：“升级到 v2 要求哪个 Rust 版本？”技能可以要求每项结论附来源，但实际版本必须从项目资料中找到。
@@ -272,4 +272,4 @@ RRF 的一个常见形式是将每个候选在不同列表中的 $1/(c+\mathrm{r
 - [Sentence Transformers：Semantic Search](https://sbert.net/examples/sentence_transformer/applications/semantic-search/README.html)：非对称检索与查询/文档编码。
 - [Sentence Transformers：Retrieve & Re-Rank](https://sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html)：候选召回与重排的职责。
 
-资料查阅：2026-11-08。接下来进入[第 8 章：上下文压缩](./context-compaction.md)，处理方法、证据和历史不断累积时的输入预算。
+资料查阅：2026-11-08。接下来进入[第 12 章：上下文压缩](./context-compaction.md)，处理方法、证据和历史不断累积时的输入预算。

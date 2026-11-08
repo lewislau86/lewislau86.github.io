@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "scope": "documentation structure only; not runtime verification",
-  "lessons": 28,
+  "lessons": 31,
   "all_structure_checks_passed": true,
   "rows": [
     {
@@ -108,6 +108,69 @@
       "teaching_focus": "观察者也会成为故障源",
       "evidence_boundary": "固定 Hook 与直属 worker；整轮恢复另验。",
       "document_path": "docs/learn-agent-rust/hooks.md"
+    },
+    {
+      "id": "G01",
+      "slug": "graph-state-routing",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 8,
+      "details": 6,
+      "teaching_focus": "路由正确与业务完成分别检查",
+      "evidence_boundary": "真实 graph-flow 路由与固定等级规则；无模型质量结论。",
+      "document_path": "docs/learn-agent-rust/graph-state-routing.md"
+    },
+    {
+      "id": "G02",
+      "slug": "graph-pause-resume",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 8,
+      "details": 6,
+      "teaching_focus": "保存冲突与效果重放分别处理",
+      "evidence_boundary": "真实 SessionStorage 与 SQLite 跨进程恢复；单业务执行者，无外部发布。",
+      "document_path": "docs/learn-agent-rust/graph-pause-resume.md"
+    },
+    {
+      "id": "G03",
+      "slug": "graph-parallel-subgraphs",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 8,
+      "details": 6,
+      "teaching_focus": "并发安全与业务归并分别验证",
+      "evidence_boundary": "真实 FanOutTask、共享状态与隔离子图包装；持久化父子恢复另验。",
+      "document_path": "docs/learn-agent-rust/graph-parallel-subgraphs.md"
     },
     {
       "id": "R05",

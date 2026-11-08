@@ -1,13 +1,13 @@
 ---
 title: "第 3 章：工具权限与审批"
 description: "用独立 Rust 实验区分允许、拒绝和等待审批，把批准绑定到具体动作。"
+pageClass: learn-agent-rust-course
 prev:
   text: 第 2 章 · 工具注册与图调度
   link: /learn-agent-rust/tools-and-graph
 next:
   text: 第 4 章 · 生命周期与 Hooks
   link: /learn-agent-rust/hooks
-pageClass: learn-agent-rust-course
 ---
 
 # 第 3 章：工具权限与审批

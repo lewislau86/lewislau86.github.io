@@ -1,0 +1,2 @@
+stale_revision=rejected_without_save
+duplicate_decision=rejected

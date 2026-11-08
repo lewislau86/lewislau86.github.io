@@ -64,7 +64,7 @@ RAG 是 Retrieval-Augmented Generation，即检索增强生成。原始论文将
 | 建索引 | 资料怎样切成可检索的单元？ | 来源、标题、行号或页码、范围、版本与内容记录。 |
 | 回答问题 | 哪些段落相关且可以用于本次回答？ | 检索候选、排序、最终上下文、引用与不足时的处理。 |
 
-RAG 可以用词法检索、密集向量检索或两者组合。向量数据库负责存取和搜索向量；完整问答还要处理资料更新、上下文预算和答案依据。[K01：RAG](./retrieval-augmented-generation.md)用真实文件和 BM25 建立基线，并通过固定摘录夹具验证引用边界；真实生成质量另行评估。
+RAG 可以用词法检索、密集向量检索或两者组合。向量数据库负责存取和搜索向量；完整问答还要处理资料更新、上下文预算和答案依据。[第 11 章：RAG](./retrieval-augmented-generation.md)用真实文件和 BM25 建立基线，并通过固定摘录夹具验证引用边界；真实生成质量另行评估。
 
 ## 4. Memory：决定哪些历史事实值得保留
 
@@ -165,4 +165,4 @@ MCP 是 Model Context Protocol。其架构区分 Host、Client、Server：宿主
 - [Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks](https://arxiv.org/abs/2005.11401)：原始 RAG 研究。
 - [Sentence Transformers：Semantic Search](https://sbert.net/examples/sentence_transformer/applications/semantic-search/README.html)：查询与文档的向量检索。
 
-接下来沿[学习路径](./learning-path.md)选择起点；已有工具循环基础的读者可以直接进入 [R07](./skill-loading.md)与 [K01](./retrieval-augmented-generation.md)。
+接下来沿[学习路径](./learning-path.md)选择起点；已有工具循环基础的读者可以直接进入 [R07](./skill-loading.md)与[第 11 章 RAG](./retrieval-augmented-generation.md)。

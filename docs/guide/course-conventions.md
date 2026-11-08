@@ -76,7 +76,9 @@ P06 Agent RSI 使用 `python3 scripts/verify-agent-rsi.py` 生成有限策略实
 
 全书教学覆盖表用 `python3 scripts/review-learn-agent-rust.py` 更新，`--check` 检查章结构、配图 / 片段入口、折叠格式及逐章迁移题；这些检查不运行历史章节实验。迁移题作者数据在 `scripts/data/learn-agent-rust/review-prompts.json`，修改相应内容时两处同步。技术更新记录一手资料、查阅日期、版本和未验收边界，见课程技术跟踪页。
 
-K01 RAG 知识专题使用 `python3 scripts/verify-agent-rag.py` 生成独立标准库 Rust 工程包、11 个场景的轨迹与源码摘要；`--check` 重跑 8 项 Rust 测试、Clippy、4 道公开标签检索题及最终 zip 解压复验。真实执行词法切块 / BM25、范围过滤、预算与来源更新删除，生成器是固定摘录夹具；真实模型、embedding、框架与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。课程清单支持 R 主线、K 知识专题与 P 可靠性 / 演进专题；阅读位置由清单顺序和 part 决定，原编号与主题网址保持稳定。
+RAG 主线章（稳定实验标识 K01）使用 `python3 scripts/verify-agent-rag.py` 生成独立标准库 Rust 工程包、11 个场景的轨迹与源码摘要；`--check` 重跑 8 项 Rust 测试、Clippy、4 道公开标签检索题及最终 zip 解压复验。真实执行词法切块 / BM25、范围过滤、预算与来源更新删除，生成器是固定摘录夹具；真实模型、embedding、框架与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
+
+G01–G03 图编排三章用 `python3 scripts/verify-agent-orchestration.py` 生成真实 graph-flow 独立工程包、14 项 Rust 测试和 19 组场景的输出与证据；`--check` 检查源码与最终章节包的独立编译、格式、Clippy 和场景复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson G01`（同时刷新三章与导读图）。固定业务规则，无模型；G02 真实实现 SQLite SessionStorage 并跨 CLI 进程恢复，限定单业务执行者；G03 的子图为应用 Task 包装器，父子持久恢复另验。
 
 ## 4. 章节模板
 

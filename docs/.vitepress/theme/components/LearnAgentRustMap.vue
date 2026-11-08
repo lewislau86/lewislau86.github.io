@@ -5,6 +5,8 @@ import course from '../../../../scripts/learn-agent-rust-lessons.json'
 
 const props = defineProps<{ active: string }>()
 const current = computed(() => course.lessons.find(lesson => lesson.slug === props.active))
+const chapterLabel = (lesson: { id: string; chapter?: number }) => lesson.chapter !== undefined
+  ? `第 ${lesson.chapter} 章` : `专题 ${Number(lesson.id.slice(1))}`
 const parts = computed(() => course.parts.map(part => ({
   ...part,
   lessons: course.lessons.filter(lesson => lesson.part === part.id)
@@ -14,7 +16,7 @@ const parts = computed(() => course.parts.map(part => ({
 <template>
   <nav class="agent-map" aria-label="Learn Agent by Rust 课程地图">
     <p class="map-title">本章在全书中的位置</p>
-    <p v-if="current" class="current">{{ current.id }} · {{ current.title }}：{{ current.question }}</p>
+    <p v-if="current" class="current">{{ chapterLabel(current) }} · {{ current.title }}：{{ current.question }}</p>
     <ol class="parts">
       <li v-for="part in parts" :key="part.id" :class="{ active: current?.part === part.id }">
         <a :href="withBase('/learn-agent-rust/learning-path.html#' + part.lessons[0].id.toLowerCase())">
@@ -30,7 +32,7 @@ const parts = computed(() => course.parts.map(part => ({
            :href="withBase('/learn-agent-rust/' + lesson.slug + '.html')"
            :aria-current="lesson.slug === active ? 'page' : undefined"
            :class="{ selected: lesson.slug === active }">
-          {{ lesson.id }} {{ lesson.title }}{{ lesson.status === 'planned' ? '（规划）' : '' }}
+          {{ chapterLabel(lesson) }} {{ lesson.title }}{{ lesson.status === 'planned' ? '（规划）' : '' }}
         </a>
       </div>
     </details>

@@ -22,6 +22,11 @@ pageClass: learn-agent-rust-course
 **实践状态：** 本页是目标架构导读。[第 0 章](./architecture-and-setup.md)提供标准库接线实验；[R02](./tools-and-graph.md)已有两库对照工程，[R20](./integrated-agent.md)已有最小集成实验。各模块、完整集成与真实服务的证据分别记录在[全书审查](./course-review.md)和各章，不能互相替代。
 :::
 
+## 模型交互与图编排两条主线
+
+`langchain-rust` 负责消息、模型接口与工具适配；`graph-flow` 负责节点、Context、路由与 Session 推进。[图编排导读](./graph-orchestration.md)用 LangGraph 概念建立问题地图，第 5–7 章分别真实验证[状态与条件路由](./graph-state-routing.md)、[会话存储与恢复](./graph-pause-resume.md)、[并行归并与子图](./graph-parallel-subgraphs.md)。三个工程只依赖 graph-flow 和必要运行库，用固定业务规则单独检查编排。
+
+
 ## 1. 从读取 README 的任务出发
 
 用户说：“告诉我这个项目如何运行。”模型可以提出读取 `README.md` 的请求。程序检查路径与参数，调用文件工具，再把结果与原调用 ID 一起交回模型。模型看到文件内容后，生成回答或继续请求工具。

@@ -1,16 +1,16 @@
 ---
-title: "第 8 章：上下文压缩"
+title: "第 12 章：上下文压缩"
 description: "沿一次连续代码审查，使用真实归档、结构化摘要和图节点，验证预算、事实保留、工具配对与压缩后的技能重载。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 知识专题 1 · RAG
+  text: 第 11 章 · RAG：检索、证据与回答
   link: /learn-agent-rust/retrieval-augmented-generation
 next:
-  text: 第 9 章 · 跨会话记忆
+  text: 第 13 章 · 跨会话记忆
   link: /learn-agent-rust/memory
 ---
 
-# 第 8 章：上下文压缩
+# 第 12 章：上下文压缩
 
 [课程总览](./index.md) · [上一章](./retrieval-augmented-generation.md) · [学习路径](./learning-path.md#r08) · [下一章](./memory.md)
 
@@ -19,7 +19,7 @@ next:
 - 在模型调用前控制上下文预算，保持工具请求与结果完整配对。
 - 用有来源的事实清单检查摘要，并观察失败回滚、归档读取和技能重新加载。
 
-**前置：** [第 1 章：最小 Agent 循环](./agent-loop.md)、[第 7 章：按需加载技能](./skill-loading.md)，以及[两库环境准备](./setup.md#install-frameworks)。
+**前置：** [第 1 章：最小 Agent 循环](./agent-loop.md)、[第 10 章：按需加载技能](./skill-loading.md)，以及[两库环境准备](./setup.md#install-frameworks)。
 
 **实践方式：** 下载<a href="/learn-agent-rust/context-compaction.zip" download>完整 context-compaction.zip</a>，进入解压后的 `context-compaction` 执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02、R07 的 graph-flow 与 langchain-rust Git revisions；首次获取依赖需要网络。
 :::
@@ -175,7 +175,7 @@ cargo run --locked -- retrieve
 
 用于摘要的请求有独立的 30000 字节上限。normal 场景把原始待压缩段和事实清单发给摘要器，所以它的输入比随后给 Agent 的输入大；不能只看缩短后的 Agent 请求，忽略摘要成本。
 
-本次运行最多允许两次摘要调用，单次失败立即返回，没有自动重试。遇到上游服务拒绝请求时的退避与重试策略，留给[第 11 章](./error-recovery.md)。
+本次运行最多允许两次摘要调用，单次失败立即返回，没有自动重试。遇到上游服务拒绝请求时的退避与重试策略，留给[第 15 章](./error-recovery.md)。
 
 ## 6. 验证成功后，才替换当前历史
 

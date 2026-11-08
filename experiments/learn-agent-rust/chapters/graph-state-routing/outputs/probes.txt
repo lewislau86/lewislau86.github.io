@@ -1,0 +1,8 @@
+probe=dangling_edge rejected=true
+probe=missing_start rejected=true
+probe=no_edge status=paused cursor=a
+probe=bad_goto rejected=true mutation_retained=true
+probe=cycle chained_limit_rejected=true
+probe=overlapping_conditions first_matching=b
+probe=context clone_shares=true serialized_snapshot_isolated=true
+probe=typed_state malformed_rejected=true

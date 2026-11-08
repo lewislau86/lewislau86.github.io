@@ -1,4 +1,4 @@
-# 第 6 章：子 Agent 与上下文隔离 · 独立实验
+# 子 Agent 与上下文隔离 · 独立实验
 
 正文：https://lewislau86.github.io/learn-agent-rust/subagents
 

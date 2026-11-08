@@ -8,7 +8,7 @@ pageClass: learn-agent-rust-course
 
 [课程总览](./index.md) · [环境准备](./setup.md) · [学习路径](./learning-path.md)
 
-全书 28 个实验单元按主题目录打包，包含源码、Cargo 锁文件、夹具、运行说明、发布时输出和检查证据。解压后可独立运行。
+全书 31 个实验单元按主题目录打包，包含源码、Cargo 锁文件、夹具、运行说明、发布时输出和检查证据。解压后可独立运行。
 
 <a href="/learn-agent-rust/learn-agent-rust-experiments.zip" download>下载全书实验代码库（zip）</a> · [在 GitHub 浏览代码库](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust)
 
@@ -41,9 +41,9 @@ python3 run.py test --all --offline
 
 ## 按章找到实验
 
-目录名与文章主题名一致；编号仅用于阅读和命令选择。
+目录名与文章主题名一致。主线按章号阅读；R/G/K/P 是稳定实验标识，用于命令与证据定位。例如 RAG 是第 11 章，仍运行 `python3 run.py run K01`。
 
-### R00 · 整体架构与环境 {#architecture-and-setup}
+### 第 0 章 · 整体架构与环境 {#architecture-and-setup}
 
 [阅读本章](./architecture-and-setup.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/architecture-and-setup)
 
@@ -51,7 +51,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-learn-agent-rust.py`。
 
-### R01 · 最小 Agent 循环 {#agent-loop}
+### 第 1 章 · 最小 Agent 循环 {#agent-loop}
 
 [阅读本章](./agent-loop.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/agent-loop)
 
@@ -59,7 +59,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-learn-agent-rust-loop.py`。
 
-### R02 · 工具注册与图调度 {#tools-and-graph}
+### 第 2 章 · 工具注册与图调度 {#tools-and-graph}
 
 [阅读本章](./tools-and-graph.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/tools-and-graph)
 
@@ -67,7 +67,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-learn-agent-rust-r02.py`。
 
-### R03 · 工具权限与审批 {#permissions}
+### 第 3 章 · 工具权限与审批 {#permissions}
 
 [阅读本章](./permissions.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/permissions)
 
@@ -75,7 +75,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-permissions.py`。
 
-### R04 · 生命周期与 Hooks {#hooks}
+### 第 4 章 · 生命周期与 Hooks {#hooks}
 
 [阅读本章](./hooks.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/hooks)
 
@@ -83,7 +83,31 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-hooks.py`。
 
-### R05 · 可见的任务清单 {#todo-planning}
+### 第 5 章 · 图状态、条件路由与有界循环 {#graph-state-routing}
+
+[阅读本章](./graph-state-routing.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-state-routing)
+
+目录：`chapters/graph-state-routing/`；运行：`python3 run.py run G01`。4 组路由与循环演示。
+
+原章节验证器：`scripts/verify-agent-orchestration.py`。
+
+### 第 6 章 · 图暂停、会话存储与恢复 {#graph-pause-resume}
+
+[阅读本章](./graph-pause-resume.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-pause-resume)
+
+目录：`chapters/graph-pause-resume/`；运行：`python3 run.py run G02`。跨进程批准、恢复与终态保护演示。
+
+原章节验证器：`scripts/verify-agent-orchestration.py`。
+
+### 第 7 章 · 图并行、归并与子图 {#graph-parallel-subgraphs}
+
+[阅读本章](./graph-parallel-subgraphs.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-parallel-subgraphs)
+
+目录：`chapters/graph-parallel-subgraphs/`；运行：`python3 run.py run G03`。5 组并行、失败、子图与超时演示。
+
+原章节验证器：`scripts/verify-agent-orchestration.py`。
+
+### 第 8 章 · 可见的任务清单 {#todo-planning}
 
 [阅读本章](./todo-planning.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/todo-planning)
 
@@ -91,7 +115,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-learn-agent-rust-r05.py`。
 
-### R06 · 子 Agent 与上下文隔离 {#subagents}
+### 第 9 章 · 子 Agent 与上下文隔离 {#subagents}
 
 [阅读本章](./subagents.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/subagents)
 
@@ -99,7 +123,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-subagents.py`。
 
-### R07 · 按需加载技能 {#skill-loading}
+### 第 10 章 · 按需加载技能 {#skill-loading}
 
 [阅读本章](./skill-loading.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/skill-loading)
 
@@ -107,7 +131,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-skills.py`。
 
-### K01 · RAG：检索、证据与回答 {#retrieval-augmented-generation}
+### 第 11 章 · RAG：检索、证据与回答 {#retrieval-augmented-generation}
 
 [阅读本章](./retrieval-augmented-generation.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/retrieval-augmented-generation)
 
@@ -115,7 +139,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-rag.py`。
 
-### R08 · 上下文压缩 {#context-compaction}
+### 第 12 章 · 上下文压缩 {#context-compaction}
 
 [阅读本章](./context-compaction.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/context-compaction)
 
@@ -123,7 +147,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-compaction.py`。
 
-### R09 · 跨会话记忆 {#memory}
+### 第 13 章 · 跨会话记忆 {#memory}
 
 [阅读本章](./memory.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/memory)
 
@@ -131,7 +155,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-memory.py`。
 
-### R10 · 系统提示词组装 {#system-prompts}
+### 第 14 章 · 系统提示词组装 {#system-prompts}
 
 [阅读本章](./system-prompts.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/system-prompts)
 
@@ -139,7 +163,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-prompts.py`。
 
-### R11 · 错误分类与恢复 {#error-recovery}
+### 第 15 章 · 错误分类与恢复 {#error-recovery}
 
 [阅读本章](./error-recovery.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/error-recovery)
 
@@ -147,7 +171,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-recovery.py`。
 
-### R12 · 持久化任务系统 {#task-system}
+### 第 16 章 · 持久化任务系统 {#task-system}
 
 [阅读本章](./task-system.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/task-system)
 
@@ -155,7 +179,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-tasks.py`。
 
-### R13 · 后台任务 {#background-tasks}
+### 第 17 章 · 后台任务 {#background-tasks}
 
 [阅读本章](./background-tasks.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/background-tasks)
 
@@ -163,7 +187,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-background.py`。
 
-### R14 · 定时调度 {#scheduling}
+### 第 18 章 · 定时调度 {#scheduling}
 
 [阅读本章](./scheduling.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/scheduling)
 
@@ -171,7 +195,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-scheduling.py`。
 
-### R15 · Agent 团队 {#agent-teams}
+### 第 19 章 · Agent 团队 {#agent-teams}
 
 [阅读本章](./agent-teams.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/agent-teams)
 
@@ -179,7 +203,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-teams.py`。
 
-### R16 · 团队协作协议 {#team-protocols}
+### 第 20 章 · 团队协作协议 {#team-protocols}
 
 [阅读本章](./team-protocols.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/team-protocols)
 
@@ -187,7 +211,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-protocols.py`。
 
-### R17 · 自主任务领取 {#autonomous-workers}
+### 第 21 章 · 自主任务领取 {#autonomous-workers}
 
 [阅读本章](./autonomous-workers.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/autonomous-workers)
 
@@ -195,7 +219,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-workers.py`。
 
-### R18 · 工作区隔离 {#worktree-isolation}
+### 第 22 章 · 工作区隔离 {#worktree-isolation}
 
 [阅读本章](./worktree-isolation.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/worktree-isolation)
 
@@ -203,7 +227,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-worktrees.py`。
 
-### R19 · MCP 外部工具 {#mcp-tools}
+### 第 23 章 · MCP 外部工具 {#mcp-tools}
 
 [阅读本章](./mcp-tools.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/mcp-tools)
 
@@ -211,7 +235,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-mcp.py`。
 
-### R20 · 完整 Agent 集成 {#integrated-agent}
+### 第 24 章 · 完整 Agent 集成 {#integrated-agent}
 
 [阅读本章](./integrated-agent.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/integrated-agent)
 
@@ -219,7 +243,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-integration.py`。
 
-### P01 · PostgreSQL 检查点 {#postgres-checkpoints}
+### 专题 1 · PostgreSQL 检查点 {#postgres-checkpoints}
 
 [阅读本章](./postgres-checkpoints.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/postgres-checkpoints)
 
@@ -227,7 +251,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-checkpoints.py`。
 
-### P02 · 外部操作的可靠性 {#side-effect-reliability}
+### 专题 2 · 外部操作的可靠性 {#side-effect-reliability}
 
 [阅读本章](./side-effect-reliability.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/side-effect-reliability)
 
@@ -235,7 +259,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-effects.py`。
 
-### P03 · 模型协议与质量评估 {#model-evaluation}
+### 专题 3 · 模型协议与质量评估 {#model-evaluation}
 
 [阅读本章](./model-evaluation.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/model-evaluation)
 
@@ -243,7 +267,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-evaluation.py`。
 
-### P04 · 生产准入与演练 {#production-readiness}
+### 专题 4 · 生产准入与演练 {#production-readiness}
 
 [阅读本章](./production-readiness.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/production-readiness)
 
@@ -251,7 +275,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-production.py`。
 
-### P05 · 固定工作流与目标控制 {#workflow-and-goal-control}
+### 专题 5 · 固定工作流与目标控制 {#workflow-and-goal-control}
 
 [阅读本章](./workflow-and-goal-control.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/workflow-and-goal-control)
 
@@ -259,7 +283,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-goals.py`。
 
-### P06 · Agent RSI 与受控自我改进 {#agent-rsi}
+### 专题 6 · Agent RSI 与受控自我改进 {#agent-rsi}
 
 [阅读本章](./agent-rsi.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/agent-rsi)
 
@@ -269,7 +293,7 @@ python3 run.py test --all --offline
 
 ## 发布前检查记录
 
-逐章原验证器 28/28 通过。<a href="/learn-agent-rust/experiment-audit.json" download>下载全书检查记录</a>，内含检查日期、逐章退出码、工具环境和源码摘要。
+逐章原验证器 31/31 通过。<a href="/learn-agent-rust/experiment-audit.json" download>下载全书检查记录</a>，内含检查日期、逐章退出码、工具环境和源码摘要。
 
 这些原验证器检查各章正常与故障场景、正文引用输出和已有章节包。统一代码库的 `test --all` 另行检查格式、Rust 测试、Clippy 和本页列出的演示；P01、P03、P04、P05 会执行各章 Python 完整本地套件。
 

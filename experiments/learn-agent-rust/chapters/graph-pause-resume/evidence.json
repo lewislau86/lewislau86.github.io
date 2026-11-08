@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "rust": "1.99.1",
+  "graph_revision": "9bbca193f20a8c4ba23289621549ecb3d35fee64",
+  "rust_tests": 4,
+  "archive_replayed": true,
+  "scenarios": 10,
+  "independent_cli_processes": 34,
+  "scope": "real SQLite SessionStorage and FlowRunner; single business executor; fixed CLI approval",
+  "files_sha256": {
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.toml": "62f11a0ebd874e5103cf7183252192b3303572d3df2374230665c22c2a1c049e",
+    "Cargo.lock": "437406d3125ec17885b2cdce6792c9b873c06a90f7bb7e9fb2b221b63a81dc0e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "README.md": "d5ef500fc606213c526215628689259e005c0edb472485402ae22430a60d003b",
+    "src/main.rs": "d604e07bb38474c70c2f678896f5fe7778ea0c4eef3841a200ff49b7772baaef"
+  },
+  "outputs_sha256": {
+    "g02-approved.txt": "e4b455c7413ba60e67db685907b2084dae6cebcec8e144b92565f5f285c2435e",
+    "g02-denied.txt": "c2992418b1c2dca174fe7e64a7e9f994b48eeaa6ea001db8b4f6380f82319d54",
+    "g02-approval-refusals.txt": "7f1c5088098f2e7a9b9402113e528ab4d22dcd56970fec40e57393934650261c",
+    "g02-conflict.txt": "ef765fc5de343477a432754319c809b7b9e8218be4589a0cd24043f55a188f80",
+    "g02-invalid-snapshots.txt": "09a9ae85bc3aceb28a66490b734178b02b9cc8590728a58715011910a617dfa0"
+  }
+}

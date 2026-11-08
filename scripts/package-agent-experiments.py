@@ -28,6 +28,11 @@ def digest(content):
     return hashlib.sha256(content).hexdigest()
 
 
+def chapter_label(row):
+    prefix = '第 {} 章'.format(row['chapter']) if 'chapter' in row else '专题 {}'.format(int(row['id'][1:]))
+    return prefix + ' · ' + row['title']
+
+
 def configuration():
     course = json.loads((ROOT / "scripts/learn-agent-rust-lessons.json").read_text())
     rows = json.loads((ROOT / "scripts/learn-agent-rust-experiments.json").read_text())["lessons"]
@@ -102,7 +107,8 @@ def chapter_files(lesson):
 def main_readme(lessons, report):
     lines = ["# Learn Agent by Rust · 全书实验代码库", "",
         "本目录由网站唯一实验源码和通过检查的章节包生成，可以单独复制或下载使用。",
-        "教程正文：https://lewislau86.github.io/learn-agent-rust/ 。章节目录按主题命名，编号与对应关系见下表和 manifest.json。", "",
+        "教程正文：https://lewislau86.github.io/learn-agent-rust/ 。章节目录按主题命名，章号与实验标识的对应关系见下表和 manifest.json。",
+        "主线章号按阅读顺序排列；R/G/K/P 是稳定实验标识，命令保留原标识。例如第 11 章 RAG 仍用 K01 运行。", "",
         "## 先运行一章", "", "需要 Python 3.9+（仅标准库）、Rust 1.99.1、rustfmt、Clippy、Git 与系统 C 编译工具。",
         "已实际检查 macOS；自动检查配置使用 Linux。建议 Windows 读者使用 WSL。", "",
         "```sh", "rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy",
@@ -121,7 +127,7 @@ def main_readme(lessons, report):
         "## 章节对应", "", "| 编号 | 教程 | 实验目录 | 统一入口运行内容 |", "| --- | --- | --- | --- |"]
     for row in lessons:
         lines.append("| {} | [{}](https://lewislau86.github.io/learn-agent-rust/{}) | [chapters/{}](chapters/{}/README.md) | {} |".format(
-            row["id"], row["title"], row["slug"], row["slug"], row["slug"], row["run_scope"]))
+            row["id"], chapter_label(row), row["slug"], row["slug"], row["slug"], row["run_scope"]))
     lines.extend(["", "## 检查证据与范围", "", "发布前逐章原验证器：{}/{} 通过，记录见 [audit.json](audit.json)。".format(
         sum(row["exit_code"] == 0 for row in report["lessons"]), len(lessons)),
         "原验证器检查正文引用、故障场景、实际产物及章节下载包；本代码库的 `test --all` 检查 Rust 测试、格式、Clippy 与运行表中的演示。两种检查分别记录。",
@@ -148,9 +154,9 @@ def render_page(lessons, report):
         "`run` 编译并执行本页对应的演示；`test` 增加 Rust 测试、格式检查和 Cargo 工程的 Clippy。程序在临时目录运行，`--keep` 保存运行产物。每章也可进入 `chapters/<主题>/`，按 README 单独操作。", "",
         "## 全书重跑", "", "```sh", "python3 run.py test --all", "# 工具链和依赖已缓存后，可检查离线运行：", "python3 run.py test --all --offline", "```", "",
         "首次构建需要网络下载依赖。P01、P04 另需 PostgreSQL 18 服务端工具，脚本以普通用户创建并清理专用临时集群；工具不在 PATH 时设置 `P01_PG_BIN` 和 `P04_PG_BIN`。没有数据库环境时可显式加 `--skip-postgres`，结果会列出跳过项。", "",
-        "## 按章找到实验", "", "目录名与文章主题名一致；编号仅用于阅读和命令选择。", ""]
+        "## 按章找到实验", "", "目录名与文章主题名一致。主线按章号阅读；R/G/K/P 是稳定实验标识，用于命令与证据定位。例如 RAG 是第 11 章，仍运行 `python3 run.py run K01`。", ""]
     for row in lessons:
-        lines.extend(["### {} · {} {{#{}}}".format(row["id"], row["title"], row["slug"]), "",
+        lines.extend(["### {} {{#{}}}".format(chapter_label(row), row["slug"]), "",
             "[阅读本章](./{}.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/{})".format(row["slug"], row["slug"]), "",
             "目录：`chapters/{}/`；运行：`python3 run.py run {}`。{}{}".format(row["slug"], row["id"], row["run_scope"], "；需要 PostgreSQL 18。" if row["requires_postgres"] else "。"), "",
             "原章节验证器：`{}`。".format(row["verifier"]), ""])
@@ -175,7 +181,8 @@ def build():
         chapter = chapter_files(row)
         if row["kind"] == "cargo":
             row["binary"] = re.search(r'^name\s*=\s*"([^"]+)"', chapter["Cargo.toml"].decode(), re.M)[1]
-        row["run_scope"] = "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "11 个检索与证据场景" if row["id"] == "K01" else "本章正常路径演示"
+        graph_scope = {'G01': '4 组路由与循环演示', 'G02': '跨进程批准、恢复与终态保护演示', 'G03': '5 组并行、失败、子图与超时演示'}
+        row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "11 个检索与证据场景" if row["id"] == "K01" else "本章正常路径演示"
         files.update({"chapters/" + row["slug"] + "/" + name: value for name, value in chapter.items()})
     files["manifest.json"] = encoded(dict(schema_version=1, lessons=lessons))
     files["audit.json"] = REPORT.read_bytes()

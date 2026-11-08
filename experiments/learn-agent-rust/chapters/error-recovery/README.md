@@ -1,4 +1,4 @@
-# 第 11 章：错误分类与恢复
+# 错误分类与恢复
 
 教程：https://lewislau86.github.io/learn-agent-rust/error-recovery
 最低 Rust 1.85，edition 2024；只依赖标准库，无需 Python、密钥或数据库。

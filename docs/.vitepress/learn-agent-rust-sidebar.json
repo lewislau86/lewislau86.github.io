@@ -15,6 +15,10 @@
         "link": "/learn-agent-rust/knowledge-and-capabilities"
       },
       {
+        "text": "图编排导读 · LangGraph 与 graph-flow",
+        "link": "/learn-agent-rust/graph-orchestration"
+      },
+      {
         "text": "学习路径 · 能力演化",
         "link": "/learn-agent-rust/learning-path"
       },
@@ -71,105 +75,123 @@
     ]
   },
   {
-    "text": "第二部分 · 计划与上下文隔离",
+    "text": "第二部分 · 图编排与会话推进",
     "collapsed": false,
     "items": [
       {
-        "text": "第 5 章 · 可见的任务清单",
+        "text": "第 5 章 · 图状态、条件路由与有界循环",
+        "link": "/learn-agent-rust/graph-state-routing"
+      },
+      {
+        "text": "第 6 章 · 图暂停、会话存储与恢复",
+        "link": "/learn-agent-rust/graph-pause-resume"
+      },
+      {
+        "text": "第 7 章 · 图并行、归并与子图",
+        "link": "/learn-agent-rust/graph-parallel-subgraphs"
+      }
+    ]
+  },
+  {
+    "text": "第三部分 · 计划与上下文隔离",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 8 章 · 可见的任务清单",
         "link": "/learn-agent-rust/todo-planning"
       },
       {
-        "text": "第 6 章 · 子 Agent 与上下文隔离",
+        "text": "第 9 章 · 子 Agent 与上下文隔离",
         "link": "/learn-agent-rust/subagents"
       }
     ]
   },
   {
-    "text": "第三部分 · 方法、知识与记忆",
+    "text": "第四部分 · 方法、知识与记忆",
     "collapsed": false,
     "items": [
       {
-        "text": "第 7 章 · 按需加载技能",
+        "text": "第 10 章 · 按需加载技能",
         "link": "/learn-agent-rust/skill-loading"
       },
       {
-        "text": "知识专题 1 · RAG：检索、证据与回答",
+        "text": "第 11 章 · RAG：检索、证据与回答",
         "link": "/learn-agent-rust/retrieval-augmented-generation"
       },
       {
-        "text": "第 8 章 · 上下文压缩",
+        "text": "第 12 章 · 上下文压缩",
         "link": "/learn-agent-rust/context-compaction"
       },
       {
-        "text": "第 9 章 · 跨会话记忆",
+        "text": "第 13 章 · 跨会话记忆",
         "link": "/learn-agent-rust/memory"
       },
       {
-        "text": "第 10 章 · 系统提示词组装",
+        "text": "第 14 章 · 系统提示词组装",
         "link": "/learn-agent-rust/system-prompts"
       }
     ]
   },
   {
-    "text": "第四部分 · 恢复、长任务与调度",
+    "text": "第五部分 · 恢复、长任务与调度",
     "collapsed": false,
     "items": [
       {
-        "text": "第 11 章 · 错误分类与恢复",
+        "text": "第 15 章 · 错误分类与恢复",
         "link": "/learn-agent-rust/error-recovery"
       },
       {
-        "text": "第 12 章 · 持久化任务系统",
+        "text": "第 16 章 · 持久化任务系统",
         "link": "/learn-agent-rust/task-system"
       },
       {
-        "text": "第 13 章 · 后台任务",
+        "text": "第 17 章 · 后台任务",
         "link": "/learn-agent-rust/background-tasks"
       },
       {
-        "text": "第 14 章 · 定时调度",
+        "text": "第 18 章 · 定时调度",
         "link": "/learn-agent-rust/scheduling"
       }
     ]
   },
   {
-    "text": "第五部分 · 团队协作与资源归属",
+    "text": "第六部分 · 团队协作与资源归属",
     "collapsed": false,
     "items": [
       {
-        "text": "第 15 章 · Agent 团队",
+        "text": "第 19 章 · Agent 团队",
         "link": "/learn-agent-rust/agent-teams"
       },
       {
-        "text": "第 16 章 · 团队协作协议",
+        "text": "第 20 章 · 团队协作协议",
         "link": "/learn-agent-rust/team-protocols"
       },
       {
-        "text": "第 17 章 · 自主任务领取",
+        "text": "第 21 章 · 自主任务领取",
         "link": "/learn-agent-rust/autonomous-workers"
       },
       {
-        "text": "第 18 章 · 工作区隔离",
+        "text": "第 22 章 · 工作区隔离",
         "link": "/learn-agent-rust/worktree-isolation"
       }
     ]
   },
   {
-    "text": "第六部分 · 外部能力与整体集成",
+    "text": "第七部分 · 外部能力与整体集成",
     "collapsed": false,
     "items": [
       {
-        "text": "第 19 章 · MCP 外部工具",
+        "text": "第 23 章 · MCP 外部工具",
         "link": "/learn-agent-rust/mcp-tools"
       },
       {
-        "text": "第 20 章 · 完整 Agent 集成",
+        "text": "第 24 章 · 完整 Agent 集成",
         "link": "/learn-agent-rust/integrated-agent"
       }
     ]
   },
   {
-    "text": "第七部分 · 可靠性与目标验收",
+    "text": "第八部分 · 可靠性与目标验收",
     "collapsed": false,
     "items": [
       {
@@ -195,7 +217,7 @@
     ]
   },
   {
-    "text": "第八部分 · 受控演进与研究",
+    "text": "第九部分 · 受控演进与研究",
     "collapsed": false,
     "items": [
       {

@@ -1,13 +1,16 @@
 ---
-title: "第 19 章：MCP 外部工具"
+title: "第 23 章：MCP 外部工具"
 description: "用固定版本的官方 Rust SDK 连接真实 stdio 服务，把工具发现、参数校验、权限与连接退出接入统一入口。"
-prev:
-  text: 第 18 章 · 工作区隔离
-  link: /learn-agent-rust/worktree-isolation
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 22 章 · 工作区隔离
+  link: /learn-agent-rust/worktree-isolation
+next:
+  text: 第 24 章 · 完整 Agent 集成
+  link: /learn-agent-rust/integrated-agent
 ---
 
-# 第 19 章：MCP 外部工具
+# 第 23 章：MCP 外部工具
 
 [课程总览](./index.md) · [上一章：工作区隔离](./worktree-isolation.md) · [下一章：完整 Agent 集成](./integrated-agent.md)
 
@@ -16,7 +19,7 @@ pageClass: learn-agent-rust-course
 - 把远端 schema、调用前权限与工具结果接入统一入口，并拒绝不支持的描述。
 - 用真实本地服务验证超时、断连、写入结果不明与子进程回收。
 
-**前置：** [第 2 章：工具注册与图调度](./tools-and-graph.md)、[第 3 章：工具权限与审批](./permissions.md)、[第 11 章：错误分类与恢复](./error-recovery.md)。不需要先完成其他平台章节。
+**前置：** [第 2 章：工具注册与图调度](./tools-and-graph.md)、[第 3 章：工具权限与审批](./permissions.md)、[第 15 章：错误分类与恢复](./error-recovery.md)。不需要先完成其他平台章节。
 
 **实践方式：** [下载独立 Cargo 学习包](/learn-agent-rust/mcp-tools-lab.zip)。固定 Rust 1.99.1、官方 SDK `rmcp = 3.9.0` 和 MCP `2025-11-25` 协议；其他依赖由 `Cargo.lock` 固定。首次获取工具链与依赖需要网络，实验运行无需模型密钥、数据库或第三方 MCP 服务。
 :::
@@ -42,7 +45,7 @@ pageClass: learn-agent-rust-course
 ::: info 源码与验证范围
 Rust 片段直接导入[完整工程源码](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/learn-agent-rust/code/mcp-tools)；[下载工程、输出与证据](/learn-agent-rust/mcp-tools-lab.zip)。`server.rs` 提供服务，`connection.rs` 管连接，`adapter.rs` 管注册与分发，`schema.rs` 管受限参数规则，`lab.rs` 编排场景。
 
-本章使用官方 `rmcp` 的真实客户端与服务端，跨真实子进程的 stdio 管道通信，真实读写文件。调用请求由固定脚本提供，写入批准也是模拟的可信输入。本章尚未接入真实模型、`langchain-rust` 或 `graph-flow`；统一入口的端到端 Agent 集成留到第 20 章。
+本章使用官方 `rmcp` 的真实客户端与服务端，跨真实子进程的 stdio 管道通信，真实读写文件。调用请求由固定脚本提供，写入批准也是模拟的可信输入。本章尚未接入真实模型、`langchain-rust` 或 `graph-flow`；统一入口的端到端 Agent 集成留到第 24 章。
 :::
 
 ## MCP 在方法与知识链路中的位置
@@ -347,7 +350,7 @@ npm run docs:build
 
 - [MCP 2025-11-25 生命周期](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle)、[工具](https://modelcontextprotocol.io/specification/2025-11-25/server/tools)、[传输](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports)：本章固定协议的原始契约。
 - [官方 Rust SDK](https://github.com/modelcontextprotocol/rust-sdk)、[rmcp 3.9.0 源码与 API](https://docs.rs/rmcp/3.9.0/rmcp/)：固定 SDK 的能力与生命周期实现。
-- [本章工程与证据](/learn-agent-rust/mcp-tools-lab.zip)、[第 3 章权限](./permissions.md)、[第 11 章恢复](./error-recovery.md)：调用前与调用后策略。
+- [本章工程与证据](/learn-agent-rust/mcp-tools-lab.zip)、[第 3 章权限](./permissions.md)、[第 15 章恢复](./error-recovery.md)：调用前与调用后策略。
 - [参考课程 S19](https://learn.shareai.run/zh/s19/)：外部工具进入共同工具池的思路；接口与运行统计按各自实现分别说明。
 
 <details><summary>对照参考课程原图</summary>
@@ -360,4 +363,4 @@ npm run docs:build
 
 </details>
 
-下一章进入[第 20 章：完整 Agent 集成](./integrated-agent.md)，沿同一任务核对已实现的模型、策略、工具、上下文和任务契约，明确模块通过与集成通过的区别。
+下一章进入[第 24 章：完整 Agent 集成](./integrated-agent.md)，沿同一任务核对已实现的模型、策略、工具、上下文和任务契约，明确模块通过与集成通过的区别。

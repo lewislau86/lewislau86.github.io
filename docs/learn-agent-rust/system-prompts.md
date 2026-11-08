@@ -1,13 +1,16 @@
 ---
-title: "第 10 章：系统提示词组装"
+title: "第 14 章：系统提示词组装"
 description: "用可追踪来源的 Rust 组装器连接策略、工具、环境与参考知识，核对模型实际收到的消息和执行权限。"
-next:
-  text: 第 11 章 · 错误分类与恢复
-  link: /learn-agent-rust/error-recovery
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 13 章 · 跨会话记忆
+  link: /learn-agent-rust/memory
+next:
+  text: 第 15 章 · 错误分类与恢复
+  link: /learn-agent-rust/error-recovery
 ---
 
-# 第 10 章：系统提示词组装
+# 第 14 章：系统提示词组装
 
 [课程总览](./index.md) · [上一章：跨会话记忆](./memory.md) · [下一章：错误分类与恢复](./error-recovery.md)
 
@@ -16,7 +19,7 @@ pageClass: learn-agent-rust-course
 - 在每轮模型调用前重新组装，验证确定性、前缀缓存和完整请求预算。
 - 用失败实验区分资料内容、模型请求和工具执行权限。
 
-**前置：** [第 7 章 · 按需加载技能](./skill-loading.md)与[第 9 章 · 跨会话记忆](./memory.md)所涉及的来源、版本和知识选择；图调度沿用[第 2 章](./tools-and-graph.md)。本实验直接提供选好的技能和记忆记录，可独立运行；不要求先实现记忆检索。
+**前置：** [第 10 章 · 按需加载技能](./skill-loading.md)与[第 13 章 · 跨会话记忆](./memory.md)所涉及的来源、版本和知识选择；图调度沿用[第 2 章](./tools-and-graph.md)。本实验直接提供选好的技能和记忆记录，可独立运行；不要求先实现记忆检索。
 
 **实践方式：** 下载[本章独立工程](/learn-agent-rust/system-prompts.zip)，解压后执行 `cargo run --locked`。固定 Rust 1.99.1，沿用课程的两库 Git revisions；首次构建需要网络，运行无需模型密钥和数据库。
 :::

@@ -69,6 +69,114 @@
       ]
     },
     {
+      "id": "G01",
+      "slug": "graph-state-routing",
+      "kind": "cargo",
+      "archive": "graph-state-routing.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ],
+        [
+          "{binary}",
+          "direct"
+        ],
+        [
+          "{binary}",
+          "exhausted"
+        ],
+        [
+          "{binary}",
+          "probes"
+        ]
+      ]
+    },
+    {
+      "id": "G02",
+      "slug": "graph-pause-resume",
+      "kind": "cargo",
+      "archive": "graph-pause-resume.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "{run}/review.db",
+          "init"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "approve",
+          "1",
+          "yes"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "show"
+        ]
+      ]
+    },
+    {
+      "id": "G03",
+      "slug": "graph-parallel-subgraphs",
+      "kind": "cargo",
+      "archive": "graph-parallel-subgraphs.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ],
+        [
+          "{binary}",
+          "failure"
+        ],
+        [
+          "{binary}",
+          "collision"
+        ],
+        [
+          "{binary}",
+          "subgraph"
+        ],
+        [
+          "{binary}",
+          "timeout"
+        ]
+      ]
+    },
+    {
       "id": "R05",
       "slug": "todo-planning",
       "kind": "cargo",

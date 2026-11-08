@@ -13,7 +13,7 @@ pageClass: learn-agent-rust-course
 - 用修订号与保存身份处理并发更新，以及提交后丢失确认的重试。
 - 比较整批工具与逐工具保存，识别动作结果不确定时的恢复边界。
 
-**前置：** [第 2 章的消息与图节点](./tools-and-graph.md)、[第 11 章的错误与预算](./error-recovery.md)、[第 12 章的持久化状态](./task-system.md)。本章工程可独立运行。
+**前置：** [第 2 章的消息与图节点](./tools-and-graph.md)、[第 15 章的错误与预算](./error-recovery.md)、[第 16 章的持久化状态](./task-system.md)。本章工程可独立运行。
 
 **实践方式：** [下载 Cargo 学习包](/learn-agent-rust/postgres-checkpoints-lab.zip)，准备 Rust、Python 3.9+ 和 PostgreSQL 18 服务端工具。模型采用固定响应，无需密钥；验证器自动创建、运行并清理专用临时数据库。
 :::
@@ -31,6 +31,10 @@ pageClass: learn-agent-rust-course
 全书实验可从[统一代码库](./experiments.md#postgres-checkpoints)下载；解压后进入 `chapters/postgres-checkpoints/`，或在代码库根目录运行 `python3 run.py run P01`。
 
 <!-- experiment-library:end -->
+
+::: info 与图会话恢复的关系
+[第 6 章](./graph-pause-resume.md)已经把真实 SessionStorage 接到 SQLite，用 FlowRunner 验证图游标和等待恢复。本专题独立研究 PostgreSQL 快照与保存边界；它没有替换或集成前者的存储实现，切换数据库仍需重新验收图与效果契约。
+:::
 
 ## 1. 恢复一次任务，需要留下什么？
 

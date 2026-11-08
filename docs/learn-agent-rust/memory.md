@@ -1,13 +1,16 @@
 ---
-title: "第 9 章：跨会话记忆"
+title: "第 13 章：跨会话记忆"
 description: "用有来源和修订号的事实记录，验证跨进程召回、更新冲突、逻辑遗忘与损坏记录处理。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 8 章 · 上下文压缩
+  text: 第 12 章 · 上下文压缩
   link: /learn-agent-rust/context-compaction
+next:
+  text: 第 14 章 · 系统提示词组装
+  link: /learn-agent-rust/system-prompts
 ---
 
-# 第 9 章：跨会话记忆
+# 第 13 章：跨会话记忆
 
 [课程总览](./index.md) · [上一章](./context-compaction.md) · [学习路径](./learning-path.md#r09) · [下一章](./system-prompts.md)
 
@@ -16,7 +19,7 @@ prev:
 - 结束写入进程，在新进程中只依靠磁盘召回事实，并验证更新与过期写入。
 - 区分停止召回、历史删除与会话恢复，观察损坏记录和保存失败的处理。
 
-**前置：** 理解[最小 Agent 循环](./agent-loop.md)中的消息与工具结果，以及[按需加载技能](./skill-loading.md)的来源与内容注入。第 8 章[上下文压缩](./context-compaction.md)解释同一会话怎样保留继续行动的依据；本章使用独立存储实验推进到跨会话层，可以直接运行。
+**前置：** 理解[最小 Agent 循环](./agent-loop.md)中的消息与工具结果，以及[按需加载技能](./skill-loading.md)的来源与内容注入。第 12 章[上下文压缩](./context-compaction.md)解释同一会话怎样保留继续行动的依据；本章使用独立存储实验推进到跨会话层，可以直接运行。
 
 **实践方式：** 下载 [memory-lab.zip](/learn-agent-rust/memory-lab.zip)，进入解压后的 `memory-lab` 执行 `cargo build --locked`。实验使用 Rust edition 2024、锁定的 serde / serde_json；首次获取依赖需要网络，运行时无需模型密钥和数据库。
 :::
@@ -192,7 +195,7 @@ cargo run --locked -- recall demo-store project-a reply_language
 
 召回结果带有值、来源、事实修订号，以及当前存储的全局修订号。当前实现只按作用域和键精确查询，因此结果最多一条；没有向量数据库、相关性排序或自动召回全部事实。
 
-将它接入[第 2 章的工具循环](./tools-and-graph.md)时，可以把它作为 `recall_memory` 的工具结果，并沿原调用 ID 放回消息历史。下一轮模型获得“这是先前记录的偏好，以及它的来源”这份资料。具体接线与提示词组织留到[第 10 章](./system-prompts.md)；当前下载包止于 CLI 的 JSON 输出。
+将它接入[第 2 章的工具循环](./tools-and-graph.md)时，可以把它作为 `recall_memory` 的工具结果，并沿原调用 ID 放回消息历史。下一轮模型获得“这是先前记录的偏好，以及它的来源”这份资料。具体接线与提示词组织留到[第 14 章](./system-prompts.md)；当前下载包止于 CLI 的 JSON 输出。
 
 特别留意 `run_command`：它的值可以是 `cargo run`，但召回函数只返回字符串，不执行它。后续要运行命令，仍由工具入口检查工作区、权限与审批。来源记录帮助判断资料是否适用，不会自动授予执行能力。
 
@@ -201,7 +204,7 @@ cargo run --locked -- recall demo-store project-a reply_language
 | 状态 | 这份状态回答什么问题？ | 本章是否恢复？ |
 | --- | --- | --- |
 | 当前消息历史 / 压缩摘要 | 这次对话走到了哪里？ | 不恢复；新进程从空上下文开始。 |
-| 技能与方法 | 遇到这类任务按什么步骤做？ | 由[第 7 章](./skill-loading.md)按需加载。 |
+| 技能与方法 | 遇到这类任务按什么步骤做？ | 由[第 10 章](./skill-loading.md)按需加载。 |
 | 可长期使用的事实 | 用户明确要求以后记住什么？ | 保存来源并按键召回。 |
 | 任务与工具检查点 | 哪个业务步骤已执行，恢复后继续哪里？ | 留给[持久化任务](./task-system.md)与[检查点专题](./postgres-checkpoints.md)。 |
 

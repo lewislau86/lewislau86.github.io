@@ -12,6 +12,7 @@
       "addition": "建立两库分工、进程边界与实验环境的全貌。",
       "outcome": "画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。",
       "prerequisites": [],
+      "chapter": 0,
       "kind": "rustc",
       "archive": null,
       "verifier": "scripts/verify-learn-agent-rust.py",
@@ -36,6 +37,7 @@
       "prerequisites": [
         "R00"
       ],
+      "chapter": 1,
       "kind": "rustc",
       "archive": null,
       "verifier": "scripts/verify-learn-agent-rust-loop.py",
@@ -60,6 +62,7 @@
       "prerequisites": [
         "R01"
       ],
+      "chapter": 2,
       "kind": "cargo",
       "archive": "tools-and-graph.zip",
       "verifier": "scripts/verify-learn-agent-rust-r02.py",
@@ -85,6 +88,7 @@
       "prerequisites": [
         "R02"
       ],
+      "chapter": 3,
       "kind": "rustc",
       "archive": "permissions-lab.zip",
       "verifier": "scripts/verify-agent-permissions.py",
@@ -110,6 +114,7 @@
       "prerequisites": [
         "R03"
       ],
+      "chapter": 4,
       "kind": "rustc",
       "archive": "hooks-lab.zip",
       "verifier": "scripts/verify-agent-hooks.py",
@@ -121,6 +126,155 @@
         ]
       ],
       "run_scope": "本章正常路径演示"
+    },
+    {
+      "id": "G01",
+      "slug": "graph-state-routing",
+      "title": "图状态、条件路由与有界循环",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "图怎样共享状态、选择分支，并让修复循环有上限？",
+      "addition": "类型化状态、条件边、GoTo、逐步与连续执行。",
+      "outcome": "运行真实 graph-flow，核对状态、游标、轨迹、调用数和错误跳转，区分图结束与业务通过。",
+      "prerequisites": [
+        "R02"
+      ],
+      "chapter": 5,
+      "kind": "cargo",
+      "archive": "graph-state-routing.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ],
+        [
+          "{binary}",
+          "direct"
+        ],
+        [
+          "{binary}",
+          "exhausted"
+        ],
+        [
+          "{binary}",
+          "probes"
+        ]
+      ],
+      "binary": "graph-state-lab",
+      "run_scope": "4 组路由与循环演示"
+    },
+    {
+      "id": "G02",
+      "slug": "graph-pause-resume",
+      "title": "图暂停、会话存储与恢复",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "等待外部批准并退出后，新进程从哪里继续？",
+      "addition": "真实 SessionStorage、SQLite 版本事务、修订绑定与终态保护。",
+      "outcome": "通过独立 CLI 进程恢复会话，拒绝旧批准、旧写入和不兼容快照；外部效果与多执行者推进另验。",
+      "prerequisites": [
+        "G01",
+        "R03"
+      ],
+      "chapter": 6,
+      "kind": "cargo",
+      "archive": "graph-pause-resume.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "{run}/review.db",
+          "init"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "approve",
+          "1",
+          "yes"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "step"
+        ],
+        [
+          "{binary}",
+          "{run}/review.db",
+          "show"
+        ]
+      ],
+      "binary": "graph-resume-lab",
+      "run_scope": "跨进程批准、恢复与终态保护演示"
+    },
+    {
+      "id": "G03",
+      "slug": "graph-parallel-subgraphs",
+      "title": "图并行、归并与子图",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "多项检查怎样并行执行，失败后保留什么，结果怎样汇总？",
+      "addition": "FanOutTask、显式归并、共享更新冲突与隔离子图包装。",
+      "outcome": "核对真实并发、局部成功、丢失更新和任务超时，用独立 Session 显式传递父子输入输出。",
+      "prerequisites": [
+        "G01",
+        "G02"
+      ],
+      "chapter": 7,
+      "kind": "cargo",
+      "archive": "graph-parallel-subgraphs.zip",
+      "verifier": "scripts/verify-agent-orchestration.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "normal"
+        ],
+        [
+          "{binary}",
+          "failure"
+        ],
+        [
+          "{binary}",
+          "collision"
+        ],
+        [
+          "{binary}",
+          "subgraph"
+        ],
+        [
+          "{binary}",
+          "timeout"
+        ]
+      ],
+      "binary": "graph-parallel-lab",
+      "run_scope": "5 组并行、失败、子图与超时演示"
     },
     {
       "id": "R05",
@@ -136,6 +290,7 @@
         "R02",
         "R03"
       ],
+      "chapter": 8,
       "kind": "cargo",
       "archive": "todo-planning.zip",
       "verifier": "scripts/verify-learn-agent-rust-r05.py",
@@ -162,6 +317,7 @@
         "R02",
         "R03"
       ],
+      "chapter": 9,
       "kind": "rustc",
       "archive": "subagents-lab.zip",
       "verifier": "scripts/verify-agent-subagents.py",
@@ -188,6 +344,7 @@
         "R02",
         "R03"
       ],
+      "chapter": 10,
       "kind": "cargo",
       "archive": "skill-loading.zip",
       "verifier": "scripts/verify-agent-skills.py",
@@ -215,6 +372,7 @@
         "R03",
         "R07"
       ],
+      "chapter": 11,
       "kind": "cargo",
       "archive": "retrieval-augmented-generation.zip",
       "verifier": "scripts/verify-agent-rag.py",
@@ -243,6 +401,7 @@
         "R01",
         "R07"
       ],
+      "chapter": 12,
       "kind": "cargo",
       "archive": "context-compaction.zip",
       "verifier": "scripts/verify-agent-compaction.py",
@@ -268,6 +427,7 @@
       "prerequisites": [
         "R08"
       ],
+      "chapter": 13,
       "kind": "cargo",
       "archive": "memory-lab.zip",
       "verifier": "scripts/verify-agent-memory.py",
@@ -313,6 +473,7 @@
         "R07",
         "R09"
       ],
+      "chapter": 14,
       "kind": "cargo",
       "archive": "system-prompts.zip",
       "verifier": "scripts/verify-agent-prompts.py",
@@ -339,6 +500,7 @@
         "R02",
         "R08"
       ],
+      "chapter": 15,
       "kind": "rustc",
       "archive": "error-recovery-lab.zip",
       "verifier": "scripts/verify-agent-recovery.py",
@@ -366,6 +528,7 @@
         "R05",
         "R11"
       ],
+      "chapter": 16,
       "kind": "cargo",
       "archive": "task-system-lab.zip",
       "verifier": "scripts/verify-agent-tasks.py",
@@ -419,6 +582,7 @@
       "prerequisites": [
         "R12"
       ],
+      "chapter": 17,
       "kind": "rustc",
       "archive": "background-tasks-lab.zip",
       "verifier": "scripts/verify-agent-background.py",
@@ -446,6 +610,7 @@
         "R12",
         "R13"
       ],
+      "chapter": 18,
       "kind": "cargo",
       "archive": "scheduling-lab.zip",
       "verifier": "scripts/verify-agent-scheduling.py",
@@ -503,6 +668,7 @@
         "R12",
         "R13"
       ],
+      "chapter": 19,
       "kind": "cargo",
       "archive": "agent-teams.zip",
       "verifier": "scripts/verify-agent-teams.py",
@@ -528,6 +694,7 @@
       "prerequisites": [
         "R15"
       ],
+      "chapter": 20,
       "kind": "cargo",
       "archive": "team-protocols.zip",
       "verifier": "scripts/verify-agent-protocols.py",
@@ -554,6 +721,7 @@
         "R12",
         "R16"
       ],
+      "chapter": 21,
       "kind": "cargo",
       "archive": "autonomous-workers-lab.zip",
       "verifier": "scripts/verify-agent-workers.py",
@@ -602,6 +770,7 @@
         "R03",
         "R17"
       ],
+      "chapter": 22,
       "kind": "rustc",
       "archive": "worktree-isolation-lab.zip",
       "verifier": "scripts/verify-agent-worktrees.py",
@@ -630,6 +799,7 @@
         "R03",
         "R11"
       ],
+      "chapter": 23,
       "kind": "cargo",
       "archive": "mcp-tools-lab.zip",
       "verifier": "scripts/verify-agent-mcp.py",
@@ -668,6 +838,7 @@
         "R18",
         "R19"
       ],
+      "chapter": 24,
       "kind": "cargo",
       "archive": "integrated-agent.zip",
       "verifier": "scripts/verify-agent-integration.py",

@@ -32,7 +32,7 @@ title: 文档首页
 
 ### [Learn Agent by Rust · 构建可理解、可恢复的 Agent](./learn-agent-rust/index.md)
 
-围绕一个工作区助手，规划使用 `langchain-rust + graph-flow` 从最小模型工具循环出发，逐步加入权限、技能、上下文、任务、团队和 MCP，再用恢复与幂等实验检查运行边界。第 0 章已有图文讲解与可运行的 Rust 标准库接线实验，环境准备可独立自检；其余 25 个节点提供规划提纲，两库课程工程与学习包待实现。参考课程原图保留在对应页面中，并注明来源和原始语境。
+围绕一个工作区助手，使用 `langchain-rust + graph-flow` 学习模型工具循环、图编排、权限、Skills、RAG、上下文、任务、团队和 MCP，再用恢复、幂等与目标验收实验检查运行边界。主线第 0–24 章与专题 1–6 均有正文和独立实验入口；第 5–7 章集中学习图状态、跨进程会话恢复、并行归并与子图，第 11 章讲 RAG。各章明确区分固定夹具、真实文件或数据库效果，以及尚待验证的真实模型与集成范围。
 
 [进入课程 →](./learn-agent-rust/index.md) · [开始第 0 章 →](./learn-agent-rust/architecture-and-setup.md) · [查看学习路径 →](./learn-agent-rust/learning-path.md) · [环境准备 →](./learn-agent-rust/setup.md)
 

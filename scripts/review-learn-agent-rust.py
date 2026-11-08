@@ -19,7 +19,7 @@ def main():
     assert set(prompts) == {r['id'] for r in lessons}, 'Each lesson needs an authored review focus'
     rows, errors = [], []
     table = ['| 章节 | 图片 / 片段 / 折叠 | 迁移思考焦点 | 证据边界 |', '| --- | --- | --- | --- |']
-    for lesson in lessons:
+    for index, lesson in enumerate(lessons):
         p = DOCS / (lesson['slug'] + '.md')
         s = p.read_text()
         requirements = {
@@ -40,6 +40,21 @@ def main():
         for key, passed in requirements.items():
             if not passed:
                 errors.append(lesson['id'] + ': ' + key)
+        if 'chapter' in lesson:
+            frontmatter = s.split('---', 2)[1]
+            title = f'第 {lesson["chapter"]} 章：{lesson["title"]}'
+            if f'title: "{title}"' not in frontmatter or f'\n# {title}\n' not in s:
+                errors.append(lesson['id'] + ': title must match continuous chapter numbering')
+            for direction, offset in [('prev', -1), ('next', 1)]:
+                if not 0 <= index + offset < len(lessons):
+                    continue
+                neighbor = lessons[index + offset]
+                prefix = f'第 {neighbor["chapter"]} 章' if 'chapter' in neighbor else f'专题 {int(neighbor["id"][1:])}'
+                expected = f'{direction}:\n  text: {prefix} · {neighbor["title"]}\n  link: /learn-agent-rust/{neighbor["slug"]}'
+                if expected not in frontmatter:
+                    errors.append(lesson['id'] + ': stale ' + direction + ' navigation')
+            if '知识专题' in s:
+                errors.append(lesson['id'] + ': mainline chapter still labeled as a knowledge topic')
         for details in re.findall(r'<details>.*?</details>', s, re.S):
             if not re.search(r'</summary>\s*\n\s*\n', details) or not re.search(r'\n\s*\n\s*</details>', details):
                 errors.append(lesson['id'] + ': folded Markdown must have blank lines')
@@ -51,8 +66,9 @@ def main():
             if forbidden in s:
                 errors.append(lesson['id'] + ': stale status ' + forbidden)
         focus = prompts[lesson['id']]
+        label = f'第 {lesson["chapter"]} 章' if 'chapter' in lesson else f'专题 {int(lesson["id"][1:])}'
         table.append('| [{} · {}](./{}.md) | {} / {} / {} | {} | {} |'.format(
-            lesson['id'], lesson['title'], lesson['slug'], counts['images'], counts['snippets'], counts['details'], focus['theme'], focus['boundary']))
+            label, lesson['title'], lesson['slug'], counts['images'], counts['snippets'], counts['details'], focus['theme'], focus['boundary']))
         rows.append(dict(id=lesson['id'], slug=lesson['slug'], status=lesson['status'],
                          checks=requirements, **counts, teaching_focus=focus['theme'],
                          evidence_boundary=focus['boundary'],

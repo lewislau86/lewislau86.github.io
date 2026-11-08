@@ -23,6 +23,11 @@ def load_course():
     parts = {row["id"] for row in course["parts"]}
     if len(ids) != len(lessons) or len(slugs) != len(lessons):
         raise ValueError("Duplicate lesson id or slug")
+    mainline = [row for row in lessons if not row['id'].startswith('P')]
+    if [row.get('chapter') for row in mainline] != list(range(len(mainline))):
+        raise ValueError("Mainline chapters must be continuous in reading order, starting at 0")
+    if any('chapter' in row for row in lessons if row['id'].startswith('P')):
+        raise ValueError("Topics must not also declare a mainline chapter")
     by_id = {row["id"]: row for row in lessons}
     visited = set()
 
@@ -47,10 +52,8 @@ def load_course():
 
 
 def label(row):
-    number = int(row["id"][1:])
-    prefix = ("第 {} 章".format(number) if row["id"].startswith("R")
-              else "知识专题 {}".format(number) if row["id"].startswith("K")
-              else "专题 {}".format(number))
+    prefix = ("第 {} 章".format(row['chapter']) if 'chapter' in row
+              else "专题 {}".format(int(row['id'][1:])))
     return prefix + " · " + row["title"]
 
 
@@ -78,7 +81,8 @@ def render_timeline(course):
             if row["part"] != part["id"]:
                 continue
             # Stable IDs also let the overview link to any point in the roadmap.
-            lines.extend(["### {} · {} {{#{}}}".format(row["id"], row["title"], row["id"].lower()), ""])
+            lines.extend(["### {} {{#{}}}".format(label(row), row["id"].lower()), "",
+                          "**实验标识：** `" + row['id'] + "`", ""])
             status = "规划中 · 正文与实验待完成" if row["status"] == "planned" else "正文已成文 · 实验状态见章内"
             lines.extend(["> {} · {}".format(row["domain"], status), "", "**本章问题：** " + row["question"], "", "**新增机制：** " + row["addition"], ""])
             dependencies = "、".join("[{}](#{})".format(item, item.lower()) for item in row["prerequisites"])
@@ -98,6 +102,7 @@ def sidebar(course):
         {"text": "返回知识库", "link": "/"},
         {"text": "课程总览", "link": "/learn-agent-rust/"},
         {"text": "概念导读 · Skills、MCP、RAG 与 Memory", "link": "/learn-agent-rust/knowledge-and-capabilities"},
+        {"text": "图编排导读 · LangGraph 与 graph-flow", "link": "/learn-agent-rust/graph-orchestration"},
         {"text": "学习路径 · 能力演化", "link": "/learn-agent-rust/learning-path"},
         {"text": "环境准备", "link": "/learn-agent-rust/setup"},
         {"text": "全书实验代码库", "link": "/learn-agent-rust/experiments"},

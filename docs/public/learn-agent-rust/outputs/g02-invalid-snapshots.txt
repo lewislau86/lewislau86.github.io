@@ -1,0 +1,5 @@
+graph_version=rejected
+state_schema=rejected
+unknown_cursor=rejected
+row_version_mismatch=rejected
+corrupt_json=rejected

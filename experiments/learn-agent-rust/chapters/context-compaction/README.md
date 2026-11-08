@@ -1,6 +1,6 @@
 # R08：上下文压缩
 
-这是网站第 8 章的独立实验工程，正文以 `docs/learn-agent-rust/context-compaction.md` 为准。
+这是网站“上下文压缩”章的独立实验工程，正文以 `docs/learn-agent-rust/context-compaction.md` 为准。
 
 ## 运行
 

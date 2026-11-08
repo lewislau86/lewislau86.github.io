@@ -1,16 +1,16 @@
 ---
-title: "第 6 章：子 Agent 与上下文隔离"
+title: "第 9 章：子 Agent 与上下文隔离"
 description: "用独立 Rust 实验拆分父子消息历史，只回传子任务报告，并验证共享预算、执行权限与取消清理。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 5 章 · 可见的任务清单
+  text: 第 8 章 · 可见的任务清单
   link: /learn-agent-rust/todo-planning
 next:
-  text: 第 7 章 · 按需加载技能
+  text: 第 10 章 · 按需加载技能
   link: /learn-agent-rust/skill-loading
 ---
 
-# 第 6 章：子 Agent 与上下文隔离
+# 第 9 章：子 Agent 与上下文隔离
 
 [课程总览](./index.md) · [上一章：可见的任务清单](./todo-planning.md) · [学习路径](./learning-path.md) · [下一章：按需加载技能](./skill-loading.md)
 
@@ -397,4 +397,4 @@ python3 scripts/verify-agent-subagents.py --check
 
 参考课程的[原始子 Agent 图](/learn-agent-rust/figures/upstream/r06-subagent-overview.svg)原样保留，图中的 Python/Claude 接口按原语境理解；来源与许可见[课程架构](./architecture.md#reference-assets)。正文中的 Rust 图由本站脚本生成。
 
-下一章：[第 7 章：按需加载技能](./skill-loading.md)。子任务可以选择自己的输入，专业说明也可以按当前目标加载；下一章区分知识注入与执行权限。
+下一章：[第 10 章：按需加载技能](./skill-loading.md)。子任务可以选择自己的输入，专业说明也可以按当前目标加载；下一章区分知识注入与执行权限。

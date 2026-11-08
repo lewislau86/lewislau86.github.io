@@ -1,12 +1,18 @@
 ---
-title: "第 5 章：可见的任务清单"
+title: "第 8 章：可见的任务清单"
 description: "用 Rust 实现会话内待办、整批校验和版本检查，让计划变化可见，并用执行证据核对任务结果。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 7 章 · 图并行、归并与子图
+  link: /learn-agent-rust/graph-parallel-subgraphs
+next:
+  text: 第 9 章 · 子 Agent 与上下文隔离
+  link: /learn-agent-rust/subagents
 ---
 
-# 第 5 章：可见的任务清单
+# 第 8 章：可见的任务清单
 
-[课程总览](./index.md) · [上一章：生命周期与 Hooks](./hooks.md) · [下一章：子 Agent 与上下文隔离](./subagents.md)
+[课程总览](./index.md) · [上一章：图并行、归并与子图](./graph-parallel-subgraphs.md) · [下一章：子 Agent 与上下文隔离](./subagents.md)
 
 ::: tip 本章学习目标
 - 把目标拆成带 ID 和状态的步骤，让每轮模型输入都能看到最新清单。
@@ -191,7 +197,7 @@ cargo test --locked
 | 当前模型输入中的关注点 | 执行者领取、租约与接管。 |
 | 当前进程内的整批校验 | 存储提交、重启恢复与并发冲突处理。 |
 
-因此，清单适合把当前工作说清楚。[第 12 章的持久化任务系统](./task-system.md)再处理退出、领取和依赖等生命周期问题。
+因此，清单适合把当前工作说清楚。[第 16 章的持久化任务系统](./task-system.md)再处理退出、领取和依赖等生命周期问题。
 
 ### 实验怎样复核
 

@@ -1,18 +1,18 @@
 ---
 title: "第 4 章：生命周期与 Hooks"
 description: "沿一次已批准的文件写入，建立执行前、执行后与停止阶段的扩展点，验证拒绝、失败和超时。"
+pageClass: learn-agent-rust-course
 prev:
   text: 第 3 章 · 工具权限与审批
   link: /learn-agent-rust/permissions
 next:
-  text: 第 5 章 · 可见的任务清单
-  link: /learn-agent-rust/todo-planning
-pageClass: learn-agent-rust-course
+  text: 第 5 章 · 图状态、条件路由与有界循环
+  link: /learn-agent-rust/graph-state-routing
 ---
 
 # 第 4 章：生命周期与 Hooks
 
-[课程总览](./index.md) · [上一章：工具权限与审批](./permissions.md) · [下一章：可见的任务清单](./todo-planning.md)
+[课程总览](./index.md) · [上一章：工具权限与审批](./permissions.md) · [下一章：图状态与路由](./graph-state-routing.md)
 
 ::: tip 本章学习目标
 - 沿一次工具轮次，解释输入提交、执行前、执行后和停止四个扩展点。
@@ -344,4 +344,4 @@ Hook 为稳定的执行流程提供扩展位置：运行时决定何时触发、
 
 </details>
 
-下一章：[第 5 章 · 可见的任务清单](./todo-planning.md)，把长任务的步骤与当前进度显式记录下来。
+下一章：[第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md)，先把工作流的状态、分支与循环组织清楚，再进入长任务计划。
