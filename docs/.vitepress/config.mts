@@ -19,7 +19,7 @@ export default defineConfig({
     nav: [
       { text: '文档', link: '/' },
       { text: 'TinyLLM', link: '/tinyllm/' },
-      { text: 'MoE 手册', link: '/moe-handbook-zh/' },
+      { text: 'MoE 手册', link: '/moe-handbook-zh/', target: '_self' },
       { text: 'mini-redis', link: '/mini-redis/' },
       { text: 'Burn', link: '/burn/' },
       { text: 'Learn Agent by Rust', link: '/learn-agent-rust/' },
@@ -38,7 +38,7 @@ export default defineConfig({
         items: [
           { text: '文档首页', link: '/' },
           { text: 'TinyLLM 教程', link: '/tinyllm/' },
-          { text: '终极 MoE 训练手册', link: '/moe-handbook-zh/' },
+          { text: '终极 MoE 训练手册', link: '/moe-handbook-zh/', target: '_self' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
           { text: '深入理解 Burn', link: '/burn/' },
           { text: 'Learn Agent by Rust', link: '/learn-agent-rust/' },

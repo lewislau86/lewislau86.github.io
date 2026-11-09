@@ -16,11 +16,11 @@ title: 文档首页
 
 [进入 TinyLLM 教程 →](./tinyllm/index.md)
 
-### [终极 MoE 训练手册（中文译本）](/moe-handbook-zh/)
+### <a href="/moe-handbook-zh/" target="_self">终极 MoE 训练手册（中文译本）</a>
 
 Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按路由器、负载均衡、专家配置、训练稳定性和系统性能逐项讲解，并保留原有的交互图表。原作者为 Nouamane Tazi、Leandro von Werra、Thomas Wolf；中文译者为 [leonyuhe](https://github.com/leonyuhe/moe-handbook-zh)。译本按 CC BY 4.0 许可转载，详见[原文](https://huggingface.co/spaces/huggingface/moe-blogpost)与[译文仓库](https://github.com/leonyuhe/moe-handbook-zh)。
 
-[阅读终极 MoE 训练手册 →](/moe-handbook-zh/)
+<a href="/moe-handbook-zh/" target="_self">阅读终极 MoE 训练手册 →</a>
 
 ### [mini-redis · 从源码学习 Rust 与 Redis 架构](./mini-redis/index.md)
 

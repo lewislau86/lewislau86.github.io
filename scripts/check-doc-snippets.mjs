@@ -25,7 +25,7 @@ function checkFile(target, location, kind) {
     if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error
   }
   if (!exists) errors.push(`${location}: missing ${kind} file: ${target}`)
-  else if (!tracked.has(target)) errors.push(`${location}: untracked ${kind} file: ${target} (include it in the commit)`)
+  else if (!tracked.has(target.replaceAll('\\', '/'))) errors.push(`${location}: untracked ${kind} file: ${target} (include it in the commit)`)
 }
 
 function checkDirectory(directory) {
