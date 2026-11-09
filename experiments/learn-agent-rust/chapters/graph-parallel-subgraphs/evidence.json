@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "rust": "1.99.1",
+  "graph_revision": "9bbca193f20a8c4ba23289621549ecb3d35fee64",
+  "rust_tests": 6,
+  "archive_replayed": true,
+  "scenarios": 5,
+  "cli_refusals": 1,
+  "scope": "real graph-flow; deterministic business rules; no model provider",
+  "files_sha256": {
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.toml": "821854d0f00a244e0cdd3494368de756d22174c2546fd20da7e9f791ec11cee6",
+    "Cargo.lock": "9ebb75c7e59627e6aa2627285ecbf9ea4a8a10a413286dd6e943953960f2456c",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "README.md": "119c61683ee1df04efa5dc78ac8e31192e1b889fd9820676406907db842424b5",
+    "src/main.rs": "50fd4fbf68e42e79587f43134813b1473b0dcf4824e30b968fc93936e45ef190"
+  },
+  "outputs_sha256": {
+    "g03-normal.txt": "d231ddf0332cbd488dae0d58709951ef7f5cf27f354f318a9a4ab58905cedc5c",
+    "g03-failure.txt": "090b9d8c79bd3e6a4577426e986223adc160c10d875cafa8ebaa6c80e7c1380b",
+    "g03-collision.txt": "83dafc6f65c3fe4c20ff138b3a6e2d193951184f3f01a5fab670b44b8e043d60",
+    "g03-subgraph.txt": "bcc09d2ce4c3dc9ccc234b251f346d688e09256a7d002edefb66d0c107834412",
+    "g03-timeout.txt": "bc080bf9bb6b3cbf0afa5ae4b3707bb201d1ec0f38ef5901dca1d610c7be1616"
+  }
+}

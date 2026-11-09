@@ -1,0 +1,17 @@
+scenario=attempt-limit
+clock=virtual attempt_duration_ms=10 jitter=disabled
+limits calls=6 wait_ms=600 deadline_ms=2000 max_attempts=3
+trace[0] attempt call_id=read-1 attempt=1 started_ms=0
+trace[1] failure call_id=read-1 kind=Transient { retry_after_ms: None }
+trace[2] schedule call_id=read-1 delay_ms=100 due_ms=110
+trace[3] wake call_id=read-1 now_ms=110
+trace[4] attempt call_id=read-1 attempt=2 started_ms=110
+trace[5] failure call_id=read-1 kind=Transient { retry_after_ms: None }
+trace[6] schedule call_id=read-1 delay_ms=200 due_ms=320
+trace[7] wake call_id=read-1 now_ms=320
+trace[8] attempt call_id=read-1 attempt=3 started_ms=320
+trace[9] failure call_id=read-1 kind=Transient { retry_after_ms: None }
+trace[10] result call_id=read-1 status=attempt_limit
+last_failure=Some(Transient { retry_after_ms: None })
+read_value_matches=false
+stats stop=attempt_limit calls=3 last_attempts=3 waited_ms=300 now_ms=330 results=1 logical_calls=1 reads=0 appends=0 lines=0 paused=false

@@ -1,0 +1,2 @@
+scenario=collision child_end_ignored=true both_started=true report=compatibility:pass | tests:pass
+shared_counter=1 expected_sum=2 lost_update=true

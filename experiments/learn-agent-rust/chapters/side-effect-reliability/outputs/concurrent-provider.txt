@@ -1,0 +1,10 @@
+scenario=concurrent-provider tickets=1 checkpoints=0 attempts=0 apply_commits=4 queries=0
+local_state=no_intent
+
+$ inspect-provider PROVIDER_DB
+{"committed_apply_calls":0,"keys":0,"query_calls":0,"ticket_count":0,"tickets":[]}
+four provider processes: identical receipt; one ticket
+$ inspect-client CLIENT_DB
+{"actions":0,"checkpoints":0,"completed_actions":0,"outbox":[]}
+$ inspect-provider PROVIDER_DB
+{"committed_apply_calls":4,"keys":1,"query_calls":0,"ticket_count":1,"tickets":[{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","request":{"operation_id":"review-42","tenant":"course","title":"Review Rust timeout handling"},"ticket_id":1}]}

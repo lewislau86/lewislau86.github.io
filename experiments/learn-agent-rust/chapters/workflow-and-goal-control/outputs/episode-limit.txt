@@ -1,0 +1,41 @@
+SCENARIO episode-limit
+{
+  "status": "needs_human",
+  "reason": "episode_limit",
+  "goal_verified": false,
+  "normal_returns": 2,
+  "used": {
+    "episodes": 2,
+    "model_calls": 5,
+    "tools": 3,
+    "write_bytes": 36
+  },
+  "reads": 1,
+  "writes": 2,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    },
+    {
+      "episode": 2,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "missing:total"
+        ],
+        "kind": "repairable",
+        "score": 2
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\n",
+  "handoff_saved": true
+}

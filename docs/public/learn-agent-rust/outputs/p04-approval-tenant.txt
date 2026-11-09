@@ -1,0 +1,1 @@
+{"error": "TenantDenied", "passed": true, "scenario": "approval-tenant"}

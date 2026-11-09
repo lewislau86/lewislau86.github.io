@@ -1,0 +1,1 @@
+scenario=normal child_end_ignored=true both_started=true report=compatibility:pass | tests:pass

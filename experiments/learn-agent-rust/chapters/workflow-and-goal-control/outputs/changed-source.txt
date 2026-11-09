@@ -1,0 +1,30 @@
+SCENARIO changed-source
+{
+  "status": "needs_human",
+  "reason": "goal_blocked",
+  "goal_verified": false,
+  "normal_returns": 1,
+  "used": {
+    "episodes": 1,
+    "model_calls": 3,
+    "tools": 2,
+    "write_bytes": 27
+  },
+  "reads": 1,
+  "writes": 1,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "source_changed"
+        ],
+        "kind": "blocked",
+        "score": 0
+      }
+    }
+  ],
+  "report": "apples=7\npears=11\ntotal=18\n",
+  "handoff_saved": true
+}

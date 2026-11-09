@@ -1,0 +1,229 @@
+[
+  {
+    "text": "Learn Agent by Rust",
+    "items": [
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "课程总览",
+        "link": "/learn-agent-rust/"
+      },
+      {
+        "text": "概念导读 · Skills、MCP、RAG 与 Memory",
+        "link": "/learn-agent-rust/knowledge-and-capabilities"
+      },
+      {
+        "text": "图编排导读 · LangGraph 与 graph-flow",
+        "link": "/learn-agent-rust/graph-orchestration"
+      },
+      {
+        "text": "学习路径 · 能力演化",
+        "link": "/learn-agent-rust/learning-path"
+      },
+      {
+        "text": "环境准备",
+        "link": "/learn-agent-rust/setup"
+      },
+      {
+        "text": "全书实验代码库",
+        "link": "/learn-agent-rust/experiments"
+      },
+      {
+        "text": "课程架构与框架分工",
+        "link": "/learn-agent-rust/architecture"
+      },
+      {
+        "text": "全书审查与学习方法",
+        "link": "/learn-agent-rust/course-review"
+      },
+      {
+        "text": "技术跟踪与迁移边界",
+        "link": "/learn-agent-rust/technology-radar"
+      },
+      {
+        "text": "Agent 研究补充与实验选题",
+        "link": "/learn-agent-rust/research-updates"
+      }
+    ]
+  },
+  {
+    "text": "第一部分 · 基础循环与执行边界",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 0 章 · 整体架构与环境",
+        "link": "/learn-agent-rust/architecture-and-setup"
+      },
+      {
+        "text": "第 1 章 · 最小 Agent 循环",
+        "link": "/learn-agent-rust/agent-loop"
+      },
+      {
+        "text": "第 2 章 · 工具注册与图调度",
+        "link": "/learn-agent-rust/tools-and-graph"
+      },
+      {
+        "text": "第 3 章 · 工具权限与审批",
+        "link": "/learn-agent-rust/permissions"
+      },
+      {
+        "text": "第 4 章 · 生命周期与 Hooks",
+        "link": "/learn-agent-rust/hooks"
+      }
+    ]
+  },
+  {
+    "text": "第二部分 · 图编排与会话推进",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 5 章 · 图状态、条件路由与有界循环",
+        "link": "/learn-agent-rust/graph-state-routing"
+      },
+      {
+        "text": "第 6 章 · 图暂停、会话存储与恢复",
+        "link": "/learn-agent-rust/graph-pause-resume"
+      },
+      {
+        "text": "第 7 章 · 图并行、归并与子图",
+        "link": "/learn-agent-rust/graph-parallel-subgraphs"
+      }
+    ]
+  },
+  {
+    "text": "第三部分 · 计划与上下文隔离",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 8 章 · 可见的任务清单",
+        "link": "/learn-agent-rust/todo-planning"
+      },
+      {
+        "text": "第 9 章 · 子 Agent 与上下文隔离",
+        "link": "/learn-agent-rust/subagents"
+      }
+    ]
+  },
+  {
+    "text": "第四部分 · 方法、知识与记忆",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 10 章 · 按需加载技能",
+        "link": "/learn-agent-rust/skill-loading"
+      },
+      {
+        "text": "第 11 章 · RAG：检索、证据与回答",
+        "link": "/learn-agent-rust/retrieval-augmented-generation"
+      },
+      {
+        "text": "第 12 章 · 上下文压缩",
+        "link": "/learn-agent-rust/context-compaction"
+      },
+      {
+        "text": "第 13 章 · 跨会话记忆",
+        "link": "/learn-agent-rust/memory"
+      },
+      {
+        "text": "第 14 章 · 系统提示词组装",
+        "link": "/learn-agent-rust/system-prompts"
+      }
+    ]
+  },
+  {
+    "text": "第五部分 · 恢复、长任务与调度",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 15 章 · 错误分类与恢复",
+        "link": "/learn-agent-rust/error-recovery"
+      },
+      {
+        "text": "第 16 章 · 持久化任务系统",
+        "link": "/learn-agent-rust/task-system"
+      },
+      {
+        "text": "第 17 章 · 后台任务",
+        "link": "/learn-agent-rust/background-tasks"
+      },
+      {
+        "text": "第 18 章 · 定时调度",
+        "link": "/learn-agent-rust/scheduling"
+      }
+    ]
+  },
+  {
+    "text": "第六部分 · 团队协作与资源归属",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 19 章 · Agent 团队",
+        "link": "/learn-agent-rust/agent-teams"
+      },
+      {
+        "text": "第 20 章 · 团队协作协议",
+        "link": "/learn-agent-rust/team-protocols"
+      },
+      {
+        "text": "第 21 章 · 自主任务领取",
+        "link": "/learn-agent-rust/autonomous-workers"
+      },
+      {
+        "text": "第 22 章 · 工作区隔离",
+        "link": "/learn-agent-rust/worktree-isolation"
+      }
+    ]
+  },
+  {
+    "text": "第七部分 · 外部能力与整体集成",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 23 章 · MCP 外部工具",
+        "link": "/learn-agent-rust/mcp-tools"
+      },
+      {
+        "text": "第 24 章 · 完整 Agent 集成",
+        "link": "/learn-agent-rust/integrated-agent"
+      }
+    ]
+  },
+  {
+    "text": "第八部分 · 可靠性与目标验收",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "专题 1 · PostgreSQL 检查点",
+        "link": "/learn-agent-rust/postgres-checkpoints"
+      },
+      {
+        "text": "专题 2 · 外部操作的可靠性",
+        "link": "/learn-agent-rust/side-effect-reliability"
+      },
+      {
+        "text": "专题 3 · 模型协议与质量评估",
+        "link": "/learn-agent-rust/model-evaluation"
+      },
+      {
+        "text": "专题 4 · 生产准入与演练",
+        "link": "/learn-agent-rust/production-readiness"
+      },
+      {
+        "text": "专题 5 · 固定工作流与目标控制",
+        "link": "/learn-agent-rust/workflow-and-goal-control"
+      }
+    ]
+  },
+  {
+    "text": "第九部分 · 受控演进与研究",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "专题 6 · Agent RSI 与受控自我改进",
+        "link": "/learn-agent-rust/agent-rsi"
+      }
+    ]
+  }
+]

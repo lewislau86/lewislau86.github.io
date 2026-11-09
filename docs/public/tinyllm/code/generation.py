@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 25 章：自回归生成
+# # 第 26 章：自回归生成
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/generation
 #

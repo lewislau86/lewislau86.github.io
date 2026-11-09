@@ -1,0 +1,1 @@
+scenario=subgraph result=UPGRADE child_scratch_exported=false explicit_contract=true

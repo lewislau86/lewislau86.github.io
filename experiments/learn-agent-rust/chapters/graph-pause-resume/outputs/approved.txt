@@ -1,0 +1,9 @@
+status=initialized version=1
+status=paused cursor=approve version=2 approval_visits=0 report=false
+status=waiting cursor=approve version=3 approval_visits=1 report=false
+status=waiting cursor=approve version=4 approval_visits=2 report=false
+status=decision_saved revision=1 accepted=true
+status=paused cursor=render version=6 approval_visits=3 report=false
+status=completed cursor=render version=7 approval_visits=3 report=true
+status=already_completed cursor=render version=7
+cursor=render version=7 draft_visits=1 approval_visits=3 render_visits=1 report=upgrade report: review complete

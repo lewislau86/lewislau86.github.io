@@ -1,0 +1,6 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply complete readme expected=1 (new process)
+error=illegal_transition committed=false

@@ -1,0 +1,7 @@
+R08 | scenario=small | scripted LLM + graph-flow + real temporary files
+measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
+prepare[1] before=2201 externalized=2201 micro=2201 after=2201 decision=unchanged summary_input=0
+prepare[2] before=2606 externalized=2606 micro=2606 after=2606 decision=unchanged summary_input=0
+answer=结论：src/first.rs 的空输入会触发索引越界；证据 values[0]。建议返回 Option<u8>。未运行测试。
+stats summary_calls=0 agent_calls=2 reloads=0 reads=1 retrievals=0 stop=completed
+checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true

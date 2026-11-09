@@ -1,0 +1,4 @@
+scenario=cancel-before-work
+cancel=Accepted
+query=Cancelled
+stats started=1 joined=1 peak=1 active=0 records=1 dropped_notices=0 partial_files=0 result_files=0

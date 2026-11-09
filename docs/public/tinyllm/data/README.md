@@ -10,7 +10,9 @@
 | 划分 | 训练 15,758 首、验证 852 首、测试 829 首（按正文哈希固定划分） |
 | 来源 | [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry)（MIT 许可证）固定版本 `b8594f81`：《全唐诗》《唐诗三百首》 |
 
-网站下载地址：<https://lewislau86.github.io/tinyllm/data/tang-poems.jsonl>；版本信息见同目录的 `manifest.json`。
+下载地址：网站 <https://lewislau86.github.io/tinyllm/data/tang-poems.jsonl>，或 GitHub <https://raw.githubusercontent.com/lewislau86/lewislau86.github.io/master/docs/public/tinyllm/data/tang-poems.jsonl>；版本信息见同目录的 `manifest.json`。第 14 章用的 3 个原始源文件 `poet.tang.*.json` 也在这个目录，可以用同样的 GitHub 地址直接下载。
+
+第 13 章的唐宋诗大语料（约 90 MB）不放在这里，放在 GitHub Release `tinyllm-data-v1` 的附件里：<https://github.com/lewislau86/lewislau86.github.io/releases/download/tinyllm-data-v1/tang-song-poems.jsonl.gz>，解压后的校验值见 `manifest-large.json`；`python scripts/prepare-tinyllm-large-corpus.py --download` 会自动下载、解压和核对。
 
 ## 每一行是什么
 

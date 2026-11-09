@@ -1,0 +1,6 @@
+scenario=write-error source=scripted_tool_requests storage=in_memory
+tool_result call_id=read-1 status=ok content="启动命令：cargo run\n"
+awaiting_approval approval=1 scope=this_session call_id=write-1 action=Write { path: "notes/summary.txt", content: "启动命令：cargo run\n" }
+tool_result call_id=write-1 status=tool_error content="filesystem_operation_failed"
+rejected_input reason=no_pending_approval
+stats read_attempts=1 write_attempts=1 write_successes=0 tool_results=2 pending=false summary_matches=false readme_unchanged=true

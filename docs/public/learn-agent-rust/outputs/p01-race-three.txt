@@ -1,0 +1,12 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "busy_or_conflict": 2,
+    "checkpoints": 2,
+    "committed_writers": 1,
+    "live_writers": 3
+  },
+  "passed": true,
+  "processes": 4,
+  "scenario": "race-three"
+}

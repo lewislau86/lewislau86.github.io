@@ -3,6 +3,7 @@ import tinyllmSidebar from './tinyllm-sidebar.json'
 import miniRedisSidebar from './mini-redis-sidebar.json'
 import miniRedisSourceSidebar from './mini-redis-source-sidebar.json'
 import burnSidebar from './burn-sidebar.json'
+import learnAgentRustSidebar from './learn-agent-rust-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
@@ -21,10 +22,12 @@ export default defineConfig({
       { text: 'MoE 手册', link: '/moe-handbook-zh/' },
       { text: 'mini-redis', link: '/mini-redis/' },
       { text: 'Burn', link: '/burn/' },
+      { text: 'Learn Agent by Rust', link: '/learn-agent-rust/' },
       { text: '讨论', link: '/discuss' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
+      '/learn-agent-rust/': learnAgentRustSidebar,
       '/burn/': burnSidebar,
       '/tinyllm/': tinyllmSidebar,
       '/mini-redis/source/': miniRedisSourceSidebar,
@@ -38,6 +41,7 @@ export default defineConfig({
           { text: '终极 MoE 训练手册', link: '/moe-handbook-zh/' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
           { text: '深入理解 Burn', link: '/burn/' },
+          { text: 'Learn Agent by Rust', link: '/learn-agent-rust/' },
           { text: '关于', link: '/about' }
         ]
       },

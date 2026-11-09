@@ -1,0 +1,10 @@
+scenario=abort-fallback
+request=stop-core kind=Shutdown Lead->Core deadline=10 state=Approved
+errors=none
+check approved_but_actor_alive=true
+wire stop-core:Core->Lead:accepted
+join Core=aborted aborted=true
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=1
+after_cleanup stop-core=Approved
+escape_absent=true workspace_removed=true

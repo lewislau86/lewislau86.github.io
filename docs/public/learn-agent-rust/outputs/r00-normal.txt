@@ -1,0 +1,8 @@
+模式：normal；模型：固定规则的脚本模型
+消息 1 | user | 读取 README.md，告诉我如何启动项目。
+消息 2 | assistant call_id=read-1 | read_file("README.md")
+消息 3 | tool call_id=read-1 | # 课程练习项目
+启动命令：cargo run
+消息 4 | assistant | README 里的启动命令是：cargo run
+统计：model_turns=2 tool_requests=1 read_attempts=1 read_successes=1 messages=4 outcome=completed
+状态：仅保存在当前进程内；本例没有写入检查点。

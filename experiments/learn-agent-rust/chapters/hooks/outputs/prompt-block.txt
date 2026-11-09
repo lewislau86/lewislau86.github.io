@@ -1,0 +1,8 @@
+scenario=prompt-block source=scripted_request approval=trusted_fixture
+trace[1] event=UserPromptSubmit
+trace[2] hook=UserPromptSubmit/input-log outcome=continue
+trace[3] hook=UserPromptSubmit/input-check outcome=block
+trace[4] event=Stop
+trace[5] hook=Stop/stop-log outcome=continue
+result none
+stats write_attempts=0 write_successes=0 stop_calls=1 hook_failures=0 summary_matches=false stop_reason=prompt_blocked task_ok=false

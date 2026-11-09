@@ -1,0 +1,1 @@
+{"migrated_sessions": 2, "passed": true, "scenario": "migration-forward", "schema": 2, "spent": 3, "status": "paused"}

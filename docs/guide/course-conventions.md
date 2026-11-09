@@ -1,6 +1,6 @@
 # 课程写作规范
 
-本站的三个系列教程（TinyLLM、mini-redis、Burn）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
+本站的系列教程（TinyLLM、mini-redis、Burn、Learn Agent by Rust）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
 
 ## 1. 网站是唯一来源
 
@@ -13,6 +13,7 @@
 | TinyLLM | `docs/tinyllm/` | `docs/public/tinyllm/{notebooks,figures}/` | `tinyllm-sidebar.json` | 已按本规范迁移 |
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
 | mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
+| Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/{code,outputs,figures}/`，独立工程与章节 zip | `learn-agent-rust-sidebar.json` | 正文状态以章节清单为准，实验状态见各章 |
 
 ## 2. 文件名与 URL
 
@@ -26,8 +27,58 @@
 
 - 按“部分”分组，组名写成 `第一部分 · 先跑起来` 的形式。
 - 条目文字写成 `第 N 章 · 标题`。
-- 尚未成文的章节集中放进最后一个折叠分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。
-- 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表和总览页的“已成文的章节”表。
+- 尚未成文的章节集中放进最后一个独立分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。Learn Agent by Rust 的全部侧栏分组默认展开（`collapsed: false`），包括规划章节，方便浏览所有章节标题。
+- 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表（新增章节还要在 `nodes` 里给它一个框、在 `io` 里写出本章的输入和输出）和总览页的“已成文的章节”表。
+- Learn Agent by Rust 的章节顺序、主题路径、前置关系和正文状态维护在 `scripts/learn-agent-rust-lessons.json`，运行 `python3 scripts/sync-learn-agent-rust-course.py` 更新侧栏、总览目录和学习路径的标记区。脚本只为缺失章节建立规划提纲，不覆盖已有章节正文；`--check` 检查是否过期。标为 `written` 前先完成正文与相应验证，实验状态另在章内记录。
+- 该课程用 `<LearnAgentRustMap active="章节主题名" />` 展示章节位置，课程地图从同一章节清单读取状态。R00 标准库源码在 `docs/public/learn-agent-rust/code/`，运行 `python3 scripts/verify-learn-agent-rust.py` 更新输出与配图输入，`--check` 重新执行并检查是否过期；该脚本当前只验证 R00，不代表两库集成通过。 R02 两库工程用 `python3 scripts/verify-learn-agent-rust-r02.py` 在临时解压目录运行，生成输出、证据与章节 zip；`--check` 检查产物是否过期，自制图用 `python3 scripts/generate-learn-agent-rust-figures.py --r02` 刷新。
+
+R05 会话内清单使用 `python3 scripts/verify-learn-agent-rust-r05.py` 生成独立下载工程、20 个场景的输出与源码校验记录；`--check` 从下载包解压后重新执行并检查产物是否过期。运行 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R05` 刷新本章自制图。实验使用脚本模型与真实临时文件读取，清单只存在于当前运行时内存中。
+
+R04 的标准库 Hook 实验用 `python3 scripts/verify-agent-hooks.py` 更新学习包、输出与实验数据，`--check` 重新运行并检查产物；配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R04`。它验证单次工具轮次、固定已批准动作和直属故障 worker，不代表真实模型或图调度集成通过。
+
+R06 子任务实验使用 `python3 scripts/verify-agent-subagents.py` 生成 16 个场景输出、证据与独立标准库学习包；`--check` 重新运行 9 个 Rust 测试、检查片段与结果表，并独立解压编译下载包。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R06` 刷新。实验验证脚本模型的消息分离、共享预算、工具权限与协作取消；线程与工作区清理单独检查，不代表真实模型、进程沙箱或框架集成通过。
+
+R09 跨会话事实存储使用 `python3 scripts/verify-agent-memory.py` 生成独立 Cargo 工程下载包、22 个场景输出与源码校验记录；`--check` 运行 8 个 Rust 测试，通过独立 CLI 进程核对保存、召回、版本冲突、逻辑遗忘、损坏与保存失败，并实际解压重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R09`。提取采用确定性规则，实验范围为真实磁盘与跨进程事实读取，未接入真实模型、框架会话恢复或数据库。
+
+R10 提示词组装使用 `python3 scripts/verify-agent-prompts.py` 生成两库独立下载工程、14 个场景输出与来源摘要记录；`--check` 复核 8 个 Rust 测试、完整消息输入、角色、配对、前缀缓存以及最终下载包的离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R10`。实验验证真实框架接线与临时来源文件，模型采用确定性脚本，未验证真实 provider 或知识召回质量。
+
+R11 错误恢复实验使用 `python3 scripts/verify-agent-recovery.py` 生成 21 个场景输出、证据与标准库独立学习包；`--check` 重跑 13 个 Rust 测试、核对正文结果表与实际文件，并解压下载包重跑全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R11` 刷新。故障与时间由程序注入，文件操作真实；恢复只在同一进程内转移原状态并复用累计账本。
+
+R08 上下文压缩使用 `python3 scripts/verify-agent-compaction.py` 生成两库独立工程下载包、17 个场景输出和证据；`--check` 运行 Rust 测试、Clippy，核对配对、事实、预算、回滚与归档，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R08`。预算按序列化消息字节计数，Agent 与摘要器均为脚本模型；临时归档不提供跨进程恢复。
+
+R12 持久化任务系统使用 `python3 scripts/verify-agent-tasks.py` 生成 26 个场景输出、独立 Cargo 学习包与源码校验记录；`--check` 重跑 14 个 Rust 测试、Clippy 和每轮 119 次独立 CLI 进程，并解压最终下载包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R12`。实验使用真实本地文件与检查点终止子进程，验证任务元数据、依赖与保存边界；不执行任务标题、不恢复完整 Agent，也不证明物理断电耐久性。
+
+R13 后台任务使用 `python3 scripts/verify-agent-background.py` 生成 14 个场景输出、线程与文件证据及独立标准库学习包；`--check` 重跑 12 个 Rust 测试、核对正文计数和实际产物，并解压最终包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R13`。检查点由条件变量控制，线程与文件操作真实；记录仅在本进程内，未接入模型、框架或持久化恢复。
+
+R14 定时调度使用 `python3 scripts/verify-agent-scheduling.py` 生成独立 Cargo 工程下载包、27 个场景输出与证据；`--check` 运行 10 个 Rust 测试、Clippy、独立进程和退出点实验，并解压最终包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R14`。实验验证具名时区的每日规则、SQLite 中任务与游标的原子保存、补触发与去重；固定时间测试和两次真实时钟轮询分别记录，尚未接入 Agent 消费者、外部动作或长期守护服务。
+
+R15 Agent 团队使用 `python3 scripts/verify-agent-teams.py` 生成两库独立工程下载包、22 个场景输出与源码证据；`--check` 复核 Rust 测试、Clippy、私有历史、邮箱回执、共享预算、取消与句柄回收，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R15`。实验使用单进程 Tokio 并发任务与脚本模型，不代表跨进程消息恢复或真实模型协作质量通过。
+
+R16 团队协作协议使用 `python3 scripts/verify-agent-protocols.py` 生成独立 Cargo 下载工程、28 个场景输出与源码证据；`--check` 重跑 15 项 Rust 测试、Clippy，核对关联身份、原计划写入、逻辑期限、背压回滚及关闭回收，再解压最终包离线复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R16`。实验运行单进程 Tokio 任务与真实临时文件，采用固定协议输入和注入 tick，真实接收超时另验；未接入模型、两库、持久化消息或外部身份认证。
+
+R19 MCP 外部工具使用 `python3 scripts/verify-agent-mcp.py` 生成独立 Cargo 下载工程、25 个场景输出、线协议与文件证据；`--check` 复核 8 个 Rust 测试、Clippy、每轮 26 个真实直属服务进程的回收，并解压最终包离线重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R19`。固定 `rmcp 3.9.0` 与 MCP `2025-11-25`，真实 stdio 与文件效果，调用和批准由固定脚本提供；真实模型、框架、HTTP 与任意服务沙箱另验。
+
+P02 外部操作可靠性使用 `python3 scripts/verify-agent-effects.py` 生成独立 Rust 学习包、29 个场景输出与源码记录；`--check` 重跑 11 项 Rust 测试、Clippy、独立客户端和服务进程、退出点、SQL 核对及最终下载包全场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P02`。实验验证两份本地 SQLite 的业务意图、幂等、Outbox 和对账，不代表 HTTP、完整 Agent、PostgreSQL 集成或物理断电恢复通过。
+
+P01 PostgreSQL 检查点使用 `python3 scripts/verify-agent-checkpoints.py` 生成独立 Cargo 学习包、25 个真实 PostgreSQL 场景输出与源码证据；`--check` 运行 10 个 Rust 测试、Clippy、每轮 108 个独立 Rust CLI 进程，并解压最终包重新编译复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P01`。需要 PostgreSQL 18 服务端工具，验证器自动创建与清理专用临时集群；验证快照、修订冲突、保存身份、工具边界与数据库进程恢复，未接入框架 Storage 或真实模型。
+
+R20 完整 Agent 集成使用 `python3 scripts/verify-agent-integration.py` 生成两库独立下载工程、18 个场景输出与证据；`--check` 复核 10 个 Rust 测试、Clippy、实际 SQLite、Git 工作区、文件、消息配对、归档、MCP 协议与 PID 回收，并独立解压最终包离线编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R20`。父子采用脚本模型，集成固定任务、单审查者与单工具服务的最小契约；写后错误和终态保存失败分别核对，事件事后落盘，跨进程恢复与真实 provider 另验。
+
+R17 自主任务领取使用 `python3 scripts/verify-agent-workers.py` 生成独立 Cargo 下载工程、25 个场景输出与源码证据；`--check` 重跑 12 个 Rust 测试、Clippy、每轮 169 个独立 CLI 进程，并实际解压最终包离线编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R17`。实验验证本机 SQLite 中的原子领取、续租、过期接管、旧代次拒写与独立业务库重放；时间边界采用固定夹具，真实时钟另验，没有集成依赖图、团队邮箱、模型或多机服务。
+
+P04 生产准入与演练使用 `python3 scripts/verify-agent-production.py` 生成独立 Cargo 学习包、24 个真实 PostgreSQL 场景输出与来源摘要；`--check` 运行 4 个 Rust 测试、Clippy、每轮 62 个独立 Rust CLI 进程，并解压最终下载包重新编译复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P04`。需要 PostgreSQL 18 服务端工具（含 pg_dump/pg_restore），演练自动创建与清理两个隔离集群；验证 fixture 授权、迁移回滚、容量边界、死亡接管、旧执行者拒写与逻辑备份恢复。时延只报告当次口径，不作为跨平台快照比较；未验证真实认证、模型质量、长期吞吐、远程副作用或完整事故 RTO/RPO。
+
+P03 模型协议与质量评估使用 `python3 scripts/verify-agent-evaluation.py` 生成两库独立学习包、27 个协议 / 宿主场景和 24 次带标签任务的输出与证据；`--check` 重跑 10 个 Rust 测试、Clippy、每轮 80 个真实本地 HTTP 请求、消息配对、独立判分与文件核对，再独立解压最终包离线编译复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P03`。夹具响应确定性生成，三次重复只检验复现性；时延快照保留实际样本但不作逐字重现要求，真实服务与费用另验。
+
+P05 固定工作流与目标控制使用 `python3 scripts/verify-agent-goals.py` 生成独立 Cargo 学习包、22 个控制场景输出与来源摘要；`--check` 重跑 11 个 Rust 测试、Clippy、每轮 24 个独立 CLI 进程（含 2 个拒绝检查），并解压最终下载包离线重新编译、复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P05`。实验验证单进程固定流程、真实文件独立验收、反馈修复、共享累计预算、停滞上限与交接记录；执行者采用确定性脚本，取消标记在调用前注入，真实 provider、两库接线、跨进程恢复与外部副作用另验。
+
+P06 Agent RSI 使用 `python3 scripts/verify-agent-rsi.py` 生成有限策略实验的九次运行、来源摘要与标准库学习包；`--check` 重跑 4 项 Rust 测试、Clippy、两个 CLI 拒绝路径，并解压最终包独立复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P06`，同时生成全书审查示意图。题目全部公开，验证集用于选择；它验证有界门控与本地发布，不代表递归元改进或泛化通过。
+
+全书教学覆盖表用 `python3 scripts/review-learn-agent-rust.py` 更新，`--check` 检查章结构、配图 / 片段入口、折叠格式及逐章迁移题；这些检查不运行历史章节实验。迁移题作者数据在 `scripts/data/learn-agent-rust/review-prompts.json`，修改相应内容时两处同步。技术更新记录一手资料、查阅日期、版本和未验收边界，见课程技术跟踪页。
+
+RAG 主线章（稳定实验标识 K01）使用 `python3 scripts/verify-agent-rag.py` 生成独立标准库 Rust 工程包、11 个场景的轨迹与源码摘要；`--check` 重跑 8 项 Rust 测试、Clippy、4 道公开标签检索题及最终 zip 解压复验。真实执行词法切块 / BM25、范围过滤、预算与来源更新删除，生成器是固定摘录夹具；真实模型、embedding、框架与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
+
+G01–G03 图编排三章用 `python3 scripts/verify-agent-orchestration.py` 生成真实 graph-flow 独立工程包、14 项 Rust 测试和 19 组场景的输出与证据；`--check` 检查源码与最终章节包的独立编译、格式、Clippy 和场景复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson G01`（同时刷新三章与导读图）。固定业务规则，无模型；G02 真实实现 SQLite SessionStorage 并跨 CLI 进程恢复，限定单业务执行者；G03 的子图为应用 Task 包装器，父子持久恢复另验。
 
 ## 4. 章节模板
 
@@ -132,6 +183,7 @@ pageClass: tinyllm-course
 
 - 图由脚本生成，不手工编辑 SVG：TinyLLM 用 `scripts/generate-tinyllm-figures.py`，mini-redis 用 `scripts/generate-mini-redis-figures.py`，Burn 用 `scripts/generate-burn-math-figures.py`。改图就改脚本，再重新运行。
 - 数据图的数据来自真实运行。需要训练记录的图，把记录保存在 `scripts/data/`，脚本只负责读取和绘制。
+- Learn Agent by Rust 自制图由 `scripts/generate-learn-agent-rust-figures.py` 生成。经许可复用的参考站原图原样保留，由 `scripts/learn-agent-rust-upstream-assets.json` 登记来源、版本校验值与许可；运行 `python3 scripts/sync-learn-agent-rust-assets.py --fetch` 同步，`--check` 检查。不要手改原始 SVG；逐图来源与上游许可保留在资源目录，正文说明原图语境。
 - 图片的替代文本写成一句完整描述，说明图中“看到了什么结论”，而不只是图名。
 - 图下紧跟一段“怎么读这张图”，指出读者应该注意的地方。
 - 配色：蓝 `#2563eb`、青 `#0f766e`、橙 `#b45309`、红 `#b91c1c`、灰 `#64748b`，浅灰底 `#f8fafc`。
@@ -153,7 +205,7 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 | 第 7 章 | `<RopeSlider />` | `tinyllm-rope-demo.json`（position-encoding.py） |
 | 第 9 章 | `<ResidualStreamLens />` | `tinyllm-block-depth.json`（transformer-block.py） |
 | 第 16 章 | `<OptimizerRace />` | `tinyllm-optimizer-paths.json`（tinyllm-figure-data.py） |
-| 第 26 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
+| 第 27 章 | `<KVCacheRace />` | `tinyllm-kv-cache-counts.json`（inference-efficiency.py） |
 
 做法约定：
 
@@ -182,6 +234,24 @@ TinyLLM 与 mini-redis 各有一个全书架构图 Vue 组件：`TinyLLMMap.vue`
 - notebook 由脚本生成，不要手改：脚本里 `# %%` 开始一个代码格，`# %% [markdown]` 开始一个说明格。运行 `python scripts/build-tinyllm-code.py <章节>` 会执行脚本、生成 `docs/public/tinyllm/notebooks/<文件名>.ipynb` 并保存输出；`--check` 只运行、不写文件。同时会生成站内只读预览页 `docs/tinyllm/notebooks/<文件名>.md`（网址 `/tinyllm/notebooks/<文件名>`），显示全部代码和保存的输出，并提供“在 Colab 中运行”“下载 .ipynb / .py”“在 GitHub 上查看”链接；正文提到 notebook 时链接到这个预览页，而不是 `.ipynb` 文件本身。只刷新预览页用 `--pages`。notebook 中回到正文的链接使用完整网址 `https://lewislau86.github.io/tinyllm/<文件名>`。
 - Burn、mini-redis：学习包放在各自的 `docs/public/<课程>/` 下，并提供 zip 下载。mini-redis 的 zip 由 `scripts/package-mini-redis.py` 从源码快照生成，只含代码与实验，教程正文以网站为准。
 - 正文中引用的输出（损失、生成样例、打印结果）必须来自实际运行，并写明运行环境。
+
+### Learn Agent by Rust 全书实验代码库
+
+实验唯一源码仍是 `docs/public/learn-agent-rust/code/`。`scripts/learn-agent-rust-experiments.json` 登记每个已成文章节的验证器、章节包、依赖条件和统一运行步骤，必须与课程清单逐项对应。
+
+`experiments/learn-agent-rust/` 是生成的独立代码库；`docs/public/learn-agent-rust/learn-agent-rust-experiments.zip` 是读者下载包。两者都由 `scripts/package-agent-experiments.py` 生成，不手改其中的源码、README、清单和校验值。文章片段继续引用网站的唯一源码。统一包从各章已验证包提取内容，并逐文件核对唯一源码，补齐章节输出和证据。
+
+维护时先更新相关章节实验及其产物，再执行：
+
+```sh
+python3 scripts/verify-agent-experiments.py             # 顺序运行全书原验证器，记录真实结果
+python3 scripts/package-agent-experiments.py            # 生成独立目录、zip 和下载索引
+python3 scripts/package-agent-experiments.py --check    # 核对缺章、来源摘要和生成文件
+python3 scripts/check-agent-experiment-download.py      # 解压最终 zip，重跑读者的 test --all
+npm run docs:build
+```
+
+原验证器负责各章正常与故障场景、正文输出及章节包；独立包 `run.py test --all` 负责格式、Rust 测试、Clippy 和清单登记的演示，其中 P01/P03/P04/P05 调用完整 Python 本地套件。两者范围分别报告。P01/P04 需要 PostgreSQL 18 工具，显式跳过时记录 skipped，不能称为全章通过；P03 默认只用本地 fixture，真实 provider 调用另外验收。
 
 ### 对照实验的写法
 
@@ -221,6 +291,8 @@ head:
 TinyLLM 的 `chapterN_*.md`、mini-redis 的 `NN-*.md`、Burn 的旧编号页都是这样的跳转页。
 
 ## 9. 发布前检查
+
+`npm run docs:build` 会先检查正文里 `<<< @/…` 引用的文件，以及正文中根路径 Markdown 图片是否存在且已纳入 Git。仅执行 `git add -N` 的占位路径不能通过检查，必须实际暂存文件内容。章节引用的代码、运行输出和配图要随正文一起提交，避免本地构建成功而 CI 缺文件。也可单独运行 `npm run docs:check-snippets`；该检查需在 Git 工作区内执行。
 
 ```sh
 python scripts/generate-tinyllm-figures.py   # 改了配图时

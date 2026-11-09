@@ -1,0 +1,11 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "checkpoints": 3,
+    "current_revision": 2,
+    "same_identity_receipt": 1
+  },
+  "passed": true,
+  "processes": 6,
+  "scenario": "save-identity"
+}

@@ -1,0 +1,6 @@
+R08 | scenario=hard-budget | scripted LLM + graph-flow + real temporary files
+measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
+artifact=a1 kind=transcript bytes=21192 integrity=true
+artifact=a2 kind=tool_output bytes=7180 integrity=true
+stats summary_calls=1 agent_calls=0 reloads=0 reads=0 retrievals=0 stop=context_budget
+checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true

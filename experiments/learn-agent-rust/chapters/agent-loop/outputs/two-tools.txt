@@ -1,0 +1,10 @@
+场景：two-tools；模型：固定规则的脚本模型
+预算：model_turns=3 tool_calls=2
+消息 1 | user | 读取 README.md，告诉我如何启动项目。
+消息 2 | assistant | call_id=read-1 read_file(path="README.md")
+消息 2 | assistant | call_id=read-2 read_file(path="README.md")
+消息 3 | tool | call_id=read-1 status=ok | # 课程练习项目 / 启动命令：cargo run
+消息 4 | tool | call_id=read-2 status=ok | # 课程练习项目 / 启动命令：cargo run
+消息 5 | assistant | README 里的启动命令是：cargo run
+统计：model_turns=2 tool_calls=2 read_attempts=2 read_successes=2 messages=5
+停止：FinalAnswer；fixture_goal_met=true

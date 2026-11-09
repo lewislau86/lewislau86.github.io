@@ -1,0 +1,9 @@
+R07 | scenario=changed | scripted LLM + graph-flow + real skill files
+目录（只含元信息）：
+- rust-review@1.0.0: 审查 Rust 函数的边界条件，适用于代码审查任务。
+- sql-style@1.0.0: 编写与审查 SQL 查询，适用于数据库查询任务。
+bytes catalog=170 all_instructions=671 injected=0 context_before=489 context_after=937
+assistant call_id=call-1 tool=load_skill args={"name":"rust-review"}
+tool_result call_id=call-1 {"error":"stale_skill","ok":false}
+assistant answer=任务未完成：工具返回错误，请检查具体错误码。
+stats loads=1 unique=0 reads=0 writes=0 model_turns=2 stop=tool_error source_unchanged=true review_file_exists=false

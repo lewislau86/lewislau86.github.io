@@ -1,0 +1,2 @@
+show DB
+{"error":"database_error","status":"error"}

@@ -1,0 +1,2 @@
+scenario=drop
+drop_returned=true partial_files=0 result_files=0

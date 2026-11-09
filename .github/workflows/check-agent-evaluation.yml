@@ -1,0 +1,50 @@
+name: Check P03 model evaluation experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/model-evaluation.md"
+      - "docs/public/learn-agent-rust/code/model-evaluation/**"
+      - "docs/public/learn-agent-rust/outputs/p03-*"
+      - "docs/public/learn-agent-rust/figures/p03-*.svg"
+      - "docs/public/learn-agent-rust/model-evaluation-lab.zip"
+      - "scripts/data/learn-agent-rust/p03-results.json"
+      - "scripts/verify-agent-evaluation.py"
+      - "scripts/learn-agent-rust-evaluation-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-evaluation.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/model-evaluation.md"
+      - "docs/public/learn-agent-rust/code/model-evaluation/**"
+      - "docs/public/learn-agent-rust/outputs/p03-*"
+      - "docs/public/learn-agent-rust/figures/p03-*.svg"
+      - "docs/public/learn-agent-rust/model-evaluation-lab.zip"
+      - "scripts/data/learn-agent-rust/p03-results.json"
+      - "scripts/verify-agent-evaluation.py"
+      - "scripts/learn-agent-rust-evaluation-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-evaluation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  evaluation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify local HTTP, message pairing, independent grades and extracted archive
+        run: python scripts/verify-agent-evaluation.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson P03
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/p03-*.svg'

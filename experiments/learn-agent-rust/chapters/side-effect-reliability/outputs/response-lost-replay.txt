@@ -1,0 +1,13 @@
+scenario=response-lost-replay tickets=1 checkpoints=1 attempts=2 apply_commits=2 queries=0
+local_state=completed
+
+$ prepare CLIENT_DB {"tenant":"course","operation_id":"review-42","title":"Review Rust timeout handling"} key 0 none
+{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","operation_id":"review-42","prepared":true}
+$ dispatch CLIENT_DB PROVIDER_DB course review-42 1 provider-after-commit
+{"error":"outcome_unknown"}
+$ dispatch CLIENT_DB PROVIDER_DB course review-42 2 none
+{"receipt":{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","request":{"operation_id":"review-42","tenant":"course","title":"Review Rust timeout handling"},"ticket_id":1},"state":"completed"}
+$ inspect-client CLIENT_DB
+{"actions":1,"checkpoints":1,"completed_actions":1,"outbox":[{"attempts":2,"operation_id":"review-42","receipt":{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","request":{"operation_id":"review-42","tenant":"course","title":"Review Rust timeout handling"},"ticket_id":1},"state":"completed","tenant":"course"}]}
+$ inspect-provider PROVIDER_DB
+{"committed_apply_calls":2,"keys":1,"query_calls":0,"ticket_count":1,"tickets":[{"digest":"e911b39f103a798e7c2f155b875eebc872e6bffb4bd6fe1b4da05be2a0b9d1e0","request":{"operation_id":"review-42","tenant":"course","title":"Review Rust timeout handling"},"ticket_id":1}]}

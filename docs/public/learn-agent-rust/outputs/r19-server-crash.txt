@@ -1,0 +1,6 @@
+scenario=server-crash
+protocol=2025-11-25 sdk=rmcp-3.9.0
+pages=2 registered=8
+remote_calls=1 note_lines=0
+caller_results=transport_error,connection_unavailable
+children=1 reaped=1 remaining=local_status

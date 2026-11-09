@@ -1,0 +1,54 @@
+scenario=request-limit
+request=plan-0 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-10 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-11 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-12 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-13 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-14 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-15 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-2 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-3 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-4 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-5 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-6 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-7 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-8 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-9 kind=Plan Core->Lead deadline=10 state=Pending
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+errors=request_limit
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+after_cleanup plan-0=Cancelled
+after_cleanup plan-1=Cancelled
+after_cleanup plan-10=Cancelled
+after_cleanup plan-11=Cancelled
+after_cleanup plan-12=Cancelled
+after_cleanup plan-13=Cancelled
+after_cleanup plan-14=Cancelled
+after_cleanup plan-15=Cancelled
+after_cleanup plan-2=Cancelled
+after_cleanup plan-3=Cancelled
+after_cleanup plan-4=Cancelled
+after_cleanup plan-5=Cancelled
+after_cleanup plan-6=Cancelled
+after_cleanup plan-7=Cancelled
+after_cleanup plan-8=Cancelled
+after_cleanup plan-9=Cancelled
+escape_absent=true workspace_removed=true

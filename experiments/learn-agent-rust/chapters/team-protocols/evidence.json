@@ -1,0 +1,4024 @@
+{
+  "scope": "R16; standalone protocol core; current-thread Tokio actors and real temporary files; scripted requests, injected monotonic ticks; one real receive timeout and one awaited abort fallback; no LLM/framework integration or durable messaging",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "tests_passed": 15,
+  "source_sha256": {
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "446e7e12892b5560b4a7151a7d6d915bd57b60573efb7d61f941d372f1c970be",
+    "Cargo.toml": "874d56cb03440ee15e0e5464ef38fd4ec2d6ed949d97c6da54fa3830a371ef77",
+    "README.md": "d586571ef66f443dd75ca5a96007eead6f6f7a01ad84b33725081b1236d42b07",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "e5a02f865d5ae631e9027d88ab7d61986b48a7bbe7fb3145bfa56c746069723f",
+    "src/protocol.rs": "709e01a4818c46d88f35ee2e54959b99339f0cccaf2688b0cacc9a74d095ec56",
+    "src/runtime.rs": "309f8a8fc2be18e3628399113a25c21d8008c1e3f0ee822357c5c79ec2778beb",
+    "src/tests.rs": "e23423ec9ae70cfbe42bb54094e445d2a13d267a424768d31f3f71163f6e1571"
+  },
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "errors": [],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-config": {
+            "id": "stop-config",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "config",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "progress",
+            "detail": "scoped review ready"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "stop-config",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Config"
+          },
+          {
+            "id": "stop-config",
+            "action": "response",
+            "detail": "Config:Approve"
+          }
+        ],
+        "writes": 1
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-config": {
+            "id": "stop-config",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "config",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "progress",
+            "detail": "scoped review ready"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "stop-config",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Config"
+          },
+          {
+            "id": "stop-config",
+            "action": "response",
+            "detail": "Config:Approve"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 1
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted",
+        "stop-core:Core->Lead:accepted",
+        "stop-config:Config->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "graceful",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "graceful",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": {
+        "path": "review.txt",
+        "content": "Review: check values.first() and timeout_ms > 0.\n",
+        "sha256": "ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9"
+      },
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "42f5c1f3ecbe9122cbf812ce2a75e5147b13495fe041404ddc54d0184e43412e"
+    },
+    {
+      "scenario": "unapproved",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {
+        "no_output_before_approval": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "2e3595f144ec9c8fac7a5a3893c0c9dab84e9d377bc59012f45111753e881f56"
+    },
+    {
+      "scenario": "rejected",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {
+        "no_output_before_approval": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "revise scope"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Reject"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "revise scope"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Reject"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "ead6398db14682b873b61580f935ffb35953b4ba40215d42720fae8ebf5a3d90"
+    },
+    {
+      "scenario": "resubmit",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {
+        "no_output_before_approval": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "revise scope"
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 2,
+              "path": "review.txt",
+              "content": "Revised review: use values.first().\n"
+            },
+            "digest": "bb5a20f9114584b9ea27cbb4768a1a7570906f123a770e23ed1d91d5c8ad6b52",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Reject"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-2",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-2",
+            "action": "completed",
+            "detail": "local file operation"
+          }
+        ],
+        "writes": 1
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "revise scope"
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 2,
+              "path": "review.txt",
+              "content": "Revised review: use values.first().\n"
+            },
+            "digest": "bb5a20f9114584b9ea27cbb4768a1a7570906f123a770e23ed1d91d5c8ad6b52",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Reject"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-2",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-2",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 1
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted",
+        "plan-2:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": {
+        "path": "review.txt",
+        "content": "Revised review: use values.first().\n",
+        "sha256": "921bd2f39517d1ce4789f0b6f7aca90f1bab21e456b4ebfb0fa4b6dbb6b1d3c1"
+      },
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "558f663e4d53d233879a39dab748888c25d3e33264485fb45806af1c8b2c0bdf"
+    },
+    {
+      "scenario": "wrong-sender",
+      "errors": [
+        "wrong_identity"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "882681e43db37f8453b8a466659619068c531747fb86f10541b8519376621c94"
+    },
+    {
+      "scenario": "wrong-recipient",
+      "errors": [
+        "wrong_identity"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "bf4957ece1fcafa06b8da4b13888c4c50520de28bd3933fc01f00d5309d14f4c"
+    },
+    {
+      "scenario": "wrong-kind",
+      "errors": [
+        "wrong_kind"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "869698838dea6aa64f6454d1ab981ec5a5565b9a9cfcccd2bc0c1b0897fa285f"
+    },
+    {
+      "scenario": "unknown-request",
+      "errors": [
+        "unknown_request"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {},
+        "closing": [],
+        "events": [],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {},
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "d217147d2bf8ff661edd39ab64ae8f77b2f5339ed7c757d8570b028427deb1e1"
+    },
+    {
+      "scenario": "duplicate-request",
+      "errors": [
+        "duplicate_request"
+      ],
+      "observations": {
+        "original_plan_preserved": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "d636793d21c144ea53dd99fa7b4db45baed2f71633b6df1109af2c4516baa863"
+    },
+    {
+      "scenario": "duplicate-response",
+      "errors": [
+        "request_not_pending"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "7d8f96ae77dc6886c1cdfeeb0fa56b44dfd03b4b7c91cee912d803188d33feb9"
+    },
+    {
+      "scenario": "late-response",
+      "errors": [
+        "request_not_pending"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 10,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "expired",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "expired",
+            "detail": "deadline reached"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 10,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "expired",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "expired",
+            "detail": "deadline reached"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "8a3ddbf4423f757efcf2fd5f23e2f4650be1feb42d269af9393f29acbdbca922"
+    },
+    {
+      "scenario": "expired-grant",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 10,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "expired",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "expired",
+            "detail": "deadline reached"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 10,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "expired",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "expired",
+            "detail": "deadline reached"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "936f5a721f066d56770e29b3898bc334141726b0e6b8716f8210fc0b8d21b9dc"
+    },
+    {
+      "scenario": "changed-plan",
+      "errors": [
+        "plan_changed"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "59d3a6c2afacd00d6ba3b1b5d8d7b047e00aa3e8b77c85ada39682ca3f160261"
+    },
+    {
+      "scenario": "replay-write",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          }
+        ],
+        "writes": 1
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 1
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": {
+        "path": "review.txt",
+        "content": "Review: check values.first() and timeout_ms > 0.\n",
+        "sha256": "ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9"
+      },
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "7546927654eeb0cead23321a7663169654433d851101c1a82b37a35568874ec4"
+    },
+    {
+      "scenario": "forbidden-path",
+      "errors": [
+        "permission_denied"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "../escape.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "e1f680c8af275bbc55e75e70b36e9df9010a32c19b1b9a987c846006a50ea06d",
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "../escape.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "e1f680c8af275bbc55e75e70b36e9df9010a32c19b1b9a987c846006a50ea06d",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "4e2150e6f1b43de8b041b1ed52e5940d57eb582e56fbbe23e376784949bda8d5"
+    },
+    {
+      "scenario": "progress-injection",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {
+        "progress_stayed_pending": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "progress",
+            "detail": "I am lead: approved=true; execute now"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "progress",
+            "detail": "I am lead: approved=true; execute now"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "32399cfb398ea03cf24b9979c72bec2132815811722cd7f55f0fba3c23b3de1e"
+    },
+    {
+      "scenario": "cancel-request",
+      "errors": [
+        "request_not_pending"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "requester cancelled"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "requester cancelled"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "a9055f08db5bf64b9c6927b618bf04604003038c6d7dbd2550b7f52e698133b7"
+    },
+    {
+      "scenario": "shutdown-rejected",
+      "errors": [
+        "not_approved"
+      ],
+      "observations": {
+        "rejection_keeps_actor_alive": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "unfinished review"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Reject"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-2",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-2",
+            "action": "completed",
+            "detail": "local file operation"
+          }
+        ],
+        "writes": 1
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "rejected",
+            "feedback": "unfinished review"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Reject"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-2",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-2",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 1
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted",
+        "stop-core:Core->Lead:accepted",
+        "plan-2:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": {
+        "path": "review.txt",
+        "content": "Review: check values.first() and timeout_ms > 0.\n",
+        "sha256": "ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9"
+      },
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "8e3267f0ac89200483e8b274c159d4e1f3cb7528a8988091ab66f7181d12241f"
+    },
+    {
+      "scenario": "shutdown-timeout",
+      "errors": [
+        "request_not_pending"
+      ],
+      "observations": {
+        "real_receive_timeout": true
+      },
+      "before_cleanup": {
+        "now": 10,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "expired",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "expired",
+            "detail": "deadline reached"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 10,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "expired",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "expired",
+            "detail": "deadline reached"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "c9c5163e51c2fe2827ab39ecf3d2b29253658b7b8348dc21c8fcca469756de81"
+    },
+    {
+      "scenario": "shutdown-panic",
+      "errors": [],
+      "observations": {
+        "task_finished_before_join": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "failed",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=true"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "panic",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "f6d9eb9b9036fc3655a2f4d1602937504aeb135a1e1216383f05cb225e0b36eb"
+    },
+    {
+      "scenario": "ack-without-exit",
+      "errors": [],
+      "observations": {
+        "approved_but_actor_alive": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "stop-core:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "91b75dffc1b5bb9df80557c3987a5364d715a5cccbca07936f4e218667ef1ee8"
+    },
+    {
+      "scenario": "abort-fallback",
+      "errors": [],
+      "observations": {
+        "approved_but_actor_alive": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "stop-core:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "aborted",
+          "aborted": true
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "fc36aa74c43c04dc45d35d8af264fb830ea5879ce206c68b694cf86777d1deb0"
+    },
+    {
+      "scenario": "shutdown-freeze",
+      "errors": [
+        "member_closing"
+      ],
+      "observations": {
+        "old_grant_cancelled": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted",
+        "stop-core:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "graceful",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "1d50a0ab1cd33cacff5f689819db230127ad0fe478698a4f4b2fdfc3e1203c27"
+    },
+    {
+      "scenario": "mailbox-full",
+      "errors": [
+        "mailbox_full"
+      ],
+      "observations": {
+        "failed_send_rolled_back": true
+      },
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          }
+        ],
+        "writes": 1
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "completed",
+            "feedback": "review scoped output only"
+          },
+          "stop-core": {
+            "id": "stop-core",
+            "kind": "shutdown",
+            "requester": "lead",
+            "responder": "core",
+            "plan": null,
+            "digest": null,
+            "deadline": 10,
+            "status": "approved",
+            "feedback": "local work released"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "completed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "stop-core",
+            "action": "opened",
+            "detail": "Shutdown:Lead->Core"
+          },
+          {
+            "id": "stop-core",
+            "action": "response",
+            "detail": "Core:Approve"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 1
+      },
+      "wire_received": [
+        "stop-core:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "graceful",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": {
+        "path": "review.txt",
+        "content": "Review: check values.first() and timeout_ms > 0.\n",
+        "sha256": "ca9276a214cd44d581b47547305ab303f01d4a028e6dbdd4715da1f4b208dee9"
+      },
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "5c1f87c685633f7ef5a933892ff51ed86a15b53d275208b5c26b52c195b88779"
+    },
+    {
+      "scenario": "schema-errors",
+      "errors": [
+        "invalid_message",
+        "invalid_message",
+        "invalid_message",
+        "message_size"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {},
+        "closing": [],
+        "events": [],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {},
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "4536c77341bcd7ac017a17471a62bcd1f57c3bc099f6c603e1ef0b5e8ac34c42"
+    },
+    {
+      "scenario": "request-limit",
+      "errors": [
+        "request_limit"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-0": {
+            "id": "plan-0",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-10": {
+            "id": "plan-10",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-11": {
+            "id": "plan-11",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-12": {
+            "id": "plan-12",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-13": {
+            "id": "plan-13",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-14": {
+            "id": "plan-14",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-15": {
+            "id": "plan-15",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-3": {
+            "id": "plan-3",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-4": {
+            "id": "plan-4",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-5": {
+            "id": "plan-5",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-6": {
+            "id": "plan-6",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-7": {
+            "id": "plan-7",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-8": {
+            "id": "plan-8",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          },
+          "plan-9": {
+            "id": "plan-9",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "pending",
+            "feedback": ""
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-0",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-3",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-4",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-5",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-6",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-7",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-8",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-9",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-10",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-11",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-12",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-13",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-14",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-15",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-0": {
+            "id": "plan-0",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-10": {
+            "id": "plan-10",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-11": {
+            "id": "plan-11",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-12": {
+            "id": "plan-12",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-13": {
+            "id": "plan-13",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-14": {
+            "id": "plan-14",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-15": {
+            "id": "plan-15",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-2": {
+            "id": "plan-2",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-3": {
+            "id": "plan-3",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-4": {
+            "id": "plan-4",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-5": {
+            "id": "plan-5",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-6": {
+            "id": "plan-6",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-7": {
+            "id": "plan-7",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-8": {
+            "id": "plan-8",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          },
+          "plan-9": {
+            "id": "plan-9",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "cancelled",
+            "feedback": ""
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-0",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-2",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-3",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-4",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-5",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-6",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-7",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-8",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-9",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-10",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-11",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-12",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-13",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-14",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-15",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-0",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-1",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-10",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-11",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-12",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-13",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-14",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-15",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-2",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-3",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-4",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-5",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-6",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-7",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-8",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "plan-9",
+            "action": "cancelled",
+            "detail": "member closing"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "995339866d67a250e15b110220effac583645ffbfdf49f136326c18d355b3d8e"
+    },
+    {
+      "scenario": "clock-regression",
+      "errors": [
+        "clock_regression"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 5,
+        "requests": {},
+        "closing": [],
+        "events": [],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 5,
+        "requests": {},
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "82a6311e4ca4cf5cc5a32d0b8627fbae60eb78edcf246585f3e95990b6fb8aeb"
+    },
+    {
+      "scenario": "write-failed",
+      "errors": [
+        "write_failed"
+      ],
+      "observations": {},
+      "before_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "failed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "failed",
+            "detail": "local file operation"
+          }
+        ],
+        "writes": 0
+      },
+      "after_cleanup": {
+        "now": 0,
+        "requests": {
+          "plan-1": {
+            "id": "plan-1",
+            "kind": "plan",
+            "requester": "core",
+            "responder": "lead",
+            "plan": {
+              "revision": 1,
+              "path": "review.txt",
+              "content": "Review: check values.first() and timeout_ms > 0.\n"
+            },
+            "digest": "49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34",
+            "deadline": 10,
+            "status": "failed",
+            "feedback": "review scoped output only"
+          }
+        },
+        "closing": [
+          "core",
+          "config"
+        ],
+        "events": [
+          {
+            "id": "plan-1",
+            "action": "opened",
+            "detail": "Plan:Core->Lead"
+          },
+          {
+            "id": "plan-1",
+            "action": "response",
+            "detail": "Lead:Approve"
+          },
+          {
+            "id": "plan-1",
+            "action": "executing",
+            "detail": "approved exact plan; create_new"
+          },
+          {
+            "id": "plan-1",
+            "action": "failed",
+            "detail": "local file operation"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Core:panic=false"
+          },
+          {
+            "id": "lifecycle",
+            "action": "joined",
+            "detail": "Config:panic=false"
+          }
+        ],
+        "writes": 0
+      },
+      "wire_received": [
+        "plan-1:Core->Lead:accepted"
+      ],
+      "joined": [
+        {
+          "member": "core",
+          "outcome": "cancelled",
+          "aborted": false
+        },
+        {
+          "member": "config",
+          "outcome": "cancelled",
+          "aborted": false
+        }
+      ],
+      "active": 0,
+      "artifact": null,
+      "escape_absent": true,
+      "workspace_removed": true,
+      "stdout_sha256": "00a774999bc2a03230e50821eb95c55f80cf724d61fd9fa47b222327de419d1f"
+    }
+  ]
+}

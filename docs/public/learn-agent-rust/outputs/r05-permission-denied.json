@@ -1,0 +1,64 @@
+{
+  "after": {
+    "goal": "读取 README，整理启动说明",
+    "items": [
+      {
+        "content": "读取 README",
+        "id": "read",
+        "status": "pending"
+      },
+      {
+        "content": "整理启动说明",
+        "id": "summarize",
+        "status": "pending"
+      },
+      {
+        "content": "核对说明与原文",
+        "id": "check",
+        "status": "pending"
+      },
+      {
+        "content": "写入 summary.txt",
+        "id": "write",
+        "status": "pending"
+      }
+    ],
+    "revision": 2
+  },
+  "before": {
+    "goal": "读取 README，整理启动说明",
+    "items": [
+      {
+        "content": "读取 README",
+        "id": "read",
+        "status": "pending"
+      },
+      {
+        "content": "整理启动说明",
+        "id": "summarize",
+        "status": "pending"
+      },
+      {
+        "content": "核对说明与原文",
+        "id": "check",
+        "status": "pending"
+      },
+      {
+        "content": "写入 summary.txt",
+        "id": "write",
+        "status": "pending"
+      }
+    ],
+    "revision": 2
+  },
+  "expected_code": "permission_denied",
+  "result": {
+    "call_id": "candidate",
+    "code": "permission_denied",
+    "data": null,
+    "ok": false
+  },
+  "scenario": "permission-denied",
+  "summary_exists": false,
+  "unchanged": true
+}

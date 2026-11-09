@@ -123,32 +123,12 @@
         "link": "/tinyllm/learning-rate"
       },
       {
-        "text": "第 19 章 · 数值精度与混合精度",
-        "link": "/tinyllm/precision"
-      }
-    ]
-  },
-  {
-    "text": "第六部分 · 推理",
-    "collapsed": false,
-    "items": [
-      {
-        "text": "第 25 章 · 自回归生成",
-        "link": "/tinyllm/generation"
-      },
-      {
-        "text": "第 26 章 · 推理效率：prefill、decode 与 KV cache",
-        "link": "/tinyllm/inference-efficiency"
-      }
-    ]
-  },
-  {
-    "text": "规划中（尚未成文）",
-    "collapsed": true,
-    "items": [
-      {
         "text": "第 18 章 · 正则化与泛化",
         "link": "/tinyllm/regularization"
+      },
+      {
+        "text": "第 19 章 · 数值精度与混合精度",
+        "link": "/tinyllm/precision"
       },
       {
         "text": "第 20 章 · 梯度稳定与累积",
@@ -163,56 +143,80 @@
         "link": "/tinyllm/training-evaluation"
       },
       {
-        "text": "第 23 章 · 大规模训练稳定性",
+        "text": "第 23 章 · 超参数与自动化调参",
+        "link": "/tinyllm/hyperparameter-tuning"
+      },
+      {
+        "text": "第 24 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
       },
       {
-        "text": "第 24 章 · 稀疏专家（MoE）",
+        "text": "第 25 章 · 稀疏专家（MoE）",
         "link": "/tinyllm/mixture-of-experts"
+      }
+    ]
+  },
+  {
+    "text": "第六部分 · 推理",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 26 章 · 自回归生成",
+        "link": "/tinyllm/generation"
       },
       {
-        "text": "第 27 章 · 注意力内核与算子融合",
+        "text": "第 27 章 · 推理效率：prefill、decode 与 KV cache",
+        "link": "/tinyllm/inference-efficiency"
+      },
+      {
+        "text": "第 28 章 · 注意力内核与算子融合",
         "link": "/tinyllm/attention-kernels"
       },
       {
-        "text": "第 28 章 · 量化",
+        "text": "第 29 章 · 量化",
         "link": "/tinyllm/quantization"
-      },
+      }
+    ]
+  },
+  {
+    "text": "规划中（尚未成文）",
+    "collapsed": true,
+    "items": [
       {
-        "text": "第 29 章 · 投机解码",
+        "text": "第 30 章 · 投机解码",
         "link": "/tinyllm/speculative-decoding"
       },
       {
-        "text": "第 30 章 · 批处理与调度",
+        "text": "第 31 章 · 批处理与调度",
         "link": "/tinyllm/batching"
       },
       {
-        "text": "第 31 章 · KV 显存管理：分页与前缀缓存",
+        "text": "第 32 章 · KV 显存管理：分页与前缀缓存",
         "link": "/tinyllm/kv-memory"
       },
       {
-        "text": "第 32 章 · 推理优化：逐项对照与推理服务",
+        "text": "第 33 章 · 推理优化：逐项对照与推理服务",
         "link": "/tinyllm/inference-optimization"
       },
       {
-        "text": "第 33 章 · 指令微调",
+        "text": "第 34 章 · 指令微调",
         "link": "/tinyllm/instruction-finetuning"
       },
       {
-        "text": "第 34 章 · 参数高效微调（LoRA）",
+        "text": "第 35 章 · 参数高效微调（LoRA）",
         "link": "/tinyllm/lora-finetuning"
       },
       {
-        "text": "第 35 章 · RLHF：奖励模型与 PPO",
+        "text": "第 36 章 · RLHF：奖励模型与 PPO",
         "link": "/tinyllm/rlhf"
       },
       {
-        "text": "第 36 章 · DPO 与 GRPO",
+        "text": "第 37 章 · DPO 与 GRPO",
         "link": "/tinyllm/preference-alignment"
       },
       {
-        "text": "第 37 章 · Agent 记忆与检索",
-        "link": "/tinyllm/agent-memory"
+        "text": "第 38 章 · LLM 和 Agent 的交互",
+        "link": "/tinyllm/llm-agent-interaction"
       }
     ]
   }

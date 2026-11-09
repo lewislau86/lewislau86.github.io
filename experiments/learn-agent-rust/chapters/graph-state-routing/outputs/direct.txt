@@ -1,0 +1,4 @@
+call=1 before=prepare after=check status=paused
+call=2 before=check after=accept status=completed
+scenario=direct outcome=accepted repairs=1 calls=2
+trace=prepare>check>repair>check>accept

@@ -1524,7 +1524,7 @@ def tinyllm_model_loss():
               f"第 {log['val_step'][-1]} 步时验证损失仍在下降：这个预算下模型还没学够，也还没开始背训练集。")
 
 
-# ---------- 第 25 章：自回归生成 ----------
+# ---------- 第 26 章：自回归生成 ----------
 
 def sampling_truncate():
     """两组六候选概率与 generation.py 第 2 节的 peaked / flat 完全一致（softmax 后的值）。"""
@@ -1637,7 +1637,7 @@ def guided_decoding():
         "掩码保证格式，不保证内容。", 486, body)
 
 
-# ---------- 第 26 章：推理效率 ----------
+# ---------- 第 27 章：推理效率 ----------
 
 def _fmt_bytes(n):
     for unit, size in (("GiB", 2 ** 30), ("MiB", 2 ** 20), ("KiB", 2 ** 10)):
@@ -2264,6 +2264,2351 @@ def lr_warmup():
               "峰值 1e-2 的 WSD：去掉 warmup 后，前一百步左右的训练损失反而更低；大约第 120 步两条线交叉，之后有 warmup 的一路领先，最终验证损失也更低（右侧菱形是 3 个种子的平均）。")
 
 
+# ---------- 第 18 章：正则化与泛化 ----------
+
+def _reg_log():
+    src = DATA / "tinyllm-regularization-log.json"
+    if not src.exists():
+        print("skip regularization figures: run scripts/build-tinyllm-code.py regularization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def reg_overfit():
+    """300 首、不加正则化（种子 0）：训练损失一路降，验证损失第 100 步见底后回升。"""
+    log = _reg_log()
+    if log is None:
+        return
+    r = log["runs"]["无正则化|0"]
+    steps, tr, va = r["step"], r["train"], r["val"]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(steps, tr, color=BLUE, lw=2.4, marker="o", ms=3.5, label="训练集（300 首，eval 模式）")
+    ax.plot(steps, va, color=RED, lw=2.4, marker="o", ms=3.5, label="验证集（291 首，训练时没见过）")
+    ax.fill_between(steps, tr, va, color=RED, alpha=0.07, lw=0)
+    b = steps.index(r["best_step"])
+    ax.scatter([steps[b]], [va[b]], s=110, facecolor="none", edgecolor=RED, lw=2, zorder=5)
+    ax.annotate(f"验证损失最低：第 {steps[b]} 步 {va[b]:.3f}", xy=(steps[b], va[b]), xytext=(steps[b] + 15, va[b] + 0.75),
+                color=RED, fontsize=12, arrowprops=dict(arrowstyle="->", color=RED, lw=1.3))
+    ax.annotate("", xy=(steps[-1] + 6, tr[-1]), xytext=(steps[-1] + 6, va[-1]),
+                arrowprops=dict(arrowstyle="<->", color=GRAY, lw=1.3))
+    ax.text(steps[-1] + 10, (tr[-1] + va[-1]) / 2, f"差\n{va[-1] - tr[-1]:.2f}", color=GRAY, fontsize=12, va="center")
+    ax.set_xlabel("训练步数（每步 16 段 × 64 个 token）")
+    ax.set_ylabel("交叉熵（nats / token）")
+    ax.set_xlim(0, steps[-1] + 30)
+    ax.legend(loc="lower left", fontsize=11)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-overfit.svg", "300 首诗上的过拟合",
+              f"不加正则化、在 300 首诗上训练（种子 0）：训练损失从 {tr[0]:.2f} 一路降到 {tr[-1]:.2f}；验证损失在第 {steps[b]} 步见底（{va[b]:.3f}），"
+              f"之后一路回升到 {va[-1]:.2f}，两者的差从 {va[0] - tr[0]:.2f} 拉大到 {va[-1] - tr[-1]:.2f}。")
+
+
+def reg_data_size():
+    """同一个模型、同样 300 步，训练集 300/600/1200/5419 首（种子 0）的验证损失。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    full = log["full"]
+    picks = [("300 首", "无正则化|0", RED), ("600 首", "600 首|0", ORANGE), ("1200 首", "1200 首|0", TEAL),
+             (f"全部 {full} 首", f"{full} 首|0", BLUE)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    notes = []
+    for label, key, color in picks:
+        r = runs[key]
+        ax.plot(r["step"], r["val"], color=color, lw=2.4, marker="o", ms=3.5, label=label)
+        b = r["step"].index(r["best_step"])
+        ax.scatter([r["step"][b]], [r["val"][b]], s=110, facecolor="none", edgecolor=color, lw=2, zorder=5)
+        notes.append(f"{label}最低 {r['val'][b]:.2f}（第 {r['best_step']} 步）")
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("验证损失（种子 0；圆圈是最低点）")
+    ax.legend(loc="lower left", fontsize=11, title="训练集", title_fontsize=11)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-data-size.svg", "训练集大小与验证损失",
+              "同一个模型、同样 300 步，只改训练集大小（种子 0）：" + "；".join(notes) +
+              "。数据越多，验证损失越低、见底越晚；全部数据在 300 步内一直在下降。")
+
+
+def reg_weight_decay():
+    """左：不同 weight decay 的验证损失（种子 0）；右：矩阵权重的 L2 范数。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    picks = [("0", "无正则化|0", GRAY), ("0.1", "weight_decay 0.1|0", BLUE), ("1", "weight_decay 1|0", TEAL),
+             ("3", "weight_decay 3|0", RED), ("10", "weight_decay 10|0", PURPLE)]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.35, 1]})
+    for label, key, color in picks:
+        r = runs[key]
+        a1.plot(r["step"], r["val"], color=color, lw=2.3, marker="o", ms=3, label=f"weight_decay={label}")
+        a2.plot(r["step"], r["norm"], color=color, lw=2.3, label=label)
+        a2.text(r["step"][-1] + 6, r["norm"][-1], f"{r['norm'][-1]:.1f}", color=color, fontsize=11, va="center")
+    a1.set_xlabel("训练步数")
+    a1.set_ylabel("验证损失（种子 0）")
+    a1.set_title("太小没作用，太大学不动", fontsize=12.5)
+    a1.legend(fontsize=10, loc="upper center")
+    a1.grid(alpha=0.25)
+    a2.set_xlabel("训练步数")
+    a2.set_ylabel("矩阵权重的 L2 范数")
+    a2.set_title("weight decay 把权重往 0 拉", fontsize=12.5)
+    a2.set_xlim(0, runs["无正则化|0"]["step"][-1] + 40)
+    a2.grid(alpha=0.25)
+    norms = "、".join(f"{label} → {runs[key]['norm'][-1]:.1f}" for label, key, _ in picks)
+    save_plot(fig, "reg-weight-decay.svg", "weight decay 的强度：验证损失与权重范数",
+              "左：300 首诗、种子 0。weight_decay=0 和 0.1 的验证损失几乎重合，第 100 步后一路回升；1 推迟并压低了回升；3 的验证损失一直在降，最好；"
+              f"10 压得太狠，最低点反而比 3 高。右：第 300 步矩阵权重的 L2 范数（{norms}）。")
+
+
+def reg_dropout():
+    """无正则化与 dropout 0.1、0.3（种子 0）：实线验证、虚线训练（eval 模式）。"""
+    log = _reg_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    picks = [("不加 dropout", "无正则化|0", GRAY), ("dropout 0.1", "dropout 0.1|0", BLUE), ("dropout 0.3", "dropout 0.3|0", RED)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    for label, key, color in picks:
+        r = runs[key]
+        ax.plot(r["step"], r["val"], color=color, lw=2.4, marker="o", ms=3.5, label=f"{label}：验证")
+        ax.plot(r["step"], r["train"], color=color, lw=1.8, ls="--", label=f"{label}：训练（eval 模式）")
+        b = r["step"].index(r["best_step"])
+        ax.scatter([r["step"][b]], [r["val"][b]], s=110, facecolor="none", edgecolor=color, lw=2, zorder=5)
+    r0, r3 = runs["无正则化|0"], runs["dropout 0.3|0"]
+    ax.set_xlabel("训练步数")
+    ax.set_ylabel("交叉熵（种子 0；圆圈是验证最低点）")
+    ax.legend(fontsize=10.5, loc="lower left", ncol=3)
+    ax.set_ylim(2.2, 6.6)
+    ax.grid(alpha=0.25)
+    save_plot(fig, "reg-dropout.svg", "dropout 对训练与验证损失的影响",
+              f"300 首诗、种子 0。不加 dropout 时验证损失第 {r0['best_step']} 步见底（{r0['best_val']:.3f}）；dropout 0.3 让训练损失降得更慢，"
+              f"验证损失推迟到第 {r3['best_step']} 步才见底，最低点 {r3['best_val']:.3f} 更低，之后的回升也平缓得多。")
+
+
+def reg_compare():
+    """左：300 首上各种设置的测试损失（3 个种子，另有两个单种子的数据量参照）；右：全部数据上。"""
+    log = _reg_log()
+    if log is None:
+        return
+    s, full = log["summary"], log["full_summary"]
+    rows = [("无正则化", s["300 首"], GRAY), ("weight_decay 0.1", s["weight_decay 0.1"], BLUE),
+            ("label smoothing 0.1", s["label smoothing 0.1"], ORANGE), ("dropout 0.3", s["dropout 0.3"], PURPLE),
+            ("weight_decay 3", s["weight_decay 3"], RED), ("换成 600 首（单种子）", s["600 首"], TEAL),
+            ("换成 1200 首（单种子）", s["1200 首"], TEAL)]
+    frows = [("无正则化", full["无正则化"], GRAY), ("dropout 0.1", full["dropout 0.1"], PURPLE), ("weight_decay 3", full["weight_decay 3"], RED)]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.6), layout="constrained", gridspec_kw={"width_ratios": [1.5, 1]})
+    for ax, data in ((a1, rows), (a2, frows)):
+        for i, (name, vals, color) in enumerate(data):
+            m = sum(vals) / len(vals)
+            if len(vals) > 1:
+                ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+                ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+                ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+            else:
+                ax.scatter([m], [i], facecolor="white", edgecolor=color, s=90, marker="D", lw=2, zorder=4)
+            ax.text(max(vals) + 0.022, i, f"{m:.3f}", va="center", fontsize=11, color=color)
+        ax.set_yticks(range(len(data)), [d[0] for d in data], fontsize=11)
+        ax.invert_yaxis()
+        ax.axvline(sum(data[0][1]) / len(data[0][1]), color=GRAY, ls="--", lw=1.2)
+        ax.grid(alpha=0.25, axis="x")
+    a1.set_title("只有 300 首诗（训练集过 20 遍）", fontsize=12.5)
+    a1.set_xlabel("测试损失（验证损失最低那一步的参数）")
+    a2.set_title(f"全部 {log['full']} 首（只过约 1 遍）", fontsize=12.5)
+    a2.set_xlabel("测试损失")
+    lo, hi = a2.get_xlim()
+    a2.set_xlim(lo, hi + 0.04)
+    lo, hi = a1.get_xlim()
+    a1.set_xlim(lo, hi + 0.05)
+    mean = lambda v: sum(v) / len(v)
+    save_plot(fig, "reg-compare.svg", "正则化对照：300 首与全部数据",
+              f"左：300 首诗上，3 个种子的测试损失（菱形是平均，横条是范围）。无正则化 {mean(s['300 首']):.3f}；weight_decay 0.1 与 label smoothing 几乎没变化（都是 {mean(s['weight_decay 0.1']):.3f}）；"
+              f"dropout 0.3 降到 {mean(s['dropout 0.3']):.3f}；weight_decay 3 最好，{mean(s['weight_decay 3']):.3f}，和训练集换成 600 首（{s['600 首'][0]:.3f}，单种子）相当；换成 1200 首是 {s['1200 首'][0]:.3f}。"
+              f"右：全部数据上，无正则化 {mean(full['无正则化']):.3f} 最好，dropout 0.1 变差到 {mean(full['dropout 0.1']):.3f}，weight_decay 3 变差到 {mean(full['weight_decay 3']):.3f}。")
+
+
+def reg_dropout_positions():
+    """dropout 放在哪三个位置，以及 train / eval 两种模式。"""
+    body = text(480, 40, "TinyLLM 里的三处 dropout，以及它在训练和评估时的不同行为", 22, weight="bold")
+    sx = 150                                   # 残差流的 x
+    body += text(sx, 84, "token ID", 17)
+    body += arrow(sx, 92, sx, 112)
+    body += cbox(sx - 90, 114, 180, 40, BLUE) + text(sx, 140, "词嵌入", 17, BLUE, "bold")
+    body += arrow(sx, 154, sx, 172)
+    body += cbox(sx - 90, 174, 180, 36, RED, dash=True) + text(sx, 198, "③ Dropout", 16, RED, "bold")
+    plus2 = 562
+    body += f'<path d="M{sx} 210 V{plus2 - 15}" stroke="{INK}" stroke-width="6" fill="none" opacity="0.18"/>'
+    body += text(sx - 14, 300, "残差流", 14, GRAY, anchor="end")
+    bx = 380
+    for y, name, color, inner in [(232, "注意力", BLUE, True), (422, "SwiGLU", TEAL, False)]:
+        body += path(f"M{sx} {y + 10} H{bx - 92}", GRAY, 2)
+        body += cbox(bx - 90, y - 8, 180, 34, PURPLE) + text(bx, y + 15, "RMSNorm", 15, PURPLE, "bold")
+        body += arrow(bx, y + 26, bx, y + 40, GRAY, 2)
+        body += cbox(bx - 110, y + 42, 220, 44, color) + text(bx, y + 70, name, 17, color, "bold")
+        if inner:
+            body += text(bx + 118, y + 60, "① 注意力权重", 14, RED, "bold", "start")
+            body += text(bx + 118, y + 80, "softmax 之后随机丢掉一部分", 13, GRAY, anchor="start")
+        body += arrow(bx, y + 86, bx, y + 98, GRAY, 2)
+        body += cbox(bx - 90, y + 100, 180, 32, RED, dash=True) + text(bx, y + 122, "② Dropout", 15, RED, "bold")
+        body += path(f"M{bx} {y + 132} V{y + 140} H{sx + 20}", color, 2.5)
+        body += circle(sx, y + 140, 15) + text(sx, y + 147, "+", 21, weight="bold")
+    body += arrow(sx, plus2 + 15, sx, plus2 + 40, GRAY)
+    body += text(sx, plus2 + 62, "最终 RMSNorm → logits", 15)
+    body += f'<line x1="610" y1="70" x2="610" y2="620" stroke="#e2e8f0" stroke-width="2"/>'
+    # 右：两种模式
+    rx = 640
+    body += text(785, 92, "model.train()：每次前向重新抽一个掩码", 16, RED, "bold")
+    vals = ["x₁", "x₂", "x₃", "x₄", "x₅"]
+    keep = [True, False, True, True, False]
+    for i, (v, k) in enumerate(zip(vals, keep)):
+        x = rx + 12 + i * 56
+        body += box(x, 112, 48, 38, "#ffffff", "#94a3b8") + text(x + 24, 138, v, 17)
+        body += arrow(x + 24, 152, x + 24, 176, GRAY, 1.6)
+        body += box(x, 178, 48, 38, "#fef2f2" if not k else "#ffffff", RED if not k else "#94a3b8") + text(x + 24, 204, "×1.43" if k else "0", 15, INK if k else RED)
+    body += text(785, 244, "以概率 p 置零，留下的乘 1/(1−p)", 15)
+    body += text(785, 268, "p = 0.3 时 1/(1−p) ≈ 1.43，平均值不变", 15, GRAY)
+    body += text(785, 330, "model.eval()：原样通过", 16, TEAL, "bold")
+    for i, v in enumerate(vals):
+        x = rx + 12 + i * 56
+        body += box(x, 350, 48, 38, "#ffffff", "#94a3b8") + text(x + 24, 376, v, 17)
+        body += arrow(x + 24, 390, x + 24, 414, GRAY, 1.6)
+        body += box(x, 416, 48, 38, "#ecfdf5", TEAL) + text(x + 24, 442, v, 17)
+    body += text(785, 484, "评估、生成都要先调 model.eval()，", 15)
+    body += text(785, 508, "否则每次结果都不一样，而且偏差", 15)
+    svg("reg-dropout-positions.svg", "dropout 的位置和两种模式",
+        "左：TinyLLM 的三处 dropout。① 注意力权重在 softmax 之后随机丢掉一部分；② 注意力和 SwiGLU 的输出在加回残差流之前各过一次 dropout；"
+        "③ 词嵌入之后过一次。右：model.train() 时每个数以概率 p 置零，留下的乘 1/(1−p)，p=0.3 时约乘 1.43；model.eval() 时原样通过。", 650, body)
+
+
+# ---------- 第 20 章：梯度稳定与累积 ----------
+
+def _grad_log():
+    src = DATA / "tinyllm-gradient-stability-log.json"
+    if not src.exists():
+        print("skip gradient-stability figures: run scripts/build-tinyllm-code.py gradient-stability to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def grad_norm_trace():
+    """基线（裁到 1.0）3 个种子的裁剪前全局梯度范数。"""
+    log = _grad_log()
+    if log is None:
+        return
+    runs = log["runs"]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for seed, color, lw, alpha in ((1, GRAY, 1.2, 0.55), (2, GRAY, 1.2, 0.55), (0, BLUE, 1.8, 1.0)):
+        n = np.array(runs[f"裁到 1.0|{seed}"]["grad_norm"])
+        x = np.arange(1, len(n) + 1)
+        ax.plot(x, n, color=color, lw=lw, alpha=alpha, label={0: "种子 0", 1: "种子 1、2"}.get(seed))
+        if seed == 0:
+            hit = n > 1.0
+            ax.scatter(x[hit], n[hit], color=RED, s=16, zorder=4, label=f"种子 0 被裁剪的步（{hit.sum()}/{len(n)}）")
+    ax.axhline(1.0, color=RED, ls="--", lw=1.4)
+    ax.text(3, 1.05, "阈值 1.0", color=RED, fontsize=11, va="bottom")
+    ax.set_xlabel("优化器步数")
+    ax.set_ylabel("裁剪前的全局梯度范数")
+    ax.set_xlim(0, len(n) + 1)
+    ax.legend(fontsize=10.5, loc="upper left", ncol=3)
+    ax.grid(alpha=0.25)
+    n0 = runs["裁到 1.0|0"]["grad_norm"]
+    save_plot(fig, "grad-norm-trace.svg", "基线训练中的全局梯度范数",
+              f"代理模型、AdamW、学习率 3e-3、裁到 1.0。种子 0 的梯度范数从第 1 步的 {n0[0]:.2f} 很快降到 0.5 左右，后半程又逐渐变大、抖动加剧；"
+              f"240 步里有 {sum(v > 1.0 for v in n0)} 步超过阈值 1.0 被裁剪，多数集中在后半程。另外两个种子走势相同。")
+
+
+def grad_clip_geometry():
+    """按全局范数裁剪与按值裁剪的二维示意。"""
+    body = text(480, 40, "同一个梯度，两种裁剪方式（二维示意）", 22, weight="bold")
+    for k, (cx, title, color) in enumerate([(250, "按全局范数裁剪：整体缩小，方向不变", BLUE), (710, "按值裁剪：逐个数截断，方向改变", ORANGE)]):
+        ox, oy, u = cx - 150, 400, 60          # 原点与单位长度
+        body += text(cx, 82, title, 17, color, "bold")
+        body += f'<line x1="{ox - 20}" y1="{oy}" x2="{ox + 300}" y2="{oy}" stroke="#cbd5e1" stroke-width="1.5"/>'
+        body += f'<line x1="{ox}" y1="{oy + 20}" x2="{ox}" y2="{oy - 280}" stroke="#cbd5e1" stroke-width="1.5"/>'
+        if k == 0:
+            body += f'<path d="M{ox + 2 * u} {oy} A{2 * u} {2 * u} 0 0 0 {ox} {oy - 2 * u}" fill="none" stroke="{color}" stroke-width="1.6" stroke-dasharray="6 5"/>'
+            body += text(ox + 2 * u + 8, oy - 12, "半径 = 阈值", 13, color, anchor="start")
+            gx, gy = 4 * u, 3 * u                       # 原梯度 (4, 3)，范数 5
+            cx2, cy2 = gx * 2 / 5, gy * 2 / 5            # 裁到范数 2
+        else:
+            body += f'<rect x="{ox}" y="{oy - 1.2 * u}" width="{1.2 * u}" height="{1.2 * u}" fill="{SOFT[ORANGE]}" stroke="{color}" stroke-width="1.6" stroke-dasharray="6 5"/>'
+            body += text(ox + 1.2 * u + 8, oy - 1.2 * u + 4, "每个数限制在 ±阈值", 13, color, anchor="start")
+            gx, gy = 4 * u, 1 * u                       # 原梯度 (4, 1)
+            cx2, cy2 = 1.2 * u, 1 * u                    # 第一维截断到 1.2，第二维不变
+        body += arrow(ox, oy, ox + gx, oy - gy, GRAY, 3)
+        body += text(ox + gx + 6, oy - gy - 6, "原梯度", 14, GRAY, anchor="start")
+        body += arrow(ox, oy, ox + cx2, oy - cy2, color, 4)
+        body += text(ox + cx2 + 4, oy - cy2 + 24, "裁剪后", 14, color, "bold", "start")
+    body += text(250, 440, "所有分量乘同一个系数 min(1, 阈值/‖g‖)", 15)
+    body += text(710, 440, "大的分量被压扁，小的不动，方向偏向小分量", 15)
+    svg("grad-clip-geometry.svg", "按全局范数裁剪与按值裁剪",
+        "左：按全局范数裁剪，梯度向量整体缩短到阈值半径的圆上，方向不变。右：按值裁剪，每个分量被限制在正负阈值之内，"
+        "大的分量被压扁，小的不变，裁剪后的方向偏离原梯度。", 470, body)
+
+
+def grad_spike():
+    """第 120 步梯度放大 1000 倍：训练损失与每步更新量（种子 0）。"""
+    log = _grad_log()
+    if log is None:
+        return
+    runs, s0 = log["runs"], log["spike_step"]
+    picks = [("没有尖峰（不裁剪）", "不裁剪|0", GRAY), ("尖峰 ×1000，不裁剪", "尖峰 ×1000，不裁剪|0", RED),
+             ("尖峰 ×1000，不裁剪，β2=0.95", "尖峰 ×1000，不裁剪，β2=0.95|0", ORANGE), ("尖峰 ×1000，裁到 1.0", "尖峰 ×1000，裁到 1.0|0", BLUE)]
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 6.2), layout="constrained", sharex=True, gridspec_kw={"height_ratios": [1.3, 1]})
+    k = 9
+    for label, key, color in picks:
+        r = runs[key]
+        loss = np.convolve(r["loss"], np.ones(k) / k, mode="valid")
+        a1.plot(np.arange(len(loss)) + k // 2 + 1, loss, color=color, lw=2.0, label=f"{label}（验证 {r['val']:.3f}）",
+                ls="--" if "裁到" in label else "-")
+        a2.plot(np.arange(1, len(r["update"]) + 1), r["update"], color=color, lw=1.6, ls="--" if "裁到" in label else "-")
+    for ax in (a1, a2):
+        ax.axvline(s0 + 1, color=RED, lw=1, alpha=0.5)
+        ax.grid(alpha=0.25)
+    a1.text(s0 - 2, 6.6, f"第 {s0 + 1} 步：梯度放大 1000 倍", color=RED, fontsize=11, ha="right")
+    a1.set_ylabel("训练损失（9 步滑动平均）")
+    a1.set_ylim(4.4, 7.2)
+    a1.legend(fontsize=10, loc="upper right")
+    a2.set_yscale("log")
+    a2.set_ylabel("每步更新量 ‖Δθ‖")
+    a2.set_xlabel("优化器步数")
+    sp = runs["尖峰 ×1000，不裁剪|0"]["update"]
+    save_plot(fig, "grad-spike.svg", "一次梯度尖峰对 AdamW 的影响",
+              f"种子 0，第 {s0 + 1} 步把梯度放大 1000 倍。不裁剪时，尖峰后约 10 步的更新量先变大（平均 {sum(sp[s0 + 1:s0 + 11]) / 10:.2f}，正常约 0.30），"
+              f"损失回升；之后更新量掉到 {sum(sp[200:]) / 40:.3f} 左右，训练几乎停住，验证损失停在 {runs['尖峰 ×1000，不裁剪|0']['val']:.3f}。"
+              f"β2=0.95 恢复得快一些（{runs['尖峰 ×1000，不裁剪，β2=0.95|0']['val']:.3f}）。裁到 1.0 时尖峰几乎没有影响（{runs['尖峰 ×1000，裁到 1.0|0']['val']:.3f}），和没有尖峰的曲线重合。")
+
+
+def grad_compare():
+    """3 个种子的对照：裁剪阈值，以及梯度尖峰。"""
+    log = _grad_log()
+    if log is None:
+        return
+    s = log["summary"]
+    rows = [("不裁剪", s["不裁剪"], GRAY), ("裁到 1.0（第 12 章）", s["裁到 1.0"], BLUE), ("裁到 0.01", s["裁到 0.01"], TEAL),
+            ("尖峰 ×1000，不裁剪", s["尖峰 ×1000，不裁剪"], RED), ("尖峰 ×1000，裁到 1.0", s["尖峰 ×1000，裁到 1.0"], BLUE)]
+    fig, ax = plt.subplots(figsize=(10, 3.8), layout="constrained")
+    for i, (name, vals, color) in enumerate(rows):
+        m = sum(vals) / len(vals)
+        ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+        ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+        ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+        ax.text(max(vals) + 0.015, i, f"{m:.3f}", va="center", fontsize=11, color=color)
+    ax.axhline(2.5, color="#cbd5e1", lw=1)
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=11)
+    ax.invert_yaxis()
+    ax.set_xlabel("最终验证损失（3 个种子；菱形是平均，横条是范围）")
+    ax.grid(alpha=0.25, axis="x")
+    lo, hi = ax.get_xlim()
+    ax.set_xlim(lo, hi + 0.06)
+    mean = lambda v: sum(v) / len(v)
+    save_plot(fig, "grad-compare.svg", "裁剪阈值与梯度尖峰的对照",
+              f"上面三行：不裁剪 {mean(s['不裁剪']):.3f}、裁到 1.0 {mean(s['裁到 1.0']):.3f}、裁到 0.01 {mean(s['裁到 0.01']):.3f}，范围互相重叠，阈值改一百倍几乎没有影响。"
+              f"下面两行：第 {log['spike_step'] + 1} 步梯度放大 1000 倍，不裁剪变差到 {mean(s['尖峰 ×1000，不裁剪']):.3f}，裁到 1.0 是 {mean(s['尖峰 ×1000，裁到 1.0']):.3f}，和没有尖峰时一样。")
+
+
+def grad_accum_loop():
+    """一个优化器步里各个调用的顺序（含梯度累积与 FP16）。"""
+    body = text(480, 40, "一个优化器步：先累积，再缩回、裁剪、更新", 22, weight="bold")
+    y = 78
+    body += cbox(330, y, 300, 40, GRAY) + mtext(480, y + 26, "optimizer.zero_grad()", 16)
+    body += text(660, y + 26, "每个优化器步一次", 14, GRAY, anchor="start")
+    body += arrow(480, y + 40, 480, y + 66, GRAY)
+    # 累积循环
+    body += f'<rect x="200" y="{y + 68}" width="560" height="196" rx="14" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(220, y + 92, "重复 accum 次（每个 micro-batch）", 15, BLUE, "bold", "start")
+    body += cbox(330, y + 104, 300, 38, BLUE) + text(480, y + 129, "前向：算这个 micro-batch 的损失", 15)
+    body += arrow(480, y + 142, 480, y + 158, GRAY, 2)
+    body += cbox(330, y + 160, 300, 38, BLUE) + mtext(480, y + 185, "(loss / accum).backward()", 15)
+    body += text(640, y + 185, "FP16：scaler.scale(…)", 13, ORANGE, anchor="start")
+    body += arrow(480, y + 198, 480, y + 214, GRAY, 2)
+    body += text(480, y + 236, "梯度在 .grad 里累加；这里不裁剪、不更新、不清零", 15, RED)
+    body += arrow(480, y + 264, 480, y + 290, GRAY)
+    steps = [("scaler.unscale_(optimizer)", "只有 FP16：先缩回真实大小，再检查 inf/nan", ORANGE, True),
+             ("clip_grad_norm_(params, 1.0)", "对累积完的梯度裁一次", INK, False),
+             ("optimizer.step()", "FP16 用 scaler.step(optimizer)，有 inf/nan 就跳过", INK, False),
+             ("scheduler.step()", "每个优化器步一次，不是每个 micro-batch", INK, False)]
+    yy = y + 292
+    for i, (code, note, color, dash) in enumerate(steps):
+        body += cbox(300, yy, 360, 38, ORANGE if dash else GRAY, dash=dash) + mtext(480, yy + 25, code, 15, color)
+        body += text(680, yy + 25, note, 13.5, ORANGE if dash else GRAY, anchor="start")
+        if i < len(steps) - 1:
+            body += arrow(480, yy + 38, 480, yy + 54, GRAY, 2)
+        yy += 56
+    svg("grad-accum-loop.svg", "一个优化器步里的调用顺序",
+        "一个优化器步从 zero_grad 开始；然后对每个 micro-batch 做前向和 (loss / accum).backward()，梯度在 .grad 里累加，期间不裁剪、不更新、不清零；"
+        "累积完以后，FP16 先 unscale_ 缩回真实大小，再对累积完的梯度裁剪一次，然后 optimizer.step()（FP16 用 scaler.step，遇到 inf/nan 跳过），最后 scheduler.step()。", yy + 10, body, width=1000)
+
+
+def grad_fp16_hist():
+    """训练好的模型上一个 batch 的梯度绝对值分布，对照 FP16 能表示的范围。"""
+    log = _grad_log()
+    if log is None:
+        return
+    h = np.array(log["hist"])
+    edges = np.linspace(-12, 0, len(h) + 1)
+    centers = (edges[:-1] + edges[1:]) / 2
+    w = edges[1] - edges[0]
+    shift = np.log10(2.0 ** 16)
+    lo_n, lo_s = np.log10(log["fp16"]["smallest_normal"]), np.log10(log["fp16"]["smallest_subnormal"])
+    hi = np.log10(65504)
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    ax.axvspan(-12.5, lo_s, color=RED, alpha=0.08)
+    ax.axvspan(lo_s, lo_n, color=ORANGE, alpha=0.10)
+    ax.axvspan(hi, 10, color=RED, alpha=0.08)
+    ax.bar(centers, h / h.sum() * 100, width=w * 0.95, color=GRAY, alpha=0.75, label="原始梯度")
+    ax.bar(centers + shift, h / h.sum() * 100, width=w * 0.95, color=BLUE, alpha=0.55, label="乘以 2^16 之后")
+    top = (h / h.sum() * 100).max() * 1.25
+    ax.text(lo_s - 0.15, top * 0.85, "变成 0", color=RED, fontsize=11, ha="right")
+    ax.text((lo_s + lo_n) / 2, top * 0.85, "次正规数\n（有效位变少）", color=ORANGE, fontsize=10.5, ha="center")
+    ax.text(hi + 0.15, top * 0.85, "溢出\n成 inf", color=RED, fontsize=11, ha="left")
+    ax.set_xlim(-12.5, 6.5)
+    ax.set_ylim(0, top)
+    ax.set_xlabel("梯度绝对值（log10）")
+    ax.set_ylabel("占全部参数的比例（%）")
+    ax.legend(fontsize=11, loc="upper left")
+    ax.grid(alpha=0.25)
+    below = h[centers < lo_n].sum() / h.sum()
+    save_plot(fig, "grad-fp16-hist.svg", "梯度大小与 FP16 能表示的范围",
+              f"灰色是训练好的代理模型在一个 batch 上的参数梯度（FP32），约 {below:.0%} 落在 FP16 的最小正规数 6.1e-5 以下，极少数小于 6e-8 会直接变成 0；"
+              "蓝色是放大 2^16 倍之后，整体右移约 4.8 个数量级，几乎全部进入正规数范围，离上限 65504 还有距离。")
+
+
+# ---------- 第 21 章：训练循环与检查点 ----------
+
+def _loop_log():
+    src = DATA / "tinyllm-training-loop-log.json"
+    if not src.exists():
+        print("skip training-loop figures: run scripts/build-tinyllm-code.py training-loop to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def loop_structure():
+    """训练循环的骨架：epoch 外层、batch 内层、每步的六个调用，以及日志、评估、保存的节奏。"""
+    body = text(500, 40, "可以随时中断、随时恢复的训练循环", 22, weight="bold")
+    body += cbox(60, 70, 880, 54, PURPLE) + text(500, 94, "progress = {step, epoch, batch_in_epoch}", 16, PURPLE, "bold")
+    body += text(500, 115, "新训练从 0 开始；恢复时从检查点读出来", 13.5, GRAY)
+    body += arrow(500, 124, 500, 146, GRAY)
+    body += f'<rect x="60" y="148" width="880" height="452" rx="16" fill="#ffffff" stroke="{TEAL}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(80, 174, "while step < until：每个 epoch", 15, TEAL, "bold", "start")
+    body += cbox(90, 186, 820, 38, TEAL) + mtext(500, 211, "sampler.set_epoch(epoch, start=batch_in_epoch * BATCH)", 15, TEAL)
+    body += f'<rect x="90" y="238" width="820" height="304" rx="14" fill="{SOFT[BLUE]}" stroke="{BLUE}" stroke-width="2" stroke-dasharray="7 5"/>'
+    body += text(108, 262, "for x, y in loader：每个 batch", 15, BLUE, "bold", "start")
+    calls = ["zero_grad", "前向", "backward", "裁剪", "optimizer.step", "scheduler.step"]
+    w, gap, x0 = 118, 14, 112
+    for i, c in enumerate(calls):
+        x = x0 + i * (w + gap)
+        body += cbox(x, 278, w, 44, BLUE) + (mtext(x + w / 2, 305, c, 13) if c.isascii() else text(x + w / 2, 306, c, 14.5, INK, "bold"))
+        if i < len(calls) - 1:
+            body += arrow(x + w, 300, x + w + gap - 1, 300, GRAY, 2)
+    body += text(500, 348, "step += 1，batch_in_epoch += 1；损失先存成张量", 15)
+    rows = [("每 log_every 步", "取一次 .item() 打印：GPU 上 .item() 会让 CPU 停下来等 GPU 算完", GRAY),
+            ("每 eval_every 步", "model.eval() 测验证损失，再切回 model.train()", GRAY),
+            ("每 save_every 步", "保存完整检查点：先写 .tmp，再 os.replace；只留最新几个", ORANGE),
+            ("step == until", "返回；下一次从 progress 接着来", RED)]
+    yy = 372
+    for k, (when, what, color) in enumerate(rows):
+        body += box(120, yy, 760, 36, "#ffffff", "#cbd5e1") + text(136, yy + 24, when, 14.5, color, "bold", "start")
+        body += text(290, yy + 24, what, 14, INK, anchor="start")
+        yy += 42
+    body += text(500, 572, "这个 epoch 的 batch 用完：epoch += 1，batch_in_epoch = 0", 15, TEAL)
+    svg("loop-structure.svg", "可以随时中断和恢复的训练循环",
+        "最外面是 progress（step、epoch、batch_in_epoch）。每个 epoch 先 sampler.set_epoch(epoch, start)，跳过这个 epoch 已经用过的样本；"
+        "每个 batch 依次 zero_grad、前向、backward、裁剪、optimizer.step、scheduler.step，然后推进 progress。"
+        "每隔若干步取一次 .item() 打印日志、测一次验证损失、保存一次完整检查点（先写临时文件再替换）；"
+        "到达 until 就返回，下次从 progress 接着来。一个 epoch 用完后 epoch 加一、batch_in_epoch 归零。", 620, body, width=1000)
+
+
+def ckpt_contents():
+    """检查点的组成、大小，以及缺了哪一样会怎样（数字来自 training-loop.py）。"""
+    log = _loop_log()
+    if log is None:
+        return
+    s, a = log["sizes"], log["ablation"]
+    kb = lambda k: f"{s[k] / 1024:.0f} KB" if s[k] >= 10 * 1024 else f"{s[k] / 1024:.1f} KB"
+    rows = [("model", "模型参数", "state_dict()：每个参数张量", None, BLUE),
+            ("optimizer", "优化器状态", "AdamW 的 m、v、步数，当前学习率", "缺优化器状态", RED),
+            ("scheduler", "调度器状态", "走到了第几步", "缺调度器状态", ORANGE),
+            ("progress", "训练进度", "step、epoch、这个 epoch 用掉几个 batch", "缺数据位置", TEAL),
+            ("rng", "随机数状态", "全局 torch 随机数（dropout 用）", "缺随机数状态", PURPLE),
+            ("config", "配置", "模型配置与训练配置，新进程先按它造对象", None, GRAY)]
+    body = text(480, 40, "一个能“接着训”的检查点里有什么", 22, weight="bold")
+    body += text(130, 78, "组成", 15, GRAY, "bold") + text(470, 78, "内容", 15, GRAY, "bold") + text(800, 78, "恢复时缺了它", 15, GRAY, "bold")
+    y = 92
+    for key, name, what, label, color in rows:
+        size = kb(key) if key != "config" else f"{(s['config'] + s['train_config']) / 1024:.1f} KB"
+        body += cbox(40, y, 180, 50, color) + text(130, y + 22, name, 16, color, "bold") + text(130, y + 42, size, 13.5, GRAY)
+        body += text(240, y + 31, what, 14.5, INK, anchor="start")
+        if label:
+            r = a[label]
+            body += text(800, y + 22, f"参数最大差 {r['param_diff']:.2f}", 14, color)
+            body += text(800, y + 42, f"最终验证 {r['val']:.4f}", 13.5, GRAY)
+        elif key == "model":
+            body += text(800, y + 31, "等于从头训练", 14, GRAY)
+        else:
+            body += text(800, y + 31, "造不出对象", 14, GRAY)
+        y += 60
+    full = a["完整恢复"]
+    body += box(40, y + 8, 880, 46, "#ecfdf5", TEAL) + text(480, y + 37, f"全部存齐（再给 DataLoader 一个自己的 generator）：参数最大差 {full['param_diff']:.1f}，"
+                                                      f"验证 {full['val']:.4f}，和一口气训完逐位相同", 15, TEAL, "bold")
+    body += text(480, y + 84, f"另外和检查点放在一起：tokenizer.json。本例 {log['n_params']:,} 个参数，优化器状态约是模型的 2 倍", 14, GRAY)
+    svg("ckpt-contents.svg", "检查点的组成与缺失的后果",
+        f"检查点由模型参数（{kb('model')}）、优化器状态（{kb('optimizer')}）、调度器状态、训练进度、随机数状态和配置组成。"
+        f"恢复时缺了优化器状态、调度器状态、数据位置或随机数状态中的任何一样，接着训练的参数都会偏离一口气训完的结果（最大差 "
+        f"{a['缺优化器状态']['param_diff']:.2f}、{a['缺调度器状态']['param_diff']:.2f}、{a['缺数据位置']['param_diff']:.2f}、{a['缺随机数状态']['param_diff']:.2f}）；"
+        f"全部存齐时最大差为 {full['param_diff']:.1f}，逐位相同。", y + 104, body)
+
+
+def ckpt_resume():
+    """从第 120 步恢复后，各种缺失方式的训练损失和参照的差。"""
+    log = _loop_log()
+    if log is None:
+        return
+    ref = np.array(log["reference"])
+    r0 = log["resume_step"]
+    styles = {"缺优化器状态": RED, "缺调度器状态": ORANGE, "缺数据位置": TEAL, "缺随机数状态": PURPLE}
+    fig, (a1, a2) = plt.subplots(2, 1, figsize=(10, 6.0), layout="constrained", sharex=True, gridspec_kw={"height_ratios": [1.2, 1]})
+    k = 9
+    smooth = lambda v: np.convolve(v, np.ones(k) / k, mode="valid")
+    x = np.arange(len(ref) - k + 1) + k // 2 + 1
+    a1.plot(x, smooth(ref), color=INK, lw=2.6, label=f"一口气训完 / 完整恢复（验证 {log['reference_val']:.4f}）")
+    for label, color in styles.items():
+        v = np.array(log["ablation"][label]["losses"])
+        a1.plot(x[x > r0 - 5], smooth(v)[x > r0 - 5], color=color, lw=1.6, label=f"{label}（验证 {log['ablation'][label]['val']:.4f}）")
+        d = np.abs(v - ref)[r0:]
+        a2.plot(np.arange(r0 + 1, len(ref) + 1), np.maximum(d, 1e-6), color=color, lw=1.2, alpha=0.9)
+    for ax in (a1, a2):
+        ax.axvline(r0 + 0.5, color=GRAY, ls="--", lw=1.2)
+        ax.grid(alpha=0.25)
+    a1.text(r0 - 2, 6.2, f"第 {r0} 步存档、“断电”", color=GRAY, fontsize=11, ha="right")
+    a1.set_ylabel("训练损失（9 步滑动平均）")
+    a1.set_ylim(4.6, 6.6)
+    a1.legend(fontsize=10, loc="upper right")
+    a2.set_yscale("log")
+    a2.set_ylim(1e-6, 2)
+    a2.set_ylabel("和参照的损失差（每步）")
+    a2.set_xlabel("优化器步数")
+    a2.text(r0 + 3, 2.2e-6, "完整恢复：每一步的差都是 0（对数坐标画不出来）", color=INK, fontsize=10.5)
+    gaps = {lab: max(abs(a - b) for a, b in zip(log["ablation"][lab]["losses"][r0:], ref[r0:])) for lab in styles}
+    save_plot(fig, "ckpt-resume.svg", "从检查点恢复后的训练损失",
+              f"第 {r0} 步存档后恢复、接着训练到第 {len(ref)} 步。完整恢复时每一步的损失都和一口气训完相同。"
+              f"缺优化器状态时，恢复后头几步的损失明显跳高（最大差 {gaps['缺优化器状态']:.2f}）；缺调度器状态时学习率重新 warmup、最后的衰减段没有发生，"
+              f"损失降不下去（验证 {log['ablation']['缺调度器状态']['val']:.4f}）；缺数据位置、缺随机数状态时，损失从第 {r0 + 1} 步起就和参照不同，但走势相近。")
+
+
+# ---------- 第 22 章：训练诊断与评估 ----------
+
+def _eval_log():
+    src = DATA / "tinyllm-training-evaluation-log.json"
+    if not src.exists():
+        print("skip training-evaluation figures: run scripts/build-tinyllm-code.py training-evaluation to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def eval_pretty_curves():
+    """正确的代码与三个 bug 的训练损失：有 bug 的曲线反而更“好看”。"""
+    log = _eval_log()
+    if log is None:
+        return
+    c = log["curves"]
+    picks = [("None", "正确的代码", INK), ("漏了因果掩码", "漏了因果掩码", RED), ("标签没错位", "标签没错位", ORANGE),
+             ("每步同一个 batch", "每步同一个 batch", PURPLE)]
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    k = 9
+    for key, label, color in picks:
+        loss = np.array(c[key]["loss"])
+        sm = np.convolve(loss, np.ones(k) / k, mode="valid")
+        ax.plot(np.arange(len(sm)) + k // 2 + 1, sm, color=color, lw=2.6 if key == "None" else 1.8,
+                label=f"{label}：训练 {loss[-20:].mean():.3f}，验证 {c[key]['val']:.3f}")
+        ax.scatter([log["steps"] + 6], [c[key]["val"]], color=color, marker="D", s=60, clip_on=False, zorder=4)
+    ax.axhline(log["ln_v"], color=GRAY, ls="--", lw=1.2)
+    ax.text(3, log["ln_v"] + 0.12, f"均匀乱猜 ln V = {log['ln_v']:.2f}", color=GRAY, fontsize=11)
+    ax.set_xlabel("优化器步数（右侧菱形是最终验证损失）")
+    ax.set_ylabel("训练损失（9 步滑动平均）")
+    ax.set_xlim(0, log["steps"] + 12)
+    ax.set_ylim(-0.2, 9.2)
+    ax.legend(fontsize=10.5, loc="upper center", bbox_to_anchor=(0.6, 0.97))
+    ax.grid(alpha=0.25)
+    save_plot(fig, "eval-pretty-curves.svg", "有 bug 的训练曲线反而更好看",
+              f"正确的代码训练 240 步，验证损失 {c['None']['val']:.3f}。漏了因果掩码时训练、验证损失都降到 {c['漏了因果掩码']['val']:.2f}，"
+              f"标签没错位时降到 {c['标签没错位']['val']:.3f}，看起来比正确的代码好得多；每步同一个 batch 时训练损失降到接近 0，验证损失却是 {c['每步同一个 batch']['val']:.2f}。")
+
+
+def eval_matrix():
+    """六个 bug × 六项检查：通过 / 不通过，以及每格的数值。"""
+    log = _eval_log()
+    if log is None:
+        return
+    m = log["matrix"]
+    bugs = list(m)
+    checks = list(m[bugs[0]])
+    fig, ax = plt.subplots(figsize=(11.5, 4.9), layout="constrained")
+    for i, bug in enumerate(bugs):
+        for j, check in enumerate(checks):
+            cell = m[bug][check]
+            ok = cell["ok"]
+            ax.add_patch(plt.Rectangle((j, i), 1, 1, facecolor="#dcfce7" if ok else "#fee2e2", edgecolor="white", lw=3))
+            v = cell["value"]
+            txt = "/".join(f"{x:.3g}" for x in v) if isinstance(v, list) else f"{v:.3g}"
+            ax.text(j + 0.5, i + 0.38, "✓" if ok else "×", ha="center", va="center", fontsize=17,
+                    color=TEAL if ok else RED, fontweight="bold")
+            ax.text(j + 0.5, i + 0.74, txt, ha="center", va="center", fontsize=9.5, color=GRAY)
+    ax.set_xlim(0, len(checks))
+    ax.set_ylim(len(bugs), 0)
+    ax.set_xticks(np.arange(len(checks)) + 0.5, [f"{n}{c}" for n, c in zip("①②③④⑤⑥", checks)], fontsize=11)
+    ax.set_yticks(np.arange(len(bugs)) + 0.5, ["正确的代码" if b == "None" else b for b in bugs], fontsize=11)
+    ax.xaxis.tick_top()
+    ax.tick_params(length=0)
+    for s in ax.spines.values():
+        s.set_visible(False)
+    caught = {b: [c for c in checks if not m[b][c]["ok"]] for b in bugs if b != "None"}
+    save_plot(fig, "eval-matrix.svg", "六个 bug 与六项检查",
+              "行是六个 bug（第一行是正确的代码），列是六项检查，绿色勾表示通过，红色叉表示不通过，小字是检查测到的数。正确的代码六项全部通过；"
+              + "；".join(f"{b}被{('、'.join(v))}抓住" for b, v in caught.items()) + "。没有一项检查能抓住所有 bug。")
+
+
+def eval_causality():
+    """因果性测试：改掉第 t 个 token，前面各位置的输出是否改变。"""
+    body = text(480, 40, "因果性测试：改掉后面的一个 token，前面的输出不该变", 22, weight="bold")
+    n, x0, w, gap = 9, 115, 70, 12
+    pos = 6
+    for row, (title, leak, color) in enumerate([("有因果掩码（正确）", False, TEAL), ("漏了因果掩码", True, RED)]):
+        y0 = 92 + row * 210
+        body += text(60, y0 + 6, title, 17, color, "bold", "start")
+        for i in range(n):
+            x = x0 + i * (w + gap)
+            changed_in = i == pos
+            body += box(x, y0 + 22, w, 40, "#fef3c7" if changed_in else "#ffffff", ORANGE if changed_in else "#94a3b8")
+            body += text(x + w / 2, y0 + 48, "改" if changed_in else f"x{i}", 16, ORANGE if changed_in else INK, "bold" if changed_in else "normal")
+            out_changed = i >= pos or leak
+            body += arrow(x + w / 2, y0 + 64, x + w / 2, y0 + 92, GRAY, 1.6)
+            body += box(x, y0 + 94, w, 40, "#fee2e2" if out_changed else "#ecfdf5", RED if out_changed else TEAL)
+            body += text(x + w / 2, y0 + 120, "变了" if out_changed else "不变", 15, RED if out_changed else TEAL)
+        body += text(40, y0 + 48, "输入", 14, GRAY, anchor="start")
+        body += text(40, y0 + 120, "输出", 14, GRAY, anchor="start")
+        note = "改动之前的位置全部不变：它们看不到后面" if not leak else "改动之前的位置也变了：模型在“偷看”后面的答案"
+        body += text(480, y0 + 162, note, 15, color)
+    svg("eval-causality.svg", "因果性测试示意",
+        "把一段输入里第 6 个 token 换掉，比较前后两次的输出。有因果掩码时，第 6 个之前各位置的输出完全不变，只有它和它之后的位置会变；"
+        "漏了因果掩码时，前面的位置也变了，说明模型能看到后面的 token，训练时等于偷看了答案。", 520, body)
+
+
+def eval_bootstrap():
+    """对验证诗做 bootstrap：两个检查点各自的区间重叠，配对的差的区间不含 0。"""
+    log = _eval_log()
+    if log is None:
+        return
+    b = log["bootstrap"]
+    names = list(b)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11, 4.0), layout="constrained", gridspec_kw={"width_ratios": [1.4, 1]})
+    for name, color in zip(names[:2], (ORANGE, BLUE)):
+        v = np.array(b[name])
+        a1.hist(v, bins=40, color=color, alpha=0.55, label=name)
+        lo, hi = np.percentile(v, [2.5, 97.5])
+        a1.axvline(lo, color=color, ls="--", lw=1)
+        a1.axvline(hi, color=color, ls="--", lw=1)
+    a1.set_xlabel("验证损失（对 290 首诗重抽 1000 次）")
+    a1.set_ylabel("次数")
+    a1.set_title("各自的 95% 区间（虚线）互相重叠", fontsize=12.5)
+    a1.legend(fontsize=11)
+    a1.grid(alpha=0.25)
+    d = np.array(b[names[2]])
+    a2.hist(d, bins=40, color=TEAL, alpha=0.7)
+    lo, hi = np.percentile(d, [2.5, 97.5])
+    a2.axvline(lo, color=TEAL, ls="--", lw=1)
+    a2.axvline(hi, color=TEAL, ls="--", lw=1)
+    a2.axvline(0, color=RED, lw=1.5)
+    a2.text(0.0005, a2.get_ylim()[1] * 0.9, "0", color=RED, fontsize=11)
+    a2.set_xlabel("配对的差：第 230 步 − 第 240 步")
+    a2.set_title("配对以后，差的区间不含 0", fontsize=12.5)
+    a2.set_xlim(-0.002, max(d) * 1.1)
+    a2.grid(alpha=0.25)
+    va, vb = np.percentile(b[names[0]], [2.5, 97.5]), np.percentile(b[names[1]], [2.5, 97.5])
+    save_plot(fig, "eval-bootstrap.svg", "验证损失的抽样误差与配对比较",
+              f"左：对验证诗有放回地重抽 1000 次，第 230 步检查点的验证损失落在 {va[0]:.3f}～{va[1]:.3f}，第 240 步落在 {vb[0]:.3f}～{vb[1]:.3f}，两个区间重叠。"
+              f"右：每次重抽时两个检查点用同一批诗，算它们的差，95% 区间是 {lo:.4f}～{hi:.4f}，宽度只有各自区间的约八分之一，而且不含 0。")
+
+
+def eval_quality():
+    """同一次训练的几个检查点：验证损失与生成样例的格式、乱码、照抄比例。"""
+    log = _eval_log()
+    if log is None:
+        return
+    q = log["quality"]
+    steps = [int(s) for s in q]
+    fig, a1 = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    a1.plot(steps, [q[str(s)]["val"] for s in steps], color=INK, lw=2.4, marker="o", label="验证损失（左轴）")
+    a1.set_xlabel("训练步数（检查点）")
+    a1.set_ylabel("验证损失")
+    a1.grid(alpha=0.25)
+    a2 = a1.twinx()
+    a2.plot(steps, [100 * q[str(s)]["五字句"] for s in steps], color=TEAL, lw=2.2, marker="s", label="五字句占比 %（右轴）")
+    a2.plot(steps, [100 * q[str(s)]["乱码"] for s in steps], color=RED, lw=2.2, marker="^", label="乱码字符占比 %（右轴）")
+    a2.plot(steps, [100 * q[str(s)]["照抄训练集"] for s in steps], color=PURPLE, lw=1.6, ls="--", marker="x", label="照抄训练集的句子 %（右轴）")
+    a2.set_ylabel("百分比")
+    a2.set_ylim(-3, 100)
+    h1, l1 = a1.get_legend_handles_labels()
+    h2, l2 = a2.get_legend_handles_labels()
+    a1.legend(h1 + h2, l1 + l2, fontsize=10.5, loc="upper center", bbox_to_anchor=(0.55, 0.99))
+    first, last = q[str(steps[0])], q[str(steps[-1])]
+    save_plot(fig, "eval-quality.svg", "验证损失与生成样例质量",
+              f"同一次训练的 {len(steps)} 个检查点。验证损失从 {first['val']:.2f} 降到 {last['val']:.2f}；五字句占比从 {first['五字句']:.0%} 升到 {last['五字句']:.0%}，"
+              f"乱码字符从 {first['乱码']:.0%} 降到 {last['乱码']:.1%}；照抄训练集的句子始终是 0。两者方向一致，但不成比例：后期损失降得慢，格式仍在明显改善。")
+
+
+# ---------- 第 23 章：超参数与自动化调参 ----------
+
+def _hp_log():
+    src = DATA / "tinyllm-hyperparameter-tuning-log.json"
+    if not src.exists():
+        print("skip hyperparameter-tuning figures: run scripts/build-tinyllm-code.py hyperparameter-tuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def hp_sensitivity():
+    """每次只改一个超参数：验证损失偏离主线多少个 σ（龙卷风图）。"""
+    log = _hp_log()
+    if log is None:
+        return
+    sig, center, base = log["sigma"], log["center"], log["base"]
+    names = {"lr": "峰值学习率", "batch": "batch 大小（token 预算固定）", "warmup": "warmup 比例", "wd": "weight decay",
+             "beta2": "Adam β2", "decay": "衰减段比例"}
+    rows = sorted(log["sensitivity"].items(), key=lambda kv: -max(abs(x - center) for x in kv[1].values()))
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.axvspan(-2, 2, color=GRAY, alpha=0.12)
+    ax.text(0, -0.75, "±2σ：噪声以内", ha="center", color=GRAY, fontsize=10.5)
+    for i, (k, d) in enumerate(rows):
+        for (v, x), color, dy in zip(d.items(), (BLUE, ORANGE), (-0.19, 0.19)):
+            z = (x - center) / sig
+            ax.barh(i + dy, z, color=color, alpha=0.85, height=0.36)
+            ax.text(z + (0.3 if z >= 0 else -0.3), i + dy, f"{v}", va="center", ha="left" if z >= 0 else "right", fontsize=9.5, color=color)
+    ax.set_yticks(range(len(rows)), [f"{names[k]}（主线 {base[k]}）" for k, _ in rows], fontsize=10.5)
+    ax.invert_yaxis()
+    ax.axvline(0, color=INK, lw=1)
+    ax.set_xlabel(f"验证损失相对主线的变化（单位 σ = {sig:.4f}，5 个种子的标准差）")
+    ax.grid(alpha=0.25, axis="x")
+    lr = log["sensitivity"]["lr"]
+    save_plot(fig, "hp-sensitivity.svg", "超参数的敏感度",
+              f"以主线配置为中心，每次只把一个超参数换成更小（蓝）或更大（橙）的值，单个种子。学习率偏离最大（3e-2 时变差 {(max(lr.values()) - center) / sig:.1f}σ），"
+              "其次是固定 token 预算下的 batch 大小、过短的 warmup、过大的 weight decay；β2 和衰减段比例的变化都在 ±2σ 的噪声带以内。")
+
+
+def hp_search():
+    """左：网格与随机搜索试过的学习率和结果；右：各方法赢家换种子重训的成绩。"""
+    log = _hp_log()
+    if log is None:
+        return
+    s, curse, sig, noise = log["searches"], log["curse"], log["sigma"], log["noise"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1]})
+    for name, color, marker in (("网格", ORANGE, "s"), ("随机", BLUE, "o")):
+        rs = s[name]["results"]
+        a1.scatter([r["config"]["lr"] for r in rs], [r["val"] for r in rs], color=color, marker=marker, s=55, alpha=0.85,
+                   label=f"{name}搜索（最好 {s[name]['best']:.4f}）", zorder=3)
+    a1.set_xscale("log")
+    a1.set_ylim(4.65, 5.6)
+    a1.set_xlabel("峰值学习率")
+    a1.set_ylabel("最终验证损失（种子 0）")
+    a1.set_title("网格只试了 3 个学习率，随机试了 9 个", fontsize=12.5)
+    a1.legend(fontsize=10.5, loc="upper left")
+    a1.grid(alpha=0.25)
+    m = sum(noise) / len(noise)
+    a2.axhspan(m - 2 * sig, m + 2 * sig, color=GRAY, alpha=0.15)
+    a2.axhline(m, color=GRAY, ls="--", lw=1.2)
+    a2.text(2.45, m - 2 * sig + 0.002, "灰带：主线 5 个种子平均 ±2σ", color=GRAY, fontsize=10, ha="right", va="bottom")
+    for i, (name, c) in enumerate(curse.items()):
+        a2.scatter([i], [c["picked"]], color=RED, marker="D", s=70, zorder=4, label="挑中时（种子 0）" if i == 0 else None)
+        a2.scatter([i, i], c["new_seeds"], color=BLUE, s=40, zorder=4, label="换新种子重训" if i == 0 else None)
+        a2.plot([i, i], [c["picked"], sum(c["new_seeds"]) / 2], color=GRAY, lw=1, ls=":")
+    a2.set_xticks(range(len(curse)), list(curse), fontsize=11)
+    a2.set_xlim(-0.5, 2.5)
+    a2.set_ylabel("验证损失")
+    a2.set_title("赢家换个种子还是赢家吗", fontsize=12.5)
+    a2.legend(fontsize=10, loc="upper left")
+    a2.grid(alpha=0.25, axis="y")
+    save_plot(fig, "hp-search.svg", "三种搜索方法的比较",
+              f"左：网格搜索只试了 3 个学习率（1e-3、5.6e-3、3.2e-2），错过了 1e-2 附近的谷底，最好 {s['网格']['best']:.4f}；随机搜索的 9 个配置覆盖了 9 个不同的学习率，最好 {s['随机']['best']:.4f}。"
+              f"右：各方法挑出的配置换两个新种子重训。随机搜索的赢家基本站住（平均 {sum(curse['随机']['new_seeds']) / 2:.4f}）；逐轮淘汰的赢家从 {curse['逐轮淘汰']['picked']:.4f} 变成平均 "
+              f"{sum(curse['逐轮淘汰']['new_seeds']) / 2:.4f}，比主线还差；灰带是主线 5 个种子的平均 ±2σ。")
+
+
+def hp_halving():
+    """逐轮淘汰：27 个配置在第 32、96 步各淘汰三分之二，剩下的训练到第 240 步。"""
+    log = _hp_log()
+    if log is None:
+        return
+    r1, r2 = log["rungs"]
+    finals = {json.dumps(r["config"], sort_keys=True): r["val"] for r in log["searches"]["逐轮淘汰"]["results"]}
+    key = lambda c: json.dumps(c, sort_keys=True)
+    v2 = {key(e["config"]): e["fork"] for e in r2}
+    fig, ax = plt.subplots(figsize=(10, 4.6), layout="constrained")
+    for e in r1:
+        k = key(e["config"])
+        xs, ys = [32], [e["fork"]]
+        if k in v2:
+            xs.append(96); ys.append(v2[k])
+        if k in finals:
+            xs.append(240); ys.append(finals[k])
+        color = RED if k in finals and finals[k] == min(finals.values()) else (BLUE if k in finals else (TEAL if k in v2 else GRAY))
+        ax.plot(xs, ys, color=color, lw=1.6 if len(xs) > 1 else 1, alpha=0.9 if len(xs) > 1 else 0.5, marker="o", ms=4)
+    for x, n in ((32, len(r1)), (96, len(r2)), (240, len(finals))):
+        ax.text(x, 6.75, f"{n} 个", ha="center", color=INK, fontsize=11)
+    ax.set_xticks([32, 96, 240])
+    ax.set_xlabel("训练到第几步（第 32、96 步时从峰值阶段分叉、接一小段衰减再测）")
+    ax.set_ylabel("验证损失")
+    ax.set_ylim(4.6, 6.9)
+    ax.grid(alpha=0.25)
+    best = min(finals.values())
+    save_plot(fig, "hp-halving.svg", "逐轮淘汰的过程",
+              f"27 个随机配置先各训练 32 步，按分叉衰减后的验证损失只留最好的 9 个（灰色的被淘汰）；训练到第 96 步再留 3 个（青色的被淘汰）；"
+              f"最后 3 个训练满 240 步，最好的是 {best:.4f}（红色）。一共约 {log['searches']['逐轮淘汰']['steps'] / log['steps']:.1f} 次完整训练的步数。")
+
+
+def hp_peek():
+    """第 96 步（峰值阶段）的验证损失和最终验证损失：按中间结果挑会挑错。"""
+    log = _hp_log()
+    if log is None:
+        return
+    rs = log["searches"]["网格"]["results"] + log["searches"]["随机"]["results"]
+    early = np.array([r["val_at_peek"] for r in rs])
+    final = np.array([r["val"] for r in rs])
+    lrs = np.array([r["config"]["lr"] for r in rs])
+    fig, ax = plt.subplots(figsize=(8.6, 4.6), layout="constrained")
+    sc = ax.scatter(early, final, c=np.log10(lrs), cmap="viridis", s=60, zorder=3)
+    cb = fig.colorbar(sc, ax=ax)
+    cb.set_label("log10（峰值学习率）")
+    i_e, i_f = int(early.argmin()), int(final.argmin())
+    ax.scatter([early[i_e]], [final[i_e]], facecolor="none", edgecolor=RED, s=220, lw=2, zorder=4)
+    ax.annotate("按第 96 步挑中的", (early[i_e], final[i_e]), xytext=(early[i_e] + 0.15, final[i_e] + 0.12), color=RED, fontsize=11,
+                arrowprops=dict(arrowstyle="->", color=RED))
+    ax.scatter([early[i_f]], [final[i_f]], facecolor="none", edgecolor=BLUE, s=220, lw=2, zorder=4)
+    ax.annotate("按最终挑中的", (early[i_f], final[i_f]), xytext=(early[i_f] + 0.15, final[i_f] - 0.03), color=BLUE, fontsize=11,
+                arrowprops=dict(arrowstyle="->", color=BLUE))
+    ax.set_xlabel("第 96 步的验证损失（峰值阶段，还没衰减）")
+    ax.set_ylabel("最终验证损失")
+    ax.set_ylim(4.62, min(5.6, final.max() + 0.05))
+    ax.grid(alpha=0.25)
+    save_plot(fig, "hp-peek.svg", "中间结果与最终结果",
+              f"网格和随机搜索的 18 次训练：横轴是第 96 步（峰值阶段）的验证损失，纵轴是最终验证损失，颜色是学习率。两者大体一致，但不完全一致；"
+              f"按第 96 步挑中的配置最终是 {final[i_e]:.4f}，按最终挑中的是 {final[i_f]:.4f}。")
+
+
+# ---------- 第 24 章：大规模训练稳定性 ----------
+
+def _scale_log():
+    src = DATA / "tinyllm-large-model-stability-log.json"
+    if not src.exists():
+        print("skip large-model-stability figures: run scripts/build-tinyllm-code.py large-model-stability to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def scale_instability():
+    """学习率扫描：验证损失与注意力分数的最大值。"""
+    log = _scale_log()
+    if log is None:
+        return
+    lrs = log["lrs"]
+    styles = {"原样": (GRAY, "o"), "加 QK Norm": (TEAL, "s"), "加 z-loss": (ORANGE, "^")}
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained")
+    for name, rows in log["sweep"].items():
+        color, marker = styles[name]
+        a1.plot(lrs, [r["val"] for r in rows], color=color, marker=marker, lw=2.2, ms=7, label=name)
+        a2.plot(lrs, [r["attn"] for r in rows], color=color, marker=marker, lw=2.2, ms=7, label=name)
+    for ax in (a1, a2):
+        ax.set_xscale("log")
+        ax.axvline(1e-2, color=BLUE, ls="--", lw=1)
+        ax.set_xlabel("峰值学习率（虚线是主线 1e-2）")
+        ax.grid(alpha=0.25)
+    a1.set_ylabel("最终验证损失")
+    a1.set_title("学习率变大时，QK Norm 坏得慢得多", fontsize=12.5)
+    a1.legend(fontsize=10.5, loc="upper left")
+    a2.set_yscale("log")
+    a2.set_ylabel("注意力分数绝对值的最大值")
+    a2.set_title("原样时注意力分数一路涨到十万以上", fontsize=12.5)
+    base, qk = log["sweep"]["原样"], log["sweep"]["加 QK Norm"]
+    save_plot(fig, "scale-instability.svg", "在小模型上用大学习率复现不稳定",
+              f"左：峰值学习率从 3e-3 扫到 3e-1。主线 1e-2 附近三种设置差不多；学习率更大时，原样和加 z-loss 迅速变差（3e-1 时 {base[-1]['val']:.2f}），"
+              f"加 QK Norm 变差得慢得多（{qk[-1]['val']:.2f}）。右：注意力分数（softmax 之前）的最大值。原样时从 {base[1]['attn']:.0f} 涨到 {base[-1]['attn']:.3g}；"
+              f"QK Norm 把它压在 {qk[-1]['attn']:.0f} 以内。z-loss 管的是输出 logits，对注意力分数没有作用。")
+
+
+def scale_mup():
+    """标准参数化与 μP：不同宽度下验证损失随学习率的变化。"""
+    log = _scale_log()
+    if log is None:
+        return
+    lrs = log["mup_lrs"]
+    colors = {"32": ORANGE, "64": GRAY, "128": BLUE}
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", sharey=True)
+    bests = {}
+    for ax, kind, title in ((axes[0], "SP", "标准参数化：最佳学习率随宽度漂移"), (axes[1], "μP", "μP：最佳学习率不随宽度变")):
+        for d, vals in log["mup"][kind].items():
+            ax.plot(lrs, vals, color=colors[d], marker="o", lw=2.2, label=f"宽度 {d}")
+            b = int(np.argmin(vals))
+            ax.scatter([lrs[b]], [vals[b]], s=180, facecolor="none", edgecolor=colors[d], lw=2.2, zorder=4)
+            bests[(kind, d)] = lrs[b]
+        ax.set_xscale("log")
+        ax.set_xlabel("峰值学习率（120 步，单个种子；圆圈是最好的一点）")
+        ax.set_title(title, fontsize=12.5)
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=10.5, loc="upper center")
+    axes[0].set_ylabel("验证损失")
+    axes[0].set_ylim(4.95, 6.1)
+    save_plot(fig, "scale-mup.svg", "标准参数化与 μP 的学习率迁移",
+              f"左：标准参数化下，宽度 32、64、128 的最佳学习率分别是 {bests[('SP', '32')]:.0e}、{bests[('SP', '64')]:.0e}、{bests[('SP', '128')]:.0e}，宽度每翻一倍，最佳学习率就往小移一档（网格每档约 3 倍）。"
+              f"右：μP 下三种宽度的最佳学习率都是 {bests[('μP', '64')]:.0e}，而且同一个学习率下，宽度越大验证损失越低。宽度 64 是基准宽度，两种参数化在这里完全相同。")
+
+
+def scale_memory():
+    """70 亿参数、8 张卡：数据并行与 ZeRO 各阶段每张卡的显存（不含激活）。"""
+    log = _scale_log()
+    if log is None:
+        return
+    mem = log["memory"]
+    names = list(mem)
+    fig, ax = plt.subplots(figsize=(10, 3.6), layout="constrained")
+    left = np.zeros(len(names))
+    for j, (part, color) in enumerate((("参数（BF16）", BLUE), ("梯度（BF16）", TEAL), ("优化器状态（FP32 主权重、m、v）", ORANGE))):
+        vals = np.array([mem[n][j] for n in names])
+        ax.barh(range(len(names)), vals, left=left, color=color, alpha=0.85, label=part, height=0.6)
+        left += vals
+    for i, n in enumerate(names):
+        ax.text(left[i] + 1.5, i, f"{left[i]:.1f} GB", va="center", fontsize=11)
+    ax.axvline(80, color=RED, ls="--", lw=1.2)
+    ax.text(81, 0.5, "一张 80 GB 的卡", color=RED, fontsize=10.5, va="center")
+    ax.set_yticks(range(len(names)), names, fontsize=10.5)
+    ax.invert_yaxis()
+    ax.set_xlabel("每张卡要放的训练状态（GB，不含激活）")
+    ax.set_xlim(0, max(left) * 1.15)
+    ax.legend(fontsize=10, loc="lower right")
+    ax.grid(alpha=0.25, axis="x")
+    save_plot(fig, "scale-memory.svg", "ZeRO 各阶段的显存",
+              f"70 亿参数、8 张卡，混合精度每个参数 16 字节。普通数据并行每张卡放一整份，{sum(mem[names[0]]):.0f} GB，超过一张 80 GB 的卡；"
+              f"ZeRO-1 把优化器状态切成 8 份，降到 {sum(mem[names[1]]):.1f} GB；ZeRO-2 再切梯度，{sum(mem[names[2]]):.1f} GB；ZeRO-3 / FSDP 连参数也切，{sum(mem[names[3]]):.1f} GB。")
+
+
+def scale_parallel():
+    """三种并行方式：每张卡放什么、在哪里通信。"""
+    body = text(500, 40, "三种把训练分到多张卡上的方式（以 2 张卡为例）", 22, weight="bold")
+    cols = [(170, "数据并行", BLUE, ["完整的模型", "完整的模型"], ["batch 前一半", "batch 后一半"],
+             "反向后：all-reduce 梯度", "每张卡要放得下整个模型"),
+            (500, "ZeRO-3 / FSDP", TEAL, ["参数、梯度、优化器的 1/2", "参数、梯度、优化器的 1/2"], ["batch 前一半", "batch 后一半"],
+             "每层用前 all-gather 参数，反向后 reduce-scatter 梯度", "通信更多，换来显存除以卡数"),
+            (830, "张量并行", ORANGE, ["每个矩阵的一半", "每个矩阵的一半"], ["同一个 batch", "同一个 batch"],
+             "每个子层后：all-reduce 激活", "通信频繁，适合同一台机器内")]
+    for cx, title, color, holds, data, comm, note in cols:
+        body += text(cx, 84, title, 18, color, "bold")
+        for r in range(2):
+            y = 104 + r * 120
+            body += cbox(cx - 140, y, 280, 96, color)
+            body += text(cx, y + 24, f"卡 {r}", 14, GRAY)
+            body += text(cx, y + 50, holds[r], 15, INK, "bold")
+            body += text(cx, y + 76, "数据：" + data[r], 13.5, GRAY)
+        body += f'<path d="M{cx - 150} 168 C {cx - 175} 190, {cx - 175} 230, {cx - 150} 252" stroke="{RED}" stroke-width="2.4" fill="none" marker-end="url(#arrow-{RED[1:]})" marker-start="url(#arrow-{RED[1:]})"/>'
+        body += text(cx, 360, comm, 13.5, RED)
+        body += text(cx, 386, note, 13.5, GRAY)
+    svg("scale-parallel.svg", "数据并行、ZeRO-3/FSDP 与张量并行",
+        "数据并行：每张卡放完整的模型，各算 batch 的一部分，反向后 all-reduce 梯度。ZeRO-3/FSDP：每张卡只放参数、梯度、优化器状态的一部分，"
+        "每层用之前 all-gather 参数，反向后 reduce-scatter 梯度。张量并行：每个矩阵切开放在不同的卡上，所有卡处理同一个 batch，每个子层之后 all-reduce 激活。", 410, body, width=1000)
+
+
+# ---------- 第 25 章：稀疏专家（MoE） ----------
+
+def _moe_log():
+    src = DATA / "tinyllm-mixture-of-experts-log.json"
+    if not src.exists():
+        print("skip mixture-of-experts figures: run scripts/build-tinyllm-code.py mixture-of-experts to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def moe_structure():
+    """稠密前馈层与 MoE 层：路由器选 2 个专家，按分数加权求和。"""
+    body = text(500, 40, "把一个前馈层换成 8 个专家：每个 token 只用其中 2 个", 22, weight="bold")
+    # 左：稠密
+    body += text(150, 84, "稠密前馈层", 18, BLUE, "bold")
+    body += mtext(150, 116, "x（一个 token）", 15)
+    body += arrow(150, 124, 150, 150, GRAY)
+    body += cbox(60, 152, 180, 64, BLUE) + text(150, 182, "SwiGLU", 17, BLUE, "bold") + text(150, 204, "每个 token 都用全部参数", 13, GRAY)
+    body += arrow(150, 216, 150, 244, GRAY)
+    body += mtext(150, 264, "输出", 15)
+    body += f'<line x1="300" y1="70" x2="300" y2="440" stroke="#e2e8f0" stroke-width="2"/>'
+    # 右：MoE
+    cx = 650
+    body += text(cx, 84, "MoE 层（本章：8 个专家，每个 token 选 2 个）", 18, TEAL, "bold")
+    body += mtext(cx, 116, "x（一个 token）", 15)
+    body += arrow(cx, 124, cx, 146, GRAY)
+    body += cbox(cx - 150, 148, 300, 52, ORANGE) + text(cx, 172, "路由器：Linear(d → 8) + softmax", 15, ORANGE, "bold") + text(cx, 192, "给 8 个专家各打一个分，选最高的 2 个", 12.5, GRAY)
+    xs = [cx - 331 + i * 84 for i in range(8)]
+    picked = {1, 5}
+    for i, x in enumerate(xs):
+        on = i in picked
+        body += (path(f"M{cx} 200 L{x + 40} 252", TEAL, 2.4) if on else
+                 f'<line x1="{cx}" y1="200" x2="{x + 40}" y2="252" stroke="#cbd5e1" stroke-width="1.2"/>')
+        body += box(x + 3, 254, 74, 60, SOFT[TEAL] if on else "#ffffff", TEAL if on else "#cbd5e1", width=2.4 if on else 1.4)
+        body += text(x + 40, 280, f"专家 {i}", 14, TEAL if on else GRAY, "bold" if on else "normal")
+        body += text(x + 40, 302, "SwiGLU", 12, GRAY)
+        if on:
+            body += path(f"M{x + 40} 314 L{cx} 360", TEAL, 2.4)
+    body += text(xs[1] + 40, 336, "× 0.62", 13, TEAL, "bold")
+    body += text(xs[5] + 40, 336, "× 0.38", 13, TEAL, "bold")
+    body += circle(cx, 374, 15) + text(cx, 381, "+", 21, weight="bold")
+    body += arrow(cx, 389, cx, 410, GRAY)
+    body += mtext(cx, 428, "输出 = 两个专家输出的加权和", 15)
+    body += text(500, 470, "前馈层的参数变成 8 份，每个 token 只算其中 2 份；没被选中的 6 个专家这次完全不参与计算", 14.5, INK)
+    svg("moe-structure.svg", "稠密前馈层与 MoE 层",
+        "左：稠密前馈层，每个 token 都经过同一个 SwiGLU。右：MoE 层，路由器给 8 个专家打分，每个 token 只选分数最高的 2 个专家，"
+        "两个专家的输出按归一化后的分数加权相加；没被选中的专家不参与这次计算。", 495, body, width=1000)
+
+
+def moe_compare():
+    """MoE 与三种稠密模型、稀疏升级：3 个种子的验证损失。"""
+    log = _moe_log()
+    if log is None:
+        return
+    r = log["results"]
+    rows = [("稠密（主线）", GRAY), ("稠密，激活参数相同", BLUE), ("稠密，总参数相同", BLUE), ("MoE，不均衡", ORANGE),
+            ("MoE，辅助损失", TEAL), ("MoE，偏置均衡", TEAL), ("稀疏升级", PURPLE)]
+    fig, ax = plt.subplots(figsize=(10, 4.2), layout="constrained")
+    for i, (name, color) in enumerate(rows):
+        vals = r[name]
+        m = sum(vals) / len(vals)
+        ax.plot([min(vals), max(vals)], [i, i], color=color, lw=6, alpha=0.35, solid_capstyle="round")
+        ax.scatter(vals, [i] * len(vals), color=color, s=22, zorder=3)
+        ax.scatter([m], [i], color=color, s=90, marker="D", zorder=4)
+        busy = r.get(name + "·最忙")
+        note = f"{m:.3f}" + (f"   最忙专家 {max(busy):.0%}" if busy else "")
+        ax.text(max(vals) + 0.006, i, note, va="center", fontsize=10.5, color=color)
+    ax.set_yticks(range(len(rows)), [n for n, _ in rows], fontsize=11)
+    ax.invert_yaxis()
+    ax.set_xlabel("验证损失（3 个种子；菱形是平均，横条是范围）")
+    lo, hi = ax.get_xlim()
+    ax.set_xlim(lo, hi + 0.06)
+    ax.grid(alpha=0.25, axis="x")
+    mean = lambda k: sum(r[k]) / len(r[k])
+    save_plot(fig, "moe-compare.svg", "MoE 与稠密模型的对照",
+              f"代理模型、240 步、3 个种子。主线稠密模型 {mean('稠密（主线）'):.3f}；激活参数相同的稠密 {mean('稠密，激活参数相同'):.3f}、总参数相同的稠密 {mean('稠密，总参数相同'):.3f}、"
+              f"三种均衡方式的 MoE（{mean('MoE，不均衡'):.3f}、{mean('MoE，辅助损失'):.3f}、{mean('MoE，偏置均衡'):.3f}）和稀疏升级（{mean('稀疏升级'):.3f}）的范围互相重叠，"
+              "在这个尺度上分不出高下。不均衡时最忙的专家拿走四成多的选择，偏置均衡时只有 14%。")
+
+
+def moe_routing():
+    """偏置均衡的 MoE：每类 token 的第一选择落在哪个专家上。"""
+    log = _moe_log()
+    if log is None:
+        return
+    rt = log["routing"]
+    classes = ["逗号", "句号", "<eos>", "其余（汉字）"]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 3.6), layout="constrained")
+    for layer, ax in enumerate(axes):
+        mat = np.array([rt[f"{layer}|{c}"] for c in classes]) * 100
+        im = ax.imshow(mat, cmap="Blues", vmin=0, vmax=100, aspect="auto")
+        for i in range(mat.shape[0]):
+            for j in range(mat.shape[1]):
+                ax.text(j, i, f"{mat[i, j]:.0f}", ha="center", va="center", fontsize=10, color="white" if mat[i, j] > 60 else INK)
+        ax.set_xticks(range(8), [f"专家{j}" for j in range(8)], fontsize=10)
+        ax.set_yticks(range(len(classes)), classes, fontsize=11)
+        ax.set_title(f"第 {layer} 层", fontsize=12.5)
+    fig.colorbar(im, ax=axes, label="这类 token 里选它的比例（%）", shrink=0.9)
+    save_plot(fig, "moe-routing.svg", "专家的分工",
+              "偏置均衡的 MoE（种子 0）在验证集上的路由：每格是这一类 token 把第一选择给了哪个专家的比例。两层里，逗号、句号、<eos> 各自几乎全部交给一个固定的专家，"
+              "汉字则分散在其余专家上。")
+
+
+def moe_upcycle():
+    """稀疏升级：把稠密前馈层复制成 8 个专家，加一个路由器，接着训练。"""
+    log = _moe_log()
+    if log is None:
+        return
+    r, sim = log["results"], log["similarity"]
+    mean = lambda k: sum(r[k]) / len(r[k])
+    body = text(500, 40, "稀疏升级：训练到一半的稠密模型，改成 MoE 接着训练", 22, weight="bold")
+    body += cbox(60, 90, 220, 70, BLUE) + text(170, 120, "稠密模型训练到第 120 步", 15, BLUE, "bold") + text(170, 144, "参数 + 优化器状态", 13, GRAY)
+    body += arrow(280, 125, 340, 125, GRAY)
+    body += cbox(345, 82, 300, 86, ORANGE) + text(495, 108, "每层：前馈层复制 8 份 → 8 个专家", 14.5, ORANGE, "bold")
+    body += text(495, 130, "新加路由器（随机、几乎均匀）", 13, GRAY) + text(495, 152, "Adam 的 m、v 也复制给每个专家", 13, GRAY)
+    body += arrow(645, 125, 705, 125, GRAY)
+    body += cbox(710, 90, 230, 70, TEAL) + text(825, 120, "MoE 接着训练到第 240 步", 15, TEAL, "bold") + text(825, 144, "和稠密模型同样的数据与调度", 13, GRAY)
+    body += box(60, 196, 880, 64, "#ffffff", "#cbd5e1")
+    body += text(500, 222, "升级那一刻：8 个专家一模一样，选哪 2 个、权重多少，加权和都等于原来的前馈层", 15)
+    body += text(500, 246, "所以输出和稠密模型完全相同，验证损失一点不变：不用从头训练", 15, TEAL, "bold")
+    body += text(500, 300, f"接着训练 120 步后（3 个种子）：稀疏升级 {mean('稀疏升级'):.3f}，稠密 {mean('稠密（主线）'):.3f}，从头训练的 MoE {mean('MoE，偏置均衡'):.3f}", 15)
+    body += text(500, 328, f"专家之间的平均相似度：稀疏升级 {sim['upcycled']:.2f}，从头训练约为 0（{sim['scratch']:.3f}）：从同一个起点出发，专家分化得慢", 15, ORANGE)
+    svg("moe-upcycle.svg", "稀疏升级的过程",
+        "稠密模型训练到第 120 步后，每层的前馈层复制成 8 个一模一样的专家，新加一个路由器，Adam 的状态也一起复制，然后作为 MoE 接着训练到第 240 步。"
+        f"升级那一刻输出和稠密模型完全相同。接着训练后，稀疏升级 {mean('稀疏升级'):.3f}，稠密 {mean('稠密（主线）'):.3f}，从头训练的 MoE {mean('MoE，偏置均衡'):.3f}；"
+        f"专家之间的平均相似度，稀疏升级是 {sim['upcycled']:.2f}，从头训练约为 0。", 350, body, width=1000)
+
+
+def moe_serving():
+    """真实模型：权重显存与每 token 读的权重；批量变大时用到的专家比例。"""
+    log = _moe_log()
+    if log is None:
+        return
+    real, cov = log["real"], log["coverage"]
+    names = list(real)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1.2, 1]})
+    y = np.arange(len(names))
+    a1.barh(y - 0.2, [real[n][0] * 2 / 1e9 for n in names], height=0.38, color=GRAY, alpha=0.8, label="要装进显存的权重（总参数）")
+    a1.barh(y + 0.2, [real[n][1] * 2 / 1e9 for n in names], height=0.38, color=TEAL, alpha=0.9, label="每生成一个 token 读的权重（激活参数，批量 1）")
+    a1.set_xscale("log")
+    a1.set_yticks(y, names, fontsize=10.5)
+    a1.invert_yaxis()
+    a1.set_xlabel("GB（BF16，对数坐标）")
+    a1.legend(fontsize=9.5, loc="upper right")
+    a1.grid(alpha=0.25, axis="x")
+    a1.set_title("显存看总参数，速度看激活参数", fontsize=12.5)
+    batches = [1, 4, 16, 64, 256]
+    for (name, c), color in zip(cov.items(), (ORANGE, BLUE, TEAL, RED)):
+        a2.plot(batches, [100 * v for v in c], marker="o", lw=2, color=color, label=name, ls="--" if name == "DeepSeek-V3" else "-")
+    a2.set_xscale("log")
+    a2.set_xticks(batches, [str(b) for b in batches])
+    a2.set_xlabel("同时解码的 token 数（批量）")
+    a2.set_ylabel("一层里被用到的专家（%）")
+    a2.set_title("批量一大，几乎所有专家都要读", fontsize=12.5)
+    a2.legend(fontsize=9.5, loc="lower right")
+    a2.grid(alpha=0.25)
+    q = real["Qwen3-30B-A3B"]
+    save_plot(fig, "moe-serving.svg", "MoE 的推理账",
+              f"左：五个公开模型 BF16 权重的大小（总参数）和批量为 1 时每生成一个 token 要读的权重（激活参数）。Qwen3-30B-A3B 要装下 {q[0] * 2 / 1e9:.0f} GB，每个 token 只读 {q[1] * 2 / 1e9:.1f} GB。"
+              "右：假设路由均匀独立，批量变大时一层里至少被一个 token 选中的专家比例；Qwen3-30B-A3B 在批量 64 时已经接近全部，单用户时的带宽优势在高并发下基本消失。")
+
+
+# ---------- 第 28 章：注意力内核与算子融合 ----------
+
+def _kernels_log():
+    src = DATA / "tinyllm-attention-kernels-log.json"
+    if not src.exists():
+        print("skip attention-kernels figures: run scripts/build-tinyllm-code.py attention-kernels to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kernels_memory():
+    """朴素注意力与 SDPA 的峰值内存；朴素与分块的读写字节数。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    mem, tr = log["memory"], log["traffic"]
+    Ts = [r["T"] for r in mem]
+    mib = lambda b: b / 2**20
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained")
+    a1.plot(Ts, [mib(r["naive_peak"]) for r in mem], marker="o", lw=2.2, color=RED, label="朴素写法")
+    a1.plot(Ts, [mib(r["table"]) for r in mem], ls="--", lw=1.6, color=GRAY, label="一张 T×T 分数表")
+    a1.plot(Ts, [mib(r["sdpa_peak"]) for r in mem], marker="o", lw=2.2, color=TEAL, label="scaled_dot_product_attention")
+    for r in mem:
+        a1.annotate(f"{mib(r['naive_peak']):.1f}" if mib(r["naive_peak"]) < 10 else f"{mib(r['naive_peak']):.0f}", (r["T"], mib(r["naive_peak"])), textcoords="offset points", xytext=(-6, 8), fontsize=10, color=RED, ha="right")
+        a1.annotate(f"{mib(r['sdpa_peak']):.2f}", (r["T"], mib(r["sdpa_peak"])), textcoords="offset points", xytext=(-6, 8), fontsize=10, color=TEAL, ha="right")
+    a1.set_xscale("log", base=2)
+    a1.set_yscale("log")
+    a1.set_xticks(Ts, [str(t) for t in Ts])
+    a1.set_xlabel("序列长度 T")
+    a1.set_ylabel("中间张量峰值（MiB，对数）")
+    a1.set_title("峰值：朴素写法随 T² 增长", fontsize=12.5)
+    a1.legend(fontsize=9.5, loc="upper left")
+    a1.grid(alpha=0.25)
+    Ts2 = [r["T"] for r in tr]
+    a2.plot(Ts2, [mib(r["naive"]) for r in tr], marker="o", lw=2.2, color=RED, label="朴素写法")
+    for blk, color in (("16", ORANGE), ("64", BLUE), ("256", TEAL)):
+        a2.plot(Ts2, [mib(r[blk]) for r in tr], marker="o", lw=2, color=color, label=f"分块，块大小 {blk}")
+    last = tr[-1]
+    for key, color in (("naive", RED), ("16", ORANGE), ("64", BLUE), ("256", TEAL)):
+        a2.annotate(f"{mib(last[key]):.0f}", (last["T"], mib(last[key])), textcoords="offset points", xytext=(6, -4), fontsize=10, color=color)
+    a2.set_xscale("log", base=2)
+    a2.set_yscale("log")
+    a2.set_xticks(Ts2, [str(t) for t in Ts2])
+    a2.set_xlim(Ts2[0] * 0.8, Ts2[-1] * 1.7)
+    a2.set_xlabel("序列长度 T")
+    a2.set_ylabel("读写字节（MiB，对数）")
+    a2.set_title("读写：块越大，K、V 被重读得越少", fontsize=12.5)
+    a2.legend(fontsize=9.5, loc="upper left")
+    a2.grid(alpha=0.25)
+    m4, t4 = mem[-1], tr[-1]
+    save_plot(fig, "kernels-memory.svg", "朴素注意力与分块注意力的内存账",
+              f"batch 1、4 个头、每头 32 维、FP32，在算子层面记账。左：中间张量的峰值。T=4096 时朴素写法 {mib(m4['naive_peak']):.0f} MiB（一张分数表 {mib(m4['table']):.0f} MiB），"
+              f"scaled_dot_product_attention 只有 {mib(m4['sdpa_peak']):.2f} MiB，几乎就是输出本身。右：读写的字节数。T=4096 时朴素写法 {mib(t4['naive']):.0f} MiB，"
+              f"分块写法块大小 16、64、256 时分别是 {mib(t4['16']):.0f}、{mib(t4['64']):.0f}、{mib(t4['256']):.0f} MiB。")
+
+
+def kernels_online():
+    """online softmax：一行 64 个分数分 4 块到来，最大值与指数和怎样更新。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    trace = log["online"]
+    body = text(480, 38, "online softmax：一行分数分 4 块到来，每块只看 16 个", 21, weight="bold")
+    heads = ["分数", "本块最大", "目前最大 m", "校正系数 e^(m旧−m新)", "指数和 ℓ"]
+    xs = [120, 290, 450, 650, 840]
+    for x, h in zip(xs, heads):
+        body += text(x, 86, h, 15, GRAY, "bold")
+    for i, (start, bmax, m, alpha, l) in enumerate(trace):
+        y = 126 + i * 50
+        raised = i > 0 and m > trace[i - 1][2]
+        color = ORANGE if raised else INK
+        body += box(40, y - 26, 880, 42, SOFT[ORANGE] if raised else "#ffffff", ORANGE if raised else "#e2e8f0", width=1.5)
+        body += text(xs[0], y, f"第 {start}–{start + 15} 个", 15)
+        body += text(xs[1], y, f"{bmax:.3f}", 15, color)
+        body += text(xs[2], y, f"{m:.3f}", 15, color, "bold" if raised else "normal")
+        body += text(xs[3], y, f"{alpha:.3f}", 15, color, "bold" if raised else "normal")
+        body += text(xs[4], y, f"{l:.3f}", 15)
+    body += text(480, 340, "橙色行：新的一块出现了更大的分数，旧的 ℓ 和加权和都乘以校正系数，换到新的基准上", 15, ORANGE)
+    body += text(480, 368, "第一块之前什么都没有，校正系数是 0；最后输出 = 加权和 ÷ ℓ，与先算完整 softmax 的结果只差浮点舍入", 15)
+    svg("kernels-online.svg", "online softmax 的更新过程",
+        "第 0 层、第 0 句、第 0 个头最后一个位置的 64 个分数，分成 4 块、每块 16 个依次处理。每块之后更新目前的最大值 m 和以 m 为基准的指数和 ℓ；"
+        "出现更大的分数时，旧的指数和与加权和乘以校正系数 e^(m旧−m新)。第三、四块各提高了一次最大值，校正系数分别是 "
+        f"{trace[2][3]:.3f} 和 {trace[3][3]:.3f}。", 392, body)
+
+
+def kernels_tiling():
+    """分块注意力：4×4 个方块，因果掩码跳过右上方 6 块；数据在主存与片上之间怎样搬。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    done, skipped = log["tiles_per_head"]
+    body = text(500, 38, "分块注意力：一次只在片上算一个 16×16 的方块", 21, weight="bold")
+    x0, y0, c = 110, 110, 62
+    body += text(x0 + 2 * c, y0 - 34, "K、V 的块 j →", 15, GRAY)
+    body += f'<text x="{x0 - 46}" y="{y0 + 2 * c}" font-size="15" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 46} {y0 + 2 * c})">Q 的块 i →</text>'
+    for i in range(4):
+        body += text(x0 - 16, y0 + i * c + c / 2 + 5, str(i), 14, GRAY)
+        body += text(x0 + i * c + c / 2, y0 - 10, str(i), 14, GRAY)
+        for j in range(4):
+            x, y = x0 + j * c, y0 + i * c
+            if j > i:
+                body += f'<rect x="{x + 3}" y="{y + 3}" width="{c - 6}" height="{c - 6}" rx="6" fill="#ffffff" stroke="#cbd5e1" stroke-dasharray="5 4" stroke-width="1.5"/>'
+                body += text(x + c / 2, y + c / 2 + 5, "跳过", 13, GRAY)
+            else:
+                diag = j == i
+                fill = SOFT[ORANGE] if diag else SOFT[TEAL]
+                stroke = ORANGE if diag else TEAL
+                body += f'<rect x="{x + 3}" y="{y + 3}" width="{c - 6}" height="{c - 6}" rx="6" fill="{fill}" stroke="{stroke}" stroke-width="2"/>'
+                if diag:
+                    body += f'<path d="M{x + 3} {y + 3} L{x + c - 3} {y + c - 3} L{x + c - 3} {y + 3} Z" fill="#ffffff" opacity="0.85"/>'
+                body += text(x + c / 2 - (8 if diag else 0), y + c / 2 + (14 if diag else 5), "算", 13, stroke, "bold")
+    body += f'<rect x="{x0 - 2}" y="{y0 + 2 * c - 2}" width="{4 * c + 4}" height="{c + 4}" rx="8" fill="none" stroke="{BLUE}" stroke-width="2.5"/>'
+    body += text(x0 + 2 * c, y0 + 4 * c + 30, f"每个头 16 块：算 {done} 块，跳过 {skipped} 块", 15, INK, "bold")
+    body += text(x0 + 2 * c, y0 + 4 * c + 54, "对角线上的块只算左下半（橙色），其余整块可见（绿色）", 13.5, GRAY)
+    # 右：一行 Q 块的处理过程
+    rx = 450
+    body += text(rx + 250, 92, "蓝框那一行（Q 块 2）怎样走", 16, BLUE, "bold")
+    body += cbox(rx, 108, 500, 74, GRAY) + text(rx + 250, 132, "主存（显存 / 内存）：完整的 Q、K、V，最后写回输出 O 和每行的 lse", 14)
+    body += text(rx + 250, 158, "容量大、读写慢", 13, GRAY)
+    body += cbox(rx, 240, 500, 128, TEAL) + text(rx + 250, 264, "片上快速存储（GPU 的共享内存 / CPU 的缓存）", 14, TEAL, "bold")
+    body += text(rx + 250, 290, "Q 块 2 常驻；每行的 m、ℓ 和加权和 o", 14)
+    body += text(rx + 250, 314, "依次放进 K、V 的块 0、1、2，算一个 16×16 的分数块", 14)
+    body += text(rx + 250, 338, "用 online softmax 更新 m、ℓ、o，分数块用完即弃", 14)
+    body += text(rx + 250, 358, "容量小、读写快", 13, GRAY)
+    body += f'<line x1="{rx + 120}" y1="184" x2="{rx + 120}" y2="236" stroke="{BLUE}" stroke-width="2.5"/>'
+    body += text(rx + 112, 214, "读 Q 块、K/V 块", 13, BLUE, anchor="end")
+    body += f'<line x1="{rx + 380}" y1="184" x2="{rx + 380}" y2="236" stroke="{ORANGE}" stroke-width="2.5"/>'
+    body += text(rx + 388, 214, "只写回 O 块和 lse", 13, ORANGE, anchor="start")
+    body += text(rx + 250, 400, "T×T 的分数表从头到尾没有完整出现在主存里", 15, TEAL, "bold")
+    svg("kernels-tiling.svg", "分块注意力的计算顺序",
+        f"左：64 个位置按 16 切成 4×4 个方块。因果掩码让对角线右上方的 {skipped} 块整块不用算，对角线上的块只算左下半，一共算 {done} 块。"
+        "右：处理一行 Q 块时，Q 块常驻片上，K、V 的块依次读进来，每次只算一个 16×16 的分数块，用 online softmax 更新每行的最大值、指数和与加权和；"
+        "最后只把输出块和每行一个 lse 写回主存。", 440, body, width=1000)
+
+
+def kernels_fusion():
+    """逐元素小算子：eager 实际读写与融合后的下限。"""
+    log = _kernels_log()
+    if log is None:
+        return
+    rows, comp = log["fusion"], log.get("compile")
+    fig, ax = plt.subplots(figsize=(10, 3.6), layout="constrained")
+    y = np.arange(len(rows))
+    mib = lambda b: b / 2**20
+    ax.barh(y - 0.19, [mib(r["traffic"]) for r in rows], height=0.36, color=RED, alpha=0.75, label="eager：每个算子各读一遍输入、写一遍输出")
+    ax.barh(y + 0.19, [mib(r["lower"]) for r in rows], height=0.36, color=TEAL, alpha=0.85, label="融合后的下限：输入读一次、输出写一次")
+    for i, r in enumerate(rows):
+        ax.text(mib(r["traffic"]) + 0.15, i - 0.19, f"{mib(r['traffic']):.2f} MiB（{r['ops']} 个算子，{r['traffic'] / r['lower']:.1f} 倍）", va="center", fontsize=10.5, color=RED)
+        ax.text(mib(r["lower"]) + 0.15, i + 0.19, f"{mib(r['lower']):.2f} MiB", va="center", fontsize=10.5, color=TEAL)
+    ax.set_yticks(y, [r["name"] for r in rows], fontsize=12)
+    ax.invert_yaxis()
+    ax.set_xlabel("读写字节（MiB），一个训练 batch：32 × 64 个位置")
+    ax.set_xlim(0, max(mib(r["traffic"]) for r in rows) * 1.55)
+    ax.legend(fontsize=10, loc="lower right")
+    ax.grid(alpha=0.25, axis="x")
+    note = f"整层 Block：eager 调用 {comp['eager_ops']} 个算子，torch.compile 生成 {len(comp['fused'])} 个融合内核。" if comp else ""
+    save_plot(fig, "kernels-fusion.svg", "逐元素小算子的读写",
+              "RMSNorm、RoPE、SiLU 门控在 eager 模式下实际读写的字节数（每个算子读一遍输入、写一遍输出），以及把它们融合成一个内核后的下限。"
+              + "，".join(f"{r['name']} {r['ops']} 个算子、多搬 {r['traffic'] / r['lower']:.1f} 倍" for r in rows) + "。" + note)
+
+
+# ---------- 第 29 章：量化 ----------
+
+def _quant_log():
+    src = DATA / "tinyllm-quantization-log.json"
+    if not src.exists():
+        print("skip quantization figures: run scripts/build-tinyllm-code.py quantization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def quant_levels():
+    """INT4 的刻度：嵌入行用对称量化；SiLU 输出对称与非对称的差别。"""
+    log = _quant_log()
+    if log is None:
+        return
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 3.9), layout="constrained")
+    row = np.array(log["row"])
+    a1.hist(row, bins=40, color=BLUE, alpha=0.55)
+    for v in log["row_levels"]:
+        a1.axvline(v, color=ORANGE, lw=1, alpha=0.8)
+    a1.set_title("嵌入表“，”这一行：INT4 对称，15 个刻度", fontsize=12.5)
+    a1.set_xlabel("数值")
+    a1.set_ylabel("个数")
+    h = log["act_hist"]
+    edges, counts = np.array(h["edges"]), np.array(h["counts"])
+    a2.bar(edges[:-1], counts, width=np.diff(edges), align="edge", color=TEAL, alpha=0.55)
+    a2.set_yscale("log")
+    ymax = counts.max() * 3
+    for v in log["act_levels"]["sym"]:
+        a2.plot([v, v], [ymax * 0.25, ymax], color=RED, lw=1.4)
+    for v in log["act_levels"]["asym"]:
+        a2.plot([v, v], [0.5, 1.6], color=ORANGE, lw=1.4)
+    a2.set_ylim(0.5, ymax)
+    a2.text(edges[-1], ymax * 0.5, f"对称：实际用到 {len(log['act_levels']['sym'])} 个刻度（红，上）", ha="right", fontsize=10.5, color=RED)
+    a2.text(edges[-1], 2.4, f"非对称：用满 {len(log['act_levels']['asym'])} 个刻度（橙，下）", ha="right", fontsize=10.5, color=ORANGE)
+    a2.set_title("第 0 层 SiLU 输出：负的一侧很短", fontsize=12.5)
+    a2.set_xlabel("数值")
+    a2.set_ylabel("个数（对数）")
+    save_plot(fig, "quant-levels.svg", "INT4 量化的刻度",
+              "左：种子 0 的嵌入表中“，”那一行的 128 个数，大致关于 0 对称，INT4 对称量化的刻度（橙色竖线）均匀覆盖两侧。"
+              f"右：第 0 层 SiLU 门控的输出，最小约 −0.28，最大约 7。对称量化按绝对值最大的一侧定刻度，负半边几乎用不上，实际只用到 {len(log['act_levels']['sym'])} 个刻度；"
+              f"非对称量化用最小值和最大值定范围，{len(log['act_levels']['asym'])} 个刻度全部用上。")
+
+
+def quant_granularity():
+    """各种量化方案：每个权重的位数、相对误差；3 个种子上的验证损失增量。"""
+    log = _quant_log()
+    if log is None:
+        return
+    g, res, base = log["granularity"], log["results"], log["base_loss"]
+    names = [r["scheme"] for r in g]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained", gridspec_kw={"width_ratios": [1, 1.15]})
+    y = np.arange(len(names))
+    colors = [GRAY if n.startswith("INT8") else (RED if "按张量" in n or n.startswith("INT3") else TEAL) for n in names]
+    a1.barh(y, [r["rel_err"] * 100 for r in g], color=colors, alpha=0.75)
+    for i, r in enumerate(g):
+        a1.text(r["rel_err"] * 100 + 0.4, i, f"{r['rel_err']:.1%}，{r['bpw']:.2f} 位/权重", va="center", fontsize=10)
+    a1.set_yticks(y, names, fontsize=11)
+    a1.invert_yaxis()
+    a1.set_xlim(0, max(r["rel_err"] for r in g) * 100 * 1.6)
+    a1.set_xlabel("权重的相对误差（%，种子 0）")
+    a1.set_title("单位越小，误差越小，位数略多", fontsize=12.5)
+    seeds = sorted(base)
+    for i, n in enumerate(names):
+        dl = [res[n][j][0] - base[s] for j, s in enumerate(seeds)]
+        a2.plot([min(dl), max(dl)], [i, i], color=colors[i], lw=6, alpha=0.35, solid_capstyle="round")
+        a2.scatter(dl, [i] * len(dl), color=colors[i], s=22, zorder=3)
+        a2.scatter([sum(dl) / len(dl)], [i], color=colors[i], s=80, marker="D", zorder=4)
+        a2.text(max(dl) + 0.0015, i, f"{sum(dl) / len(dl):+.4f}", va="center", fontsize=10, color=colors[i])
+    a2.axvline(0, color=GRAY, lw=1)
+    a2.set_yticks(y, names, fontsize=11)
+    a2.invert_yaxis()
+    a2.set_xlabel("验证损失的增量（3 个种子；菱形是平均）")
+    a2.set_title("放回模型：INT8 看不出差别，INT4 要分组", fontsize=12.5)
+    a2.grid(alpha=0.25, axis="x")
+    lo, hi = a2.get_xlim()
+    a2.set_xlim(lo, hi + 0.008)
+    mean = lambda n: sum(res[n][j][0] - base[s] for j, s in enumerate(seeds)) / len(seeds)
+    save_plot(fig, "quant-granularity.svg", "量化粒度与模型质量",
+              "左：种子 0 的全部权重矩阵在各方案下的相对误差（量化误差的范数除以权重的范数）和每个权重摊到的位数（含 FP16 缩放因子）。"
+              f"右：3 个种子上验证损失的增量。INT8 按通道 {mean('INT8 按通道'):+.4f}，INT4 按张量 {mean('INT4 按张量'):+.4f}，INT4 按通道 {mean('INT4 按通道'):+.4f}，"
+              f"INT4 分组 32 {mean('INT4 分组 32'):+.4f}，INT3 分组 32 {mean('INT3 分组 32'):+.4f}。")
+
+
+def quant_outliers():
+    """第 1 层 down 的输入：每个通道的最大绝对值，SmoothQuant 前后；对照 qkv 的输入。"""
+    log = _quant_log()
+    if log is None:
+        return
+    down, sm, qkv = np.array(log["absmax_down1"]), np.array(log["absmax_down1_smoothed"]), np.array(log["absmax_qkv1"])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 3.9), layout="constrained", gridspec_kw={"width_ratios": [1, 2.3]})
+    a1.bar(np.arange(len(qkv)), qkv, color=BLUE, alpha=0.7, width=1.0)
+    a1.axhline(np.median(qkv), color=GRAY, ls="--", lw=1.2)
+    a1.set_title(f"qkv 的输入（128 个通道）：最大 / 中位数 = {qkv.max() / np.median(qkv):.1f}", fontsize=12)
+    a1.set_xlabel("通道")
+    a1.set_ylabel("最大绝对值")
+    x = np.arange(len(down))
+    a2.bar(x, down / np.median(down), color=RED, alpha=0.55, width=1.0, label=f"原始：最大 / 中位数 = {down.max() / np.median(down):.1f}")
+    a2.bar(x, sm / np.median(sm), color=TEAL, alpha=0.75, width=1.0, label=f"SmoothQuant（α=0.5）之后：{sm.max() / np.median(sm):.1f}")
+    a2.axhline(1, color=GRAY, ls="--", lw=1.2)
+    a2.set_title("down 的输入（341 个通道），按中位数归一", fontsize=12)
+    a2.set_xlabel("通道")
+    a2.set_ylabel("最大绝对值 ÷ 中位数")
+    a2.legend(fontsize=10, loc="upper right")
+    ar = log["act_results"]
+    m = lambda k: sum(ar[k]) / len(ar[k])
+    save_plot(fig, "quant-outliers.svg", "激活里的离群通道",
+              "种子 0 的模型、第 1 层，在一批验证文本上统计每个输入通道出现过的最大绝对值。左：qkv 的输入（RMSNorm 之后）各通道差不多大。"
+              f"右：down 的输入（SiLU 门控乘 up）少数通道是中位数的十几倍，SmoothQuant 把一部分尺度挪给权重后降到 {sm.max() / np.median(sm):.1f} 倍。"
+              f"激活 INT6 时，按张量量化损失增加 {m('W8A6 按张量'):+.4f}，SmoothQuant 后 {m('W8A6 SmoothQuant + 按张量'):+.4f}，按 token 量化 {m('W8A6 按 token'):+.4f}（3 个种子平均）。")
+
+
+# ---------- 2026-11 评审补充的结构示意图 ----------
+
+def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
+    extra = ' stroke-dasharray="6 4"' if dash else ""
+    return f'<line x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}" stroke="{color}" stroke-width="{width}"{extra}/>'
+
+
+def mod(x, y, w, h, title, shape=None, color=GRAY, size=14):
+    """一个模块框：名字在上，形状（等宽）在下。"""
+    if shape:
+        return (cbox(x, y, w, h, color) + text(x + w / 2, y + h / 2 - 3, title, size, color, "bold")
+                + mtext(x + w / 2, y + h / 2 + 15, shape, 12.5, INK))
+    return cbox(x, y, w, h, color) + text(x + w / 2, y + h / 2 + 5, title, size, color, "bold")
+
+
+def first_run_shapes():
+    """第 1 章的模型：一次前向里张量形状怎样变化。"""
+    body = text(480, 36, "第 1 章的模型：一个 batch 穿过一次前向", 21, weight="bold")
+    x, w = 90, 340
+    steps = [("一批训练样本：每格是一个字的编号", "[32, 24]", GRAY),
+             ("查表：字向量 + 位置向量", "[32, 24, 96]", BLUE),
+             ("Block 1：注意力 + 前馈层", "[32, 24, 96]", TEAL),
+             ("Block 2", "[32, 24, 96]", TEAL),
+             ("Block 3", "[32, 24, 96]", TEAL),
+             ("RMSNorm，再乘字表的转置", "[32, 24, 556]", ORANGE)]
+    y = 66
+    tops = []
+    for i, (t, s, c) in enumerate(steps):
+        body += mod(x, y, w, 52, t, s, c)
+        tops.append(y)
+        if i < len(steps) - 1:
+            body += arrow(x + w / 2, y + 52, x + w / 2, y + 70, GRAY, 2)
+        y += 72
+    body += f'<rect x="{x - 12}" y="{tops[2] - 10}" width="{w + 24}" height="{tops[4] - tops[2] + 72}" rx="12" fill="none" stroke="{TEAL}" stroke-dasharray="6 4" stroke-width="1.5"/>'
+    body += text(x + w + 24, tops[3] + 30, "形状不变", 13, TEAL, anchor="start")
+    body += text(x + w + 24, tops[1] + 22, "字表 556×96", 13, BLUE, anchor="start")
+    body += text(x + w + 24, tops[1] + 40, "位置表 24×96", 13, BLUE, anchor="start")
+    body += text(x + w + 24, tops[5] + 22, "每个位置给 556 个字", 13, ORANGE, anchor="start")
+    body += text(x + w + 24, tops[5] + 40, "各打一个分", 13, ORANGE, anchor="start")
+    body += path(f"M{x} {tops[1] + 26} H{x - 30} V{tops[5] + 26} H{x - 4}", ORANGE, 1.8, dash=True)
+    body += text(x - 36, (tops[1] + tops[5]) / 2 + 60, "同一张字表", 12, ORANGE, anchor="end")
+    rx = 630
+    body += text(rx + 150, 96, "训练时", 16, RED, "bold")
+    body += mod(rx, 112, 300, 52, "目标：同一段往后错一位", "[32, 24]", GRAY)
+    body += mod(rx, 196, 300, 52, "交叉熵损失", "一个数", RED)
+    body += arrow(rx + 150, 164, rx + 150, 192, GRAY, 2)
+    body += path(f"M{x + w} {tops[5] + 26} H{rx - 40} V222 H{rx - 4}", ORANGE, 2)
+    body += text(rx + 150, 284, "backward 给 388,128 个参数各算一个梯度，", 13.5)
+    body += text(rx + 150, 306, "AdamW 把每个参数挪一小步，重复 600 次", 13.5)
+    body += text(rx + 150, 366, "生成时", 16, TEAL, "bold")
+    body += text(rx + 150, 392, "只取最后一个位置的 556 个分数，", 13.5)
+    body += text(rx + 150, 414, "抽一个字接到末尾，再走一遍左边这一列", 13.5)
+    svg("first-run-shapes.svg", "第 1 章模型的形状流",
+        "一个 batch 是 32 段、每段 24 个字的编号，查字表和位置表后变成 [32, 24, 96]，穿过 3 个 Block 形状不变，最后归一化并乘字表的转置得到 [32, 24, 556] 的分数。"
+        "训练时这些分数和往后错一位的目标算交叉熵，backward 给 388,128 个参数算梯度，AdamW 更新参数；生成时只取最后一个位置的分数抽一个字。", y + 6, body)
+
+
+def reshape_vs_transpose():
+    """同一个 [3, 4] 张量：reshape 成 [4, 3] 与 transpose 成 [4, 3]。"""
+    body = text(480, 36, "reshape 与 transpose：结果都是 [4, 3]，数的位置不一样", 20, weight="bold")
+    cell = 38
+
+    def grid(x0, y0, vals, color, hl):
+        out = ""
+        for r, row in enumerate(vals):
+            for c, v in enumerate(row):
+                on = v in hl
+                out += box(x0 + c * cell, y0 + r * cell, cell, cell, SOFT[ORANGE] if on else SOFT[color], ORANGE if on else color, width=1.4)
+                out += mtext(x0 + c * cell + cell / 2, y0 + r * cell + cell / 2 + 5, str(v), 15, ORANGE if on else INK, "bold" if on else "normal")
+        return out
+
+    a = [[r * 4 + c for c in range(4)] for r in range(3)]
+    rs = [[r * 3 + c for c in range(3)] for r in range(4)]
+    tr = [[a[c][r] for c in range(3)] for r in range(4)]
+    hl = {1, 5, 9}
+    body += text(170, 86, "原张量 x：[3, 4]", 16, BLUE, "bold") + grid(94, 104, a, BLUE, hl)
+    body += text(170, 246, "内存里依次是 0 1 2 … 11", 13.5, GRAY)
+    body += text(500, 86, "x.reshape(4, 3)", 16, TEAL, "bold") + grid(443, 104, rs, TEAL, hl)
+    body += text(500, 284, "按内存顺序重新分行", 14, TEAL)
+    body += text(500, 306, "第 0 行仍是 0 1 2", 13.5, GRAY)
+    body += text(800, 86, "x.transpose(0, 1)", 16, ORANGE, "bold") + grid(743, 104, tr, ORANGE, hl)
+    body += text(800, 284, "行和列互换", 14, ORANGE)
+    body += text(800, 306, "第 0 行是原来的第 0 列：0 4 8", 13.5, GRAY)
+    body += arrow(260, 150, 428, 150, GRAY, 2) + arrow(260, 178, 728, 190, GRAY, 2)
+    body += text(480, 352, "橙色的 1、5、9 原来是第 1 列：transpose 后正好成了第 1 行；reshape 后散在三行里", 14.5)
+    body += text(480, 378, "拆注意力头时先用 view 切出“头”这一维，再用 transpose 把它换到前面；用错一个，形状对，结果错", 14.5, INK, "bold")
+    svg("reshape-vs-transpose.svg", "reshape 与 transpose 的区别",
+        "左边是 [3, 4] 的张量，里面是 0 到 11。reshape(4, 3) 按内存顺序把 12 个数重新分成 4 行，第 0 行是 0 1 2；transpose(0, 1) 交换行和列，第 0 行是原来的第 0 列 0 4 8。"
+        "两者形状相同，元素的位置不同。", 400, body)
+
+
+def mask_patterns():
+    """三种注意力：编码器双向、解码器因果、交叉注意力。"""
+    body = text(480, 36, "三种注意力的区别就是“谁能看谁”：着色的格子是允许看的位置", 20, weight="bold")
+    cell = 34
+
+    def grid(x0, y0, rows, cols, allow, fill, edge, rl, cl):
+        out = ""
+        for r in range(rows):
+            out += text(x0 - 10, y0 + r * cell + cell / 2 + 5, rl[r], 13, GRAY, anchor="end")
+            for c in range(cols):
+                ok = allow(r, c)
+                out += box(x0 + c * cell, y0 + r * cell, cell, cell, fill if ok else "#ffffff", edge if ok else "#cbd5e1", width=1.2)
+        for c in range(cols):
+            out += text(x0 + c * cell + cell / 2, y0 - 8, cl[c], 13, GRAY)
+        return out
+
+    src = ["I", "am", "a", "cat", "."]
+    tgt = ["我", "是", "猫", "。"]
+    body += text(180, 80, "编码器自注意力：5 × 5", 16, BLUE, "bold")
+    body += grid(95, 120, 5, 5, lambda r, c: True, "#bfdbfe", BLUE, src, src)
+    body += text(180, 314, "原文每个词看全部原文：25 / 25", 14, BLUE)
+    body += text(490, 80, "解码器自注意力：4 × 4", 16, TEAL, "bold")
+    body += grid(422, 120, 4, 4, lambda r, c: c <= r, "#99f6e4", TEAL, tgt, tgt)
+    body += text(490, 280, "只看自己和前面：10 / 16", 14, TEAL)
+    body += text(490, 304, "TinyLLM 只用这一种（因果掩码）", 13.5, TEAL, "bold")
+    body += text(800, 80, "交叉注意力：4 × 5", 16, ORANGE, "bold")
+    body += grid(720, 120, 4, 5, lambda r, c: True, "#fde68a", ORANGE, tgt, src)
+    body += text(805, 280, "每个译词看全部原文：20 / 20", 14, ORANGE)
+    body += text(480, 360, "行是“谁在看”（Q），列是“被看的是谁”（K）；计数与本章脚本 masks 一段的输出一致", 14, GRAY)
+    svg("mask-patterns.svg", "三种注意力的掩码",
+        "左：编码器自注意力，5 个原文词互相都能看，25 个格子全部允许。中：解码器自注意力，4 个译词只能看自己和前面，是下三角，16 个格子里 10 个允许，这就是因果掩码。"
+        "右：交叉注意力，每个译词能看全部 5 个原文词，20 个格子全部允许。", 385, body)
+
+
+def attention_dataflow():
+    """单头注意力的完整数据流，带形状。"""
+    body = text(480, 36, "一层注意力的数据流（T 个位置，每头 d_h 维）", 20, weight="bold")
+    y = 64
+    body += mod(380, y, 200, 48, "输入 x", "[T, d]", GRAY)
+    xs = [130, 380, 630]
+    for (n, c), xx in zip([("Q = x·W_Q", BLUE), ("K = x·W_K", TEAL), ("V = x·W_V", ORANGE)], xs):
+        body += path(f"M480 {y + 48} V{y + 70} H{xx + 100} V{y + 92}", GRAY, 1.8)
+        body += mod(xx, y + 96, 200, 48, n, "[T, d_h]", c)
+    body += path(f"M230 {y + 144} V{y + 180} H420 V{y + 202}", BLUE, 1.8)
+    body += path(f"M480 {y + 144} V{y + 202}", TEAL, 1.8)
+    body += text(500, y + 180, "Kᵀ", 13, TEAL, anchor="start")
+    rows = [("分数 S = Q·Kᵀ / √d_h", "[T, T]", INK), ("因果掩码：右上方置为 −∞", "[T, T]", RED),
+            ("softmax：每行加起来是 1", "[T, T] 权重", INK), ("加权求和：权重 · V", "[T, d_h]", ORANGE),
+            ("多头拼接 → 输出投影 W_O", "[T, d]，加回残差流", PURPLE)]
+    yy = y + 206
+    ys = []
+    for i, (t, s, c) in enumerate(rows):
+        body += mod(330, yy, 300, 50, t, s, c)
+        ys.append(yy)
+        if i < len(rows) - 1:
+            body += arrow(480, yy + 50, 480, yy + 72, GRAY, 2)
+        yy += 76
+    body += path(f"M730 {y + 144} V{ys[3] + 25} H634", ORANGE, 1.8)
+    body += line(318, ys[0] + 4, 300, ys[0] + 4, "#94a3b8", 1.5) + line(300, ys[0] + 4, 300, ys[2] + 46, "#94a3b8", 1.5) + line(300, ys[2] + 46, 318, ys[2] + 46, "#94a3b8", 1.5)
+    body += text(288, ys[1] + 0, "这三步都要", 13.5, GRAY, anchor="end")
+    body += text(288, ys[1] + 22, "一张 T×T 的表：", 13.5, GRAY, anchor="end")
+    body += text(288, ys[1] + 44, "长度翻倍，表变 4 倍", 13.5, GRAY, anchor="end")
+    body += text(288, ys[4] + 16, "多头：d 拆成 H 份，每份 d_h = d/H 维，", 13.5, PURPLE, anchor="end")
+    body += text(288, ys[4] + 38, "各自走中间这一列，在 W_O 处合并", 13.5, PURPLE, anchor="end")
+    svg("attention-dataflow.svg", "注意力的数据流",
+        "输入 [T, d] 经三个投影得到 Q、K、V，各是 [T, d_h]。Q 乘 K 的转置再除以根号 d_h 得到 [T, T] 的分数，因果掩码把右上方置为负无穷，softmax 后每行加起来是 1，"
+        "再对 V 加权求和得到 [T, d_h]。多个头的结果拼起来，经输出投影回到 [T, d]，加回残差流。分数、掩码、softmax 这三步都要一张 T×T 的表。", yy + 10, body)
+
+
+def gqa_heads():
+    """MHA、GQA、MQA：几个 Q 头共用一组 K、V。"""
+    body = text(480, 36, "MHA、GQA、MQA：Q 头数相同，K/V 的组数不同", 21, weight="bold")
+    configs = [("MHA：8 组 K/V", 8, BLUE, "每个 Q 头各有一组"), ("GQA：2 组 K/V", 2, TEAL, "每 4 个 Q 头共用一组"),
+               ("MQA：1 组 K/V", 1, ORANGE, "所有 Q 头共用一组")]
+    for row, (title, kv, color, note) in enumerate(configs):
+        y = 74 + row * 128
+        body += text(110, y + 46, title, 16, color, "bold") + text(110, y + 70, note, 13, GRAY)
+        group = 8 // kv
+        for g in range(kv):
+            x0 = 240 + g * group * 52
+            wb = group * 52 - 12
+            for h in range(g * group, (g + 1) * group):
+                body += line(240 + h * 52 + 20, y + 42, x0 + wb / 2, y + 78, color, 1.3)
+            body += box(x0, y + 78, wb, 32, SOFT[color], color, width=1.6)
+            body += text(x0 + wb / 2, y + 99, "K、V" if kv > 1 else "一组 K、V", 13, color, "bold")
+        for h in range(8):
+            x = 240 + h * 52
+            body += box(x, y + 10, 40, 32, SOFT[BLUE], BLUE, width=1.4) + text(x + 20, y + 31, f"Q{h}", 13, BLUE)
+        body += text(830, y + 46, f"KV cache = MHA × {kv}/8", 15, color, "bold")
+    body += text(480, 470, "缓存大小正比于 K/V 的组数（第 27 章的公式）。Llama 3 8B 用 32 个 Q 头、8 组 K/V，缓存是 MHA 的四分之一", 14.5)
+    svg("gqa-heads.svg", "MHA、GQA 与 MQA",
+        "三行都有 8 个 Q 头。MHA 每个 Q 头各有一组 K、V，共 8 组；GQA 每 4 个 Q 头共用一组，共 2 组；MQA 所有 Q 头共用 1 组。KV cache 的大小正比于 K/V 的组数，"
+        "分别是 MHA 的 8/8、2/8、1/8。", 490, body)
+
+
+def tinyllm_architecture():
+    """第 12 章：把一个 Block 展开，标出每一步的形状、章节号和初始化。"""
+    body = text(500, 36, "完整 TinyLLM：一句 11 个 token 的诗走一遍（d=128，4 个头，每头 32 维）", 20, weight="bold")
+    lx, lw = 50, 270
+    body += mod(lx, 66, lw, 50, "token ID（第 4 章）", "[1, 11]", GRAY)
+    body += arrow(lx + lw / 2, 116, lx + lw / 2, 136, GRAY, 2)
+    body += mod(lx, 138, lw, 50, "查嵌入表 E（第 5 章）", "[1, 11, 128]", BLUE)
+    body += arrow(lx + lw / 2, 188, lx + lw / 2, 226, GRAY, 2)
+    body += f'<rect x="{lx}" y="228" width="{lw}" height="200" rx="12" fill="{SOFT[TEAL]}" stroke="{TEAL}" stroke-width="2"/>'
+    body += text(lx + lw / 2, 282, "Block × 4（第 9 章）", 17, TEAL, "bold")
+    body += mtext(lx + lw / 2, 308, "[1, 11, 128] → [1, 11, 128]", 13)
+    body += text(lx + lw / 2, 344, "每层结构相同、参数各自独立", 13, GRAY)
+    body += text(lx + lw / 2, 366, "展开见右边", 13, GRAY)
+    body += arrow(lx + lw / 2, 428, lx + lw / 2, 466, GRAY, 2)
+    body += mod(lx, 468, lw, 50, "最终 RMSNorm（第 11 章）", "[1, 11, 128]", GRAY)
+    body += arrow(lx + lw / 2, 518, lx + lw / 2, 538, GRAY, 2)
+    body += mod(lx, 540, lw, 50, "乘 E 的转置，得到 logits", "[1, 11, 4096]", ORANGE)
+    body += path(f"M{lx} 163 H{lx - 26} V565 H{lx - 4}", ORANGE, 2, dash=True)
+    body += f'<text x="{lx - 34}" y="364" font-size="12.5" fill="{ORANGE}" text-anchor="middle" transform="rotate(-90 {lx - 34} 364)">输入输出共用 E（4096×128）</text>'
+    rx, rw = 370, 600
+    body += f'<rect x="{rx}" y="62" width="{rw}" height="652" rx="14" fill="#ffffff" stroke="{TEAL}" stroke-width="2"/>'
+    body += line(lx + lw, 228, rx, 62, TEAL, 1.2, True) + line(lx + lw, 428, rx, 714, TEAL, 1.2, True)
+    body += text(rx + rw / 2, 88, "一个 Block 展开", 16, TEAL, "bold")
+    cx, bw = rx + 230, 280
+    bx = cx - bw / 2
+    body += mtext(cx, 116, "残差流 x：[1, 11, 128]", 13.5, INK, "bold")
+    body += arrow(cx, 122, cx, 132, GRAY, 1.6)
+
+    def stack(items, y):
+        ys = []
+        for i, (t, s, c) in enumerate(items):
+            body_ = cbox(bx, y, bw, 40, c) + text(cx, y + 17, t, 13.5, c, "bold") + mtext(cx, y + 34, s, 11.5, INK)
+            ys.append((y, body_))
+            y += 48
+        return ys, y
+
+    attn = [("RMSNorm", "[1, 11, 128]", GRAY), ("qkv：一个 Linear", "[1, 11, 384]，切成 Q、K、V", BLUE),
+            ("拆成 4 个头", "[1, 4, 11, 32]", BLUE), ("Q、K 加 RoPE（第 7 章）", "[1, 4, 11, 32]", PURPLE),
+            ("因果 SDPA（第 6 章），再合头", "[1, 11, 128]", BLUE), ("proj", "[1, 11, 128]", RED)]
+    ys, y = stack(attn, 134)
+    for i, (yy, b) in enumerate(ys):
+        body += b
+        if i < len(ys) - 1:
+            body += arrow(cx, yy + 40, cx, yy + 48, GRAY, 1.6)
+    add1 = y + 6
+    body += arrow(cx, ys[-1][0] + 40, cx, add1 - 11, GRAY, 1.6)
+    body += circle(cx, add1, 11) + text(cx, add1 + 5, "+", 16, weight="bold")
+    body += path(f"M{cx} 127 H{bx - 30} V{add1} H{cx - 13}", INK, 2)
+    ffn = [("RMSNorm", "[1, 11, 128]", GRAY), ("gate、up：两个 Linear", "各 [1, 11, 341]", TEAL),
+           ("SiLU(gate) × up（第 8 章）", "[1, 11, 341]", TEAL), ("down", "[1, 11, 128]", RED)]
+    ys2, y2 = stack(ffn, add1 + 22)
+    body += arrow(cx, add1 + 11, cx, add1 + 20, GRAY, 1.6)
+    for i, (yy, b) in enumerate(ys2):
+        body += b
+        if i < len(ys2) - 1:
+            body += arrow(cx, yy + 40, cx, yy + 48, GRAY, 1.6)
+    add2 = y2 + 6
+    body += arrow(cx, ys2[-1][0] + 40, cx, add2 - 11, GRAY, 1.6)
+    body += circle(cx, add2, 11) + text(cx, add2 + 5, "+", 16, weight="bold")
+    body += path(f"M{cx} {add1 + 15} H{bx - 30} V{add2} H{cx - 13}", INK, 2)
+    body += text(bx - 36, (127 + add1) / 2, "残差", 13, INK, anchor="end")
+    body += text(bx - 36, (add1 + add2) / 2 + 10, "残差", 13, INK, anchor="end")
+    body += arrow(cx, add2 + 11, cx, add2 + 28, GRAY, 1.6)
+    body += mtext(cx, add2 + 44, "下一层：[1, 11, 128]", 13, INK)
+    nx = bx + bw + 16
+    body += text(nx, ys[1][0] + 18, "线性层都不带偏置", 12.5, GRAY, anchor="start")
+    body += text(nx, ys[3][0] + 16, "cos/sin 表预先算好，", 12.5, PURPLE, anchor="start")
+    body += text(nx, ys[3][0] + 33, "4 层共用一份", 12.5, PURPLE, anchor="start")
+    body += text(nx, ys[5][0] + 16, "红框：写回残差流的投影，", 12.5, RED, anchor="start")
+    body += text(nx, ys[5][0] + 33, "初始化再乘 1/√(2L)（第 10 章）", 12.5, RED, anchor="start")
+    body += text(nx, ys2[1][0] + 24, "中间宽度 8d/3 = 341", 12.5, TEAL, anchor="start")
+    body += text(nx, ys2[3][0] + 24, "同样乘 1/√(2L)", 12.5, RED, anchor="start")
+    svg("tinyllm-architecture.svg", "完整 TinyLLM 的结构",
+        "左：11 个 token 的 ID 查嵌入表变成 [1, 11, 128]，穿过 4 个 Block，最终 RMSNorm 后乘嵌入表的转置得到 [1, 11, 4096] 的 logits，输入输出共用一张表。"
+        "右：一个 Block 展开。注意力半块：RMSNorm，qkv 投影到 [1, 11, 384] 再切成 Q、K、V，拆成 4 个头 [1, 4, 11, 32]，Q、K 加 RoPE，因果 SDPA 后合头，proj 投影，加回残差。"
+        "前馈半块：RMSNorm，gate 和 up 各投影到 341 维，SiLU(gate) 乘 up，down 投影回 128 维，加回残差。proj 和 down 的初始化再乘 1/√(2L)。", 730, body, width=1000)
+
+
+def _notebook_lines(slug, prefix):
+    """从已生成的 notebook 输出里取一行（保证图里的数和脚本真实输出一致）。"""
+    nb = json.loads((ROOT / f"docs/public/tinyllm/notebooks/{slug}.ipynb").read_text(encoding="utf-8"))
+    for cell in nb["cells"]:
+        for o in cell.get("outputs", []):
+            for ln in "".join(o.get("text", "")).splitlines():
+                if ln.startswith(prefix):
+                    return ln[len(prefix):].strip()
+    raise SystemExit(f"{slug}.ipynb 里找不到以 {prefix!r} 开头的输出")
+
+
+def tokenizer_pipeline():
+    """第 4 章：一句话穿过 tokenizer 流水线，每一步的中间结果。"""
+    import ast
+    toks = ast.literal_eval(_notebook_lines("tokenization", "tokens:"))
+    ids = ast.literal_eval(_notebook_lines("tokenization", "IDs:"))
+    body = text(480, 36, "tokenizer 是一条流水线：“猫在学习 TinyLLM。\\n” 每一步变成什么", 20, weight="bold")
+    stages = [("原文", "猫在学习 TinyLLM。⏎", GRAY, "14 个字符"),
+              ("① 规范化", "本例不改写（NFKC 等规则在这一步）", GRAY, "随词表保存"),
+              ("② 预切分 + 字节映射", "UTF-8 字节 → 可显示符号；空格变成 Ġ，换行变成 Ċ", BLUE, "汉字 3 字节"),
+              ("③ BPE 按合并优先级切分", None, TEAL, f"{len(toks)} 个 token"),
+              ("④ 查词表得到 ID", None, ORANGE, "送进模型"),
+              ("⑤ 解码：ID → 字节 → 整段拼回", "猫在学习 TinyLLM。⏎（和原文逐字相同）", PURPLE, "整段解码")]
+    y = 64
+    for i, (name, content, color, note) in enumerate(stages):
+        body += cbox(40, y, 220, 50, color) + text(150, y + 30, name, 14.5, color, "bold")
+        body += box(276, y, 520, 50, "#ffffff", "#e2e8f0", width=1.2)
+        if name.startswith("③"):
+            x = 284
+            for t in toks:
+                w = 10 + 9 * len(t)
+                body += box(x, y + 12, w, 26, SOFT[TEAL], TEAL, width=1.1) + mtext(x + w / 2, y + 30, t, 12.5, INK)
+                x += w + 3
+        elif name.startswith("④"):
+            body += mtext(536, y + 31, " ".join(str(i_) for i_ in ids), 12.5, INK)
+        else:
+            body += text(536, y + 31, content, 14)
+        body += text(810, y + 31, note, 12.5, GRAY, anchor="start")
+        if i < len(stages) - 1:
+            body += arrow(150, y + 50, 150, y + 66, GRAY, 2)
+        y += 68
+    body += text(480, y + 14, "③ 里 “ç Į «” 三个片段合起来才是“猫”这一个字的 3 个字节；“学习”两个字合成了一个 token", 14)
+    body += text(480, y + 38, "① ② 是配置，③ 是训练出来的合并表，④ 是词表；四样都要和模型一起保存（第 4 章第 7 节）", 14, GRAY)
+    svg("tokenizer-pipeline.svg", "tokenizer 流水线",
+        "原文“猫在学习 TinyLLM。”加一个换行，经规范化（本例不改写）、预切分与字节映射（空格变成 Ġ、换行变成 Ċ，一个汉字是 3 个字节），"
+        f"BPE 按合并优先级切成 {len(toks)} 个 token，查词表得到同样多的 ID；解码时把 ID 变回字节、整段拼回原文。数据来自第 4 章脚本的 encode-roundtrip 输出。", y + 60, body)
+
+
+def ffn_vs_attention():
+    """注意力在位置之间搬信息；前馈层对每个位置做同一个变换。"""
+    body = text(480, 36, "注意力管“位置之间”，前馈层管“每个位置自己”", 21, weight="bold")
+    toks = ["春", "眠", "不", "觉", "晓"]
+    # 左：注意力
+    body += text(240, 78, "注意力：每个位置看前面的位置", 16, BLUE, "bold")
+    xs = [70 + i * 85 for i in range(5)]
+    for i, (x, t) in enumerate(zip(xs, toks)):
+        body += box(x, 110, 60, 44, SOFT[GRAY], GRAY, width=1.4) + text(x + 30, 139, t, 18)
+        body += box(x, 290, 60, 44, SOFT[BLUE], BLUE, width=1.6) + text(x + 30, 319, t + "′", 18, BLUE)
+        for j in range(i + 1):
+            body += line(xs[j] + 30, 154, x + 30, 288, BLUE if j == i else "#93c5fd", 2 if j == i else 1.2)
+    body += text(240, 372, "第 5 个位置“晓”的输出混合了前 5 个位置的信息", 13.5, GRAY)
+    body += text(240, 394, "权重随输入而变；位置之间的连线就是 T×T 的表", 13.5, GRAY)
+    body += line(480, 70, 480, 410, "#e2e8f0", 2)
+    # 右：前馈层
+    body += text(720, 78, "前馈层：每个位置各自过同一个变换", 16, TEAL, "bold")
+    xs2 = [540 + i * 85 for i in range(5)]
+    for x, t in zip(xs2, toks):
+        body += box(x, 110, 60, 44, SOFT[BLUE], BLUE, width=1.4) + text(x + 30, 139, t + "′", 18, BLUE)
+        body += arrow(x + 30, 154, x + 30, 194, GRAY, 1.6)
+        body += box(x - 2, 196, 64, 52, SOFT[TEAL], TEAL, width=1.6) + text(x + 30, 218, "SwiGLU", 11.5, TEAL, "bold") + text(x + 30, 236, "W 相同", 11, GRAY)
+        body += arrow(x + 30, 248, x + 30, 288, GRAY, 1.6)
+        body += box(x, 290, 60, 44, SOFT[TEAL], TEAL, width=1.6) + text(x + 30, 319, t + "″", 18, TEAL)
+    body += text(720, 372, "5 个框是同一组参数 W_gate、W_up、W_down", 13.5, GRAY)
+    body += text(720, 394, "位置之间没有连线：换掉别的字，“晓”的结果不变", 13.5, GRAY)
+    svg("ffn-vs-attention.svg", "注意力与前馈层的分工",
+        "左：注意力里，每个位置的输出由它自己和前面所有位置加权混合而成，连线就是 T×T 的注意力表。右：前馈层对每个位置单独做同一个变换，"
+        "5 个框共用同一组参数，位置之间没有连线。", 420, body)
+
+
+def norm_axes():
+    """[B, T, d] 张量上，RMSNorm/LayerNorm 与 BatchNorm 各沿哪些元素算统计量。"""
+    body = text(480, 36, "归一化沿哪一维：同一个 [B, T, d] 张量，两种取法", 21, weight="bold")
+    cell = 22
+    B, T, D = 3, 4, 8
+
+    def tensor(x0, y0, pick):
+        out = ""
+        for b in reversed(range(B)):
+            ox, oy = x0 + b * 26, y0 - b * 26
+            for t in range(T):
+                for d in range(D):
+                    on = pick(b, t, d)
+                    out += f'<rect x="{ox + d * cell}" y="{oy + t * cell}" width="{cell}" height="{cell}" fill="{"#fdba74" if on else "#ffffff"}" stroke="{ORANGE if on else "#94a3b8"}" stroke-width="1"/>'
+        return out
+
+    for k, (title, pick, color, notes) in enumerate([
+            ("RMSNorm / LayerNorm：每个 token 自己算", lambda b, t, d: b == 0 and t == 1, TEAL,
+             ["一组统计量 = 一个 token 的 d 个数", "B × T 个 token，各算各的", "和 batch 里别的样本无关，", "训练、推理、batch 大小 1 都一样"]),
+            ("BatchNorm：每个特征跨样本算", lambda b, t, d: d == 2, RED,
+             ["一组统计量 = 某一维在全部 B×T 个位置上", "依赖 batch 里的其他样本，", "推理时要换成训练时攒下的均值；", "语言模型里基本不用"])]):
+        x0 = 120 + k * 460
+        body += text(x0 + 150, 84, title, 15.5, color, "bold")
+        body += tensor(x0, 160, pick)
+        body += text(x0 + 88, 270, "d（特征）→", 12.5, GRAY)
+        body += f'<text x="{x0 - 14}" y="{160 + 44}" font-size="12.5" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 14} {204})">T（位置）</text>'
+        body += text(x0 + D * cell + 60, 108, "B（样本）↗", 12.5, GRAY, anchor="start")
+        for i, n in enumerate(notes):
+            body += text(x0 + 150, 304 + i * 22, n, 13.5)
+    body += text(480, 410, "橙色是“一起算均值或均方根”的那组数。TinyLLM 用 RMSNorm：每个 token 的 128 维各算一个均方根", 14, INK, "bold")
+    svg("norm-axes.svg", "归一化沿哪一维",
+        "左右都是形状 [B, T, d] 的张量，画成 B 层、每层 T 行 d 列。左：RMSNorm 和 LayerNorm 对每个 token 的 d 个数算一组统计量，B×T 个 token 各算各的，"
+        "与 batch 里的其他样本无关。右：BatchNorm 对每一维特征，在 batch 的全部位置上算一组统计量，依赖其他样本，语言模型里基本不用。", 430, body)
+
+
+def data_eval_protocol():
+    """第 12 章：训练流、batch 计划与验证窗口。"""
+    body = text(500, 36, "数据流与评估口径：每个模型吃同一批数据，验证集每次算法相同", 20, weight="bold")
+
+    def stream(y, color, label, count):
+        out = text(40, y + 16, label, 14.5, color, "bold", "start") + text(40, y + 36, count, 12.5, GRAY, "normal", "start")
+        x = 200
+        for i, n in enumerate([7, 5, 9, 6, 8, 4, 7]):
+            w = n * 11
+            out += box(x, y, w, 34, SOFT[color], color, width=1.2) + text(x + w / 2, y + 22, f"诗{i + 1}", 11.5, color)
+            x += w
+            out += box(x, y, 22, 34, "#fef3c7", ORANGE, width=1.2) + mtext(x + 11, y + 22, "e", 11, ORANGE)
+            x += 22
+        return out
+
+    body += stream(70, BLUE, "训练流", "225,007 个 token")
+    body += text(960, 62, "e = <eos>", 12.5, ORANGE, anchor="end")
+    body += text(500, 140, "每一步：用一个单独的随机数生成器（种子 1234）事先排好 32 个起点", 14)
+    for i, x in enumerate([230, 420, 610]):
+        body += line(x, 104, x, 156, RED, 2)
+        body += box(x, 158, 260 if i < 2 else 240, 30, "#fff1f2", RED, width=1.4) + text(x + 120, 178, "65 个 token 的窗口", 12.5, RED)
+    body += text(500, 214, "窗口内：输入 x = 前 64 个，目标 y = 后 64 个（往后错一位）", 14)
+    xs = 230
+    for i in range(9):
+        body += box(xs + i * 30, 228, 28, 26, "#ffffff", GRAY, width=1) + mtext(xs + i * 30 + 14, 246, f"t{i}", 10.5)
+    body += text(xs - 10, 246, "窗口", 12.5, GRAY, anchor="end")
+    body += box(xs, 260, 8 * 30 - 2, 24, SOFT[BLUE], BLUE, width=1.2) + text(xs + 120, 277, "x：t0 … t63", 12.5, BLUE)
+    body += box(xs + 30, 290, 8 * 30 - 2, 24, SOFT[TEAL], TEAL, width=1.2) + text(xs + 150, 307, "y：t1 … t64", 12.5, TEAL)
+    body += text(560, 268, "→ 模型的种子只决定初始参数，", 13.5, INK, anchor="start")
+    body += text(560, 290, "  换结构、换超参数时 batch 完全相同", 13.5, INK, anchor="start")
+    body += stream(350, PURPLE, "验证流", "12,256 个 token")
+    for k in range(4):
+        x = 200 + k * 160
+        body += box(x, 398, 156, 28, "#f5f3ff", PURPLE, width=1.3) + text(x + 78, 417, f"窗口 {k + 1}：64 个", 12, PURPLE)
+    body += text(850, 417, "…… 共 191 个", 12.5, PURPLE, anchor="start")
+    body += text(500, 460, "不重叠、不抽样、全部算一遍取平均：同一个模型每次得到同一个数", 14)
+    body += text(500, 486, "nats/token × 每字 0.954 个 token ÷ ln 2 = 比特/字（换分词器也能比）", 14, GRAY)
+    svg("data-eval-protocol.svg", "数据流与评估口径",
+        "训练集和验证集各自拼成一条长 token 流，每首诗后接一个 <eos>。训练时用单独的随机数生成器事先排好每步 32 个起点，各切 65 个 token，前 64 个是输入、后 64 个是目标。"
+        "验证时把整条验证流切成 191 个不重叠的 64-token 窗口，全部算一遍取平均，再换算成比特/字。", 510, body, width=1000)
+
+
+def gpu_async_timeline():
+    """第 13 章：CPU 排队发射内核，GPU 异步执行；.item() 让两边互相等。"""
+    body = text(480, 36, "CPU 和 GPU 是两条时间线：CPU 只负责排队，GPU 慢慢执行", 20, weight="bold")
+
+    def row(y, label, segs, color):
+        out = text(110, y + 24, label, 14.5, color, "bold", "end")
+        for x, w, t, kind in segs:
+            fill = {"run": SOFT[color], "idle": "#ffffff", "wait": "#fef2f2"}[kind]
+            stroke = {"run": color, "idle": "#cbd5e1", "wait": RED}[kind]
+            dash = ' stroke-dasharray="5 4"' if kind != "run" else ""
+            out += f'<rect x="{x}" y="{y}" width="{w}" height="36" rx="6" fill="{fill}" stroke="{stroke}" stroke-width="1.3"{dash}/>'
+            out += text(x + w / 2, y + 23, t, 12, RED if kind == "wait" else (color if kind == "run" else GRAY))
+        return out
+
+    body += text(480, 80, "好的写法：损失留在 GPU 上，每隔 N 步才取一次", 15, TEAL, "bold")
+    body += row(96, "CPU", [(130, 70, "发射 step1", "run"), (200, 70, "发射 step2", "run"), (270, 70, "发射 step3", "run"), (340, 70, "发射 step4", "run"), (410, 360, "可以去准备下一批数据", "idle")], BLUE)
+    body += row(142, "GPU", [(150, 150, "step1", "run"), (300, 150, "step2", "run"), (450, 150, "step3", "run"), (600, 150, "step4", "run")], TEAL)
+    body += text(480, 210, "GPU 一刻不停；CPU 远远跑在前面，只受队列长度限制", 13.5, GRAY)
+    body += text(480, 254, "坏的写法：每步都 loss.item()（或 print、.cpu()）", 15, RED, "bold")
+    body += row(270, "CPU", [(130, 60, "发射 1", "run"), (190, 120, "item() 等 GPU", "wait"), (310, 60, "发射 2", "run"), (370, 120, "item() 等 GPU", "wait"), (490, 60, "发射 3", "run")], BLUE)
+    body += row(316, "GPU", [(150, 150, "step1", "run"), (300, 30, "空", "idle"), (330, 150, "step2", "run"), (480, 30, "空", "idle"), (510, 150, "step3", "run")], TEAL)
+    body += text(480, 384, "每次 .item() 都要把数从 GPU 拷回 CPU，CPU 只能等 GPU 把队列里的活干完；", 13.5)
+    body += text(480, 406, "等到以后才发射下一步，GPU 在两步之间空转。计时也一样：测 GPU 时间前要 torch.cuda.synchronize()", 13.5)
+    svg("gpu-async-timeline.svg", "CPU 与 GPU 的异步时间线",
+        "上：CPU 依次发射每一步的计算，GPU 按顺序执行，两者互不等待，GPU 一直在忙。下：每步调用 loss.item() 时，CPU 必须等 GPU 算完并把数拷回来，"
+        "之后才发射下一步，GPU 在两步之间空转。这是示意图，块的长短不代表实测时间。", 430, body)
+
+
+def near_dup_index():
+    """第 14 章：字二元组、重合度与倒排索引。"""
+    import re as _re
+    a = "倡楼启曙扉，杨柳正依依。莺啼知岁隔，条变识春归。"
+    b = "倡楼启曙扉，园柳正依依。鸟鸣知岁隔，条变识春归。"
+
+    def grams(t):
+        s = _re.sub("[，。]", "", t)
+        return [s[i:i + 2] for i in range(len(s) - 1)]
+
+    ga, gb = grams(a), grams(b)
+    shared = set(ga) & set(gb)
+    score = len(shared) / min(len(set(ga)), len(set(gb)))
+    body = text(500, 36, f"近重复：拆成字二元组，数共有的比例（下面这两段的重合度 {score:.2f}）", 20, weight="bold")
+    for k, (poem, g, color) in enumerate([(a, ga, BLUE), (b, gb, TEAL)]):
+        y = 70 + k * 120
+        body += text(40, y + 20, f"诗 {'甲乙'[k]}：{poem}", 15, color, "bold", "start")
+        x = 40
+        for i, gram in enumerate(g):
+            on = gram in shared
+            body += box(x, y + 36, 42, 28, SOFT[color] if on else "#fff1f2", color if on else RED, width=1.2)
+            body += text(x + 21, y + 55, gram, 12.5, INK if on else RED)
+            x += 45
+            if i == 9:
+                x, y = 40, y + 34
+    body += text(500, 326, f"共有 {len(shared)} 个（蓝绿框），不同的在红框里；重合度 = 共有数 ÷ 较短那首的二元组数 = {len(shared)}/{min(len(set(ga)), len(set(gb)))} = {score:.2f}", 14)
+    body += text(500, 350, "逐句比较会因为每句差一个字而一句都对不上；二元组只丢掉含那个字的两三个", 13.5, GRAY)
+    iy = 380
+    body += text(500, iy + 8, "倒排索引：从二元组查到含有它的诗，只和至少共享一个二元组的诗比较", 15, ORANGE, "bold")
+    entries = [("倡楼", "诗甲、诗乙、……"), ("正依", "诗甲、诗乙、……"), ("岁隔", "诗甲、诗乙、……"), ("杨柳", "诗甲、其他含“杨柳”的诗")]
+    for i, (k_, v) in enumerate(entries):
+        x = 70 + i * 225
+        body += box(x, iy + 26, 70, 30, SOFT[ORANGE], ORANGE, width=1.3) + text(x + 35, iy + 46, k_, 13.5, ORANGE)
+        body += arrow(x + 70, iy + 41, x + 90, iy + 41, GRAY, 1.6)
+        body += text(x + 94, iy + 46, v, 12.5, INK, anchor="start")
+    body += text(500, iy + 92, "925 首两两比较要 43 万对；有了索引，大部分诗只和几十首候选比较", 13.5, GRAY)
+    svg("near-dup-index.svg", "二元组重合度与倒排索引",
+        f"两首几乎相同的诗各自去掉标点后拆成相邻两字的二元组，共有 {len(shared)} 个，重合度 {score:.2f}。倒排索引记录每个二元组出现在哪些诗里，"
+        "查重时只和至少共享一个二元组的诗比较，不必两两比较全部 43 万对。例子来自第 14 章脚本的输出。", 490, body, width=1000)
+
+
+def lm_targets_mask():
+    """第 15 章：错位出题，以及哪些位置算损失。"""
+    body = text(480, 36, "一段 65 个 token 出 64 道题；不是每道题都算进损失", 20, weight="bold")
+    toks = ["春", "眠", "不", "觉", "晓", "，", "处", "处"]
+    cell = 60
+    x0 = 160
+    body += text(140, 92, "窗口", 14, GRAY, anchor="end")
+    for i, t in enumerate(toks + ["…"]):
+        body += box(x0 + i * cell, 70, cell - 6, 36, "#ffffff", GRAY, width=1.2) + text(x0 + i * cell + 27, 94, t, 16)
+    body += text(140, 146, "输入 x", 14, BLUE, "bold", "end")
+    body += text(140, 196, "目标 y", 14, TEAL, "bold", "end")
+    for i in range(8):
+        body += box(x0 + i * cell, 124, cell - 6, 36, SOFT[BLUE], BLUE, width=1.3) + text(x0 + i * cell + 27, 148, toks[i], 16, BLUE)
+        nxt = toks[i + 1] if i + 1 < len(toks) else "…"
+        body += box(x0 + i * cell, 174, cell - 6, 36, SOFT[TEAL], TEAL, width=1.3) + text(x0 + i * cell + 27, 198, nxt, 16, TEAL)
+        body += arrow(x0 + i * cell + 27, 160, x0 + i * cell + 27, 172, GRAY, 1.4)
+    body += text(720, 148, "第 t 道题：看 x 的前 t 个，", 13.5, INK, anchor="start")
+    body += text(720, 170, "猜 y 的第 t 个", 13.5, INK, anchor="start")
+    body += text(720, 196, "因果掩码保证看不到答案", 13.5, GRAY, anchor="start")
+    # 掩码条
+    body += text(480, 262, "哪些位置算损失（指令微调时的一条样本，补齐到同样长度）", 15, INK, "bold")
+    segs = [("用户：写一句春天", 4, GRAY, "提问：-100，不算"), ("助手：春眠不觉晓", 4, TEAL, "回答：算"), ("<eos>", 1, ORANGE, "结束：要算"), ("<pad>", 2, "#94a3b8", "补齐：-100")]
+    x = 100
+    for label, n, color, note in segs:
+        w = n * 62
+        fill = SOFT.get(color, "#f1f5f9") if color != "#94a3b8" else "#f1f5f9"
+        body += box(x, 280, w - 4, 40, fill, color, width=1.5) + text(x + w / 2 - 2, 305, label, 13.5, color if color != "#94a3b8" else GRAY, "bold")
+        body += text(x + w / 2 - 2, 342, note, 12.5, color if color not in (GRAY, "#94a3b8") else GRAY)
+        x += w
+    body += text(480, 384, "预训练（第 14 章的拼接流）没有提问和补齐，64 个位置全部算；<eos> 在两种情况下都要算", 13.5)
+    body += text(480, 406, "平均时分母是“算了损失的位置数”，不是窗口长度（第 5 节）", 13.5, GRAY)
+    svg("lm-targets-mask.svg", "错位出题与损失掩码",
+        "上：一段窗口里，输入 x 是前 64 个 token，目标 y 是往后错一位的 64 个 token，第 t 道题看 x 的前 t 个、猜 y 的第 t 个。下：指令微调的一条样本里，"
+        "提问部分和补齐的 <pad> 标成 -100、不算损失，回答和 <eos> 算损失；预训练的拼接流里所有位置都算。", 430, body)
+
+
+def adam_step():
+    """第 16 章：AdamW 一步的数据流，以及每个参数占多少字节。"""
+    body = text(480, 36, "AdamW 的一步：每个参数带着两个“记忆” m、v", 21, weight="bold")
+    body += mod(40, 70, 170, 50, "梯度 g", "backward 得到", RED)
+    body += mod(260, 70, 230, 50, "m ← β1·m + (1−β1)·g", "β1 = 0.9：梯度的平均方向", BLUE, 13.5)
+    body += mod(260, 150, 230, 50, "v ← β2·v + (1−β2)·g^2", "β2 = 0.999：梯度的平均大小的平方", TEAL, 13.5)
+    body += arrow(210, 95, 256, 95, GRAY, 2) + path("M225 95 V175 H256", GRAY, 2)
+    body += mod(540, 110, 200, 50, "偏差修正", "m^ = m/(1−β1ᵗ)，v^ 同理", GRAY, 13.5)
+    body += arrow(490, 95, 536, 125, GRAY, 2) + arrow(490, 175, 536, 145, GRAY, 2)
+    body += mod(540, 200, 200, 50, "方向 ÷ 大小", "m^ / (√v^ + ε)", ORANGE, 14)
+    body += arrow(640, 160, 640, 196, GRAY, 2)
+    body += mod(540, 290, 200, 50, "乘学习率 η", "第 17 章的调度给出 η", ORANGE, 14)
+    body += arrow(640, 250, 640, 286, GRAY, 2)
+    body += mod(800, 290, 140, 50, "w ← w − 更新", None, PURPLE)
+    body += arrow(740, 315, 796, 315, GRAY, 2)
+    body += mod(800, 200, 140, 50, "衰减 η·λ·w", "直接作用在 w 上", RED, 13.5)
+    body += arrow(870, 250, 870, 286, GRAY, 2)
+    body += text(870, 186, "AdamW 的“W”", 12.5, RED)
+    body += text(240, 262, "每个方向各自除以自己的 √v^：", 13.5, INK)
+    body += text(240, 284, "梯度一直很大的方向步子变小，", 13.5, INK)
+    body += text(240, 306, "一直很小的方向步子变大", 13.5, INK)
+    # 内存
+    y = 380
+    body += text(480, y, "每个参数要多存几个数（FP32 训练）", 16, INK, "bold")
+    parts = [("参数 w", 4, PURPLE), ("梯度 g", 4, RED), ("m", 4, BLUE), ("v", 4, TEAL)]
+    x = 240
+    for name, b_, color in parts:
+        body += box(x, y + 18, 110, 40, SOFT[color], color, width=1.5) + text(x + 55, y + 43, f"{name}：{b_} 字节", 13.5, color, "bold")
+        x += 120
+    body += text(480, y + 84, "合计 16 字节 / 参数：第 12 章 131 万参数约 21 MB；70 亿参数就是 112 GB（还没算激活）", 14)
+    body += text(480, y + 108, "m 和 v 存在 optimizer.state 里，续训时必须一起保存（第 21 章）；Adafactor 把 v 压成行、列两个向量来省内存", 13.5, GRAY)
+    svg("adam-step.svg", "AdamW 一步的数据流与内存",
+        "梯度 g 同时更新两个滑动平均：m 是梯度的平均方向（β1=0.9），v 是梯度平方的平均（β2=0.999）。偏差修正后用 m^ 除以 √v^ 加 ε 得到每个方向各自归一的步子，"
+        "乘学习率后从参数里减掉；权重衰减直接作用在参数上。FP32 训练时每个参数要存参数、梯度、m、v 各 4 字节，共 16 字节。", y + 128, body)
+
+
+def wsd_branches():
+    """第 17、23 章：WSD 的主干停在峰值上，从检查点分叉出不同预算的模型。"""
+    body = text(480, 36, "WSD：一条主干一直在峰值上，从检查点接一段衰减就得到一个“训完”的模型", 19, weight="bold")
+    x0, y0, w, h = 110, 80, 760, 260
+    body += line(x0, y0 + h, x0 + w, y0 + h, INK, 1.5) + line(x0, y0, x0, y0 + h, INK, 1.5)
+    body += text(x0 + w, y0 + h + 26, "训练步数 →", 13, GRAY, anchor="end")
+    body += f'<text x="{x0 - 30}" y="{y0 + h / 2}" font-size="13" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 30} {y0 + h / 2})">学习率</text>'
+    peak = y0 + 30
+    warm = x0 + 50
+    body += f'<path d="M{x0} {y0 + h} L{warm} {peak} L{x0 + w - 20} {peak}" stroke="{BLUE}" stroke-width="3" fill="none"/>'
+    body += text(warm - 4, peak - 10, "warmup", 12.5, GRAY, anchor="end")
+    body += text(x0 + w - 10, peak - 12, "主干：停在峰值，可以一直往后接", 13, BLUE, anchor="end")
+    for i, (bx, label, color) in enumerate([(300, "预算 A", TEAL), (480, "预算 B", ORANGE), (660, "预算 C", PURPLE)]):
+        dec = (bx - x0) * 0.25
+        body += circle(bx, peak, 6, SOFT[color], color)
+        body += f'<path d="M{bx} {peak} L{bx + dec} {y0 + h - 4}" stroke="{color}" stroke-width="2.6" fill="none" stroke-dasharray="7 4"/>'
+        body += text(bx + dec + 4, y0 + h - 14, f"{label}：衰减到 0", 12.5, color, anchor="start")
+        body += text(bx, peak - 12, "检查点", 12, color)
+    body += text(480, y0 + h + 60, "衰减段约占这一个预算的最后 20%（第 17 章）；分叉不浪费主干：每个预算只多花一段衰减", 14)
+    body += text(480, y0 + h + 84, "余弦调度的形状由总步数决定，换一个预算就要从头重训；第 23 章的逐轮淘汰正是靠这个分叉", 13.5, GRAY)
+    svg("wsd-branches.svg", "WSD 的分叉",
+        "横轴是训练步数，纵轴是学习率。主干经过 warmup 后一直停在峰值上。从主干上的几个检查点出发，各接一段线性衰减到 0，就得到预算 A、B、C 三个训练完成的模型，"
+        "衰减段约占各自预算的最后 20%。这是示意图，不是某次实验的曲线。", y0 + h + 104, body)
+
+
+def bf16_rounding():
+    """第 19 章：1 附近的刻度，以及小更新被舍入吞掉。"""
+    body = text(480, 36, "1 附近的刻度有多密：一次 0.001 的更新还留得住吗", 21, weight="bold")
+    rows = [("FP32", 2 ** -23, BLUE, "间隔 2^-23 ≈ 0.00000012", "1.001 → 1.00100005", "留住了"),
+            ("FP16", 2 ** -10, TEAL, "间隔 2^-10 ≈ 0.00098", "1.001 → 1.0009766", "大致留住"),
+            ("BF16", 2 ** -7, RED, "间隔 2^-7 = 0.0078125", "1.001 → 1.0", "整个被吞掉")]
+    x0, x1 = 140, 860
+    lo, hi = 0.996, 1.010
+    sx = lambda v: x0 + (v - lo) / (hi - lo) * (x1 - x0)
+    for i, (name, ulp, color, gap, res, verdict) in enumerate(rows):
+        y = 100 + i * 100
+        body += text(110, y + 6, name, 16, color, "bold", "end")
+        body += line(x0, y, x1, y, "#94a3b8", 1.5)
+        if ulp > 1e-5:
+            k0 = int((lo - 1) / ulp) - 1
+            k = k0
+            while 1 + k * ulp <= hi:
+                v = 1 + k * ulp
+                if v >= lo:
+                    body += line(sx(v), y - 8, sx(v), y + 8, color, 1.4)
+                k += 1
+        else:
+            body += f'<rect x="{x0}" y="{y - 8}" width="{x1 - x0}" height="16" fill="{SOFT[color]}" stroke="none"/>'
+            body += text(480, y + 4, "刻度密到画不出来", 11.5, color)
+        body += circle(sx(1.0), y, 5, INK, INK) + circle(sx(1.001), y, 5, ORANGE, ORANGE)
+        body += text(x1 + 10, y - 6, gap, 12.5, color, anchor="start") if False else ""
+        body += text(sx(1.0), y + 30, gap, 12.5, color, anchor="start")
+        body += text(x1, y + 30, f"{res}：{verdict}", 13, color, "bold", "end")
+    body += text(sx(1.0), 76, "1.0", 12.5, INK) + text(sx(1.001) + 6, 76, "1.001", 12.5, ORANGE, anchor="start")
+    body += text(480, 420, "学习率 1e-3 量级的一步更新，落在 BF16 的半个刻度以内，加上去再舍入就回到原值", 14.5)
+    body += text(480, 446, "所以混合精度训练时，前向和反向可以用 BF16，参数本身（主权重）和优化器状态要留在 FP32", 14.5, INK, "bold")
+    svg("bf16-rounding.svg", "1 附近的浮点刻度",
+        "三条数轴画出 1.0 附近能精确表示的数。FP32 的间隔约 1.2e-7，1.001 能保留；FP16 的间隔约 0.00098，1.001 舍入成 1.0009766；BF16 的间隔是 0.0078125，"
+        "1.001 舍入回 1.0，一次 0.001 的更新完全丢失。所以混合精度训练要把主权重留在 FP32。", 470, body)
+
+
+def rng_timeline():
+    """第 21 章：全局随机数被谁取走了。"""
+    body = text(480, 36, "恢复训练为什么差了一点：全局随机数多被取走了一次", 21, weight="bold")
+
+    def row(y, label, items, color):
+        out = text(150, y + 24, label, 14.5, color, "bold", "end")
+        x = 170
+        for t, kind in items:
+            w = {"step": 92, "iter": 108, "load": 120, "gap": 30}[kind]
+            fill = {"step": SOFT[color], "iter": "#fef2f2", "load": "#f1f5f9", "gap": "#ffffff"}[kind]
+            stroke = {"step": color, "iter": RED, "load": GRAY, "gap": "#ffffff"}[kind]
+            out += box(x, y, w - 6, 38, fill, stroke, width=1.4)
+            out += text(x + (w - 6) / 2, y + 24, t, 12.5, RED if kind == "iter" else (GRAY if kind in ("load", "gap") else color))
+            x += w
+        return out
+
+    body += text(480, 78, "全局随机数是一串依次取用的数：r1 r2 r3 …，dropout 每步按顺序取", 14, GRAY)
+    body += row(100, "一口气训完", [("step 119：r1", "step"), ("step 120：r2", "step"), ("step 121：r3", "step"), ("step 122：r4", "step"), ("…", "gap")], BLUE)
+    body += row(170, "断电后恢复", [("读检查点", "load"), ("iter(loader)：r3", "iter"), ("step 121：r4", "step"), ("step 122：r5", "step"), ("…", "gap")], ORANGE)
+    body += text(170, 160, "恢复了第 120 步之后的随机数状态，下一个该取的是 r3", 12.5, GRAY, anchor="start")
+    body += text(480, 248, "恢复后从 epoch 1 中间开始，先创建一次迭代器，DataLoader 顺手取走 r3 给 worker 当种子；", 14)
+    body += text(480, 272, "从第 121 步起每一步的 dropout 掩码都错开一位，损失差在小数点后第 4 位，120 步后参数最大差 0.52", 14)
+    body += box(170, 300, 620, 46, SOFT[TEAL], TEAL, width=1.5)
+    body += text(480, 329, "修法：DataLoader(..., generator=torch.Generator().manual_seed(种子))，它就不再碰全局随机数", 14, TEAL, "bold")
+    svg("rng-timeline.svg", "全局随机数的取用顺序",
+        "上：一口气训练时，第 119、120、121、122 步的 dropout 依次取全局随机数 r1、r2、r3、r4。下：从第 120 步的检查点恢复时，随机数状态恢复到该取 r3，"
+        "但从 epoch 中间开始训练要先创建迭代器，DataLoader 取走了 r3，第 121 步的 dropout 只能取 r4，之后全部错开一位。给 DataLoader 自己的随机数生成器就能修好。", 370, body)
+
+
+def eval_checklist_flow():
+    """第 22 章：训练前、训练中、训练后、比较模型四个阶段各查什么。"""
+    body = text(500, 36, "诊断清单按时间排：越早的检查越便宜，越晚的越接近真实质量", 20, weight="bold")
+    stages = [("训练前", "几秒", BLUE, ["初始损失 ≈ ln V", "因果性：改后面的 token，", "前面的输出不变", "单 batch 能过拟合", "（用同一份训练代码）"]),
+              ("训练中", "每隔几十步", TEAL, ["训练损失和验证损失", "梯度范数（裁剪前）", "学习率是否按计划走", "有没有 NaN / inf"]),
+              ("训练后", "一次", ORANGE, ["固定提示词的生成样例", "简单结构指标", "（字数、标点、重复）"]),
+              ("比较两个模型", "每次对照", PURPLE, ["同一验证集、同一口径", "配对 bootstrap 求差的区间", "多个种子，报平均和范围", "测试集只报告一次"])]
+    x = 30
+    for i, (name, when, color, items) in enumerate(stages):
+        w = 225
+        body += cbox(x, 70, w, 46, color) + text(x + w / 2, 92, name, 16, color, "bold") + text(x + w / 2, 110, when, 12, GRAY)
+        body += box(x, 128, w, 170, "#ffffff", color, width=1.3)
+        for j, it in enumerate(items):
+            bullet = not it.startswith("（") and not (j > 0 and items[j - 1].endswith("，"))
+            body += text(x + 14, 156 + j * 28, ("• " if bullet else "  ") + it, 13.5, INK, anchor="start")
+        if i < 3:
+            body += arrow(x + w, 93, x + w + 14, 93, GRAY, 2)
+        x += w + 16
+    body += text(500, 334, "第 4 节的矩阵说明：没有一项检查能抓住全部 6 个 bug，训练前的三项几秒内就抓住了其中 4 个", 14)
+    body += text(500, 358, "有 bug 的模型验证损失可以比正确代码还低，所以“损失降得好”不能代替前面的检查", 13.5, GRAY)
+    svg("eval-checklist-flow.svg", "诊断清单的四个阶段",
+        "训练前花几秒做三项检查：初始损失约等于 ln V、因果性测试、单 batch 过拟合。训练中记录训练与验证损失、梯度范数和学习率。训练后看固定提示词的生成样例和简单结构指标。"
+        "比较两个模型时在同一验证集上做配对 bootstrap，并结合多个种子。", 380, body, width=1000)
+
+
+def tensor_parallel_swiglu():
+    """第 24 章：SwiGLU 在两张卡上按列切、再按行切。"""
+    body = text(500, 36, "张量并行：一个 SwiGLU 前馈层切到 2 张卡上", 21, weight="bold")
+    for g, (color, gx) in enumerate([(BLUE, 60), (TEAL, 530)]):
+        body += f'<rect x="{gx}" y="66" width="410" height="330" rx="14" fill="{SOFT[color]}" stroke="{color}" stroke-width="1.6"/>'
+        body += text(gx + 205, 90, f"GPU {g}", 16, color, "bold")
+        body += mod(gx + 105, 104, 200, 44, "输入 x（每张卡一份完整的）", "[T, d]", GRAY, 13)
+        body += mod(gx + 20, 176, 170, 48, f"gate 的第 {g} 半列", "[d, h/2]", color, 13)
+        body += mod(gx + 220, 176, 170, 48, f"up 的第 {g} 半列", "[d, h/2]", color, 13)
+        body += path(f"M{gx + 205} 148 V162 H{gx + 105} V174", GRAY, 1.6) + path(f"M{gx + 205} 162 H{gx + 305} V174", GRAY, 1.6)
+        body += mod(gx + 105, 250, 200, 44, "SiLU(gate)·up", "[T, h/2]：只在本卡算", color, 13)
+        body += path(f"M{gx + 105} 224 V236 H{gx + 205} V248", GRAY, 1.6) + path(f"M{gx + 305} 224 V236 H{gx + 205}", GRAY, 1.6)
+        body += mod(gx + 105, 322, 200, 48, f"down 的第 {g} 半行", "[h/2, d] → 部分和 [T, d]", color, 13)
+        body += arrow(gx + 205, 294, gx + 205, 318, GRAY, 1.6)
+    body += cbox(330, 420, 340, 50, RED) + text(500, 442, "all-reduce：两张卡的部分和相加", 15, RED, "bold") + mtext(500, 461, "y = y0 + y1   [T, d]", 13)
+    body += path("M265 370 V444 H326", RED, 1.8) + path("M735 370 V444 H674", RED, 1.8)
+    body += text(500, 500, "gate、up 按列切，down 按行切：中间的门控完全在各卡内部算完，前向只在最后通信一次", 14)
+    body += text(500, 524, "每张卡只存一半的前馈层参数；代价是每层都要一次和激活一样大的通信，所以只在同一台机器的几张卡之间做", 13.5, GRAY)
+    svg("tensor-parallel-swiglu.svg", "SwiGLU 的张量并行切分",
+        "两张卡各有一份完整的输入 x。gate 和 up 的权重按列切成两半，每张卡算出中间宽度的一半，SiLU 门控在本卡内完成；down 的权重按行切成两半，每张卡算出一份部分和，"
+        "最后用一次 all-reduce 把两份部分和相加，得到完整输出。", 545, body, width=1000)
+
+
+def activation_recompute():
+    """第 24 章：激活重计算只存每个 Block 的输入，反向时重算。"""
+    body = text(480, 36, "激活重计算：前向少存，反向时把这一个 Block 再算一遍", 21, weight="bold")
+    for row, (title, color, recompute) in enumerate([("普通训练：Block 内部的中间结果全都存着", GRAY, False), ("激活重计算：只存每个 Block 的输入", TEAL, True)]):
+        y = 76 + row * 190
+        body += text(60, y, title, 15.5, color, "bold", "start")
+        for b in range(4):
+            x = 60 + b * 210
+            body += box(x, y + 18, 180, 60, SOFT[BLUE], BLUE, width=1.4) + text(x + 90, y + 44, f"Block {b + 1}", 14, BLUE, "bold")
+            body += box(x - 4, y + 90, 20, 22, "#fde68a", ORANGE, width=1.2)
+            if not recompute:
+                for k in range(5):
+                    body += box(x + 26 + k * 30, y + 90, 24, 22, "#fde68a", ORANGE, width=1.2)
+            else:
+                for k in range(5):
+                    body += box(x + 26 + k * 30, y + 90, 24, 22, "#ffffff", "#cbd5e1", width=1, dash=True)
+            if b < 3:
+                body += arrow(x + 180, y + 48, x + 208, y + 48, GRAY, 1.6)
+        body += text(60, y + 134, "黄格：存在显存里、等反向用的激活" if not recompute else "黄格：Block 的输入；虚线格：前向算完就扔，反向到这个 Block 时从输入重算", 13, GRAY, anchor="start")
+    body += path("M900 410 H690 V330", RED, 2) if False else ""
+    body += text(480, 460, "本章实测：激活省下九成多，梯度逐位相同，每步慢约三成（多了一次前向）", 14.5, INK, "bold")
+    svg("activation-recompute.svg", "激活重计算",
+        "上：普通训练时，每个 Block 内部的中间结果都要存着等反向用。下：激活重计算只存每个 Block 的输入，内部的中间结果算完就扔，反向传播到这个 Block 时从输入把前向重算一遍。"
+        "第 24 章的实验里，激活显存省下九成多，梯度逐位相同，每步慢约三成。", 480, body)
+
+
+def expert_parallel():
+    """第 25 章：专家并行，token 经两次 all-to-all 去对应的卡再回来。"""
+    body = text(500, 36, "专家并行：8 个专家放在 4 张卡上，token 要去专家所在的卡算完再回来", 19, weight="bold")
+    colors = [BLUE, TEAL, ORANGE, PURPLE]
+    toks = [[0, 5, 2, 7], [1, 1, 6, 3], [4, 0, 1, 5], [1, 2, 1, 6]]
+    for g in range(4):
+        x = 40 + g * 240
+        c = colors[g]
+        body += text(x + 105, 76, f"GPU {g}：专家 {2 * g}、{2 * g + 1}", 14, c, "bold")
+        body += box(x, 88, 210, 44, "#ffffff", "#cbd5e1", width=1.2)
+        for i, e in enumerate(toks[g]):
+            ec = colors[e // 2]
+            body += box(x + 8 + i * 50, 96, 44, 28, SOFT[ec], ec, width=1.2) + mtext(x + 30 + i * 50, 115, f"→E{e}", 12, ec)
+        body += box(x, 230, 210, 50, SOFT[c], c, width=1.6)
+        body += text(x + 105, 252, f"专家 {2 * g} 和 {2 * g + 1} 计算", 13.5, c, "bold")
+        load = sum(1 for row in toks for e in row if e // 2 == g)
+        body += text(x + 105, 271, f"收到 {load} 个 token", 12.5, GRAY)
+        body += box(x, 360, 210, 44, "#ffffff", "#cbd5e1", width=1.2) + text(x + 105, 387, "结果回到原来的卡，按路由分数加权", 12, GRAY)
+    body += cbox(40, 160, 920, 40, RED) + text(500, 186, "all-to-all（分发）：每个 token 发到它选中的专家所在的卡", 14, RED, "bold")
+    body += cbox(40, 300, 920, 40, RED) + text(500, 326, "all-to-all（收回）：算完的结果发回 token 原来的卡", 14, RED, "bold")
+    for g in range(4):
+        x = 145 + g * 240
+        body += arrow(x, 132, x, 158, GRAY, 1.6) + arrow(x, 200, x, 228, GRAY, 1.6) + arrow(x, 280, x, 298, GRAY, 1.6) + arrow(x, 340, x, 358, GRAY, 1.6)
+    loads = [sum(1 for row in toks for e in row if e // 2 == g) for g in range(4)]
+    body += text(500, 440, f"这一层要等最慢的那张卡：GPU 0 收到 {loads[0]} 个 token，其余各 {min(loads)} 个。负载越不均，其他卡空等越久", 14)
+    body += text(500, 464, "（示意：每张卡 4 个 token、每个 token 只画第一选择；实际是 top-2，通信量更大）", 13, GRAY)
+    svg("expert-parallel.svg", "专家并行与 all-to-all",
+        "8 个专家分在 4 张卡上，每张卡两个。每张卡上的 token 先由路由器选出专家，第一次 all-to-all 把 token 发到专家所在的卡，各卡算完后第二次 all-to-all 把结果送回原来的卡。"
+        "一层的时间由收到 token 最多的那张卡决定，这就是负载均衡要解决的问题。示意图，token 分配是举例。", 485, body, width=1000)
+
+
+def sampling_pipeline():
+    """第 26 章：从 logits 到下一个 token 的每一步。"""
+    body = text(500, 36, "生成循环：从最后一个位置的 logits 到下一个 token", 21, weight="bold")
+    steps = [("模型前向", "最后一个位置的 logits", GRAY, "第 12 章"),
+             ("重复惩罚", "出现过的 token 降分", ORANGE, "第 8 节"),
+             ("约束掩码", "不合格式的置为 −∞", RED, "第 9 节"),
+             ("÷ 温度 T，softmax", "T 小更尖，T 大更平", BLUE, "第 1、5 节"),
+             ("top-k / top-p 截断", "砍掉长尾，重新归一化", TEAL, "第 2 节"),
+             ("按概率抽一个", "用固定的 generator", PURPLE, "第 6 节")]
+    x = 20
+    for i, (name, note, color, ref) in enumerate(steps):
+        w = 146
+        body += cbox(x, 80, w, 70, color) + text(x + w / 2, 106, name, 14, color, "bold") + text(x + w / 2, 126, note, 11, INK) + text(x + w / 2, 143, ref, 11, GRAY)
+        if i < len(steps) - 1:
+            body += arrow(x + w, 115, x + w + 14, 115, GRAY, 2)
+        x += w + 14
+    body += path("M675 150 V176 H770", BLUE, 1.6, dash=True) if False else ""
+    body += box(560, 180, 410, 40, "#ffffff", PURPLE, width=1.4, dash=True)
+    body += text(765, 205, "贪心：跳过温度、截断和抽样，直接取 argmax", 13, PURPLE)
+    body += path("M904 150 V178", PURPLE, 1.4, dash=True)
+    body += mod(380, 250, 240, 50, "是 <eos>，或到 max_new_tokens？", None, INK, 13.5)
+    body += path("M880 150 V170 H975 V275 H624", GRAY, 2)
+    body += text(640, 270, "否：接到序列末尾，回到模型前向", 13, GRAY, anchor="start") if False else ""
+    body += path("M380 275 H20 V115 H26", GRAY, 2)
+    body += text(200, 266, "否：新 token 接到末尾，再走一圈", 13, GRAY)
+    body += arrow(500, 300, 500, 330, GRAY, 2)
+    body += text(500, 350, "是：停止，把新 token 整段解码成文字", 13.5, INK, "bold")
+    body += text(500, 390, "每一步都只改“这一次怎么选”，模型参数一个也不动；换采样方式不用重新训练", 14, GRAY)
+    svg("sampling-pipeline.svg", "生成循环的每一步",
+        "模型前向得到最后一个位置的 logits，依次经过重复惩罚、约束掩码、除以温度后 softmax、top-k 或 top-p 截断，再按概率抽一个 token；贪心解码跳过后三步直接取最大值。"
+        "如果抽到 <eos> 或达到最大长度就停止，否则把新 token 接到序列末尾再走一圈。", 410, body, width=1000)
+
+
+def roofline():
+    """第 27 章：roofline，用 H100 的公布值画 prefill 与 decode 的位置。"""
+    peak, bw = 989e12, 3.35e12            # H100 SXM：BF16 稠密张量算力、显存带宽（NVIDIA 公布值）
+    ridge = peak / bw
+    I = np.logspace(-0.3, 4, 200)
+    fig, ax = plt.subplots(figsize=(10, 4.4), layout="constrained")
+    ax.plot(I, np.minimum(peak, bw * I) / 1e12, color=INK, lw=2.2)
+    ax.axvline(ridge, color=GRAY, ls="--", lw=1)
+    ax.text(ridge * 1.08, 30, f"拐点 ≈ {ridge:.0f} FLOP/字节", fontsize=10.5, color=GRAY)
+    pts = [(1, "decode，batch 1", RED), (10, "prefill 10 个 token", ORANGE), (64, "decode，batch 64", BLUE), (2048, "prefill 2048 个 token", TEAL)]
+    for x, label, color in pts:
+        y = min(peak, bw * x) / 1e12
+        ax.scatter([x], [y], color=color, s=60, zorder=3)
+        ax.annotate(f"{label}\n≈ {y:.0f} TFLOP/s", (x, y), textcoords="offset points", xytext=(8, -26 if x < 100 else 8), fontsize=10, color=color)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_ylim(1, 4000)
+    ax.set_xlabel("算术强度：每读 1 字节权重做多少次浮点运算（≈ 一次前向里同时处理的 token 数）")
+    ax.set_ylabel("能达到的算力上限（TFLOP/s）")
+    ax.text(2, peak / 1e12 * 0.55, "左边斜线：卡在带宽", fontsize=11, color=RED)
+    ax.text(ridge * 3, peak / 1e12 * 0.55, "右边平线：卡在算力", fontsize=11, color=TEAL)
+    ax.grid(alpha=0.25, which="both")
+    save_plot(fig, "roofline.svg", "prefill 与 decode 在 roofline 上的位置",
+              f"用 H100 SXM 的公布值（BF16 稠密 {peak / 1e12:.0f} TFLOP/s、显存带宽 3.35 TB/s）画出的 roofline，拐点约 {ridge:.0f} FLOP/字节。"
+              "BF16 权重的矩阵乘里，每个权重 2 字节、每个 token 做 2 次运算，算术强度约等于一次处理的 token 数（只算权重读取的粗略估计）。"
+              "decode batch 1 和 10 个 token 的 prefill 都在左边卡在带宽，2048 个 token 的 prefill 才到右边卡在算力。")
+
+
+def chunked_prefill_timeline():
+    """第 27 章：长提示词的 prefill 不分块与分块时，别人的 decode 怎样排队。"""
+    body = text(480, 36, "chunked prefill：长提示词切成几块，正在生成的请求可以插进来", 20, weight="bold")
+
+    def row(y, label, segs):
+        out = text(118, y + 22, label, 14, INK, "bold", "end")
+        for x, w, t, color in segs:
+            out += box(x, y, w - 3, 34, SOFT[color], color, width=1.3) + text(x + (w - 3) / 2, y + 22, t, 12, color)
+        return out
+
+    body += text(130, 76, "不分块：一次前向做完新请求 C 的 2000 个 token", 14.5, RED, "bold", "start")
+    segs = [(130, 50, "A、B", BLUE), (180, 50, "A、B", BLUE), (230, 330, "C 的 prefill（2000 个 token）", ORANGE), (560, 70, "A、B、C", BLUE), (630, 70, "A、B、C", BLUE)]
+    body += row(92, "每次前向", segs)
+    body += text(395, 150, "A、B 在这段时间里一个字也出不来：用户看到“卡了一下”", 13, RED)
+    body += text(130, 196, "分块：C 的 prefill 切成 4 块，每次前向带上 A、B 的 decode", 14.5, TEAL, "bold", "start")
+    segs2 = [(130, 50, "A、B", BLUE)] + [(180 + i * 110, 110, f"C 第 {i + 1} 块 + A、B", TEAL) for i in range(4)] + [(620, 70, "A、B、C", BLUE)]
+    body += row(212, "每次前向", segs2)
+    body += text(400, 270, "A、B 每次前向都多出一个字；C 的第一个字反而晚一点出来", 13, TEAL)
+    body += text(480, 320, "分块不改变结果（本章第 9 节验证了误差为 0），改变的是谁等谁：别人的 ITL 变稳，C 自己的 TTFT 略长", 14)
+    body += text(480, 344, "块越小，插得越勤，但每块都要重读一遍已经缓存的 KV，开销变大；块大小要按负载调", 13.5, GRAY)
+    svg("chunked-prefill-timeline.svg", "chunked prefill 的调度",
+        "上：不分块时，新请求 C 的 2000 个 token 一次前向做完，这段时间里正在生成的 A、B 一个字也出不来。下：把 C 的 prefill 切成 4 块，每次前向同时带上 A、B 的 decode，"
+        "A、B 每次前向都能多出一个字，C 的首字稍晚。示意图，块的长短不代表实测时间。", 365, body)
+
+
+def gpu_memory_hierarchy():
+    """第 28 章：GPU 的存储层次（H100 SXM 公布值）。"""
+    body = text(480, 36, "GPU 的存储层次：越靠近计算单元越快，也越小（H100 SXM）", 20, weight="bold")
+    levels = [("HBM 显存", "80 GB", "约 3.35 TB/s", "权重、KV cache、激活都在这里", GRAY, 700),
+              ("L2 缓存", "50 MB", "全卡共享", "自动缓存，程序管不了", BLUE, 600),
+              ("每个 SM 的共享内存 / L1", "最多 228 KB（共 132 个 SM）", "程序显式管理", "FlashAttention 把 Q、K、V 的块放在这里", TEAL, 470),
+              ("寄存器", "每个 SM 256 KB", "最快", "正在算的那几个数", ORANGE, 320)]
+    y = 70
+    for name, size, speed, note, color, w in levels:
+        x = 480 - w / 2
+        body += cbox(x, y, w, 62, color) + text(480, y + 24, f"{name}：{size}", 15, color, "bold") + text(480, y + 46, f"{speed}；{note}", 12.5, INK)
+        y += 74
+    body += text(480, y + 18, "朴素注意力把 T×T 的分数表写回 HBM 再读出来；分块内核让一个方块的计算从头到尾留在共享内存里，", 13.5)
+    body += text(480, y + 40, "只把输出写回 HBM。块大小的上限就是这 228 KB（第 5 节）", 13.5)
+    body += text(480, y + 68, "数据来自 NVIDIA Hopper 调优指南与 H100 产品说明；其他 GPU 的容量不同，A100 每个 SM 的共享内存最多 164 KB", 12.5, GRAY)
+    svg("gpu-memory-hierarchy.svg", "GPU 的存储层次",
+        "从下往上：H100 SXM 的 HBM 显存 80 GB、带宽约 3.35 TB/s，存权重、KV cache 和激活；L2 缓存 50 MB，全卡共享；每个 SM 的共享内存最多 228 KB，共 132 个 SM，"
+        "由程序显式管理，FlashAttention 把 Q、K、V 的块放在这里；寄存器每个 SM 256 KB。分块注意力让计算留在共享内存里，只把输出写回 HBM。", y + 90, body)
+
+
+def quant_grouping():
+    """第 29 章：同一个矩阵，按张量、按通道、分组时，哪些权重共用一个缩放因子。"""
+    body = text(500, 36, "量化粒度：同一种颜色的权重共用一个缩放因子", 21, weight="bold")
+    rows, cols, cell = 6, 16, 16
+    palette = ["#bfdbfe", "#99f6e4", "#fde68a", "#fecaca", "#ddd6fe", "#fbcfe8", "#bbf7d0", "#fed7aa"]
+    configs = [("按张量：1 个缩放因子", lambda r, c: 0, "每个权重 + 0 位", "一个大数会拉低所有数的精度"),
+               ("按通道（每行一个）：6 个", lambda r, c: r, "每个权重 + 16/16 = 1 位（这里每行只有 16 个数）", "TinyLLM 的行有 128～341 个数，约 + 0.1 位"),
+               ("分组 g = 4：24 个", lambda r, c: r * 4 + c // 4, "每个权重 + 16/4 = 4 位", "实际常用 g = 32～128，+ 0.5～0.125 位")]
+    for k, (title, gid, cost, note) in enumerate(configs):
+        x0 = 40 + k * 320
+        body += text(x0 + cols * cell / 2, 78, title, 15, INK, "bold")
+        for r in range(rows):
+            for c in range(cols):
+                g = gid(r, c)
+                body += f'<rect x="{x0 + c * cell}" y="{96 + r * cell}" width="{cell}" height="{cell}" fill="{palette[g % len(palette)]}" stroke="#ffffff" stroke-width="1"/>'
+        if k == 2:
+            for r in range(rows):
+                for c in range(0, cols, 4):
+                    body += f'<rect x="{x0 + c * cell}" y="{96 + r * cell}" width="{4 * cell}" height="{cell}" fill="none" stroke="{INK}" stroke-width="0.8"/>'
+        body += text(x0 + cols * cell / 2, 216, cost, 12.5, BLUE)
+        body += text(x0 + cols * cell / 2, 238, note, 12, GRAY)
+    body += text(500, 282, "缩放因子 s = 这一组里绝对值最大的数 ÷ 7（INT4 对称）。组越小，s 越贴近组内的数，误差越小；", 14)
+    body += text(500, 306, "每个缩放因子按 FP16 存，多花 16 位，摊到组内每个权重上就是 16/g 位（第 3 节的“每个权重几位”）", 14)
+    svg("quant-grouping.svg", "量化粒度",
+        "同一个 6 行 16 列的权重矩阵，颜色相同的格子共用一个缩放因子。按张量时整个矩阵一个；按通道时每行一个，共 6 个；分组 g=4 时每行每 4 个一组，共 24 个。"
+        "组越小误差越小，但每个缩放因子要多存 16 位，摊到每个权重上是 16/g 位。", 325, body, width=1000)
+
+
+def quant_mapping():
+    """第 29 章：x → q → x̂ 的往返，对称与非对称。"""
+    body = text(480, 36, "量化是把一段实数映射到一排整数刻度上（INT4）", 21, weight="bold")
+    x0, x1 = 120, 860
+    for k, (title, lo, hi, levels, color, note) in enumerate([
+            ("对称：s = max|x| / 7，整数 −7…7", -1.0, 1.0, [i / 7 for i in range(-7, 8)], BLUE, "0 正好在刻度上；适合大致关于 0 对称的权重"),
+            ("非对称：s = (max − min) / 15，零点 z 把 0 放在刻度上，整数 0…15", -0.3, 1.0, None, TEAL, "范围贴着数据：有偏的激活（比如 SiLU 输出）一个刻度也不浪费")]):
+        y = 110 + k * 150
+        body += text(x0, y - 26, title, 15, color, "bold", "start")
+        body += line(x0, y, x1, y, "#94a3b8", 1.5)
+        sx = lambda v: x0 + (v - (-1.0)) / 2.0 * (x1 - x0)
+        if levels is None:
+            s = (hi - lo) / 15
+            levels = [lo + i * s for i in range(16)]
+        for i, v in enumerate(levels):
+            body += line(sx(v), y - 9, sx(v), y + 9, color, 1.6)
+        body += f'<rect x="{sx(lo)}" y="{y - 4}" width="{sx(hi) - sx(lo)}" height="8" fill="{SOFT[color]}" stroke="none"/>' if k == 1 else ""
+        xv = 0.53
+        near = min(levels, key=lambda v: abs(v - xv))
+        body += circle(sx(xv), y, 5, ORANGE, ORANGE) + text(sx(xv), y - 16, "x", 13, ORANGE, "bold")
+        body += circle(sx(near), y, 5, "#ffffff", INK) + text(sx(near) + 8, y + 26, "还原值", 12.5, INK, "bold", "start")
+        body += text(x1, y + 52, note, 12.5, GRAY, anchor="end")
+        body += text(x0 - 10, y + 5, "−1" if k == 0 else "", 12, GRAY, anchor="end") + text(x1 + 10, y + 5, "1", 12, GRAY, anchor="start")
+    body += text(480, 400, "x 先除以 s 再四舍五入成整数 q，存起来；用的时候还原成 s·(q − z)，落在最近的刻度上，误差最多半个刻度 s/2", 14)
+    body += text(480, 424, "刻度间隔 s 决定误差：位数少一位，s 大一倍；一组里的最大值越大，s 越大（第 3 节为什么要分组）", 13.5, GRAY)
+    svg("quant-mapping.svg", "量化的数值映射",
+        "上：对称 INT4 量化，把 −max|x| 到 max|x| 均匀分成 15 个刻度，0 正好落在刻度上。下：非对称量化按最小值和最大值定范围，用零点把 0 放到刻度上，16 个刻度都落在数据范围内。"
+        "一个数 x 量化后还原成最近的刻度，误差最多半个刻度。", 445, body)
+
+
+def residual_scaling():
+    """第 10 章：真实 Block 上，1/√(2L) 对残差流 RMS 和训练结果的影响。"""
+    src = DATA / "tinyllm-initialization-residuals-log.json"
+    if not src.exists():
+        print("skip residual-scaling: run scripts/build-tinyllm-code.py initialization-and-residuals to create", src)
+        return
+    log = json.loads(src.read_text(encoding="utf-8"))
+    rms, tr = log["rms"], log["train"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1]})
+    for key, color, ls, label in (("24|False", RED, "-", "24 层，不缩放"), ("24|True", TEAL, "-", "24 层，乘 1/√(2L)"),
+                                  ("8|False", RED, "--", "8 层，不缩放"), ("8|True", TEAL, "--", "8 层，乘 1/√(2L)")):
+        ys = rms[key]
+        a1.plot(range(len(ys)), ys, color=color, ls=ls, lw=2, label=label)
+        a1.annotate(f"{ys[-1]:.2f}", (len(ys) - 1, ys[-1]), textcoords="offset points", xytext=(5, -3), fontsize=10, color=color)
+    a1.set_xlabel("第几个 Block 之后（0 是嵌入）")
+    a1.set_ylabel("残差流的 RMS（初始化时，3 个种子平均）")
+    a1.set_title("不缩放：越深涨得越多；缩放后几乎不随深度变", fontsize=12)
+    a1.legend(fontsize=10)
+    a1.grid(alpha=0.25)
+    groups = [("1e-2", "0.01"), ("3e-3", "0.003")]
+    for gi, (lab, key) in enumerate(groups):
+        for k, (scaled, color) in enumerate((("False", RED), ("True", TEAL))):
+            vals = tr[f"{key}|{scaled}"]
+            x = gi * 1.0 + (k - 0.5) * 0.32
+            a2.scatter([x] * 3, vals, color=color, s=28, zorder=3)
+            m = sum(vals) / 3
+            a2.scatter([x], [m], color=color, marker="D", s=70, zorder=4)
+            a2.annotate(f"{m:.3f}", (x, m), textcoords="offset points", xytext=(8, -4), fontsize=10, color=color)
+    a2.set_xticks([0, 1], ["峰值学习率 1e-2", "峰值学习率 3e-3"])
+    a2.set_xlim(-0.6, 1.6)
+    a2.set_ylabel("验证损失（8 层，240 步）")
+    a2.set_title("训练后：两档学习率下都差约 0.33", fontsize=12)
+    a2.scatter([], [], color=RED, label="不缩放")
+    a2.scatter([], [], color=TEAL, label="乘 1/√(2L)")
+    a2.legend(fontsize=10, loc="center right")
+    a2.grid(alpha=0.25, axis="y")
+    save_plot(fig, "residual-scaling.svg", "残差输出投影缩放的实测",
+              f"左：TinyLLM 的 Pre-RMSNorm Block（宽度 64），初始化时残差流的 RMS 随层数的变化。不缩放时 24 层最后涨到 {rms['24|False'][-1]:.2f}，是嵌入的 {rms['24|False'][-1] / rms['24|False'][0]:.0f} 倍；"
+              f"proj 和 down 乘 1/√(2L) 后，8 层和 24 层都停在 {rms['8|True'][-1]:.2f} 附近。右：8 层模型训练 240 步的验证损失，3 个种子（菱形是平均）："
+              f"峰值 1e-2 时 {sum(tr['0.01|False']) / 3:.3f} 对 {sum(tr['0.01|True']) / 3:.3f}，峰值 3e-3 时 {sum(tr['0.003|False']) / 3:.3f} 对 {sum(tr['0.003|True']) / 3:.3f}。")
+
+
 # ---------- matplotlib 公共设置 ----------
 
 def configure_plots():
@@ -2317,7 +4662,22 @@ def main():
                kv_cache_size, latency_metrics, gpu_step_anatomy,
                data_pipeline_funnel, data_pipeline_near_dup, data_pipeline_leak, data_pipeline_packing, data_pipeline_coverage,
                lm_loss_poem, lm_loss_units, lm_loss_breakdown, lm_loss_calibration, lm_loss_denominator,
-               lr_schedules, lr_compare, lr_curves, lr_warmup):
+               lr_schedules, lr_compare, lr_curves, lr_warmup,
+               reg_dropout_positions, reg_overfit, reg_data_size, reg_weight_decay, reg_dropout, reg_compare,
+               grad_norm_trace, grad_clip_geometry, grad_spike, grad_compare, grad_accum_loop, grad_fp16_hist,
+               loop_structure, ckpt_contents, ckpt_resume,
+               eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
+               hp_sensitivity, hp_search, hp_halving, hp_peek,
+               scale_instability, scale_mup, scale_memory, scale_parallel,
+               moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving,
+               kernels_memory, kernels_online, kernels_tiling, kernels_fusion,
+               quant_levels, quant_granularity, quant_outliers,
+               first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
+               tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
+               lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,
+               eval_checklist_flow, tensor_parallel_swiglu, activation_recompute, expert_parallel, sampling_pipeline,
+               roofline, chunked_prefill_timeline, gpu_memory_hierarchy, quant_grouping, quant_mapping,
+               residual_scaling):
         fn()
     print("figures written to", OUT)
 

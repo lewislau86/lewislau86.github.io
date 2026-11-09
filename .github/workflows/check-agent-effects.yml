@@ -1,0 +1,40 @@
+name: Check P02 external side effects experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/side-effect-reliability.md"
+      - "docs/public/learn-agent-rust/code/side-effect-reliability/**"
+      - "docs/public/learn-agent-rust/outputs/p02-*.txt"
+      - "docs/public/learn-agent-rust/side-effect-reliability.zip"
+      - "scripts/data/learn-agent-rust/p02-results.json"
+      - "scripts/verify-agent-effects.py"
+      - ".github/workflows/check-agent-effects.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/side-effect-reliability.md"
+      - "docs/public/learn-agent-rust/code/side-effect-reliability/**"
+      - "docs/public/learn-agent-rust/outputs/p02-*.txt"
+      - "docs/public/learn-agent-rust/side-effect-reliability.zip"
+      - "scripts/data/learn-agent-rust/p02-results.json"
+      - "scripts/verify-agent-effects.py"
+      - ".github/workflows/check-agent-effects.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  effects:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Check effects, recovery windows and final archive
+        run: python scripts/verify-agent-effects.py --check

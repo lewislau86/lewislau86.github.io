@@ -1,0 +1,17 @@
+scenario=resubmit
+request=plan-1 kind=Plan Core->Lead deadline=10 state=Rejected
+  plan_sha256=49833d72070882217d761bd9ffcda300b39fc9203da2710bf7b0fe551dad9f34
+request=plan-2 kind=Plan Core->Lead deadline=10 state=Completed
+  plan_sha256=bb5a20f9114584b9ea27cbb4768a1a7570906f123a770e23ed1d91d5c8ad6b52
+errors=not_approved
+check no_output_before_approval=true
+wire plan-1:Core->Lead:accepted
+wire plan-2:Core->Lead:accepted
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=1 active=0 joined=2 aborted=0
+after_cleanup plan-1=Rejected
+after_cleanup plan-2=Completed
+artifact=review.txt sha256=921bd2f39517d1ce4789f0b6f7aca90f1bab21e456b4ebfb0fa4b6dbb6b1d3c1
+Revised review: use values.first().
+escape_absent=true workspace_removed=true

@@ -1,0 +1,13 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "external_log_lines": 1,
+    "phase": "reconcile",
+    "reserved_dispatches": 2,
+    "saved_append_results": 0,
+    "saved_tool_results": 1
+  },
+  "passed": true,
+  "processes": 7,
+  "scenario": "external-effect-window"
+}

@@ -1,0 +1,6 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"now":100,"op":"claim","owner":"worker-a","ttl":10}
+{"now":100,"status":"empty"}
+TASKS {"op":"show"}
+{"last_now":100,"status":"snapshot","tasks":[]}

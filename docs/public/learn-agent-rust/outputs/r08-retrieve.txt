@@ -1,0 +1,11 @@
+R08 | scenario=retrieve | scripted LLM + graph-flow + real temporary files
+measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
+prepare[1] before=11939 externalized=5010 micro=4833 after=1848 decision=summarized summary_input=12649
+prepare[2] before=2418 externalized=2418 micro=2418 after=2418 decision=unchanged summary_input=0
+prepare[3] before=3019 externalized=3019 micro=3019 after=3019 decision=unchanged summary_input=0
+prepare[4] before=3424 externalized=3424 micro=3424 after=3424 decision=unchanged summary_input=0
+artifact=a1 kind=transcript bytes=12192 integrity=true
+artifact=a2 kind=tool_output bytes=7180 integrity=true
+answer=结论：src/first.rs 的空输入会触发索引越界；证据 values[0]。建议返回 Option<u8>。未运行测试。
+stats summary_calls=1 agent_calls=4 reloads=1 reads=1 retrievals=1 stop=completed
+checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true

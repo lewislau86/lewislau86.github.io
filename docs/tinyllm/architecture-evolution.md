@@ -51,6 +51,10 @@ pageClass: tinyllm-course
 
 解码器那张表是下三角：第 1 个译词只能看自己，第 4 个能看前 4 个。这正是[第 6 章](./self-attention.md)的因果掩码。
 
+![三种注意力的掩码：编码器自注意力 5×5 全部允许；解码器自注意力 4×4 只允许下三角，10/16；交叉注意力 4×5 全部允许](/tinyllm/figures/mask-patterns.svg)
+
+怎么读这张图：每张表的一行是“谁在看”，一列是“被看的是谁”，着色的格子表示允许。编码器和交叉注意力是满的，解码器自注意力只有下三角。第二代以后的语言模型去掉了编码器和交叉注意力，只留下中间这一种。
+
 ![左：2017 年的 Transformer 用编码器读完整句英文 the book on the table，解码器逐词生成“桌子上的书”，每生成一个词都通过交叉注意力回头看原文的任意位置，因此词序不同也能对上。右：GPT 去掉编码器，只保留只能看前文的解码器，在连续文本上预测下一个 token](/tinyllm/figures/transformer-to-gpt.svg)
 
 **它怎样实现目标：** 注意力让“书”可以直接去看 book，不管它们隔得多远、语序是否相同；所有位置可以同时计算，训练比 RNN 快得多。注意力本身分不出先后，所以要加**位置编码**（[第 7 章](./position-encoding.md)）；每个子层后面接残差和 LayerNorm（Post-Norm），再配一个前馈层。今天大模型里的零件，在这里已经基本齐了。
@@ -93,7 +97,7 @@ pageClass: tinyllm-course
 
 **留下的问题：** 放大以后，三笔账越来越重。
 
-- **注意力的账。** 完整注意力生成每个 token 时都要回看全部前文，要把每个旧 token 的 K、V 存着（KV cache，[第 26 章](./inference-efficiency.md)），上下文越长，缓存越大：
+- **注意力的账。** 完整注意力生成每个 token 时都要回看全部前文，要把每个旧 token 的 K、V 存着（KV cache，[第 27 章](./inference-efficiency.md)），上下文越长，缓存越大：
 
 <<< @/public/tinyllm/code/architecture-evolution.py#kv-cost
 
@@ -113,7 +117,7 @@ pageClass: tinyllm-course
 
 **目标：** 还是预测下一个 token。但要做到 2.8 万亿参数、一次读 100 万 token，同时让训练和使用的成本可以承受。
 
-我们选 Kimi K3 作为第三代的代表：它是 2026 年 7 月公开权重和技术报告的模型，在 2026 年 10 月的多个榜单上位列最强的开放权重模型（例如 LMArena 开放模型第一）。它的公开配置如下：
+我们选 Kimi K3 作为第三代的代表：它是 2026 年 7 月公开权重和技术报告的模型，在 2026 年 10 月的多个榜单上位列最强的开放权重模型（例如 LMArena 开放模型第一）。它的公开配置如下（来自官方模型卡和[技术报告](https://arxiv.org/abs/2607.24653)）：
 
 | 项目 | Kimi K3 |
 | --- | --- |
@@ -123,7 +127,7 @@ pageClass: tinyllm-course
 | 前馈层 | MoE：896 个专家每次选 16 个，另有 2 个共享专家 |
 | 隐藏维度 / 注意力头 | 7168 / 96 |
 | 词表 / 上下文 | 16 万 / 1,048,576 token |
-| 其他 | 原生多模态（4 亿参数的视觉编码器）；训练时就按 MXFP4 权重量化 |
+| 其他 | 原生多模态（视觉编码器 MoonViT-V2，约 4 亿参数）；从 SFT 阶段起做 MXFP4 量化感知训练，只量化 MoE 专家 |
 
 它对第二代留下的三笔账，各有一个回答。
 
@@ -150,11 +154,13 @@ pageClass: tinyllm-course
 Kimi K3：总参数 2.8 万亿，每个 token 用到 1040 亿（3.7%）
 ```
 
-参数多，能装下的规律就多；每个 token 只用其中 3.7%，计算量就不会跟着参数一起暴涨。代价是要让 896 个专家分工均衡，训练更难（[第 24 章](./mixture-of-experts.md)会做实验）。
+参数多，能装下的规律就多；每个 token 只用其中 3.7%，计算量就不会跟着参数一起暴涨。代价是要让 896 个专家分工均衡，训练更难（[第 25 章](./mixture-of-experts.md)会做实验）。
 
 **③ 训练稳定性的账：改残差和优化器。** Kimi K3 的 Attention Residuals 把“每层简单地加回残差流”改成：每一层可以有选择地回看前面所有层的输出。配合专门为稀疏 MoE 设计的稳定训练方法，才撑得住这么大的规模。
 
 ![左：GPT-1 由 12 个相同的 Block 组成，每个 Block 是完整注意力加稠密前馈层。右：2026 年的典型做法每 4 层为一组，前 3 层用便宜的线性注意力、第 4 层用完整注意力，每层后接 MoE 前馈层；MoE 由很多小专家组成，路由器为每个 token 只挑少数几个，另有所有 token 共用的共享专家](/tinyllm/figures/modern-block.svg)
+
+怎么读这张图：左边是 GPT-1 的一层，完整注意力加稠密前馈层，12 层都一样；右边是 2026 年典型做法的一组 4 层，前 3 层用便宜的线性注意力、第 4 层用完整注意力，每层后面都接 MoE 前馈层，下方把 MoE 的内部展开。TinyLLM 的主线是两者之间的第二代结构：每层都是完整注意力加稠密 SwiGLU，右边这些零件在第 25、27 章等专题里对照。
 
 Kimi K3 不是唯一的路线。2026 年另外两个公开了架构细节的代表，在“省”的方向上一致，具体做法不同：
 
@@ -200,7 +206,7 @@ DeepSeek V4 保留注意力，但把要回看的内容压缩；Qwen3.5 也是“
 
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
-TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器，因果注意力配 RoPE，Pre-Norm 的 RMSNorm，SwiGLU 前馈层。这一代的每个零件都能在 CPU 上单独做实验、看清它的作用，而且至今仍是第三代模型的骨架：Kimi K3 换掉的是注意力的种类和前馈层的密度，“只有解码器、预测下一个 token、Block 一层层叠”的整体结构没有变。第三代的零件放在后面的专题里，在主线基础上逐个替换、对照：MoE 在[第 24 章](./mixture-of-experts.md)，KV cache 和推理成本在[第 26 章](./inference-efficiency.md)，量化在[第 28 章](./quantization.md)。
+TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器，因果注意力配 RoPE，Pre-Norm 的 RMSNorm，SwiGLU 前馈层。这一代的每个零件都能在 CPU 上单独做实验、看清它的作用，而且至今仍是第三代模型的骨架：Kimi K3 换掉的是注意力的种类和前馈层的密度，“只有解码器、预测下一个 token、Block 一层层叠”的整体结构没有变。第三代的零件放在后面的专题里，在主线基础上逐个替换、对照：MoE 在[第 25 章](./mixture-of-experts.md)，KV cache 和推理成本在[第 27 章](./inference-efficiency.md)，量化在[第 29 章](./quantization.md)。
 
 ::: warning 常见误区
 - **新架构没有改变目标。** 从 GPT-1 到 Kimi K3，训练目标都是预测下一个 token；变的是怎样算得更省、做得更大。
@@ -258,6 +264,6 @@ TinyLLM 的主线采用**第二代的现代稠密解码器**：只有解码器�
 - [Scaling Laws for Neural Language Models，Kaplan 等，2020](https://arxiv.org/abs/2001.08361)
 - [LLaMA，Touvron 等，2023](https://arxiv.org/abs/2302.13971) · [GQA，Ainslie 等，2023](https://arxiv.org/abs/2305.13245)
 - [DeepSeek-V2（MLA 与 DeepSeekMoE），2024](https://arxiv.org/abs/2405.04434) · [Kimi Linear（KDA），2025](https://arxiv.org/abs/2510.26692)
-- [Kimi K3 模型仓库与技术报告](https://github.com/MoonshotAI/Kimi-K3) · [2026 年 10 月开放权重模型榜单汇总](https://www.taskade.com/blog/open-source-llms)
+- [Kimi K3 模型仓库](https://github.com/MoonshotAI/Kimi-K3) · [Kimi K3 技术报告，Kimi Team，2026](https://arxiv.org/abs/2607.24653) · [Kimi K3 模型卡](https://huggingface.co/moonshotai/Kimi-K3) · [2026 年 10 月开放权重模型榜单汇总](https://www.taskade.com/blog/open-source-llms)
 
 知道了这些零件的来历，接下来就沿着第二代解码器的数据流，从第一站开始一件件搭：文字怎样变成模型能处理的编号，[第 4 章：文本与词元化](./tokenization.md)。

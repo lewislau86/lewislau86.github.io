@@ -1,0 +1,44 @@
+name: Check R08 context compaction experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/context-compaction.md"
+      - "docs/public/learn-agent-rust/code/context-compaction/**"
+      - "docs/public/learn-agent-rust/outputs/r08-*.txt"
+      - "docs/public/learn-agent-rust/context-compaction.zip"
+      - "scripts/data/learn-agent-rust/r08-results.json"
+      - "scripts/verify-agent-compaction.py"
+      - "scripts/learn-agent-rust-compaction-figures.py"
+      - ".github/workflows/check-agent-compaction.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/context-compaction.md"
+      - "docs/public/learn-agent-rust/code/context-compaction/**"
+      - "docs/public/learn-agent-rust/outputs/r08-*.txt"
+      - "docs/public/learn-agent-rust/context-compaction.zip"
+      - "scripts/data/learn-agent-rust/r08-results.json"
+      - "scripts/verify-agent-compaction.py"
+      - "scripts/learn-agent-rust-compaction-figures.py"
+      - ".github/workflows/check-agent-compaction.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compaction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install native TLS build dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Check scenarios, tests, Clippy and final download
+        run: python scripts/verify-agent-compaction.py --check

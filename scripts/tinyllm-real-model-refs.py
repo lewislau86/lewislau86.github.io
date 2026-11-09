@@ -4,21 +4,25 @@
 并给出精确到行的链接。行号由本脚本从固定版本的源码里算出来（按类名、函数名定位），
 正文里 `<!-- real-model:start -->` 与 `<!-- real-model:end -->` 之间的内容由它整段重写，不要手改。
 
-升级 transformers 版本时：改 TAG，重新取源码，再运行本脚本；找不到的名字会直接报错。
+用法（三步，目录可以换成别的）：
 
-    git clone --depth 1 --branch v5.21 --filter=blob:none --sparse https://github.com/huggingface/transformers.git /tmp/tf
-    cd /tmp/tf && git sparse-checkout set src/transformers/models/llama src/transformers/models/qwen2 \\
-        src/transformers/models/qwen3 src/transformers/models/qwen3_5 src/transformers/loss src/transformers/generation
-    git sparse-checkout add src/transformers/modeling_utils.py src/transformers/cache_utils.py \\
-        src/transformers/modeling_rope_utils.py src/transformers/trainer.py \\
-        src/transformers/trainer_pt_utils.py src/transformers/trainer_utils.py src/transformers/data \\
-        src/transformers/optimization.py
-    python scripts/tinyllm-real-model-refs.py /tmp/tf
+    python scripts/tinyllm-real-model-refs.py --fetch /tmp/tf   # 取源码：只下载 SPEC 里用到的文件
+    python scripts/tinyllm-real-model-refs.py --check /tmp/tf   # 只检查每个名字找不找得到，不写文件
+    python scripts/tinyllm-real-model-refs.py /tmp/tf           # 生成
+
+--fetch 用 git 浅克隆固定版本 TAG，并把 sparse-checkout 设成 SPEC 里出现的文件（不用手写路径清单）；
+目录已经是一个克隆时，只更新 sparse-checkout。新增 SPEC 条目或升级 TAG 后重新 --fetch 一次即可。
+
+源码目录里缺文件时，脚本列出缺的文件并直接退出，不逐条报错。
+其余找不到的名字不会中断脚本：其他条目照常生成，结束时列出全部问题并以状态码 1 退出。
+已经有“在真实模型里”一节的章节，如果这次有条目找不到，保留原来的一节，不用残缺的版本覆盖。
 """
 
 from pathlib import Path
 import ast
+import os
 import re
+import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +30,7 @@ DOCS = ROOT / "docs/tinyllm"
 TAG = "v5.21"
 BLOB = f"https://github.com/huggingface/transformers/blob/{TAG}/src/transformers/"
 START, END = "<!-- real-model:start -->", "<!-- real-model:end -->"
+REPO = os.environ.get("TINYLLM_TF_REPO", "https://github.com/huggingface/transformers.git")
 
 LLAMA = "models/llama/modeling_llama.py"
 QWEN3 = "models/qwen3/modeling_qwen3.py"
@@ -120,6 +125,60 @@ SPEC = {
         ("按名字选调度器", "optimization.py", "get_scheduler", "`lr_scheduler_type` 是 `\"cosine\"`、`\"linear\"`、`\"warmup_stable_decay\"` 等字符串，在这里映射到具体函数"),
         ("Trainer 何时创建", "trainer.py", "Trainer.create_scheduler", "知道总步数以后才创建调度器；`warmup_steps` 不小于 1 时是步数，小于 1 时按总步数的比例换算"),
     ]),
+    "quantization": ("transformers 不自己实现量化算法，而是用配置类描述格式，交给 bitsandbytes、GPTQ、AWQ 等后端；KV cache 的量化在缓存类里：", [
+        ("8 位 / 4 位加载", "utils/quantization_config.py", "BitsAndBytesConfig", "`load_in_8bit` 走 LLM.int8()：超过 `llm_int8_threshold`（默认 6.0）的离群值单独用 FP16 算；`load_in_4bit` 可选 NF4 或 FP4"),
+        ("GPTQ", "utils/quantization_config.py", "GPTQConfig", "`bits` 和 `group_size`（默认 128）就是本章的位数和分组大小；量化时用校准数据逐列补偿误差"),
+        ("AWQ", "utils/quantization_config.py", "AwqConfig", "默认 4 位、分组 128、带零点（非对称）；`modules_to_not_convert` 用来让某些层保持原精度"),
+        ("KV cache 量化", "cache_utils.py", "QuantizedLayer", "最近 `residual_length`（默认 128）个 token 保持原精度，更早的按 `q_group_size`（默认 64）分组量化成 `nbits`（默认 4）位"),
+    ]),
+    "attention-kernels": ("transformers 里的注意力层不自己写 softmax，而是按配置把 Q、K、V 交给某个注意力实现；默认就是本章用的 SDPA：", [
+        ("选择注意力实现", LLAMA, ("grep", r"attention_interface: Callable = ALL_ATTENTION_FUNCTIONS\.get_interface\("), "按 `config._attn_implementation`（`eager`、`sdpa`、`flash_attention_2` 等）挑一个函数，找不到时退回朴素写法；注意力层本身不关心用的是哪种内核"),
+        ("朴素写法", LLAMA, "eager_attention_forward", "先算出完整的分数矩阵、加掩码、softmax、再乘 V，和本章 `naive_attention` 一样，会写出整张 T×T 的表"),
+        ("SDPA", "integrations/sdpa_attention.py", "sdpa_attention_forward", "整理形状和掩码后调用 `torch.nn.functional.scaled_dot_product_attention`，由 PyTorch 选分块内核"),
+        ("FlashAttention", "integrations/flash_attention.py", "flash_attention_forward", "调用 flash-attn 库的 GPU 内核；需要单独安装，只支持部分 GPU 和数据类型"),
+    ]),
+    "mixture-of-experts": ("transformers 里的 MoE 层和本章的写法几乎一样：路由器打分、取 top-k、按分数加权求和；Qwen2-MoE 还多了一个共享专家：", [
+        ("路由与专家", "models/mixtral/modeling_mixtral.py", "MixtralSparseMoeBlock", "Mixtral 的 MoE 层：8 个专家选 2 个，softmax 后取 top-2 并重新归一化，和本章 `MoE` 的做法相同"),
+        ("负载均衡损失", "models/mixtral/modeling_mixtral.py", "load_balancing_loss_func", "Switch Transformer 的辅助损失：每个专家分到的比例乘以平均路由概率，再求和，即本章 `self.aux`"),
+        ("共享专家", "models/qwen2_moe/modeling_qwen2_moe.py", "Qwen2MoeSparseMoeBlock", "路由专家之外，还有一个每个 token 都经过的共享专家，用一个门控决定它的输出占多少"),
+    ]),
+    "large-model-stability": ("本章的几个手段，在 transformers 里分别对应下面这几处：", [
+        ("QK Norm", QWEN3, ("grep", r"self\.q_norm = "), "Qwen3 给每个头的 q、k 各配一个 RMSNorm，和本章 `qk_norm=True` 的写法相同"),
+        ("激活重计算的开关", "modeling_utils.py", "PreTrainedModel.gradient_checkpointing_enable", "给模型里的每一层打开重计算，底层就是本章用的 `torch.utils.checkpoint`"),
+        ("Trainer 何时打开它", "trainer.py", ("grep", r"gradient_checkpointing_enable\("), "`TrainingArguments(gradient_checkpointing=True)` 时，训练开始前调用上面那个方法"),
+    ]),
+    "hyperparameter-tuning": ("transformers 的 Trainer 自带一个超参数搜索的入口，具体的搜索算法交给 Optuna、Ray Tune 等后端：", [
+        ("搜索入口", "trainer.py", "Trainer.hyperparameter_search", "每个 trial 用 `model_init` 重新造一个模型，按 `direction` 取验证指标的最小或最大；算法（TPE、随机、ASHA 等）由所选的后端决定"),
+        ("默认的搜索空间", "trainer_utils.py", "default_hp_space_optuna", "看一下默认都搜哪些量、范围多大；如果随机种子也在里面，挑出来的可能只是一次好运气（本章第 7 节）"),
+    ]),
+    "training-evaluation": ("本章埋的几个 bug，在 transformers 里分别由下面这几处代码防住；评估也有固定的入口：", [
+        ("标签错位", "loss/loss_utils.py", "ForCausalLMLoss", "把 `labels` 整体左移一位再算交叉熵；调用者只要传 `labels=input_ids`，错位由这里完成，避免了“标签没错位”"),
+        ("因果掩码", LLAMA, ("grep", r"create_causal_mask\("), "Llama 在主干的前向里构造因果掩码，再交给每一层注意力；本章“漏了因果掩码”就是少了这一步"),
+        ("评估入口", "trainer.py", "Trainer.evaluate", "在验证集上跑一遍，返回 `eval_loss` 等指标；`Trainer` 不替你算困惑度，常见的做法是自己取 `exp(eval_loss)`"),
+        ("评估循环", "trainer.py", "Trainer.evaluation_loop", "切到评估模式、关掉梯度，逐个 batch 收集损失和预测，再汇总成一个平均数"),
+    ]),
+    "training-loop": ("transformers 的 Trainer 存检查点、续训的做法和本章是同一套思路，只是拆成了几个文件：", [
+        ("保存检查点", "trainer.py", "Trainer._save_checkpoint", "模型、优化器、调度器、随机数状态和训练进度分别存成几个文件，放在同一个 `checkpoint-<步数>` 目录里"),
+        ("训练进度", "trainer_callback.py", "TrainerState", "`global_step`、`epoch`、日志历史等，存成 `trainer_state.json`，对应本章的 `progress`"),
+        ("保存随机数状态", "trainer.py", "Trainer._save_rng_state", "Python、NumPy、torch 以及每张 GPU 的随机数状态都存下来，比本章多几种"),
+        ("恢复随机数状态", "trainer.py", "Trainer._load_rng_state", "续训时装回去；找不到这个文件时会给出警告，提示结果可能无法逐位复现"),
+        ("跳过已经用过的 batch", "trainer.py", ("grep", r"skip_first_batches"), "续训时跳过这个 epoch 已经训练过的 batch，作用和本章 `EpochShuffle` 的 `start` 相同"),
+        ("只保留最近几个检查点", "trainer_utils.py", "rotate_checkpoints", "按 `save_total_limit` 删掉最旧的检查点，但始终保留最新的一个（续训要用）和验证最好的那个"),
+    ]),
+    "gradient-stability": ("transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新：", [
+        ("一个 micro-batch 的前向与反向", "trainer.py", "Trainer.training_step", "算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新"),
+        ("什么时候才更新", "trainer.py", ("grep", r"do_sync_step = \(step \+ 1\) % self\.args\.gradient_accumulation_steps"), "每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章 `train(accum=4)` 的顺序一样"),
+        ("裁剪阈值", "trainer.py", ("grep", r"max_grad_norm"), "来自 `TrainingArguments.max_grad_norm`，默认 1.0；设成 0 或 `None` 就不裁剪"),
+        ("按全局范数裁剪", "trainer.py", "Trainer._clip_grad_norm", "调用 PyTorch 的 `clip_grad_norm_`（多卡时由 accelerate 包一层），返回裁剪前的范数，Trainer 把它记成日志里的 `grad_norm`"),
+    ]),
+    "regularization": ("transformers 里和本章有关的开关都不大：weight decay 在创建优化器时分组，dropout 写在注意力里，提前停止是一个回调：", [
+        ("哪些参数做 weight decay", "trainer.py", "Trainer.get_decay_parameter_names", "名字里带 `bias`、`norm` 的参数不衰减，其余（包括词嵌入）按 `weight_decay` 衰减，和本章 `p.dim() >= 2` 的分法结果相同"),
+        ("weight decay 的默认值", "training_args.py", ("grep", r"weight_decay: float = field"), "`TrainingArguments` 默认 `weight_decay=0.0`，要自己设；本章的实验说明合适的值和数据量、学习率、训练步数都有关"),
+        ("注意力 dropout 只在训练时打开", LLAMA, ("grep", r"dropout=0\.0 if not self\.training else self\.attention_dropout"), "评估模式下传 0，和本章 `dropout_p=... if self.training else 0.0` 一样；比例来自配置里的 `attention_dropout`"),
+        ("在注意力权重上丢弃", LLAMA, "eager_attention_forward", "softmax 之后对注意力权重做 `nn.functional.dropout`，即本章的位置 ①；`LlamaDecoderLayer` 里没有本章的 ② ③ 两处"),
+        ("提前停止", "trainer_callback.py", "EarlyStoppingCallback", "`early_stopping_patience` 次评估没有改进就停止训练；配合 `load_best_model_at_end=True` 才会在结束时换回最好的检查点"),
+        ("label smoothing", "trainer_pt_utils.py", "LabelSmoother", "`label_smoothing_factor` 不为 0 时启用；评估指标仍应看普通交叉熵（第 15 章）"),
+    ]),
     "optimizers": ("用 transformers 的 Trainer 训练时，优化器在这里创建：", [
         ("创建优化器", "trainer.py", "Trainer.create_optimizer", "默认 AdamW；参数分成“衰减”和“不衰减”两组"),
         ("哪些参数不做权重衰减", "trainer.py", "Trainer.get_decay_parameter_names", "名字里带 `bias`、`norm` 的参数不衰减，和本章 AdamW 一节的参数分组一致"),
@@ -148,49 +207,108 @@ SPEC = {
 }
 
 
+class Missing(Exception):
+    """SPEC 里的某个文件或名字在源码里找不到。"""
+
+
 def locate(src: Path, target):
     """返回 (起始行, 结束行)。target 是“类名”“类名.方法名”“函数名”，或 ("grep", 正则) 取单行。"""
+    if not src.exists():
+        raise Missing(f"文件不存在：{src}（重新运行 --fetch）")
     text = src.read_text(encoding="utf-8")
     if isinstance(target, tuple):
         for i, line in enumerate(text.splitlines(), 1):
             if re.search(target[1], line):
                 return i, i
-        raise SystemExit(f"{src}: 找不到 {target[1]}")
+        raise Missing(f"{src.name} 里找不到正则 {target[1]}")
     parts = target.split(".")
     nodes = ast.parse(text).body
     node = None
     for part in parts:
         node = next((n for n in nodes if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == part), None)
         if node is None:
-            raise SystemExit(f"{src}: 找不到 {target}")
+            raise Missing(f"{src.name} 里找不到 {target}")
         nodes = node.body
     return node.lineno, node.end_lineno
 
 
-def section(slug: str, base: Path) -> str:
+def section(slug: str, base: Path, problems: list) -> str | None:
+    """生成一章的“在真实模型里”。找不到的条目记进 problems 并跳过；一条都没找到时返回 None。"""
     intro, rows = SPEC[slug]
     out = [START, "", "## 在真实模型里", "",
            f"{intro.rstrip('：')}。下表的链接都指向 Hugging Face transformers 的固定版本 `{TAG}`，精确到行。"
            "读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。", "",
            "| 本章的零件 | 真实代码 | 对照要点 |", "| --- | --- | --- |"]
+    found = 0
     for what, file, target, note in rows:
-        start, end = locate(base / "src/transformers" / file, target)
+        try:
+            start, end = locate(base / "src/transformers" / file, target)
+        except Missing as e:
+            problems.append((slug, what, str(e)))
+            continue
+        found += 1
         name = target if isinstance(target, str) else f"{Path(file).name} 第 {start} 行"
         anchor = f"#L{start}" if start == end else f"#L{start}-L{end}"
         out.append(f"| {what} | [`{name}`]({BLOB}{file}{anchor}) | {note} |")
+    if found == 0:
+        return None
     out += ["", "想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。", "", END]
     return "\n".join(out)
 
 
+def needed_files() -> list[str]:
+    """SPEC 里用到的全部源码文件（相对 src/transformers/）。"""
+    return sorted({row[1] for _, rows in SPEC.values() for row in rows})
+
+
+def fetch(dest: Path) -> None:
+    """浅克隆 transformers 的 TAG，只检出 needed_files()。"""
+    def git(*cmd):
+        print("$ git " + " ".join(cmd))
+        subprocess.run(["git", *cmd], check=True)
+    paths = [f"/src/transformers/{f}" for f in needed_files()]
+    if not (dest / ".git").exists():
+        if dest.exists() and any(dest.iterdir()):
+            raise SystemExit(f"{dest} 已存在但不是 git 克隆，换一个目录或先删掉它")
+        git("clone", "--depth", "1", "--branch", TAG, "--filter=blob:none", "--no-checkout", REPO, str(dest))
+    git("-C", str(dest), "sparse-checkout", "set", "--no-cone", *paths)
+    git("-C", str(dest), "checkout", "--detach", TAG)
+    missing = [f for f in needed_files() if not (dest / "src/transformers" / f).exists()]
+    if missing:
+        raise SystemExit("检出后仍然缺这些文件（TAG 里可能没有它们，改 SPEC）：\n  " + "\n  ".join(missing))
+    print(f"已取到 {len(needed_files())} 个文件：{dest}（transformers {TAG}）")
+
+
 def main() -> None:
-    if len(sys.argv) != 2:
+    args = sys.argv[1:]
+    check, do_fetch = "--check" in args, "--fetch" in args
+    args = [a for a in args if a not in ("--check", "--fetch")]
+    if len(args) != 1:
         raise SystemExit(__doc__)
-    base = Path(sys.argv[1])
+    base = Path(args[0])
+    if do_fetch:
+        fetch(base)
+        return
+    missing = [f for f in needed_files() if not (base / "src/transformers" / f).exists()]
+    if missing:
+        print(f"{base} 下缺 {len(missing)}/{len(needed_files())} 个源码文件：")
+        for f in missing:
+            print(f"  src/transformers/{f}")
+        raise SystemExit(f"先运行：python scripts/tinyllm-real-model-refs.py --fetch {base}")
+    problems = []
     for slug in SPEC:
         md = DOCS / f"{slug}.md"
+        before = len(problems)
+        block = section(slug, base, problems)
+        status = f"{len(SPEC[slug][1]) - (len(problems) - before)}/{len(SPEC[slug][1])} 条找到"
+        if check or block is None:
+            print(f"[{'check' if check else 'skip'}] {slug}: {status}")
+            continue
         newline = "\r\n" if b"\r\n" in md.read_bytes() else "\n"   # 保持原文件的换行风格，避免 Windows 上整篇文件都显示为改动
         text = md.read_text(encoding="utf-8")
-        block = section(slug, base)
+        if START in text and len(problems) > before:              # 已经有一节，这次又不完整：保留原样，不拿残缺的覆盖
+            print(f"[keep] {slug}: {status}，保留已有的一节")
+            continue
         if START in text:
             text = text[: text.index(START)] + block + text[text.index(END) + len(END):]
         else:
@@ -198,8 +316,12 @@ def main() -> None:
             anchor = text.index("\n## 本章结论") if "\n## 本章结论" in text else text.index("\n## 检查理解")
             text = text[:anchor] + "\n" + block + "\n" + text[anchor:]
         md.write_text(text, encoding="utf-8", newline=newline)
-        print(f"[real-model] {md.relative_to(ROOT)}")
-
+        print(f"[real-model] {md.relative_to(ROOT)}（{status}）")
+    if problems:
+        print(f"\n{len(problems)} 个条目找不到，已跳过（改 SPEC 后重新运行即可）：")
+        for slug, what, msg in problems:
+            print(f"  {slug} · {what}：{msg}")
+        raise SystemExit(1)
 
 if __name__ == "__main__":
     main()

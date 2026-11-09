@@ -1,0 +1,10 @@
+scenario=ack-without-exit
+request=stop-core kind=Shutdown Lead->Core deadline=10 state=Approved
+errors=none
+check approved_but_actor_alive=true
+wire stop-core:Core->Lead:accepted
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+after_cleanup stop-core=Approved
+escape_absent=true workspace_removed=true

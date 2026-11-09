@@ -1,0 +1,14 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply add other expected=1 (new process)
+revision=2 ready=readme,other reconcile=- tasks=readme:pending#0,other:pending#0
+apply start readme expected=2 (new process)
+revision=3 ready=- reconcile=readme tasks=readme:running#1,other:pending#0
+apply start other expected=3 (new process)
+error=executor_busy committed=false
+apply complete readme expected=3 (new process)
+revision=4 ready=other reconcile=- tasks=readme:completed#1,other:pending#0
+apply start other expected=4 (new process)
+revision=5 ready=- reconcile=other tasks=readme:completed#1,other:running#1

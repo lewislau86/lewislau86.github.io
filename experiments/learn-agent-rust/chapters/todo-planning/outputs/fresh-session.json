@@ -1,0 +1,9 @@
+{
+  "plan": {
+    "goal": "读取 README，整理启动说明",
+    "items": [],
+    "revision": 0
+  },
+  "previous_revision": 5,
+  "scenario": "fresh-session"
+}

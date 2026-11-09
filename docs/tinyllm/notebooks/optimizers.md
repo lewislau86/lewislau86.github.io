@@ -20,11 +20,11 @@ pageClass: tinyllm-course
 
 配套教案：https://lewislau86.github.io/tinyllm/optimizers
 
-从上到下运行即可（`python optimizers.py`），CPU 上几秒钟。需要 `torch` 和 `plotly`。
+从上到下运行即可（`python optimizers.py`），CPU 上约一分半（最后一节训练 21 个代理模型）。需要 `torch`、`tokenizers`；画交互图需要 `plotly`。
 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 本章先手写一步梯度下降，再依次认识 SGD、Momentum、Adam、AdamW 的 PyTorch 接口、
-参数组和检查点，最后用固定数据比较四种优化器。
+参数组和检查点，用固定数据比较四种优化器，最后在第 17 章的代理模型上对照 SGD、Adam、AdamW 和两种 weight decay 写法。
 :::
 
 <p class="nb-label">In [1]</p>
@@ -119,7 +119,7 @@ print("更新后的参数:", [round(p.item(), 4) for p in model.parameters()])
 ```
 
 ```text
-更新后的参数: [1.8517, 2.2967]
+更新后的参数: [2.3186, 1.3628]
 ```
 
 ::: v-pre
@@ -407,13 +407,7 @@ for name, make_optimizer in optimizers.items():
 
 ```text
 SGD 0.735 -> 0.025631
-```
-
-```text
 Momentum 0.735 -> 0.001722
-```
-
-```text
 Adam 0.735 -> 0.00695
 ```
 
@@ -476,8 +470,8 @@ optimizer = torch.optim.AdamW(
         {"params": decay_parameters, "weight_decay": 0.1},
         {"params": no_decay_parameters, "weight_decay": 0.0},
     ],
-    lr=3e-4,
-    betas=(0.9, 0.95),
+    lr=3e-3,                 # 第 12 章基线的取值；第 11 节在代理模型上验证
+    betas=(0.9, 0.999),
     eps=1e-8,
 )
 print([(group["weight_decay"], len(group["params"])) for group in optimizer.param_groups])
@@ -485,6 +479,346 @@ print([(group["weight_decay"], len(group["params"])) for group in optimizer.para
 
 ```text
 [(0.1, 2), (0.0, 3)]
+```
+
+::: v-pre
+## 11. 接回 TinyLLM：在代理模型上比较优化器
+
+前面的正弦曲线只是玩具。下面换成第 17 章的代理模型（词表 1024、宽度 64、2 层），模型代码、数据划分、评估口径都从第 12 章原样复制，
+所有对照用同一组预先排好的 batch，随机种子只决定初始参数。学习率固定不变（不加调度），每次训练 240 步、裁剪到 1.0。
+:::
+
+<p class="nb-label">In [20]</p>
+
+```python
+import copy
+import json
+import math
+import time
+from dataclasses import dataclass
+
+import torch
+from torch import nn
+from torch.nn import functional as F
+from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
+
+
+import hashlib
+import json
+import os
+from pathlib import Path
+from urllib.request import urlopen
+
+CORPUS_URL = "https://lewislau86.github.io/tinyllm/data/tang-poems.jsonl"
+CORPUS_SHA256 = "764f0614663c20e95927c6ecb63e454629f6cb0efefe9ac84454e256f7173fb1"
+
+def load_poems(n):
+    """本课统一唐诗语料的前 n 首（来源和处理方式见“实验环境”页）。
+    依次找：环境变量 TINYLLM_DATA、当前目录、../data/（整包下载解压后的位置）；都没有就从网站下载一份。"""
+    candidates = [os.environ.get("TINYLLM_DATA", ""), "tang-poems.jsonl", "../data/tang-poems.jsonl"]
+    path = next((Path(p) for p in candidates if p and Path(p).exists()), None)
+    if path is None:
+        path = Path("tang-poems.jsonl")
+        with urlopen(CORPUS_URL, timeout=120) as r:
+            path.write_bytes(r.read())
+    raw = path.read_bytes().replace(b"\r\n", b"\n")
+    if hashlib.sha256(raw).hexdigest() != CORPUS_SHA256:
+        raise RuntimeError(f"{path} 不是本课使用的语料版本，删掉它再运行一次即可重新下载")
+    return [json.loads(line) for line in raw.decode("utf-8").splitlines()[:n]]
+```
+
+::: v-pre
+## 0. 第 17 章的代理模型
+
+模型代码、数据划分、评估口径都从第 12 章原样复制，尺寸和第 17 章的代理模型相同（词表 1024、宽度 64、2 层）。
+本章要训练二十多次，所以用这个缩小的版本；损失只在本章内部比较。
+:::
+
+<p class="nb-label">In [21]</p>
+
+```python
+@dataclass
+class TinyConfig:
+    vocab_size: int = 4096     # BPE 词表大小（含 4 个特殊 token）
+    d_model: int = 128         # 每个 token 向量的宽度 d
+    n_layers: int = 4          # Block 层数 L
+    n_heads: int = 4           # 注意力头数，每头 d / n_heads = 32 维
+    context: int = 64          # 一次最多看多少个 token
+    rope_base: float = 10000.0
+
+cfg = TinyConfig()
+
+cfg = TinyConfig(vocab_size=1024, d_model=64, n_layers=2)       # 代理模型：只改这三个尺寸
+STEPS, BATCH = 240, 16
+print(cfg)
+```
+
+```text
+TinyConfig(vocab_size=1024, d_model=64, n_layers=2, n_heads=4, context=64, rope_base=10000.0)
+```
+
+<p class="nb-label">In [22]</p>
+
+```python
+poems = load_poems(6000)
+train_poems = [p["text"] for p in poems if p["split"] == "train"]
+val_poems = [p["text"] for p in poems if p["split"] == "val"]
+
+def train_tokenizer(texts, vocab_size):
+    tok = Tokenizer(models.BPE())
+    tok.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    tok.decoder = decoders.ByteLevel()
+    trainer = trainers.BpeTrainer(
+        vocab_size=vocab_size,
+        special_tokens=["<pad>", "<unk>", "<bos>", "<eos>"],
+        initial_alphabet=pre_tokenizers.ByteLevel.alphabet(),
+        show_progress=False,
+    )
+    tok.train_from_iterator(texts, trainer)
+    return tok
+
+tokenizer = train_tokenizer(train_poems, cfg.vocab_size)
+EOS = tokenizer.token_to_id("<eos>")
+```
+
+<p class="nb-label">In [23]</p>
+
+```python
+def rope_tables(context, head_dim, base):
+    theta = base ** (-torch.arange(0, head_dim, 2).float() / head_dim)
+    angle = torch.arange(context).float()[:, None] * theta        # (T, head_dim/2)
+    return angle.cos(), angle.sin()
+
+def apply_rope(x, cos, sin):                                      # x: (B, 头数, T, head_dim)
+    T = x.shape[-2]
+    cos, sin = cos[:T], sin[:T]
+    x1, x2 = x[..., 0::2], x[..., 1::2]
+    return torch.stack([x1 * cos - x2 * sin, x1 * sin + x2 * cos], dim=-1).flatten(-2)
+
+class CausalSelfAttention(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.n_heads = cfg.n_heads
+        self.qkv = nn.Linear(cfg.d_model, 3 * cfg.d_model, bias=False)
+        self.proj = nn.Linear(cfg.d_model, cfg.d_model, bias=False)   # 输出投影：写回残差流
+
+    def forward(self, x, cos, sin):
+        B, T, D = x.shape
+        q, k, v = (t.view(B, T, self.n_heads, D // self.n_heads).transpose(1, 2)
+                   for t in self.qkv(x).split(D, dim=-1))
+        y = F.scaled_dot_product_attention(apply_rope(q, cos, sin), apply_rope(k, cos, sin), v, is_causal=True)
+        return self.proj(y.transpose(1, 2).reshape(B, T, D))
+
+class SwiGLU(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        hidden = 8 * cfg.d_model // 3
+        self.gate = nn.Linear(cfg.d_model, hidden, bias=False)
+        self.up = nn.Linear(cfg.d_model, hidden, bias=False)
+        self.down = nn.Linear(hidden, cfg.d_model, bias=False)        # 输出投影：写回残差流
+
+    def forward(self, x):
+        return self.down(F.silu(self.gate(x)) * self.up(x))
+
+class Block(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.norm1 = nn.RMSNorm(cfg.d_model)
+        self.attn = CausalSelfAttention(cfg)
+        self.norm2 = nn.RMSNorm(cfg.d_model)
+        self.ffn = SwiGLU(cfg)
+
+    def forward(self, x, cos, sin):
+        x = x + self.attn(self.norm1(x), cos, sin)
+        return x + self.ffn(self.norm2(x))
+
+class TinyLLM(nn.Module):
+    def __init__(self, cfg):
+        super().__init__()
+        self.cfg = cfg
+        self.embed = nn.Embedding(cfg.vocab_size, cfg.d_model)
+        self.blocks = nn.ModuleList(Block(cfg) for _ in range(cfg.n_layers))
+        self.norm = nn.RMSNorm(cfg.d_model)
+        cos, sin = rope_tables(cfg.context, cfg.d_model // cfg.n_heads, cfg.rope_base)
+        self.register_buffer("cos", cos, persistent=False)
+        self.register_buffer("sin", sin, persistent=False)
+        self.init_weights()
+
+    def init_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_normal_(m.weight)
+        nn.init.normal_(self.embed.weight, mean=0.0, std=self.cfg.d_model ** -0.5)
+        scale = (2 * self.cfg.n_layers) ** -0.5
+        with torch.no_grad():
+            for b in self.blocks:
+                b.attn.proj.weight.mul_(scale)
+                b.ffn.down.weight.mul_(scale)
+
+    def forward(self, idx, targets=None):
+        x = self.embed(idx)                                   # (B, T) → (B, T, d)
+        for block in self.blocks:
+            x = block(x, self.cos, self.sin)
+        logits = self.norm(x) @ self.embed.weight.T           # (B, T, d) → (B, T, V)，与嵌入共享权重
+        if targets is None:
+            return logits
+        loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1))
+        return logits, loss
+```
+
+<p class="nb-label">In [24]</p>
+
+```python
+def to_stream(texts):
+    ids = []
+    for t in texts:
+        ids += tokenizer.encode(t).ids + [EOS]
+    return torch.tensor(ids)
+
+train_ids, val_ids = to_stream(train_poems), to_stream(val_poems)
+tokens_per_char = len(val_ids) / sum(len(t) + 1 for t in val_poems)   # 每首诗的 <eos> 记作一个“字”
+
+@torch.no_grad()
+def evaluate(model, ids=val_ids, T=cfg.context, batch=64):
+    model.eval()
+    n = (len(ids) - 1) // T * T
+    xs, ys = ids[:n].view(-1, T), ids[1:n + 1].view(-1, T)
+    total = sum(F.cross_entropy(model(xs[i:i + batch]).flatten(0, 1), ys[i:i + batch].flatten(), reduction="sum").item()
+                for i in range(0, len(xs), batch))
+    model.train()
+    nats = total / ys.numel()
+    return nats, nats * tokens_per_char / math.log(2)    # (每 token 的 nats, 每字比特)
+```
+
+<p class="nb-label">In [25]</p>
+
+```python
+plan = torch.Generator().manual_seed(1234)                 # batch 计划：所有对照共用
+starts = torch.randint(0, len(train_ids) - cfg.context - 1, (STEPS, BATCH), generator=plan)
+
+def get_batch(step):
+    idx = starts[step][:, None] + torch.arange(cfg.context + 1)
+    return train_ids[idx[:, :-1]], train_ids[idx[:, 1:]]
+
+def make_optimizer(model, kind, lr):
+    decay = [p for p in model.parameters() if p.dim() >= 2]     # 矩阵：衰减
+    no_decay = [p for p in model.parameters() if p.dim() < 2]   # RMSNorm 的缩放：不衰减
+    if kind == "SGD+Momentum":
+        return torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
+    if kind == "Adam":
+        return torch.optim.Adam(model.parameters(), lr=lr)
+    if kind == "Adam+L2":                                        # weight_decay 加进梯度，再经过 m、v
+        return torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.1)
+    if kind == "AdamW（全部衰减）":
+        return torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
+    return torch.optim.AdamW([{"params": decay, "weight_decay": 0.1},       # "AdamW"：本章第 6 节的分组
+                              {"params": no_decay, "weight_decay": 0.0}], lr=lr)
+
+def run(kind, lr, seed=0):
+    torch.manual_seed(seed)
+    model = TinyLLM(cfg)
+    optimizer = make_optimizer(model, kind, lr)
+    for step in range(STEPS):
+        x, y = get_batch(step)
+        _, loss = model(x, y)
+        optimizer.zero_grad(set_to_none=True)
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
+    return evaluate(model)[0]
+```
+
+::: v-pre
+先用种子 0 给每个优化器扫 3 个学习率。SGD 的学习率和 Adam 不在一个量级（第 4 节：Adam 的步长已经按 $\sqrt{\hat v}$ 归一过），所以分开扫。
+:::
+
+<p class="nb-label">In [26]</p>
+
+```python
+sweep = {"SGD+Momentum": (0.1, 0.3, 1.0), "Adam": (1e-3, 3e-3, 1e-2), "AdamW": (1e-3, 3e-3, 1e-2)}
+results = {}
+for kind, lrs in sweep.items():
+    results[kind] = {lr: run(kind, lr) for lr in lrs}
+    print(f"{kind:<13}" + "".join(f"  lr={lr:<6g} {v:.3f}" for lr, v in results[kind].items()))
+```
+
+```text
+SGD+Momentum   lr=0.1    5.274  lr=0.3    5.118  lr=1      5.187
+```
+
+```text
+Adam           lr=0.001  5.078  lr=0.003  4.803  lr=0.01   4.967
+```
+
+```text
+AdamW          lr=0.001  5.074  lr=0.003  4.796  lr=0.01   4.954
+```
+
+::: v-pre
+每个优化器取自己最好的学习率，再换两个种子，看差别是否超过种子之间的波动：
+:::
+
+<p class="nb-label">In [27]</p>
+
+```python
+best = {kind: min(r, key=r.get) for kind, r in results.items()}
+final = {}
+for kind, lr in best.items():
+    vals = [results[kind][lr]] + [run(kind, lr, seed) for seed in (1, 2)]
+    final[kind] = vals
+    print(f"{kind:<13} lr={lr:<6g} 3 个种子 {' '.join(f'{v:.3f}' for v in vals)}  平均 {sum(vals) / 3:.3f}")
+```
+
+```text
+SGD+Momentum  lr=0.3    3 个种子 5.118 5.123 5.072  平均 5.104
+```
+
+```text
+Adam          lr=0.003  3 个种子 4.803 4.814 4.812  平均 4.810
+```
+
+```text
+AdamW         lr=0.003  3 个种子 4.796 4.814 4.807  平均 4.806
+```
+
+::: v-pre
+最后看第 5、6 节的两件事：weight decay 放在哪里（Adam+L2 还是 AdamW）、哪些参数衰减（分组还是全部）。
+先在 AdamW 最好的学习率上比，再在 1e-2 上比一次：学习率越大，“衰减被 $\sqrt{v}$ 缩放”这件事越明显。
+:::
+
+<p class="nb-label">In [28]</p>
+
+```python
+decay_cmp = {}
+for lr in (best["AdamW"], 1e-2):
+    for kind in ("AdamW", "AdamW（全部衰减）", "Adam+L2"):
+        vals = final[kind] if kind == "AdamW" and lr == best["AdamW"] else [run(kind, lr, seed) for seed in (0, 1, 2)]
+        decay_cmp[(kind, lr)] = vals
+        print(f"lr={lr:<6g} {kind:<12} {' '.join(f'{v:.3f}' for v in vals)}  平均 {sum(vals) / 3:.3f}")
+```
+
+```text
+lr=0.003  AdamW        4.796 4.814 4.807  平均 4.806
+```
+
+```text
+lr=0.003  AdamW（全部衰减）  4.812 4.819 4.806  平均 4.812
+```
+
+```text
+lr=0.003  Adam+L2      6.235 6.220 6.349  平均 6.268
+```
+
+```text
+lr=0.01   AdamW        4.954 4.859 5.026  平均 4.946
+```
+
+```text
+lr=0.01   AdamW（全部衰减）  4.889 4.835 4.917  平均 4.880
+```
+
+```text
+lr=0.01   Adam+L2      6.196 6.204 6.194  平均 6.198
 ```
 
 ::: v-pre

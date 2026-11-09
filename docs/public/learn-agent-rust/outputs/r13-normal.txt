@@ -1,0 +1,6 @@
+scenario=normal
+start id=1 query=Running
+foreground=can_handle_another_request
+checkpoint progress=1 partial_files=1
+query=Completed notices=[1]
+stats started=1 joined=1 peak=1 active=0 records=1 dropped_notices=0 partial_files=0 result_files=1

@@ -1,0 +1,12 @@
+scenario=pre-panic source=scripted_request approval=trusted_fixture
+trace[1] event=UserPromptSubmit
+trace[2] hook=UserPromptSubmit/input-log outcome=continue
+trace[3] scripted_request call_id=write-1
+trace[4] authorization=approved_exact_call
+trace[5] event=PreToolUse
+trace[6] hook=PreToolUse/before-check outcome=error:WorkerExited
+trace[7] event=Stop
+trace[8] hook=Stop/stop-log outcome=continue
+result call_id=write-1 status=hook_error
+hook_failure=PreToolUse/before-check:WorkerExited
+stats write_attempts=0 write_successes=0 stop_calls=1 hook_failures=1 summary_matches=false stop_reason=pre_hook_failed task_ok=false

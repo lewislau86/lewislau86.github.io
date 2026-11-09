@@ -1,0 +1,8 @@
+scenario=normal
+protocol=2025-11-25 sdk=rmcp-3.9.0
+pages=2 registered=8
+remote_calls=1 note_lines=0
+caller_results=ok,ok
+children=1 reaped=1 remaining=local_status
+read_text="# notes\n启动：cargo run\n"
+application_call_id=call-1; wire_call_id=3

@@ -135,6 +135,10 @@ $g$ 与 $v$ 的形状都是 `[batch, seq, m]`，$\odot$ 是同一 token、同一
 
 ## 6. 放进 Pre-Norm Block，接上残差
 
+![注意力与前馈层的分工：左边注意力里每个位置的输出混合了自己和前面所有位置；右边前馈层对每个位置单独做同一个变换，5 个框共用一组参数](/tinyllm/figures/ffn-vs-attention.svg)
+
+怎么读这张图：Block 里的两种子层分工不同。左边的注意力在位置之间搬信息，连线随输入而变；右边的前馈层没有任何跨位置的连线，同一组 $W_{\text{gate}}$、$W_{\text{up}}$、$W_{\text{down}}$ 分别作用在每个位置上。所以前馈层可以看成“对每个 token 各做一次加工”，本章前面的分析都只针对一个向量。
+
 前馈层不会单独使用。[第 9 章](./transformer-block.md)会把它和注意力一起装进 Block，它在 Block 里的样子是
 
 $$
@@ -178,7 +182,7 @@ $$
 
 <strong>何时改选？</strong>复现 GPT 风格模型时，用 GELU 普通 FFN；需要最简单的算子和教学对照时，用 ReLU 普通 FFN。模型能否稳定训练，还取决于[初始化与残差](./initialization-and-residuals.md)、[归一化](./normalization.md)、优化器和学习率。notebook 保留了参数匹配的普通 FFN 作对照。
 
-<strong>模型做大以后：</strong>前馈层占了 Block 里大部分参数。很多大模型（例如 DeepSeek、Kimi）把这一层换成很多个小前馈层（“专家”），每个 token 只交给其中一两个，这就是 MoE。TinyLLM 主线先保持一个稠密的 SwiGLU；等训练和评估的工具都齐了，[第 24 章](./mixture-of-experts.md)再把它换成 MoE，和主线做对照实验。
+<strong>模型做大以后：</strong>前馈层占了 Block 里大部分参数。很多大模型（例如 DeepSeek、Kimi）把这一层换成很多个小前馈层（“专家”），每个 token 只交给其中一两个，这就是 MoE。TinyLLM 主线先保持一个稠密的 SwiGLU；等训练和评估的工具都齐了，[第 25 章](./mixture-of-experts.md)再把它换成 MoE，和主线做对照实验。
 
 ::: warning 常见误区
 - **把普通 FFN 的 `GELU` 换成 `SiLU` 还不是 SwiGLU。** SwiGLU 的关键是 gate、value 两条投影逐元素相乘，一共三个投影。
@@ -234,4 +238,4 @@ $$
 - [Vaswani 等：Transformer 前馈层](https://arxiv.org/abs/1706.03762)
 - [LLaMA，Touvron 等，2023](https://arxiv.org/abs/2302.13971)
 
-到这里，Block 里的两种子层都有了：注意力负责 token 之间交换信息，前馈层负责每个 token 自己加工。下一章把它们装进 Block 并叠起来：[第 9 章：Transformer Block](./transformer-block.md)（规划中）；已完成的下一章是[第 10 章：初始化与残差路径](./initialization-and-residuals.md)。
+到这里，Block 里的两种子层都有了：注意力负责 token 之间交换信息，前馈层负责每个 token 自己加工。下一章把它们装进 Block 并叠起来：[第 9 章：Transformer Block](./transformer-block.md)。

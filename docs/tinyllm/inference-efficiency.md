@@ -1,17 +1,17 @@
 ---
-title: "第 26 章：推理效率：prefill、decode 与 KV cache"
+title: "第 27 章：推理效率：prefill、decode 与 KV cache"
 description: "把一次生成拆成 prefill 和 decode 两段：KV cache 省掉多少重复投影、缓存要占多少显存、decode 为什么卡在带宽，以及 TTFT、TPOT、ITL、E2EL 与 goodput 怎么量。"
 pageClass: tinyllm-course
 ---
 
-# 第 26 章：推理效率：prefill、decode 与 KV cache
+# 第 27 章：推理效率：prefill、decode 与 KV cache
 
 [课程总览](./index.md) · [上一章](./generation.md) · [下一章](./attention-kernels.md)
 
 ::: tip 本章学习目标
 能把一次生成拆成 prefill 与 decode 两段，并说清两段各自卡在算力还是带宽；能算出 KV cache 的大小、数出缓存省下多少行投影；能分别测出首字延迟、每 token 延迟和端到端延迟，并解释为什么只看吞吐会误判。
 
-**前置：** [第 6 章](./self-attention.md)的 Q/K/V 与[第 12 章](./tinyllm-model.md)训好的基线模型，[第 25 章](./generation.md)的生成循环。
+**前置：** [第 6 章](./self-attention.md)的 Q/K/V 与[第 12 章](./tinyllm-model.md)训好的基线模型，[第 26 章](./generation.md)的生成循环。
 
 **实践方式：** [inference-efficiency.ipynb](/tinyllm/notebooks/inference-efficiency)（也可以直接运行 <a href="/tinyllm/code/inference-efficiency.py" download>inference-efficiency.py</a>），CPU 约一分钟（大部分是训基线模型），需要 PyTorch 和 `tokenizers`。
 :::
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## 问题：一次前向，两种完全不同的工作
 
-[第 25 章](./generation.md)的生成循环每写一个字就调用一次模型。可“调用一次模型”并不总是同一件事：
+[第 26 章](./generation.md)的生成循环每写一个字就调用一次模型。可“调用一次模型”并不总是同一件事：
 
 - 读入提示词时，十几个 token 一起进去，可以并行处理；
 - 之后每多写一个字，只有一个新位置，却还是要把整个模型跑一遍。
@@ -48,7 +48,7 @@ pageClass: tinyllm-course
 
 提示词的每个 token 在生成之前就已经全部到齐，可以一次性并行送进模型，这段叫 **prefill**。之后每步只多出一个 token，却要再走一遍完整的模型，每步叫一次 **decode**。
 
-两段算的东西不一样：prefill 一次处理 $T$ 个位置，矩阵乘法的行数是 $T$，算力用满，**卡在计算**；decode 一次只处理 1 个位置，矩阵乘法的行数是 1，但每步都要把全部权重从内存读一遍，**卡在带宽**。
+两段算的东西不一样：prefill 一次处理 $T$ 个位置，矩阵乘法的行数是 $T$，读一遍权重能做 $T$ 份计算，提示词够长时**卡在计算**；decode 一次只处理 1 个位置，矩阵乘法的行数是 1，每步都要把全部权重从内存读一遍，**卡在带宽**。“够长”是多长，第 6 节用一张图回答。
 
 <<< @/public/tinyllm/code/inference-efficiency.py#phases
 
@@ -56,9 +56,9 @@ pageClass: tinyllm-course
 
 绝对耗时每次运行都会有一两成的浮动，所以这里不给出固定数字；那九到十倍的比例是稳定的，它来自两段工作的性质差别。
 
-为什么会这样？上面算过权重只有 5.0 MiB。读取这 5.0 MiB 的时间是固定的：分摊给 10 个位置还是 1 个位置，读的量不变。decode 慢，不是因为算得多，而是因为**每做一丁点计算，就要等一次完整的权重读取**。
+为什么会这样？每次调用模型都有一笔和位置数无关的固定开销：在大模型和 GPU 上，大头是把全部权重从显存读一遍（第 6 节）；在 TinyLLM 这台 CPU 上，5.0 MiB 的权重放得进缓存，大头其实是 Python 和 PyTorch 每个算子的调度开销。两种情况道理相同：这笔固定开销分摊给 10 个位置还是 1 个位置，花的都一样。decode 慢，不是因为算得多，而是因为**每做一丁点计算，就要付一次完整的固定开销**。
 
-## 3. 不缓存，每一步都重算整段前缀
+## 3. 不缓存，每一步都重算整段前缀 {#kv-cache}
 
 decode 里每步都把整段前缀重新送进模型。可是旧位置的 K、V 只取决于旧 token，不会因为后面新来了一个字就改变。把它们存下来，就是 **KV cache**。
 
@@ -141,7 +141,13 @@ H100 的 3.35 TB/s 是公布值；200 GB/s 是台式机内存的常见量级，�
 
 Llama 3 8B 在 H100 上的单请求上限是每秒 209 个 token，和实践中单请求 decode 的速度在同一量级。TinyLLM 的理论上限高得离谱，因为它的权重只有 5 MiB，全部塞在缓存里，带宽约束根本不起作用——**小模型上看不到 decode 的瓶颈，这是本章所有 CPU 实验的共同边界**。
 
-这条估算也说明了批处理为什么有效：一次读进权重，可以同时伺候多个请求。把这份读取代价摊薄是[第 30 章](./batching.md)的主题。
+
+
+把“读一次权重能做多少计算”画在横轴上，就是常用的 roofline 图：
+
+![prefill 与 decode 在 roofline 上的位置：用 H100 的公布值，拐点约 295 FLOP/字节；decode batch 1 和 10 个 token 的 prefill 在左边卡在带宽，decode batch 64 仍在左边，2048 个 token 的 prefill 在右边卡在算力](/tinyllm/figures/roofline.svg)
+
+怎么读这张图：横轴是算术强度，对 BF16 权重的矩阵乘来说，约等于一次前向里同时处理的 token 数；纵轴是这种强度下能达到的算力上限。斜线部分受带宽限制，平线部分受算力限制，拐点约 295。单请求 decode 的强度是 1，只能用到峰值算力的零头；10 个 token 的 prefill 也还在斜线上；要几百个 token 一起算才到平线。所以“prefill 卡在计算”要加一个条件：提示词足够长，或者把多个请求拼在一起。这张图只算了权重读取，KV cache 和激活的读写会让实际位置再往左移一点。这条估算也说明了批处理为什么有效：一次读进权重，可以同时伺候多个请求。把这份读取代价摊薄是[第 31 章](./batching.md)的主题。
 
 ## 7. 指标：TTFT、TPOT、ITL、E2EL
 
@@ -177,6 +183,10 @@ Llama 3 8B 在 H100 上的单请求上限是每秒 209 个 token，和实践中�
 ## 9. chunked prefill：长提示词不再把别人堵住
 
 线上不会只有一条请求。一个长提示词的 prefill 会占住整个前向，正在 decode 的请求只能在旁边等——用户看到的是“输出卡住了一下”。把提示词切成几块、分几次前向，每块之间让 decode 插进来，就叫 **chunked prefill**。
+
+![chunked prefill 的调度：不分块时新请求 C 的 2000 个 token 一次前向做完，A、B 在这段时间里一个字也出不来；分成 4 块后每次前向都带上 A、B 的 decode](/tinyllm/figures/chunked-prefill-timeline.svg)
+
+怎么读这张图：每个格子是一次前向，格子里写着这次前向处理了谁。上面一行，C 的长 prefill 独占一次很长的前向，A、B 只能等；下面一行把它切成 4 块，每块都和 A、B 的 decode 拼在同一次前向里。示意图，格子长短不代表实测时间。
 
 分块不改变数学结果：后面的块通过 KV cache 看到前面的块，等价于一次算完。这一点可以直接证明。
 
@@ -217,9 +227,9 @@ KV cache 在真实代码里由缓存类管理，注意力每一层把新的 K、
 
 TinyLLM 的推理分两段看：**prefill** 和 **decode**。逐 token 生成时默认复用 **KV cache**，并且分别测首字延迟和每 token 延迟，不把两者合成一个“生成速度”来报。
 
-本章固定下来的几件事：缓存字节数用 $2 \times$ 层数 $\times$ token 数 $\times$ KV 头数 $\times$ 每头维度 $\times$ 每元素字节 估，再乘并发数；注意力用 PyTorch 的缩放点积注意力接口，让框架去选高效内核（[第 27 章](./attention-kernels.md)讲它省了什么）；长提示词分块送入，并验证分块与一次算完逐元素一致。
+本章固定下来的几件事：缓存字节数用 $2 \times$ 层数 $\times$ token 数 $\times$ KV 头数 $\times$ 每头维度 $\times$ 每元素字节 估，再乘并发数；注意力用 PyTorch 的缩放点积注意力接口，让框架去选高效内核（[第 28 章](./attention-kernels.md)讲它省了什么）；长提示词分块送入，并验证分块与一次算完逐元素一致。
 
-这些选择在什么情况下要换：上下文和并发变大时，缓存会成为显存瓶颈，那时要靠 GQA、KV 量化（[第 28 章](./quantization.md)）或分页管理（[第 31 章](./kv-memory.md)）；请求变多时要靠批处理摊薄权重读取（[第 30 章](./batching.md)）。缓存始终只存**本次推理的计算结果**，不是替 Agent 保存用户事实的长期记忆，后者见[第 37 章](./agent-memory.md)。
+这些选择在什么情况下要换：上下文和并发变大时，缓存会成为显存瓶颈，那时要靠 GQA、KV 量化（[第 29 章](./quantization.md)）或分页管理（[第 32 章](./kv-memory.md)）；请求变多时要靠批处理摊薄权重读取（[第 31 章](./batching.md)）。缓存始终只存**本次推理的计算结果**，不是替 Agent 保存用户事实的长期记忆，后者见[第 38 章](./llm-agent-interaction.md#external-memory)。
 
 ::: warning 常见误区
 - **KV cache 存了注意力权重。** 缓存只有各层各头的 K 和 V。权重取决于新来的 Q，每步都要重算。
@@ -235,7 +245,7 @@ TinyLLM 的推理分两段看：**prefill** 和 **decode**。逐 token 生成时
 
    <details><summary>参考答案</summary>
 
-   TTFT 由 prefill 决定，也就是那 500 个 token 的一次前向。可以缩短提示词、把小批量提示词分块并与其他请求拼批（chunked prefill 主要改善别人的 ITL，对这条请求自己的 TTFT 往往是增加）、换更强的算力或用更高效的内核。生成 20 个字只影响，因为 TPOT 覆盖的是后续 decode。
+   TTFT 由 prefill 决定，也就是那 500 个 token 的一次前向。可以缩短提示词、把小批量提示词分块并与其他请求拼批（chunked prefill 主要改善别人的 ITL，对这条请求自己的 TTFT 往往是增加）、换更强的算力或用更高效的内核。生成 20 个字只影响 TPOT 和 E2EL，不影响 TTFT，因为第一个字出来之后的 decode 都算在 TPOT 里。
 
    </details>
 
@@ -263,4 +273,4 @@ TinyLLM 的推理分两段看：**prefill** 和 **decode**。逐 token 生成时
 - [DistServe：goodput 优化的推理系统，Zhong 等，2024](https://arxiv.org/abs/2401.09670)
 - [Llama 3 的模型规模与架构，Grattafiori 等，2024](https://arxiv.org/abs/2407.21783)
 
-KV cache 把重复计算砍掉了，可每一次前向内部还有一个大头没动：注意力要读写一张随长度平方增长的分数表。下一章把这次计算本身拆开看：[第 27 章：注意力内核与算子融合](./attention-kernels.md)。
+KV cache 把重复计算砍掉了，可每一次前向内部还有一个大头没动：注意力要读写一张随长度平方增长的分数表。下一章把这次计算本身拆开看：[第 28 章：注意力内核与算子融合](./attention-kernels.md)。

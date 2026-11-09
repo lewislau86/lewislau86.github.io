@@ -1,0 +1,3 @@
+scenario=denied
+allocate=permission_denied
+stats bindings=0 linked=0 retained=0 removed=0 primary_baseline=true

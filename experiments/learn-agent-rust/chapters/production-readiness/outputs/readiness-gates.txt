@@ -1,0 +1,1 @@
+{"drain": true, "operator_approval": true, "passed": true, "recovery": true, "release": true, "scenario": "readiness-gates", "schema": true}

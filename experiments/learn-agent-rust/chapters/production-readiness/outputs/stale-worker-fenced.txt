@@ -1,0 +1,1 @@
+{"committed": 1, "passed": true, "scenario": "stale-worker-fenced", "stale_error": "Fenced", "takeover_epoch": 2}

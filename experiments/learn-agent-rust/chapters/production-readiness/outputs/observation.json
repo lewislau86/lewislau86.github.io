@@ -1,0 +1,11 @@
+{
+  "latency_definition": "one subprocess start to admission reply; accepted and rejected combined; 12 concurrent submissions, no completion until all replies",
+  "sample_count": 12,
+  "p50_ms": 11.999,
+  "p95_ms": 18.531,
+  "restore_check_ms": 61.137,
+  "recovery_definition": "pg_restore start to local SQL checks and readiness; excludes detection, provisioning, routing and remote reconciliation",
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "postgres_patch": "180006"
+}

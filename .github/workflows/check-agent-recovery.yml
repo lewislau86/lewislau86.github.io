@@ -1,0 +1,52 @@
+name: Check R11 recovery experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/error-recovery.md"
+      - "docs/public/learn-agent-rust/code/error-recovery.rs"
+      - "docs/public/learn-agent-rust/outputs/r11-*.txt"
+      - "docs/public/learn-agent-rust/figures/r11-*.svg"
+      - "docs/public/learn-agent-rust/error-recovery-lab.zip"
+      - "scripts/data/learn-agent-rust/r11-results.json"
+      - "scripts/verify-agent-recovery.py"
+      - "scripts/learn-agent-rust-recovery-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-recovery.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/error-recovery.md"
+      - "docs/public/learn-agent-rust/code/error-recovery.rs"
+      - "docs/public/learn-agent-rust/outputs/r11-*.txt"
+      - "docs/public/learn-agent-rust/figures/r11-*.svg"
+      - "docs/public/learn-agent-rust/error-recovery-lab.zip"
+      - "scripts/data/learn-agent-rust/r11-results.json"
+      - "scripts/verify-agent-recovery.py"
+      - "scripts/learn-agent-rust-recovery-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-recovery.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the minimum supported edition 2024 toolchain
+        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Verify typed failures, cumulative budgets and extracted download
+        env:
+          RUSTUP_TOOLCHAIN: "1.85.0"
+        run: python scripts/verify-agent-recovery.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R11
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r11-*.svg'

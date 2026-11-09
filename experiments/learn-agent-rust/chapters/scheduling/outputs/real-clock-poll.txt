@@ -1,0 +1,6 @@
+init DB
+{"schema":1,"status":"initialized"}
+run DB 2
+{"status":"polling_stopped","ticks":2}
+show DB
+{"schedules":[],"status":"snapshot","tasks":[]}

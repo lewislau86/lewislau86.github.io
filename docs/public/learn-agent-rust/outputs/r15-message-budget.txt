@@ -1,0 +1,10 @@
+R15 | scenario=message-budget | scripted LLM + graph-flow + bounded Tokio mailboxes
+limits members=2 mailbox=2 messages=1 model_calls=16 tool_calls=8 context_bytes=16000
+rejected=team_message_budget
+receipt id=one member=core status=noted
+member=config lifecycle=closed notes=0 reads=0 history_messages=1 pairs=true
+events=idle -> closing -> closed
+member=core lifecycle=closed notes=1 reads=0 history_messages=2 pairs=true
+events=idle -> note:one -> closing -> closed
+usage accepted=1 models=0 tools=0 reads=0 spawned=2 active=0 joined=2 aborted=0
+checks isolation=true source_unchanged=true shared_files=true no_write_output=true workspace_removed=true

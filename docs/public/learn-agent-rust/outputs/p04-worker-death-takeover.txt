@@ -1,0 +1,1 @@
+{"committed": 1, "early_error": "LeaseBusy", "killed": true, "passed": true, "scenario": "worker-death-takeover", "takeover_epoch": 2}

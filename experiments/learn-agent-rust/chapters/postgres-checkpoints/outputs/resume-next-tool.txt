@@ -1,0 +1,11 @@
+验证器核对摘要（真实 PostgreSQL 与独立 CLI 进程）
+{
+  "metrics": {
+    "completed": true,
+    "first_file_removed": true,
+    "tool_dispatches": 2
+  },
+  "passed": true,
+  "processes": 5,
+  "scenario": "resume-next-tool"
+}

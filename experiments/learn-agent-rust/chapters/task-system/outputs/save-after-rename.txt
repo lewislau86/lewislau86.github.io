@@ -1,0 +1,10 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply start readme expected=1 (new process)
+error=durability_unknown committed=true
+show (new process)
+revision=2 ready=- reconcile=readme tasks=readme:running#1
+apply start readme expected=1 (new process)
+error=revision_conflict committed=false

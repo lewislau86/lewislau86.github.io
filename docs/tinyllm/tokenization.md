@@ -113,6 +113,10 @@ Unigram 从一大批候选片段及其概率出发，逐步删减出词表，编
 
 一个 tokenizer 是一条流水线：<strong>规范化 → 预切分 → BPE 等模型切分并映射 ID → 添加特殊 token</strong>。解码时根据 ID 找回片段，再按解码规则拼回文本。规范化、预切分和后处理都属于配置，需要和词表一起保存。[Tokenizers 流水线](https://huggingface.co/docs/tokenizers/pipeline)
 
+![tokenizer 流水线：“猫在学习 TinyLLM。”加换行经规范化、预切分与字节映射、BPE 切分，变成 16 个 token 和 16 个 ID，解码时整段拼回原文](/tinyllm/figures/tokenizer-pipeline.svg)
+
+怎么读这张图：从上往下是编码，最后一行是解码。第 ③ 行的每个小框是一个 token：开头三个片段合起来才是“猫”这一个字的 3 个 UTF-8 字节，“学习”两个字却合成了一个 token，`Ġ` 是空格、`Ċ` 是换行。第 ④ 行的数就是送进模型的全部内容。这些数据来自下面训练出的分词器，“观察切分”一段会打印同样的结果。
+
 本章固定使用 `tokenizers==0.23.3`，以保证 API 一致（它未必是资料核对日的最新版本）；Plotly 图表用 `plotly==7.1.0`。在 Python 3.10 及以上环境中安装：
 
 ```sh
@@ -255,7 +259,7 @@ $$
 
 <strong>延伸阅读：BLT。</strong>[Byte Latent Transformer（BLT，2024 年提出）](https://arxiv.org/abs/2412.09871) 是更早的另一条路线：直接从字节出发，动态组织成 patch，并在不同层级分配计算。它改变的是模型架构与训练方式，远比把 BPE 换成 `text.encode("utf-8")` 复杂。
 
-对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 26 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 37 章](agent-memory.md) 的另一项评测。
+对 TinyLLM，合理的实验顺序是：先检查文本可逆性，再记录字符、数字与换行的切分边界，比较同一文本上的 token 数和编码耗时，最后接上模型，在相同原文与预算下测量损失、任务质量、延迟及显存。字节级 token 跨越字符边界本身可以接受，关键是这种行为能被测量和解释。Agent 把旧信息放回提示词后，这些文本同样经过这个 tokenizer；较短的序列可能降低 [第 27 章的 KV cache](inference-efficiency.md) 占用，而 Agent 是否找对记忆属于 [第 38 章](llm-agent-interaction.md#external-memory) 的另一项评测。
 
 ## 10. 动手检查与练习
 

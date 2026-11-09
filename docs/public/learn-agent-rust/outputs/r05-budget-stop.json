@@ -1,0 +1,300 @@
+{
+  "all_completed": false,
+  "answer": null,
+  "goal_verified": false,
+  "history": [
+    {
+      "call": {
+        "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+        "call_id": "call-1",
+        "tool": "todo_write"
+      },
+      "role": "assistant"
+    },
+    {
+      "result": {
+        "call_id": "call-1",
+        "code": "ok",
+        "data": {
+          "goal": "读取 README，整理启动说明",
+          "items": [
+            {
+              "content": "读取 README",
+              "id": "read",
+              "status": "pending"
+            },
+            {
+              "content": "整理启动说明",
+              "id": "summarize",
+              "status": "pending"
+            },
+            {
+              "content": "核对说明与原文",
+              "id": "check",
+              "status": "pending"
+            }
+          ],
+          "revision": 1
+        },
+        "ok": true
+      },
+      "role": "tool"
+    },
+    {
+      "call": {
+        "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+        "call_id": "call-2",
+        "tool": "todo_write"
+      },
+      "role": "assistant"
+    },
+    {
+      "result": {
+        "call_id": "call-2",
+        "code": "ok",
+        "data": {
+          "goal": "读取 README，整理启动说明",
+          "items": [
+            {
+              "content": "读取 README",
+              "id": "read",
+              "status": "in_progress"
+            },
+            {
+              "content": "整理启动说明",
+              "id": "summarize",
+              "status": "pending"
+            },
+            {
+              "content": "核对说明与原文",
+              "id": "check",
+              "status": "pending"
+            }
+          ],
+          "revision": 2
+        },
+        "ok": true
+      },
+      "role": "tool"
+    },
+    {
+      "call": {
+        "arguments": "{\"path\":\"README.md\"}",
+        "call_id": "call-3",
+        "tool": "read_file"
+      },
+      "role": "assistant"
+    },
+    {
+      "result": {
+        "call_id": "call-3",
+        "code": "ok",
+        "data": {
+          "content": "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n"
+        },
+        "ok": true
+      },
+      "role": "tool"
+    }
+  ],
+  "inputs": [
+    {
+      "goal": "读取 README，整理启动说明",
+      "history": [],
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [],
+        "revision": 0
+      }
+    },
+    {
+      "goal": "读取 README，整理启动说明",
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        }
+      ],
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "pending"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 1
+      }
+    },
+    {
+      "goal": "读取 README，整理启动说明",
+      "history": [
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":0,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"pending\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-1",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-1",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "pending"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 1
+            },
+            "ok": true
+          },
+          "role": "tool"
+        },
+        {
+          "call": {
+            "arguments": "{\"expected_revision\":1,\"items\":[{\"content\":\"读取 README\",\"id\":\"read\",\"status\":\"in_progress\"},{\"content\":\"整理启动说明\",\"id\":\"summarize\",\"status\":\"pending\"},{\"content\":\"核对说明与原文\",\"id\":\"check\",\"status\":\"pending\"}]}",
+            "call_id": "call-2",
+            "tool": "todo_write"
+          },
+          "role": "assistant"
+        },
+        {
+          "result": {
+            "call_id": "call-2",
+            "code": "ok",
+            "data": {
+              "goal": "读取 README，整理启动说明",
+              "items": [
+                {
+                  "content": "读取 README",
+                  "id": "read",
+                  "status": "in_progress"
+                },
+                {
+                  "content": "整理启动说明",
+                  "id": "summarize",
+                  "status": "pending"
+                },
+                {
+                  "content": "核对说明与原文",
+                  "id": "check",
+                  "status": "pending"
+                }
+              ],
+              "revision": 2
+            },
+            "ok": true
+          },
+          "role": "tool"
+        }
+      ],
+      "plan": {
+        "goal": "读取 README，整理启动说明",
+        "items": [
+          {
+            "content": "读取 README",
+            "id": "read",
+            "status": "in_progress"
+          },
+          {
+            "content": "整理启动说明",
+            "id": "summarize",
+            "status": "pending"
+          },
+          {
+            "content": "核对说明与原文",
+            "id": "check",
+            "status": "pending"
+          }
+        ],
+        "revision": 2
+      }
+    }
+  ],
+  "model_turns": 3,
+  "plan": {
+    "goal": "读取 README，整理启动说明",
+    "items": [
+      {
+        "content": "读取 README",
+        "id": "read",
+        "status": "in_progress"
+      },
+      {
+        "content": "整理启动说明",
+        "id": "summarize",
+        "status": "pending"
+      },
+      {
+        "content": "核对说明与原文",
+        "id": "check",
+        "status": "pending"
+      }
+    ],
+    "revision": 2
+  },
+  "reads": 1,
+  "scenario": "budget-stop",
+  "stop": "turn_limit",
+  "tool_calls": 3
+}

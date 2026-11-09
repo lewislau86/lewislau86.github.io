@@ -1,0 +1,30 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply add check expected=1 (new process)
+revision=2 ready=readme reconcile=- tasks=readme:pending#0,check:pending#0
+apply add guide expected=2 (new process)
+revision=3 ready=readme reconcile=- tasks=readme:pending#0,check:pending#0,guide:pending#0
+show (new process)
+revision=3 ready=readme reconcile=- tasks=readme:pending#0,check:pending#0,guide:pending#0
+apply start readme expected=3 (new process)
+revision=4 ready=- reconcile=readme tasks=readme:running#1,check:pending#0,guide:pending#0
+show (new process)
+revision=4 ready=- reconcile=readme tasks=readme:running#1,check:pending#0,guide:pending#0
+apply complete readme expected=4 (new process)
+revision=5 ready=check reconcile=- tasks=readme:completed#1,check:pending#0,guide:pending#0
+apply start check expected=5 (new process)
+revision=6 ready=- reconcile=check tasks=readme:completed#1,check:running#1,guide:pending#0
+show (new process)
+revision=6 ready=- reconcile=check tasks=readme:completed#1,check:running#1,guide:pending#0
+apply complete check expected=6 (new process)
+revision=7 ready=guide reconcile=- tasks=readme:completed#1,check:completed#1,guide:pending#0
+apply start guide expected=7 (new process)
+revision=8 ready=- reconcile=guide tasks=readme:completed#1,check:completed#1,guide:running#1
+show (new process)
+revision=8 ready=- reconcile=guide tasks=readme:completed#1,check:completed#1,guide:running#1
+apply complete guide expected=8 (new process)
+revision=9 ready=- reconcile=- tasks=readme:completed#1,check:completed#1,guide:completed#1
+show (new process)
+revision=9 ready=- reconcile=- tasks=readme:completed#1,check:completed#1,guide:completed#1

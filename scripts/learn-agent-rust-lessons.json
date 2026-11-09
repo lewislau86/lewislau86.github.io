@@ -1,0 +1,560 @@
+{
+  "title": "Learn Agent by Rust",
+  "subtitle": "使用 Rust 构建可理解、可恢复的 Agent",
+  "parts": [
+    {
+      "id": "execution",
+      "title": "第一部分 · 基础循环与执行边界",
+      "purpose": "先完成一次模型与工具往返，再把权限、审批和生命周期放到宿主控制的边界。",
+      "transition": "工具动作有了边界，下一步学习工作流怎样选择路径、等待输入与共享状态。"
+    },
+    {
+      "id": "orchestration",
+      "title": "第二部分 · 图编排与会话推进",
+      "purpose": "把状态、节点和控制权单独学清，再加入暂停恢复、并行归并与子图。",
+      "transition": "编排规则清楚以后，再为长任务保留计划，并隔离子任务的历史。"
+    },
+    {
+      "id": "planning",
+      "title": "第三部分 · 计划与上下文隔离",
+      "purpose": "用可见清单记录意图，用独立子会话限制一次委派携带的上下文。",
+      "transition": "任务拆开以后，还要决定每次执行应当带入哪些方法、资料与历史事实。"
+    },
+    {
+      "id": "knowledge",
+      "title": "第四部分 · 方法、知识与记忆",
+      "purpose": "区分 Skills 的操作方法、RAG 的当前证据和 Memory 的长期事实，再用压缩与提示词组装控制输入。",
+      "transition": "输入来源明确以后，进入失败恢复和跨进程长任务。"
+    },
+    {
+      "id": "tasks",
+      "title": "第五部分 · 恢复、长任务与调度",
+      "purpose": "从有限重试走向持久化任务、后台执行和定时触发，逐步处理时间与进程边界。",
+      "transition": "单个任务可以持续推进以后，才讨论多个执行者如何共享工作。"
+    },
+    {
+      "id": "collaboration",
+      "title": "第六部分 · 团队协作与资源归属",
+      "purpose": "先建立邮箱和协作协议，再约束任务所有权、租约与独立工作区。",
+      "transition": "协作边界具备以后，把外部能力接进来，并在同一任务中验收选定契约。"
+    },
+    {
+      "id": "integration",
+      "title": "第七部分 · 外部能力与整体集成",
+      "purpose": "用 MCP 管理外部工具的发现、调用和连接，再组合此前已经验证的部分机制。",
+      "transition": "组合能运行以后，还需要恢复、效果、质量与目标完成的独立证据。"
+    },
+    {
+      "id": "reliability",
+      "title": "第八部分 · 可靠性与目标验收",
+      "purpose": "分别验证检查点、外部效果、模型协议与质量、生产演练和有界目标控制。",
+      "transition": "验收方法明确以后，才评估自我改进与新研究是否带来可信收益。"
+    },
+    {
+      "id": "evolution",
+      "title": "第九部分 · 受控演进与研究",
+      "purpose": "在固定评估边界内尝试改进，并将近期研究转换成可以复现的后续问题。",
+      "transition": "从研究补充页选择实验，保留基线、独立判分与清楚的未验证边界。"
+    }
+  ],
+  "lessons": [
+    {
+      "id": "R00",
+      "slug": "architecture-and-setup",
+      "title": "整体架构与环境",
+      "part": "execution",
+      "domain": "工具与执行",
+      "status": "written",
+      "question": "模型、工具、图调度与应用策略分别放在哪里？",
+      "addition": "建立两库分工、进程边界与实验环境的全貌。",
+      "outcome": "画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。",
+      "prerequisites": [],
+      "chapter": 0
+    },
+    {
+      "id": "R01",
+      "slug": "agent-loop",
+      "title": "最小 Agent 循环",
+      "part": "execution",
+      "domain": "工具与执行",
+      "status": "written",
+      "question": "模型怎样请求工具，看到执行结果后再继续？",
+      "addition": "显式循环、结构化调用、消息配对与停止状态。",
+      "outcome": "用脚本模型完成一次文件读取，核对消息、call_id、轮次和预算耗尽路径。",
+      "prerequisites": [
+        "R00"
+      ],
+      "chapter": 1
+    },
+    {
+      "id": "R02",
+      "slug": "tools-and-graph",
+      "title": "工具注册与图调度",
+      "part": "execution",
+      "domain": "工具与执行",
+      "status": "written",
+      "question": "增加工具后，怎样让循环保持清晰并映射到图？",
+      "addition": "工具注册表，以及 ModelTurn 与 ExecuteTools 的图节点映射。",
+      "outcome": "增加第二个只读工具，用相同用例比较显式版和图版的消息、调用与结果。",
+      "prerequisites": [
+        "R01"
+      ],
+      "chapter": 2
+    },
+    {
+      "id": "R03",
+      "slug": "permissions",
+      "title": "工具权限与审批",
+      "part": "execution",
+      "domain": "工具与执行",
+      "status": "written",
+      "question": "模型提出动作后，谁决定允许、拒绝或等待审批？",
+      "addition": "执行前权限判断与类型化审批状态。",
+      "outcome": "验证拒绝路径没有执行工具，批准后只执行被批准的动作；跨进程恢复另行验收。",
+      "prerequisites": [
+        "R02"
+      ],
+      "chapter": 3
+    },
+    {
+      "id": "R04",
+      "slug": "hooks",
+      "title": "生命周期与 Hooks",
+      "part": "execution",
+      "domain": "工具与执行",
+      "status": "written",
+      "question": "怎样在循环边界增加策略、记录与检查？",
+      "addition": "执行前后与停止阶段的生命周期扩展点。",
+      "outcome": "观察 Hook 顺序，并验证拒绝、异常和超时的传播策略。",
+      "prerequisites": [
+        "R03"
+      ],
+      "chapter": 4
+    },
+    {
+      "id": "G01",
+      "slug": "graph-state-routing",
+      "title": "图状态、条件路由与有界循环",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "图怎样共享状态、选择分支，并让修复循环有上限？",
+      "addition": "类型化状态、条件边、GoTo、逐步与连续执行。",
+      "outcome": "运行真实 graph-flow，核对状态、游标、轨迹、调用数和错误跳转，区分图结束与业务通过。",
+      "prerequisites": [
+        "R02"
+      ],
+      "chapter": 5
+    },
+    {
+      "id": "G02",
+      "slug": "graph-pause-resume",
+      "title": "图暂停、会话存储与恢复",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "等待外部批准并退出后，新进程从哪里继续？",
+      "addition": "真实 SessionStorage、SQLite 版本事务、修订绑定与终态保护。",
+      "outcome": "通过独立 CLI 进程恢复会话，拒绝旧批准、旧写入和不兼容快照；外部效果与多执行者推进另验。",
+      "prerequisites": [
+        "G01",
+        "R03"
+      ],
+      "chapter": 6
+    },
+    {
+      "id": "G03",
+      "slug": "graph-parallel-subgraphs",
+      "title": "图并行、归并与子图",
+      "part": "orchestration",
+      "domain": "图编排与会话",
+      "status": "written",
+      "question": "多项检查怎样并行执行，失败后保留什么，结果怎样汇总？",
+      "addition": "FanOutTask、显式归并、共享更新冲突与隔离子图包装。",
+      "outcome": "核对真实并发、局部成功、丢失更新和任务超时，用独立 Session 显式传递父子输入输出。",
+      "prerequisites": [
+        "G01",
+        "G02"
+      ],
+      "chapter": 7
+    },
+    {
+      "id": "R05",
+      "slug": "todo-planning",
+      "title": "可见的任务清单",
+      "part": "planning",
+      "domain": "规划与控制",
+      "status": "written",
+      "question": "长任务怎样记录目标、步骤和当前进度？",
+      "addition": "会话内待办清单与合法状态迁移。",
+      "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
+      "prerequisites": [
+        "R02",
+        "R03"
+      ],
+      "chapter": 8
+    },
+    {
+      "id": "R06",
+      "slug": "subagents",
+      "title": "子 Agent 与上下文隔离",
+      "part": "planning",
+      "domain": "规划与控制",
+      "status": "written",
+      "question": "怎样把一次子任务放进独立的消息历史？",
+      "addition": "子会话输入输出契约与父子预算。",
+      "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
+      "prerequisites": [
+        "R02",
+        "R03"
+      ],
+      "chapter": 9
+    },
+    {
+      "id": "R07",
+      "slug": "skill-loading",
+      "title": "按需加载技能",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "question": "怎样只在任务需要时加入专业说明？",
+      "addition": "技能目录、版本与按需内容注入。",
+      "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
+      "prerequisites": [
+        "R02",
+        "R03"
+      ],
+      "chapter": 10
+    },
+    {
+      "id": "K01",
+      "slug": "retrieval-augmented-generation",
+      "title": "RAG：检索、证据与回答",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "question": "怎样只把当前有权访问、与问题相关且可追溯的资料交给回答环节？",
+      "addition": "文档切块、BM25、范围过滤、上下文预算、引用校验与索引更新。",
+      "outcome": "运行真实词法检索，观察同义表达缺口、资料更新与删除；用固定摘录夹具检查回答边界，真实模型质量另验。",
+      "prerequisites": [
+        "R02",
+        "R03",
+        "R07"
+      ],
+      "chapter": 11
+    },
+    {
+      "id": "R08",
+      "slug": "context-compaction",
+      "title": "上下文压缩",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "question": "对话历史太长时，怎样保留继续行动需要的事实？",
+      "addition": "上下文预算、裁剪与历史摘要。",
+      "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
+      "prerequisites": [
+        "R01",
+        "R07"
+      ],
+      "chapter": 12
+    },
+    {
+      "id": "R09",
+      "slug": "memory",
+      "title": "跨会话记忆",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "question": "哪些事实应当在新会话中仍然可用？",
+      "addition": "有来源和版本的事实存储、提取与召回。",
+      "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
+      "prerequisites": [
+        "R08"
+      ],
+      "chapter": 13
+    },
+    {
+      "id": "R10",
+      "slug": "system-prompts",
+      "title": "系统提示词组装",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "question": "策略、工具、技能和环境怎样组成一次模型请求？",
+      "addition": "运行时提示词组装与各部分的来源和版本。",
+      "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
+      "prerequisites": [
+        "R07",
+        "R09"
+      ],
+      "chapter": 14
+    },
+    {
+      "id": "R11",
+      "slug": "error-recovery",
+      "title": "错误分类与恢复",
+      "part": "tasks",
+      "domain": "规划与控制",
+      "status": "written",
+      "question": "什么错误值得重试，重试何时应该结束？",
+      "addition": "类型化错误、有限重试、退避与累计预算。",
+      "outcome": "区分临时和永久错误，验证重试或恢复后仍受总预算约束。",
+      "prerequisites": [
+        "R02",
+        "R08"
+      ],
+      "chapter": 15
+    },
+    {
+      "id": "R12",
+      "slug": "task-system",
+      "title": "持久化任务系统",
+      "part": "tasks",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "任务依赖与执行状态怎样在进程退出后保留？",
+      "addition": "业务任务身份、依赖校验、合法迁移与单执行者存储。",
+      "outcome": "从新进程恢复任务，拒绝依赖环，并观察保存失败和损坏记录。",
+      "prerequisites": [
+        "R05",
+        "R11"
+      ],
+      "chapter": 16
+    },
+    {
+      "id": "R13",
+      "slug": "background-tasks",
+      "title": "后台任务",
+      "part": "tasks",
+      "domain": "并发与调度",
+      "status": "written",
+      "question": "慢工具怎样在后台运行，同时保持可查询与可取消？",
+      "addition": "有界后台执行、任务句柄、通知与资源回收。",
+      "outcome": "验证启动、查询、取消、完成通知与退出清理的完整生命周期。",
+      "prerequisites": [
+        "R12"
+      ],
+      "chapter": 17
+    },
+    {
+      "id": "R14",
+      "slug": "scheduling",
+      "title": "定时调度",
+      "part": "tasks",
+      "domain": "并发与调度",
+      "status": "written",
+      "question": "定时触发怎样在重启后继续，并处理重复触发？",
+      "addition": "有时区的持久化调度与触发身份。",
+      "outcome": "检查错过触发、重复触发和调度重启时的行为。",
+      "prerequisites": [
+        "R12",
+        "R13"
+      ],
+      "chapter": 18
+    },
+    {
+      "id": "R15",
+      "slug": "agent-teams",
+      "title": "Agent 团队",
+      "part": "collaboration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "多个执行者怎样分工，并保留各自的上下文？",
+      "addition": "独立会话、有界邮箱与队友生命周期。",
+      "outcome": "观察消息投递、队友等待与退出，明确单进程和跨进程能力范围。",
+      "prerequisites": [
+        "R06",
+        "R12",
+        "R13"
+      ],
+      "chapter": 19
+    },
+    {
+      "id": "R16",
+      "slug": "team-protocols",
+      "title": "团队协作协议",
+      "part": "collaboration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "队友怎样批准、拒绝、汇报和退出？",
+      "addition": "类型化消息、关联身份与协议状态迁移。",
+      "outcome": "拒绝非法协议消息，验证关闭握手、超时和失败退出。",
+      "prerequisites": [
+        "R15"
+      ],
+      "chapter": 20
+    },
+    {
+      "id": "R17",
+      "slug": "autonomous-workers",
+      "title": "自主任务领取",
+      "part": "collaboration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "谁有权执行任务，原执行者退出后谁来接管？",
+      "addition": "原子领取、所有权、租约与接管。",
+      "outcome": "验证竞争领取、租约过期和旧执行者拒写，单独核对外部动作重放。",
+      "prerequisites": [
+        "R12",
+        "R16"
+      ],
+      "chapter": 21
+    },
+    {
+      "id": "R18",
+      "slug": "worktree-isolation",
+      "title": "工作区隔离",
+      "part": "collaboration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "并发代码任务怎样拥有独立文件与变更归属？",
+      "addition": "任务绑定的练习 worktree 与资源回收策略。",
+      "outcome": "在专用练习仓库验证创建、绑定、保留和回收，不覆盖已有修改。",
+      "prerequisites": [
+        "R03",
+        "R17"
+      ],
+      "chapter": 22
+    },
+    {
+      "id": "R19",
+      "slug": "mcp-tools",
+      "title": "MCP 外部工具",
+      "part": "integration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "外部服务怎样进入同一工具注册与调用体系？",
+      "addition": "工具发现、命名空间、schema 映射与连接生命周期。",
+      "outcome": "锁定协议与客户端版本，用本地真实服务验证发现、调用、超时与退出。",
+      "prerequisites": [
+        "R02",
+        "R03",
+        "R11"
+      ],
+      "chapter": 23
+    },
+    {
+      "id": "R20",
+      "slug": "integrated-agent",
+      "title": "完整 Agent 集成",
+      "part": "integration",
+      "domain": "多 Agent 平台",
+      "status": "written",
+      "question": "工具、策略、上下文、任务与团队怎样围绕同一个循环工作？",
+      "addition": "统一事件、累计预算和跨机制的端到端路径。",
+      "outcome": "重新验收完整任务与故障路径，分别记录模块通过与集成通过。",
+      "prerequisites": [
+        "R04",
+        "R05",
+        "R06",
+        "R07",
+        "R08",
+        "R09",
+        "R10",
+        "R11",
+        "R14",
+        "R16",
+        "R18",
+        "R19"
+      ],
+      "chapter": 24
+    },
+    {
+      "id": "P01",
+      "slug": "postgres-checkpoints",
+      "title": "PostgreSQL 检查点",
+      "part": "reliability",
+      "domain": "可靠性专题",
+      "status": "written",
+      "question": "一个模型轮次或工具步骤怎样成为可恢复的检查点？",
+      "addition": "版本化会话、逐轮和逐工具保存边界。",
+      "outcome": "用独立进程与故障注入验证恢复，并明确工具成功而保存失败的窗口。",
+      "prerequisites": [
+        "R02",
+        "R11",
+        "R12"
+      ]
+    },
+    {
+      "id": "P02",
+      "slug": "side-effect-reliability",
+      "title": "外部操作的可靠性",
+      "part": "reliability",
+      "domain": "可靠性专题",
+      "status": "written",
+      "question": "工具已产生业务结果、检查点却未保存时，怎样重放？",
+      "addition": "操作身份、业务幂等、Outbox 与对账。",
+      "outcome": "在指定故障窗口重试，核对重复调用与最终业务结果。",
+      "prerequisites": [
+        "P01",
+        "R17"
+      ]
+    },
+    {
+      "id": "P03",
+      "slug": "model-evaluation",
+      "title": "模型协议与质量评估",
+      "part": "reliability",
+      "domain": "可靠性专题",
+      "status": "written",
+      "question": "协议正确与任务真正完成，分别怎样验证？",
+      "addition": "provider fixture、真实服务与固定任务集。",
+      "outcome": "分别报告协议、完成率、延迟和成本，并记录模型与实验环境。",
+      "prerequisites": [
+        "R01",
+        "R11",
+        "R20"
+      ]
+    },
+    {
+      "id": "P04",
+      "slug": "production-readiness",
+      "title": "生产准入与演练",
+      "part": "reliability",
+      "domain": "可靠性专题",
+      "status": "written",
+      "question": "实验通过以后，长期服务还需要哪些证据？",
+      "addition": "授权、迁移、版本兼容、监控与故障恢复。",
+      "outcome": "按明确环境执行负载、旧会话升级、故障接管和备份恢复演练。",
+      "prerequisites": [
+        "P01",
+        "P02",
+        "P03"
+      ]
+    },
+    {
+      "id": "P05",
+      "slug": "workflow-and-goal-control",
+      "title": "固定工作流与目标控制",
+      "part": "reliability",
+      "domain": "可靠性专题",
+      "status": "written",
+      "question": "固定业务编排与自主循环怎样结合，目标何时算完成？",
+      "addition": "工作流边界、独立目标判断与有上限的继续策略。",
+      "outcome": "区分正常返回与目标完成，验证不可完成、续跑上限和人工接管路径。",
+      "prerequisites": [
+        "R11",
+        "R20",
+        "P03"
+      ]
+    },
+    {
+      "id": "P06",
+      "slug": "agent-rsi",
+      "title": "Agent RSI 与受控自我改进",
+      "part": "evolution",
+      "domain": "研究与演进",
+      "status": "written",
+      "question": "怎样判断自我改进真的有效，改进机制自身又能否改进？",
+      "addition": "任务与元改进分层、独立验收、有限候选、版本发布与回滚。",
+      "outcome": "运行有限策略门控实验，拒绝过拟合、评分器篡改与越权，核对预算和发布回滚；递归元改进另验。",
+      "prerequisites": [
+        "R18",
+        "P03",
+        "P04",
+        "P05"
+      ]
+    }
+  ]
+}

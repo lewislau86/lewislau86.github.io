@@ -1,0 +1,20 @@
+scenario=normal
+quote=Upgrade v2 requires Rust 1.99.1. Run cargo test before publishing.
+citation=A/release.md:L3-L3@63c4bb1531c9478b
+claim_valid=true
+scenario=no-hit
+abstain=no_evidence
+scenario=scope visible_hits=1 private_leak=false
+scenario=budget
+abstain=no_evidence
+scenario=injection quoted_as_data=true generator=fixture actions=0
+scenario=bad-citation unsupported_quote_rejected=true unknown_id_rejected=true
+scenario=evaluation labeled_queries=4 recall_at_2=3/4 mrr_at_2=0.750
+scenario=lexical-gap
+abstain=no_evidence
+scenario=stale rejected=stale_index
+scenario=updated
+quote=Upgrade v2 requires Rust 2.00.0. Run cargo test before publishing.
+citation=A/release.md:L3-L3@15e1b1f9fbe0704d
+claim_valid=true
+scenario=deleted rejected=source_missing rebuilt_hits=0

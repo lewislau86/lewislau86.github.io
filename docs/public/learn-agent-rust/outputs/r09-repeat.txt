@@ -1,0 +1,4 @@
+apply session-A expected=0
+{"revision":1,"status":"saved"}
+apply session-B expected=1
+{"revision":1,"status":"unchanged"}

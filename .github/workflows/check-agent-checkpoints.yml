@@ -1,0 +1,60 @@
+name: Check P01 PostgreSQL checkpoints
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/postgres-checkpoints.md"
+      - "docs/public/learn-agent-rust/code/postgres-checkpoints/**"
+      - "docs/public/learn-agent-rust/outputs/p01-*"
+      - "docs/public/learn-agent-rust/figures/p01-*"
+      - "docs/public/learn-agent-rust/postgres-checkpoints-lab.zip"
+      - "scripts/verify-agent-checkpoints.py"
+      - "scripts/learn-agent-rust-checkpoint-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/p01-results.json"
+      - ".github/workflows/check-agent-checkpoints.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/postgres-checkpoints.md"
+      - "docs/public/learn-agent-rust/code/postgres-checkpoints/**"
+      - "docs/public/learn-agent-rust/outputs/p01-*"
+      - "docs/public/learn-agent-rust/figures/p01-*"
+      - "docs/public/learn-agent-rust/postgres-checkpoints-lab.zip"
+      - "scripts/verify-agent-checkpoints.py"
+      - "scripts/learn-agent-rust-checkpoint-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/p01-results.json"
+      - ".github/workflows/check-agent-checkpoints.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checkpoints:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      P01_PG_BIN: /usr/lib/postgresql/18/bin
+      RUSTUP_TOOLCHAIN: "1.99.1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Install PostgreSQL 18 tools from PostgreSQL Apt repository
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl --fail --silent --show-error -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt noble-pgdg main' | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-18
+      - name: Verify private cluster, process exits, restart, concurrency and extracted package
+        run: python3 scripts/verify-agent-checkpoints.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson P01
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/p01-*.svg'

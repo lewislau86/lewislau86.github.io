@@ -1,0 +1,14 @@
+normal: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
+empty-context: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
+repeat: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
+memory-update: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
+environment-change: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
+tool-change: stop=answer error=none turns=1 reads=0 writes=0 goal_verified=false
+stale-source: stop=prompt_error error=stale_source turns=0 reads=0 writes=0 goal_verified=false
+missing-source: stop=prompt_error error=missing_source turns=0 reads=0 writes=0 goal_verified=false
+duplicate-source: stop=prompt_error error=duplicate_source turns=0 reads=0 writes=0 goal_verified=false
+invalid-source: stop=prompt_error error=invalid_source turns=0 reads=0 writes=0 goal_verified=false
+budget: stop=prompt_error error=request_budget turns=0 reads=0 writes=0 goal_verified=false
+history-system: stop=prompt_error error=history_system turns=0 reads=0 writes=0 goal_verified=false
+orphan-tool: stop=prompt_error error=unpaired_tool turns=0 reads=0 writes=0 goal_verified=false
+knowledge-injection: stop=tool_error error=permission_denied turns=2 reads=0 writes=1 goal_verified=false

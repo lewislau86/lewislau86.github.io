@@ -5,3 +5,4 @@ docs/.vitepress/cache/
 .cache/
 /data/
 __pycache__/
+docs/.vitepress/.temp/

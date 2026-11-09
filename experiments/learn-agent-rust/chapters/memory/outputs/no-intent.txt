@@ -1,0 +1,2 @@
+apply session-A expected=0
+{"error":"no_memory_intent","status":"error"}

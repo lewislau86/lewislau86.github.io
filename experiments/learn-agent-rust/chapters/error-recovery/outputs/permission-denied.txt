@@ -1,0 +1,7 @@
+scenario=permission-denied
+clock=virtual attempt_duration_ms=10 jitter=disabled
+limits calls=6 wait_ms=600 deadline_ms=2000 max_attempts=3
+trace[0] result call_id=read-1 status=failed
+last_failure=Some(PermissionDenied)
+read_value_matches=false
+stats stop=failed calls=0 last_attempts=0 waited_ms=0 now_ms=0 results=1 logical_calls=1 reads=0 appends=0 lines=0 paused=false

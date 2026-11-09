@@ -1,0 +1,9 @@
+scenario=stale-parent order_seed=1
+baseline dev=2/4 validation=1/4
+candidate=Trim dev=3/4 validation=2/4
+decision=promote revision=1 previous=Baseline current=Trim
+decision=reject reason=stale_parent current=Trim
+audit baseline_test=2/6 selected_test=3/6 deployed=Trim
+search_attempts=1 candidate_case_evaluations=8 remaining=2
+baseline_preserved=true pointer_matches_policy=true
+workspace_removed=true

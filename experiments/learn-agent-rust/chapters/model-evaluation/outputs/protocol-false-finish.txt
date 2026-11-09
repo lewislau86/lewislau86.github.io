@@ -1,0 +1,5 @@
+scenario=false-finish adapter_ok=true stop=answered
+model_attempts=1 file_reads=0 received_http=1
+answer_correct=true task_pass=false
+usage={"completion_tokens":20,"prompt_tokens":100}
+cost_usd=unknown live_provider=not_run

@@ -1,6 +1,6 @@
 ---
 title: "第 20 章：梯度稳定与累积"
-description: "梯度裁剪、FP16 Loss Scaling、梯度累积与梯度监测。"
+description: "第 12 章起每一步都“把梯度裁到 1”，可它到底在防什么？看清训练中的全局梯度范数，用对照实验回答：AdamW 下裁剪阈值改一百倍为什么几乎没影响、一次梯度尖峰怎样毁掉 Adam 的状态、梯度累积怎样才和大 batch 严格相等、FP16 为什么要先放大损失再 unscale_ 后裁剪。"
 pageClass: tinyllm-course
 ---
 
@@ -8,12 +8,390 @@ pageClass: tinyllm-course
 
 [课程总览](./index.md) · [上一章](./precision.md) · [下一章](./training-loop.md)
 
-::: info 本章状态：规划中
-正文与 notebook 尚未完成。预计覆盖：Gradient Clipping、FP16 Loss Scaling（`GradScaler`）、梯度累积与梯度数值监测；解释它们在训练循环中的调用顺序。
+::: tip 本章学习目标
+能算出全局梯度范数，说清按范数裁剪和按值裁剪的区别；能解释为什么用 AdamW 时裁剪阈值几乎不影响结果，而它仍然必须保留：它挡住的是稀有的梯度尖峰；能写出和大 batch 严格等价的梯度累积，并用“一步对拍”查出累积里的错误；能说清 FP16 的 loss scaling 在做什么，以及 `unscale_`、裁剪、`step`、`update` 的先后顺序。
+
+**前置：** [第 16 章](./optimizers.md)的 Adam 更新公式，[第 17 章](./learning-rate.md)的代理模型，[第 19 章](./precision.md)的 FP16 与 BF16；[第 15 章](./language-model-loss.md)讲过梯度累积时损失的分母该放在哪里。
+
+**实践方式：** [gradient-stability.ipynb](/tinyllm/notebooks/gradient-stability)（也可以直接运行 <a href="/tinyllm/code/gradient-stability.py" download>gradient-stability.py</a>），CPU 约一分钟，需要 PyTorch 和 `tokenizers`。
 :::
+
+从[第 12 章](./tinyllm-model.md)开始，训练循环里一直有这样一行（示意，完整代码见第 12 章的 <a href="/tinyllm/code/tinyllm-model.py" download>tinyllm-model.py</a>）：
+
+```python
+torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+```
+
+“按全局范数把梯度裁到 1，防止偶发的大梯度。”这句话我们一直照做，却从没看过它到底裁掉了什么。梯度在训练中多大？1.0 这个阈值是怎么来的，改成 0.1 会怎样？什么样的梯度才算“偶发的大梯度”，它会造成什么后果？
+
+本章用一组对照实验回答这些问题，再处理两件和梯度密切相关的工程问题：显存不够时怎样用**梯度累积**凑出大 batch，以及用 FP16 训练时怎样用 **loss scaling** 防止小梯度变成 0。
 
 <TinyLLMMap active="gradient-stability" />
 
-## 本章主线选择（待实验验证）
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/gradient-stability.py" download>gradient-stability.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/gradient-stability.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python gradient-stability.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/gradient-stability)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/gradient-stability.ipynb)。正文引用的输出来自 torch 2.14.1+cpu、tokenizers 0.23.3。
+:::
 
-默认记录全局梯度范数，并在 `optimizer.step()` 前按全局范数裁剪；显存不足时用梯度累积达到目标有效 batch。BF16/FP32 不默认使用 `GradScaler`；FP16 路径先 `unscale_` 再裁剪，防止把放大后的梯度当真实范数。裁剪阈值应随损失归一化、模型和训练曲线调整。[PyTorch AMP 梯度裁剪示例](https://docs.pytorch.org/docs/stable/notes/amp_examples.html#gradient-clipping)
+## 0. 实验对象
+
+模型用[第 17 章](./learning-rate.md)的代理模型：代码从第 12 章原样复制，词表 1024、宽度 64、2 层，16 万参数；全部 5419 首训练诗，每步 16 段、每段 64 个 token，训练 240 步。
+
+<<< @/public/tinyllm/code/gradient-stability.py#proxy
+
+优化器和第 12 章一样：AdamW，学习率固定 3e-3，矩阵权重 weight decay 0.1。在第 17 章里，这个设置 3 个种子的验证损失平均是 4.805；本章的基线就是它。
+
+## 1. 全局梯度范数
+
+一次反向传播之后，每个参数张量都有自己的 `.grad`。把它们全部拉直、拼成一个长向量，这个向量的长度（L2 范数）就是**全局梯度范数**。实际计算时不必真的拼接：先算每个张量的范数，再把这些范数平方相加、开方，结果一样。
+
+<<< @/public/tinyllm/code/gradient-stability.py#global-norm
+
+```text
+16 个张量，163904 个数
+逐张量再合并：1.481617   拼成长向量：1.481611   clip_grad_norm_ 返回：1.481617
+```
+
+三种算法得到同一个数（末位的差别来自浮点求和的顺序）。`clip_grad_norm_` 的返回值就是**裁剪前**的全局范数，训练时直接把它记下来，是最省事的监测手段。
+
+**按全局范数裁剪**很简单：范数超过阈值时，所有梯度都乘同一个系数 $\min(1, \text{阈值}/\lVert g\rVert)$。另一种做法是**按值裁剪**（`clip_grad_value_`），把每个数单独截断到 $[-c, c]$。两者都手写或调用一遍，和原梯度比较方向：
+
+<<< @/public/tinyllm/code/gradient-stability.py#clip-by-hand
+
+```text
+手写与 clip_grad_norm_ 的最大差：1.9e-09；裁剪后范数 0.5000
+按范数裁到 0.5：和原梯度的夹角余弦 1.0000
+按值裁到 ±0.001：截断了 51.9% 的数，夹角余弦 0.7008
+```
+
+![左：按全局范数裁剪，梯度向量整体缩短到阈值半径的圆上，方向不变。右：按值裁剪，每个分量被限制在正负阈值之内，大的分量被压扁，小的不变，裁剪后的方向偏离原梯度](/tinyllm/figures/grad-clip-geometry.svg)
+
+按范数裁剪只改变长度，夹角余弦是 1.0000，方向完全没变。按值裁剪截断了一半的数，大的分量被压扁、小的不动，方向偏了很多（夹角余弦 0.70）。这就是训练语言模型时几乎都用按全局范数裁剪的原因：它限制步子的长度，不篡改方向。
+
+## 2. 训练函数：每一步记下梯度范数和更新量
+
+训练循环和第 17 章相同，每步多记两样东西：**裁剪前**的全局梯度范数，以及这一步参数实际移动的距离（更新量 $\Delta\theta$ 的 L2 范数）。`accum` 和 `spike` 两个参数后面几节才用到：
+
+<<< @/public/tinyllm/code/gradient-stability.py#run
+
+batch 计划由单独的随机数生成器排好，所有对照共用，`seed` 只决定初始参数。
+
+## 3. 基线里的梯度长什么样
+
+先猜一下：训练过程中，梯度范数会怎么变？越训越小吗？第 12 章的设置（裁到 1.0），3 个种子：
+
+<<< @/public/tinyllm/code/gradient-stability.py#baseline
+
+```text
+步数            1      5     10     50    100    150    200    240
+梯度范数     1.48   0.87   0.51   0.41   0.57   0.55   0.62   0.93
+种子 0：超过 1.0 被裁剪的步数 40/240（前 30 步 4，后 120 步 30），最大 2.56
+种子 1：超过 1.0 被裁剪的步数 33/240（前 30 步 3，后 120 步 29），最大 2.17
+种子 2：超过 1.0 被裁剪的步数 34/240（前 30 步 3，后 120 步 31），最大 4.39
+```
+
+![代理模型、AdamW、学习率 3e-3、裁到 1.0。种子 0 的梯度范数从第 1 步的 1.48 很快降到 0.5 左右，后半程又逐渐变大、抖动加剧；240 步里有 40 步超过阈值 1.0 被裁剪，多数集中在后半程](/tinyllm/figures/grad-norm-trace.svg)
+
+怎么读这张图：
+
+- **开头几步最大。** 随机初始化的模型错得离谱，梯度也大，前几步超过 1.0，被裁剪。
+- **之后很快降到 0.3～0.5。** 模型学会了字频这类容易的规律。
+- **后半程反而逐渐变大，抖得也更厉害。** 梯度范数并不是越训越小。原因不止一个：损失变小以后，每个 batch 的梯度里“噪声”所占的比例变大；在长训练里，weight decay、归一化层和学习率调度的相互作用也会让梯度范数在训练末期明显上升（[Defazio，2025](https://arxiv.org/abs/2506.02285)）。不管原因如何，结论是一样的：**固定的阈值 1.0，在训练的不同阶段意味着不同的事。** 这里被裁的 40 步，有 30 步在后半程。
+
+把梯度按零件拆开看，第 1 步和第 240 步：
+
+<<< @/public/tinyllm/code/gradient-stability.py#per-layer
+
+```text
+第 1 步   梯度范数   参数范数
+  词嵌入          0.5362     32.02
+  RMSNorm      0.1586     17.89
+  第 0 层 注意力    0.7574     10.59
+  第 0 层 前馈     0.8290     14.42
+  第 1 层 注意力    0.5809     10.64
+  第 1 层 前馈     0.5330     14.40
+第 240 步   梯度范数   参数范数
+  词嵌入          0.3183     34.40
+  RMSNorm      0.0964     17.49
+  第 0 层 注意力    0.2118      9.60
+  第 0 层 前馈     0.4182     16.92
+  第 1 层 注意力    0.7062     10.78
+  第 1 层 前馈     0.1961     15.55
+第 240 步：这一步的更新量 0.2894，参数总范数 47.2，比值 6.1e-03
+```
+
+各零件的梯度差几倍，而且训练前后排序会变：第 240 步时第 1 层注意力的梯度最大。全局范数只是一个汇总数，真出问题时，要按零件拆开看是哪一块在作怪（第 9 节）。
+
+最后一行是另一个常用的监测量：**每步更新量和参数大小之比**。它直接回答“这一步把模型改了多少”，比梯度范数更接近我们关心的东西，因为 Adam 的更新量和梯度大小关系不大（下一节）。一个常被引用的经验是，这个比值在 $10^{-3}$ 量级附近比较健康（[CS231n 笔记](https://cs231n.github.io/neural-networks-3/)）；本章的代理模型用的学习率偏大，是 $6\times10^{-3}$。
+
+## 4. 对照：AdamW 下，裁剪阈值改一百倍
+
+既然后半程有不少步被裁剪，阈值 1.0 是不是太紧了？换成不裁剪会更好吗？反过来，裁到 0.01，几乎每一步都被缩小几十倍，会不会学不动？各跑 3 个种子：
+
+<<< @/public/tinyllm/code/gradient-stability.py#thresholds
+
+```text
+不裁剪                    验证损失 4.814（4.798～4.823）
+裁到 1.0（第 12 章）         验证损失 4.806（4.796～4.814）
+裁到 0.01                验证损失 4.807（4.783～4.830）
+```
+
+**三者的范围互相重叠，阈值改一百倍几乎没有影响。** 裁到 0.01 时梯度每一步都被缩小几十倍，模型照样学得一样好。
+
+原因在 Adam 的更新公式里（[第 16 章](./optimizers.md)）。Adam 的一步正比于 $m/\sqrt{v}$：$m$ 是梯度的滑动平均，$v$ 是梯度平方的滑动平均。如果**每一步**的梯度都乘同一个系数 $c$，$m$ 变成 $c$ 倍，$\sqrt{v}$ 也变成 $c$ 倍，相除之后 $c$ 就消掉了。用一个参数验证：
+
+<<< @/public/tinyllm/code/gradient-stability.py#adam-scale
+
+```text
+梯度全部乘    1.0：4 步后 w = -0.283902
+梯度全部乘   0.01：4 步后 w = -0.283901
+梯度全部乘 1000.0：4 步后 w = -0.283902
+```
+
+（末位的差别来自 Adam 分母里的那个小常数 $\epsilon$。）裁到 0.01 时，每一步的缩小系数不完全一样，所以不是严格相等，但大体上就是这个效果。**对 Adam 来说，梯度的整体大小几乎不影响步长，步长由学习率决定。**
+
+那裁剪还有什么用？
+
+## 5. 裁剪真正防的是什么：一次梯度尖峰
+
+Adam 的消除只在“每一步都乘同一个系数”时成立。如果只有**某一步**的梯度突然变得极大，情况就完全不同了。
+
+真实训练里，这种尖峰并不罕见：一个坏 batch（比如重复了几千遍的同一段文字），一次数值故障，或者模型内部某个量慢慢失控后突然爆发。大模型的训练日志里常能看到损失突然跳起的“loss spike”。我们用最直接的方式模拟它：第 121 步（`SPIKE_STEP = 120`，从 0 数）把这一步的梯度放大若干倍，其他什么都不变。先不裁剪，看放大 10、100、1000 倍各有多大影响（种子 0）：
+
+<<< @/public/tinyllm/code/gradient-stability.py#spike-sweep
+
+```text
+放大   10 倍：验证损失 4.820
+放大  100 倍：验证损失 5.096
+放大 1000 倍：验证损失 5.520
+没有尖峰：      验证损失 4.798
+```
+
+只有一步的梯度变大，训练就被毁了：放大 1000 倍时，最终验证损失从 4.798 变成 5.520；从下面的图可以看到，训练结束时的损失比尖峰之前还高。再用 3 个种子确认，并和裁到 1.0 比较：
+
+<<< @/public/tinyllm/code/gradient-stability.py#spike
+
+```text
+尖峰 ×1000，不裁剪           验证损失 5.500（5.399～5.582）
+尖峰 ×1000，裁到 1.0        验证损失 4.810（4.805～4.817）
+```
+
+![上面三行：不裁剪 4.814、裁到 1.0 4.806、裁到 0.01 4.807，范围互相重叠，阈值改一百倍几乎没有影响。下面两行：第 121 步梯度放大 1000 倍，不裁剪变差到 5.500，裁到 1.0 是 4.810，和没有尖峰时一样](/tinyllm/figures/grad-compare.svg)
+
+**裁到 1.0 时，尖峰几乎没有留下痕迹**（4.810，和没有尖峰时的 4.806 一样）。这才是裁剪在 AdamW 训练里真正的作用：平时它基本不起作用（第 4 节），偶尔出现一个异常大的梯度时，它把这一步的梯度压回正常大小，不让它进入 Adam 的状态。
+
+尖峰是怎么毁掉训练的？看看它前后每一步参数实际移动了多远（种子 0）：
+
+<<< @/public/tinyllm/code/gradient-stability.py#spike-mechanism
+
+```text
+                            尖峰前 10 步    尖峰后 10 步     最后 40 步    最终验证
+不裁剪                            0.302         0.296         0.274    4.798
+尖峰 ×1000，不裁剪                   0.302         0.770         0.067    5.520
+尖峰 ×1000，裁到 1.0                0.295         0.295         0.280    4.805
+尖峰 ×1000，不裁剪，β2=0.95           0.294         0.363         0.101    5.184
+```
+
+![种子 0，第 121 步把梯度放大 1000 倍。不裁剪时，尖峰后约 10 步的更新量先变大，损失回升；之后更新量掉到 0.07 左右，训练几乎停住。β2=0.95 恢复得快一些。裁到 1.0 时尖峰几乎没有影响，和没有尖峰的曲线重合](/tinyllm/figures/grad-spike.svg)
+
+尖峰分两个阶段伤害训练：
+
+1. **先是乱走一大步。** 尖峰那一步的梯度比平时大 1000 倍，在 $m$ 和 $v$ 里都占了绝对主导，于是 $m/\sqrt{v}$ 对每个参数都接近 $\pm 1$：所有参数都朝这一个 batch 梯度的符号方向迈了满满一步。$m$ 的记忆要十来步才衰减掉，所以接下来十步的更新量都是平时的两倍多（0.770 对 0.30）。平时的更新是许多 batch 方向的平均，这时却被一个 batch 牵着走，模型被推偏，训练损失从 5.1 跳回 6.5 以上。
+2. **然后长期冻结。** 梯度放大 1000 倍，平方就是一百万倍，乘上 $1-\beta_2=0.001$，$v$ 一下子变成平时的上千倍；而默认的 $\beta_2=0.999$ 意味着 $v$ 的记忆有上千步。在这之后，Adam 的分母一直很大，每一步只能走平时的四分之一（0.067 对 0.27）。模型被推偏了，又几乎走不动，剩下的 120 步都没能爬回来。
+
+最后一行把 $\beta_2$ 换成 0.95：$v$ 的记忆只有几十步，冻结期短得多，最终是 5.184，比默认设置好，但仍然远不如裁剪。很多大模型的预训练都用 $\beta_2=0.95$（比如 [LLaMA](https://arxiv.org/abs/2302.13971)），减轻尖峰的长期影响是原因之一。
+
+实验的边界：尖峰是人为把一步的梯度乘以固定倍数，方向还是那个 batch 的正常梯度；真实的尖峰方向可能更“坏”。放大倍数、$\beta_2$ 的比较都只用了种子 0；“裁剪消除尖峰影响”用了 3 个种子。
+
+## 6. 对照：SGD 没有自适应的步长
+
+Adam 的步长由学习率决定，梯度再大，一步也走不出太远。普通的 SGD 就不一样了：一步走 $\eta \cdot g$，梯度大多少倍，步子就大多少倍。换成带动量的 SGD、学习率 1.0（单个种子）：
+
+<<< @/public/tinyllm/code/gradient-stability.py#sgd
+
+```text
+SGD 1.0，不裁剪    最大梯度范数 2.61e+06  验证损失 6.931   （乱猜是 ln 1024 = 6.931）
+SGD 1.0，裁到 1.0 最大梯度范数 2.34  验证损失 5.187   （乱猜是 ln 1024 = 6.931）
+```
+
+不裁剪时，梯度范数一路涨到 261 万，模型彻底坏掉，验证损失回到乱猜的水平。裁到 1.0 以后，每一步最多走 $\eta \times 1.0$，训练能正常进行。
+
+这就是梯度裁剪最早被提出时要解决的问题：用 SGD 训练循环神经网络时，梯度偶尔会爆炸，一步就把参数推到很远的地方（[Pascanu 等，2013](https://arxiv.org/abs/1211.5063)）。对 SGD，裁剪直接限制步长；对 Adam，它主要保护优化器的状态。两种情况下，按全局范数裁到 1.0 都是一个便宜、几乎没有副作用的保险。
+
+## 7. 梯度累积
+
+[第 13 章](./gpu-training.md)在 GPU 上用过梯度累积：显存放不下 32 条长序列，就分 4 次各放 8 条，前向、反向各做 4 次，梯度在 `.grad` 里加起来，最后只更新一次。这样做的结果，应该和一次放 32 条完全一样。但只有调用顺序全部写对时才一样：
+
+![一个优化器步从 zero_grad 开始；然后对每个 micro-batch 做前向和 (loss / accum).backward()，梯度在 .grad 里累加，期间不裁剪、不更新、不清零；累积完以后，FP16 先 unscale_，再对累积完的梯度裁剪一次，然后 optimizer.step()，最后 scheduler.step()](/tinyllm/figures/grad-accum-loop.svg)
+
+本章的 `train(accum=4)` 就是按这个顺序写的：每个 micro-batch 的损失除以 4 再反传（每个 micro-batch 的 token 数相同，所以除以 4 等于“除以总 token 数”；长短不一时分母要按[第 15 章](./language-model-loss.md)的做法放），累积完以后裁剪一次、更新一次。
+
+先只做一步，和整个 batch 一次算出的梯度对拍。同时看两种常见的写错方式：忘了把损失除以累积步数；以及把裁剪放进了 micro-batch 的循环里（为了“公平”，阈值也分成了 4 份）。
+
+<<< @/public/tinyllm/code/gradient-stability.py#accum-check
+
+```text
+整个 batch：裁剪前范数 1.4816，裁剪后 1.0000
+正确：损失除以 4                裁剪前范数之比 1.000  裁剪后：最大差 2.2e-08，夹角余弦 1.0000
+错误：忘了除以 4                裁剪前范数之比 4.000  裁剪后：最大差 3.4e-08，夹角余弦 1.0000
+错误：每个 micro-batch 各裁一次   裁剪前范数之比 0.392  裁剪后：最大差 2.4e-02，夹角余弦 0.9993
+```
+
+- **正确的写法**和整个 batch 的梯度一样，差别只在 $10^{-8}$ 量级（浮点求和顺序不同）。
+- **忘了除以 4**，裁剪前的梯度正好是 4 倍。可这一步原本就要被裁剪（范数 1.48 超过 1.0），裁完以后两者又一样了。即使没被裁剪，下一步 AdamW 也会把整体的 4 倍消掉（第 4 节）。**这个错误会被裁剪和 Adam 联手藏起来**，只有在裁剪前对拍才看得出来。
+- **每个 micro-batch 各裁一次**，每一份都被单独压到不超过 0.25，加起来的大小和方向都变了。夹角余弦 0.9993 看着很接近，但这个偏差每一步都有，而且 micro-batch 越小、各自的梯度越吵，偏得越多。
+
+把正确的写法训练满 240 步，和第 3 节的基线（整个 batch，种子 0）比较：
+
+<<< @/public/tinyllm/code/gradient-stability.py#accum-full
+
+```text
+验证损失：整个 batch 4.7957，累积 4 步 4.7957；240 步后参数最大差 4.9e-04
+```
+
+验证损失在小数点后 4 位都相同。参数有 $5\times10^{-4}$ 的差别，是每一步 $10^{-8}$ 的浮点误差经过 240 步放大的结果，和换一种求和顺序没有本质区别。
+
+这一节的教训是：**累积写错了，最终损失往往看不出来。** AdamW 对梯度的整体缩放不敏感，裁剪又把大小拉齐了，最终损失只差零点零几，很容易被当成种子噪声。查训练循环的错误，最可靠的办法是**一步对拍**：同一个初始模型、同一个 batch，用两种写法各算一步，直接比较梯度或更新后的参数。
+
+还有两件和累积有关的事。第一，学习率调度器每个**优化器步**推进一次，不是每个 micro-batch 一次（[第 17 章](./learning-rate.md)）。第二，多卡数据并行时，每个 micro-batch 反传完都会在卡之间同步一次梯度，累积期间这是浪费；PyTorch 的 `DistributedDataParallel` 提供了 [`no_sync()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.no_sync)，只在最后一个 micro-batch 同步。多卡训练放在[第 24 章](./large-model-stability.md)。
+
+## 8. FP16 与 loss scaling
+
+[第 19 章](./precision.md)讲过，FP16 只有 5 位指数，能表示的最小正规数约是 $6.1\times10^{-5}$；再小就只能用有效位更少的次正规数，小于约 $6\times10^{-8}$ 的一半就直接变成 0。梯度往往很小。用训练好的基线模型（种子 0），取一个 batch，分别在 FP32 和 FP16 autocast 下反传：
+
+<<< @/public/tinyllm/code/gradient-stability.py#fp16-underflow
+
+```text
+FP16：最小正规数 6.1e-05，最小次正规数 6.0e-08
+FP32 梯度里，绝对值小于 6.1e-05 的占 15.2%，小于 6.0e-08 的占 0.09%
+放大 2^0 ：变成 0 的梯度 0.093%，和 FP32 的相对误差 1.47%
+放大 2^8 ：变成 0 的梯度 0.000%，和 FP32 的相对误差 0.30%
+放大 2^16：变成 0 的梯度 0.000%，和 FP32 的相对误差 0.30%
+放大 2^24：出现 inf/nan，这一步的梯度不能用
+```
+
+![灰色是训练好的代理模型在一个 batch 上的参数梯度（FP32），约 15% 落在 FP16 的最小正规数 6.1e-5 以下，极少数小于 6e-8 会直接变成 0；蓝色是放大 2^16 倍之后，整体右移约 4.8 个数量级，几乎全部进入正规数范围，离上限 65504 还有距离](/tinyllm/figures/grad-fp16-hist.svg)
+
+不放大时，有 0.093% 的梯度在 FP16 里直接变成 0，整体相对误差 1.47%。**loss scaling** 的做法是：反传之前把损失乘一个大数 $S$，链式法则让反向传播里的每一个梯度都乘 $S$，整个分布右移，离开下溢区；更新之前再除以 $S$ 缩回来。放大 $2^8$ 倍，丢失的梯度就没有了，误差降到 0.30%。但也不能放得太大：放大 $2^{24}$ 倍，反向传播中途就超过了 FP16 的上限 65504，变成 inf。
+
+这个小模型上，下溢只影响了千分之一的梯度。模型更深、梯度更小时，问题严重得多：混合精度训练的原论文里，检测网络 Multibox SSD 的激活梯度有相当一部分小于 FP16 能表示的最小值 $2^{-24}$，转成 FP16 就变成 0；不做 loss scaling 时训练发散，把损失放大 8 倍就足以追平 FP32 的精度（[Micikevicius 等，2018](https://arxiv.org/abs/1710.03740)）。
+
+放大倍数取多少？太小没用，太大溢出，最合适的值还会随训练变化。`torch.amp.GradScaler` 自动寻找：遇到 inf/nan 就**跳过这一步**、倍数减半；连续若干步正常就把倍数加倍，试探更大的值。为了几十步之内看到这个过程，下面从 $2^{24}$ 起步、每连续 4 步正常就尝试加倍（默认是 $2^{16}$ 起步、2000 步），接着基线训练结束时的优化器状态再训练 24 步：
+
+<<< @/public/tinyllm/code/gradient-stability.py#grad-scaler
+
+```text
+放大倍数 2^k 的 k： 24 23 22 21 20 19 19 18 18 18 18 19 18 18 18 18 19 19 19 19 20 19 19 19
+这一步：           跳 跳 跳 跳 跳 更 跳 更 更 更 更 跳 更 更 更 更 更 更 更 更 跳 更 更 跳
+第一次成功更新：放大 2^19，放大后的梯度范数 3.24e+05，unscale_ 之后 0.6180
+24 步里跳过 9 步；下一步将用 2^18
+```
+
+前 5 步都溢出了，每次跳过、减半，直到 $2^{19}$ 第一次成功。之后它在 $2^{18}$ 和 $2^{19}$ 之间来回：每连续 4 步正常就试着加倍，加倍后偶尔又溢出，再退回来。对这个模型，安全的放大倍数就在这附近。被跳过的步什么也没更新，所以真实训练里一开始会浪费几步，之后跳过的比例很低（默认每 2000 步才试一次加倍）。
+
+**顺序很重要：先 `unscale_`，再裁剪。** `scaler.scale(loss).backward()` 之后，`.grad` 里存的是放大后的梯度，范数是 $3.24\times10^5$。如果这时直接调用 `clip_grad_norm_(…, 1.0)`，它会以为梯度大得离谱，把它缩小到 1，再被 `scaler.step` 除以 $2^{19}$，真实的更新就几乎变成 0 了。先调用 `scaler.unscale_(optimizer)`，梯度缩回真实大小（0.6180），阈值 1.0 才有意义。`scaler.step` 发现已经 unscale 过，不会再除一次（[PyTorch AMP 示例](https://docs.pytorch.org/docs/stable/notes/amp_examples.html#gradient-clipping)）。
+
+用 BF16 时，这一节的事情都不用做：BF16 的指数位和 FP32 一样多，梯度不会下溢，也就不需要 `GradScaler`（[第 19 章](./precision.md)）。这是 TinyLLM 在支持 BF16 的硬件上优先用 BF16 的原因之一。
+
+## 9. 训练时盯着哪些数
+
+把本章用到的监测量整理一下。它们都很便宜，每步或每隔几十步记一次就够了：
+
+| 监测量 | 怎么算 | 看什么 |
+| --- | --- | --- |
+| 全局梯度范数 | `clip_grad_norm_` 的返回值 | 正常的范围和趋势；突然跳高几十倍就是尖峰 |
+| 被裁剪的比例 | 范数超过阈值的步数 | 偶尔被裁很正常；大部分步都被裁，说明阈值和这个阶段的梯度不匹配 |
+| 各零件的梯度范数 | 按层、按模块分组求范数 | 尖峰或 nan 出现时，定位是哪一层 |
+| 更新量与参数之比 | $\lVert\Delta\theta\rVert / \lVert\theta\rVert$ | 远大于 $10^{-3}$ 量级说明步子大，远小于说明几乎没在学 |
+| 损失是否有限 | `torch.isfinite(loss)` | 出现 inf/nan 立刻停下，不要让它进入优化器 |
+| FP16 的放大倍数 | `scaler.get_scale()` | 持续下降、频繁跳过说明数值在恶化 |
+
+遇到尖峰怎么办？裁剪能挡住单步的异常梯度，但挡不住持续恶化。大模型训练遇到损失尖峰时，常见的处理是退回尖峰之前的检查点，跳过附近的一段数据再继续：PaLM 的训练就这样处理过约 20 次尖峰，每次退回约 100 步、跳过 200 到 500 个 batch（[Chowdhery 等，2022](https://arxiv.org/abs/2204.02311)）。这需要能可靠地保存和恢复训练状态，是[第 21 章](./training-loop.md)的内容。
+
+## 动手实验
+
+1. **尖峰换个方向。** 把第 5 节的尖峰改成“这一步的梯度换成随机噪声，范数是平时的 1000 倍”，不裁剪时影响是更大还是更小？裁到 1.0 能挡住吗？
+2. **阈值设得太紧？** 第 4 节说 AdamW 下阈值几乎无所谓。用 SGD（学习率 0.3）比较不裁剪、裁到 1.0、裁到 0.01，结论还一样吗？
+3. **累积的分母。** 把训练数据换成长短不一的诗（不拼接成流，每首单独补齐），用 `train(accum=4)` 的写法和整个 batch 对拍。差别多大？按[第 15 章](./language-model-loss.md)的做法改分母后再对拍。
+4. **错误的顺序。** 在第 8 节的 `GradScaler` 循环里，把 `scaler.unscale_` 挪到 `clip_grad_norm_` 之后。打印每一步的更新量，和正确顺序比较。
+
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 的 Trainer 把本章的几件事都放在训练循环里：累积几步、裁剪一次、再更新。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 一个 micro-batch 的前向与反向 | [`Trainer.training_step`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2023-L2100) | 算损失、按累积步数缩放后 backward；梯度在 `.grad` 里累加，这里不裁剪、不更新 |
+| 什么时候才更新 | [`trainer.py 第 1872 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1872) | 每累积 `gradient_accumulation_steps` 个 micro-batch 才裁剪、更新一次，和本章 `train(accum=4)` 的顺序一样 |
+| 裁剪阈值 | [`trainer.py 第 1910 行`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L1910) | 来自 `TrainingArguments.max_grad_norm`，默认 1.0；设成 0 或 `None` 就不裁剪 |
+| 按全局范数裁剪 | [`Trainer._clip_grad_norm`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/trainer.py#L2738-L2744) | 调用 PyTorch 的 `clip_grad_norm_`（多卡时由 accelerate 包一层），返回裁剪前的范数，Trainer 把它记成日志里的 `grad_norm` |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
+## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
+
+TinyLLM 每个优化器步都**按全局范数把梯度裁到 1.0**，并把 `clip_grad_norm_` 返回的裁剪前范数记进日志。需要更大的有效 batch 时用**梯度累积**：每个 optimizer step 只 `zero_grad` 一次，每个 micro-batch 的损失按总 token 数归一后反传，累积完再裁剪、更新、推进调度器，各一次。优先用 BF16，不需要 `GradScaler`；只能用 FP16 时，用 `GradScaler`，并且**先 `unscale_` 再裁剪**。
+
+理由来自本章的对照（代理模型、240 步、3 个种子）：AdamW 下不裁剪、裁到 1.0、裁到 0.01 的验证损失分别是 4.814、4.806、4.807，没有可分辨的差别；但第 121 步梯度放大 1000 倍时，不裁剪变差到 5.500，裁到 1.0 是 4.810，和没有尖峰时一样。正确写法的梯度累积和整个 batch 在第一步的梯度只差 $10^{-8}$ 量级，训练 240 步的验证损失相同。
+
+这些选择在什么情况下要换：用 SGD 一类没有自适应步长的优化器时，裁剪阈值会直接决定步长，要和学习率一起调；梯度范数持续上升、被裁剪的比例越来越高时，先查学习率和数值精度，不要只调高阈值；模型放大以后，尖峰更常见，要配合检查点回退（第 21 章）和第 24 章的稳定性手段。
+
+::: warning 常见误区
+- **裁剪阈值要精心调。** 用 AdamW 时，阈值从 1.0 改到 0.01 几乎没有影响；它是防尖峰的保险，不是一个敏感的超参数。
+- **用 AdamW 就不需要裁剪。** Adam 能消掉每一步都有的整体缩放，消不掉单独一步的尖峰。一次 1000 倍的尖峰让本章的模型从 4.81 变差到 5.50。
+- **按值裁剪和按范数裁剪差不多。** 按值裁剪会改变梯度方向，本章的例子里夹角余弦只剩 0.70。
+- **梯度累积时，每个 micro-batch 都裁剪一次。** 应该累积完再裁剪一次；否则方向会变，和大 batch 不再等价。
+- **累积写错了，看最终损失就能发现。** AdamW 和裁剪会把缩放类的错误藏起来；要用一步对拍检查。
+- **FP16 下先裁剪，再 unscale。** 这时裁剪看到的是放大后的梯度，会把真实的梯度压得几乎为 0。应该先 `scaler.unscale_(optimizer)`。
+- **BF16 也要配 `GradScaler`。** BF16 的指数范围和 FP32 一样，不会下溢，不需要。
+:::
+
+## 检查理解
+
+1. 第 4 节里，裁到 0.01 时几乎每一步的梯度都被缩小几十倍，为什么验证损失和不裁剪一样？如果优化器换成 SGD，结论还成立吗？
+
+   <details><summary>参考答案</summary>
+
+   Adam 的一步正比于 $m/\sqrt{v}$。每一步的梯度都被缩小相近的倍数时，$m$ 和 $\sqrt{v}$ 一起缩小，相除后基本抵消，步长仍由学习率决定。SGD 的一步是 $\eta \cdot g$，梯度缩小几十倍，步子也缩小几十倍，等于把学习率降了几十倍，训练会慢很多，结论不成立。
+
+   </details>
+
+2. 一次梯度尖峰为什么能让 Adam 训练长期变差？为什么 $\beta_2=0.95$ 比 $0.999$ 恢复得快？
+
+   <details><summary>参考答案</summary>
+
+   尖峰那一步的梯度在 $m$ 和 $v$ 里都占绝对主导：接下来十来步，$m/\sqrt{v}$ 对每个参数都接近 $\pm 1$，所有参数都朝那一个 batch 的符号方向迈满一步，模型被推偏；之后 $m$ 衰减了，$v$ 却还很大，分母大、步子小，模型几乎走不动，爬不回来。$v$ 的记忆长度约为 $1/(1-\beta_2)$ 步：$\beta_2=0.999$ 约 1000 步，$0.95$ 约 20 步，所以后者的冻结期短得多。裁剪则是在尖峰进入 $m$ 和 $v$ 之前就把它压回正常大小。
+
+   </details>
+
+3. 有人用梯度累积 8 步训练，代码是 `for micro in batches: loss = model(micro); loss.backward(); clip_grad_norm_(params, 1.0); optimizer.step(); optimizer.zero_grad()`。他说“和 batch 放大 8 倍是一样的”。错在哪里？
+
+   <details><summary>参考答案</summary>
+
+   这不是梯度累积：每个 micro-batch 都做了一次 `step()` 和 `zero_grad()`，等于用小 batch 训练了 8 倍的步数，梯度根本没有累加。正确的写法是：`zero_grad()` 放在 8 个 micro-batch 之前，每个 micro-batch 的损失除以 8（或按总 token 数归一）后 `backward()`，8 个都做完以后，再裁剪一次、`step()` 一次、调度器推进一次。
+
+   </details>
+
+4. 用 FP16 和 `GradScaler` 训练时，为什么要在 `clip_grad_norm_` 之前调用 `scaler.unscale_(optimizer)`？如果漏掉了，会发生什么？
+
+   <details><summary>参考答案</summary>
+
+   `scaler.scale(loss).backward()` 之后，`.grad` 里是放大了 $S$ 倍的梯度（本章约 $2^{19}$ 倍，范数 $3.24\times10^5$）。漏掉 `unscale_` 时，`clip_grad_norm_` 会把这个放大后的梯度裁到范数 1，`scaler.step` 再除以 $S$，真实梯度的范数只剩约 $1/S$，几乎为 0，每一步都在白走；而且阈值完全失去了意义。先 `unscale_`，梯度回到真实大小，再裁剪，`scaler.step` 也不会重复除。
+
+   </details>
+
+## 参考资料
+
+- [PyTorch：`torch.nn.utils.clip_grad_norm_`](https://docs.pytorch.org/docs/stable/generated/torch.nn.utils.clip_grad_norm_.html) 与 [`clip_grad_value_`](https://docs.pytorch.org/docs/stable/generated/torch.nn.utils.clip_grad_value_.html)
+- [PyTorch：自动混合精度示例](https://docs.pytorch.org/docs/stable/notes/amp_examples.html)（`GradScaler`、梯度裁剪前先 `unscale_`、梯度累积）
+- [On the difficulty of training Recurrent Neural Networks，Pascanu 等，2013](https://arxiv.org/abs/1211.5063)（梯度爆炸与按范数裁剪）
+- [Mixed Precision Training，Micikevicius 等，2018](https://arxiv.org/abs/1710.03740)（FP16 训练与 loss scaling）
+- [Adam: A Method for Stochastic Optimization，Kingma 与 Ba，2015](https://arxiv.org/abs/1412.6980)（$m/\sqrt{v}$ 对梯度缩放的不变性）
+- [PaLM: Scaling Language Modeling with Pathways，Chowdhery 等，2022](https://arxiv.org/abs/2204.02311)（损失尖峰与“退回检查点、跳过数据”）
+- [Why Gradients Rapidly Increase Near the End of Training，Defazio，2025](https://arxiv.org/abs/2506.02285)（训练后期梯度范数上升的一种机制）
+- [CS231n：Neural Networks Part 3](https://cs231n.github.io/neural-networks-3/)（更新量与参数之比等训练监测量）
+
+梯度的事情处理完，训练循环的每一行都有了着落。下一章把它们按正确的顺序装好，并能随时保存、恢复：[第 21 章：训练循环与检查点](./training-loop.md)。

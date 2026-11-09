@@ -1,0 +1,9 @@
+scenario=rollback order_seed=1
+baseline dev=2/4 validation=1/4
+candidate=Robust dev=4/4 validation=4/4
+decision=promote revision=1 previous=Baseline current=Robust
+runtime_alarm=true rollback_to=revision-0
+audit baseline_test=2/6 selected_test=2/6 deployed=Baseline
+search_attempts=1 candidate_case_evaluations=8 remaining=2
+baseline_preserved=true pointer_matches_policy=true
+workspace_removed=true

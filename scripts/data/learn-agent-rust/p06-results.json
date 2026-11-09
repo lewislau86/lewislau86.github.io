@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "rust": "1.99.1",
+  "model": "deterministic finite policy fixture",
+  "scope": "bounded policy search; no recursive meta-improvement or external model",
+  "development_cases": 4,
+  "validation_cases": 4,
+  "test_cases": 6,
+  "order_seeds": [
+    1,
+    2,
+    3
+  ],
+  "unique_candidate_orders": 2,
+  "rust_tests": 4,
+  "archive_replayed": true,
+  "cli_refusals": 2,
+  "files_sha256": {
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "ee6eb00929cca5af3d805b09b6ba58e16869c0187b575801065eed4b78efe833",
+    "Cargo.toml": "7bd5273852adf8183049c631029ea92b5828bbb969b06f7fdec8ee485ac93e42",
+    "README.md": "d90ed67ee5bc977a491806109d7468e1d67ab1158842f98a43a30c6727d25e87",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "bcbbfdec663e4b5477b32e4a9aa1f7bf67b925cb7c7eebad8f6b2db822888d1e"
+  },
+  "outputs_sha256": {
+    "p06-normal.txt": "c9413f883c5d186a7ac7eebea4506474580a531ed13439aff2a014e97547818c",
+    "p06-overfit.txt": "1e9167afe8dde75fdee38ad23865c5c481d801f150f1c66470c7aafe772ad608",
+    "p06-evaluator-tamper.txt": "5dd2d7da5749e275cdf28873ad57104fb5d379846e4971677c733e1e14c26795",
+    "p06-permission-escalation.txt": "344dc80735b2502118256e5cf948278d2d3c3db6858d06249f3cc2fef9ee711e",
+    "p06-budget.txt": "1b32729455864e0a65ea42820810f6a1af44faa8e223ec54ef617bedce3e9d43",
+    "p06-stale-parent.txt": "61499ece6b1dc0f4d50406f200156b679f3822da9c08ac910f297d9f01b33ad5",
+    "p06-rollback.txt": "264dfc58a8af09a0348b9127c989327b61232d42e5e640f7597211140a70a4e5",
+    "p06-normal-order-2.txt": "3e3c1c0a35283e13d25a7a9055b2a18e1d0d40856debe4f1d55327b2263d24bc",
+    "p06-normal-order-3.txt": "848415fef0d5a5a1d6c19566a2f796f52b777d3a11ba84186b63b0e4ee2a4657"
+  },
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "order_seed": 1,
+      "candidates": [
+        {
+          "policy": "Trim",
+          "dev": 3,
+          "validation": 2
+        },
+        {
+          "policy": "Memorize",
+          "dev": 4,
+          "validation": 1
+        },
+        {
+          "policy": "Robust",
+          "dev": 4,
+          "validation": 4
+        }
+      ],
+      "deployed": "Robust",
+      "baseline_test": 2,
+      "selected_test": 6,
+      "test_cases": 6,
+      "search_attempts": 3,
+      "candidate_case_evaluations": 24
+    },
+    {
+      "scenario": "overfit",
+      "order_seed": 1,
+      "candidates": [
+        {
+          "policy": "Memorize",
+          "dev": 4,
+          "validation": 1
+        }
+      ],
+      "deployed": "Baseline",
+      "baseline_test": 2,
+      "selected_test": 2,
+      "test_cases": 6,
+      "search_attempts": 1,
+      "candidate_case_evaluations": 8
+    },
+    {
+      "scenario": "evaluator-tamper",
+      "order_seed": 1,
+      "candidates": [],
+      "deployed": "Baseline",
+      "baseline_test": 2,
+      "selected_test": 2,
+      "test_cases": 6,
+      "search_attempts": 0,
+      "candidate_case_evaluations": 0
+    },
+    {
+      "scenario": "permission-escalation",
+      "order_seed": 1,
+      "candidates": [],
+      "deployed": "Baseline",
+      "baseline_test": 2,
+      "selected_test": 2,
+      "test_cases": 6,
+      "search_attempts": 0,
+      "candidate_case_evaluations": 0
+    },
+    {
+      "scenario": "budget",
+      "order_seed": 1,
+      "candidates": [],
+      "deployed": "Baseline",
+      "baseline_test": 2,
+      "selected_test": 2,
+      "test_cases": 6,
+      "search_attempts": 0,
+      "candidate_case_evaluations": 0
+    },
+    {
+      "scenario": "stale-parent",
+      "order_seed": 1,
+      "candidates": [
+        {
+          "policy": "Trim",
+          "dev": 3,
+          "validation": 2
+        }
+      ],
+      "deployed": "Trim",
+      "baseline_test": 2,
+      "selected_test": 3,
+      "test_cases": 6,
+      "search_attempts": 1,
+      "candidate_case_evaluations": 8
+    },
+    {
+      "scenario": "rollback",
+      "order_seed": 1,
+      "candidates": [
+        {
+          "policy": "Robust",
+          "dev": 4,
+          "validation": 4
+        }
+      ],
+      "deployed": "Baseline",
+      "baseline_test": 2,
+      "selected_test": 2,
+      "test_cases": 6,
+      "search_attempts": 1,
+      "candidate_case_evaluations": 8
+    },
+    {
+      "scenario": "normal",
+      "order_seed": 2,
+      "candidates": [
+        {
+          "policy": "Memorize",
+          "dev": 4,
+          "validation": 1
+        },
+        {
+          "policy": "Trim",
+          "dev": 3,
+          "validation": 2
+        },
+        {
+          "policy": "Robust",
+          "dev": 4,
+          "validation": 4
+        }
+      ],
+      "deployed": "Robust",
+      "baseline_test": 2,
+      "selected_test": 6,
+      "test_cases": 6,
+      "search_attempts": 3,
+      "candidate_case_evaluations": 24
+    },
+    {
+      "scenario": "normal",
+      "order_seed": 3,
+      "candidates": [
+        {
+          "policy": "Trim",
+          "dev": 3,
+          "validation": 2
+        },
+        {
+          "policy": "Memorize",
+          "dev": 4,
+          "validation": 1
+        },
+        {
+          "policy": "Robust",
+          "dev": 4,
+          "validation": 4
+        }
+      ],
+      "deployed": "Robust",
+      "baseline_test": 2,
+      "selected_test": 6,
+      "test_cases": 6,
+      "search_attempts": 3,
+      "candidate_case_evaluations": 24
+    }
+  ]
+}

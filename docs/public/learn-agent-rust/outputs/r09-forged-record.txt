@@ -1,0 +1,6 @@
+apply session-A expected=0
+{"revision":1,"status":"saved"}
+recall new-process project-a
+{"error":"invalid_record","status":"error"}
+apply session-A expected=1
+{"error":"invalid_record","status":"error"}

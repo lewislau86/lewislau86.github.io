@@ -1,0 +1,41 @@
+SCENARIO false-final
+{
+  "status": "needs_human",
+  "reason": "no_progress",
+  "goal_verified": false,
+  "normal_returns": 2,
+  "used": {
+    "episodes": 2,
+    "model_calls": 2,
+    "tools": 0,
+    "write_bytes": 0
+  },
+  "reads": 0,
+  "writes": 0,
+  "evaluations": [
+    {
+      "episode": 1,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "report:file_unreadable"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    },
+    {
+      "episode": 2,
+      "normal": true,
+      "verdict": {
+        "feedback": [
+          "report:file_unreadable"
+        ],
+        "kind": "repairable",
+        "score": 0
+      }
+    }
+  ],
+  "report": null,
+  "handoff_saved": true
+}

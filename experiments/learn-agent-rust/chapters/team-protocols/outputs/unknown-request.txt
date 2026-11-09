@@ -1,0 +1,6 @@
+scenario=unknown-request
+errors=unknown_request
+join Core=cancelled aborted=false
+join Config=cancelled aborted=false
+writes=0 active=0 joined=2 aborted=0
+escape_absent=true workspace_removed=true

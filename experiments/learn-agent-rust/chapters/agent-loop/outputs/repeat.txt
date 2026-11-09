@@ -1,0 +1,12 @@
+场景：repeat；模型：固定规则的脚本模型
+预算：model_turns=3 tool_calls=2
+消息 1 | user | 读取 README.md，告诉我如何启动项目。
+消息 2 | assistant | call_id=read-1 read_file(path="README.md")
+消息 3 | tool | call_id=read-1 status=ok | # 课程练习项目 / 启动命令：cargo run
+消息 4 | assistant | call_id=read-2 read_file(path="README.md")
+消息 5 | tool | call_id=read-2 status=ok | # 课程练习项目 / 启动命令：cargo run
+消息 6 | assistant | call_id=read-3 read_file(path="README.md")
+消息 7 | tool | call_id=read-3 status=error | tool_budget：应用拒绝执行整批工具
+统计：model_turns=3 tool_calls=2 read_attempts=2 read_successes=2 messages=7
+停止：ToolBudget；fixture_goal_met=false
+原因：整批工具超出剩余预算，执行次数未增加

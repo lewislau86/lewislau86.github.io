@@ -1,0 +1,14 @@
+init (new process)
+revision=0 ready=- reconcile=- tasks=-
+apply add readme expected=0 (new process)
+revision=1 ready=readme reconcile=- tasks=readme:pending#0
+apply start readme expected=1 (new process)
+revision=2 ready=- reconcile=readme tasks=readme:running#1
+apply fail readme expected=2 (new process)
+revision=3 ready=- reconcile=- tasks=readme:failed#1
+apply retry readme expected=3 (new process)
+revision=4 ready=readme reconcile=- tasks=readme:pending#1
+apply start readme expected=4 (new process)
+revision=5 ready=- reconcile=readme tasks=readme:running#2
+apply complete readme expected=5 (new process)
+error=attempt_conflict committed=false

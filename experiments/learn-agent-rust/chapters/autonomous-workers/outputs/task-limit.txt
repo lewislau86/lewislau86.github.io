@@ -1,0 +1,68 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+TASKS {"id":"t0","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t0","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t1","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t1","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t2","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t2","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t3","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t3","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t4","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t4","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t5","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t5","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t6","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t6","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t7","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t7","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t8","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t8","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t9","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t9","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t10","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t10","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t11","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t11","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t12","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t12","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t13","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t13","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t14","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t14","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t15","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t15","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t16","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t16","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t17","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t17","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t18","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t18","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t19","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t19","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t20","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t20","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t21","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t21","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t22","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t22","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t23","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t23","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t24","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t24","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t25","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t25","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t26","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t26","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t27","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t27","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t28","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t28","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t29","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t29","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"t30","max_claims":1,"op":"add","title":"task"}
+{"status":"added","task":{"id":"t30","lease_until":null,"max_claims":1,"owner":null,"result":null,"state":"pending","title":"task","token":0}}
+TASKS {"id":"overflow","max_claims":1,"op":"add","title":"task"}
+{"error":"task_limit","status":"error"}

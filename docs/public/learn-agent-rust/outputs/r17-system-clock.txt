@@ -1,0 +1,6 @@
+TASKS {"op":"init"}
+{"status":"initialized"}
+TASKS {"id":"report","max_claims":3,"op":"add","title":"整理日报"}
+{"status":"added","task":{"id":"report","lease_until":null,"max_claims":3,"owner":null,"result":null,"state":"pending","title":"整理日报","token":0}}
+验证器摘要：省略 now，逐次核对实际 Unix 秒与主机调用前后边界
+{"completed":true,"lease_seconds":60,"status":"system_clock_verified","within_host_clock_bounds":true}

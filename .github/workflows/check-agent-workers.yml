@@ -1,0 +1,52 @@
+name: Check R17 autonomous task claims
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/autonomous-workers.md"
+      - "docs/public/learn-agent-rust/code/autonomous-workers/**"
+      - "docs/public/learn-agent-rust/outputs/r17-*"
+      - "docs/public/learn-agent-rust/figures/r17-*"
+      - "docs/public/learn-agent-rust/autonomous-workers-lab.zip"
+      - "scripts/verify-agent-workers.py"
+      - "scripts/learn-agent-rust-worker-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r17-results.json"
+      - ".github/workflows/check-agent-workers.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/autonomous-workers.md"
+      - "docs/public/learn-agent-rust/code/autonomous-workers/**"
+      - "docs/public/learn-agent-rust/outputs/r17-*"
+      - "docs/public/learn-agent-rust/figures/r17-*"
+      - "docs/public/learn-agent-rust/autonomous-workers-lab.zip"
+      - "scripts/verify-agent-workers.py"
+      - "scripts/learn-agent-rust-worker-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - "scripts/data/learn-agent-rust/r17-results.json"
+      - ".github/workflows/check-agent-workers.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RUSTUP_TOOLCHAIN: "1.99.1"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Prepare Rust, rustfmt and Clippy
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify claim competition, takeover, stale writer and business replay
+        run: python3 scripts/verify-agent-workers.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson R17
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r17-*.svg'

@@ -1,0 +1,1 @@
+{"logical_state_equal": true, "missing_post_backup_commits": 1, "passed": true, "ready_after_local_checks": true, "scenario": "restore-separate-cluster", "source_stopped": true}

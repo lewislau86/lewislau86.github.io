@@ -1,0 +1,54 @@
+{
+  "after": {
+    "goal": "读取 README，整理启动说明",
+    "items": [
+      {
+        "content": "读取 README",
+        "id": "read",
+        "status": "pending"
+      },
+      {
+        "content": "整理启动说明",
+        "id": "summarize",
+        "status": "pending"
+      },
+      {
+        "content": "核对说明与原文",
+        "id": "check",
+        "status": "pending"
+      }
+    ],
+    "revision": 1
+  },
+  "before": {
+    "goal": "读取 README，整理启动说明",
+    "items": [
+      {
+        "content": "读取 README",
+        "id": "read",
+        "status": "pending"
+      },
+      {
+        "content": "整理启动说明",
+        "id": "summarize",
+        "status": "pending"
+      },
+      {
+        "content": "核对说明与原文",
+        "id": "check",
+        "status": "pending"
+      }
+    ],
+    "revision": 1
+  },
+  "expected_code": "invalid_arguments",
+  "result": {
+    "call_id": "candidate",
+    "code": "invalid_arguments",
+    "data": null,
+    "ok": false
+  },
+  "scenario": "unknown-field",
+  "summary_exists": false,
+  "unchanged": true
+}

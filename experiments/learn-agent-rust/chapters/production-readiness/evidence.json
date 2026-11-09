@@ -1,0 +1,193 @@
+{
+  "libraries": {
+    "postgres_major": 18,
+    "server_version_num": "180006",
+    "fsync": "on",
+    "synchronous_commit": "on",
+    "full_page_writes": "on"
+  },
+  "scenarios": [
+    {
+      "scenario": "old-session",
+      "passed": true,
+      "version": 1,
+      "spent": 3
+    },
+    {
+      "scenario": "new-reader-old-session",
+      "passed": true,
+      "readable": true
+    },
+    {
+      "scenario": "untrusted-identity",
+      "passed": true,
+      "error": "Unauthenticated"
+    },
+    {
+      "scenario": "tenant-isolation",
+      "passed": true,
+      "error": "TenantDenied",
+      "private_spent": "9"
+    },
+    {
+      "scenario": "approval-role",
+      "passed": true,
+      "error": "RoleDenied",
+      "approved": false
+    },
+    {
+      "scenario": "approval-tenant",
+      "passed": true,
+      "error": "TenantDenied"
+    },
+    {
+      "scenario": "approval-revision",
+      "passed": true,
+      "error": "ApprovalConflict"
+    },
+    {
+      "scenario": "approval-once",
+      "passed": true,
+      "accepted": 1,
+      "replay_error": "ApprovalConflict"
+    },
+    {
+      "scenario": "migration-unsupported",
+      "passed": true,
+      "error": "UnmigratableSession",
+      "schema": 1
+    },
+    {
+      "scenario": "migration-rollback",
+      "passed": true,
+      "schema": 1,
+      "old_sessions": 2,
+      "workflow_columns": 0
+    },
+    {
+      "scenario": "migration-forward",
+      "passed": true,
+      "schema": 2,
+      "migrated_sessions": 2,
+      "spent": 3,
+      "status": "paused"
+    },
+    {
+      "scenario": "migration-replay",
+      "passed": true,
+      "replayed": true
+    },
+    {
+      "scenario": "old-reader-rejected",
+      "passed": true,
+      "error": "IncompatibleSnapshot",
+      "saved_version": 2
+    },
+    {
+      "scenario": "future-version",
+      "passed": true,
+      "error": "IncompatibleSnapshot"
+    },
+    {
+      "scenario": "readiness-gates",
+      "passed": true,
+      "schema": true,
+      "operator_approval": true,
+      "release": true,
+      "drain": true,
+      "recovery": true
+    },
+    {
+      "scenario": "load-burst",
+      "passed": true,
+      "attempted": 12,
+      "accepted": 4,
+      "rejected": 8,
+      "active": 4,
+      "capacity": 4,
+      "ready": true
+    },
+    {
+      "scenario": "duplicate-admission",
+      "passed": true,
+      "error": "DuplicateRequest",
+      "active": 4
+    },
+    {
+      "scenario": "drain-and-finish",
+      "passed": true,
+      "active": 0,
+      "finished": 4,
+      "rejected_new": true,
+      "duplicate_finish_rejected": true
+    },
+    {
+      "scenario": "worker-death-takeover",
+      "passed": true,
+      "killed": true,
+      "early_error": "LeaseBusy",
+      "takeover_epoch": 2,
+      "committed": 1
+    },
+    {
+      "scenario": "stale-worker-fenced",
+      "passed": true,
+      "stale_error": "Fenced",
+      "takeover_epoch": 2,
+      "committed": 1
+    },
+    {
+      "scenario": "backup-snapshot",
+      "passed": true,
+      "in_flight": 0,
+      "sessions": 2,
+      "completed_jobs": 4,
+      "results": 1,
+      "restore_blocked_by_default": true
+    },
+    {
+      "scenario": "database-outage",
+      "passed": true,
+      "live": true,
+      "ready": false,
+      "reason": "DatabaseUnavailable"
+    },
+    {
+      "scenario": "corrupt-backup",
+      "passed": true,
+      "restore_failed": true,
+      "ready": false
+    },
+    {
+      "scenario": "restore-separate-cluster",
+      "passed": true,
+      "source_stopped": true,
+      "logical_state_equal": true,
+      "missing_post_backup_commits": 1,
+      "ready_after_local_checks": true
+    }
+  ],
+  "cli_processes": 62,
+  "observation": {
+    "latency_definition": "one subprocess start to admission reply; accepted and rejected combined; 12 concurrent submissions, no completion until all replies",
+    "sample_count": 12,
+    "p50_ms": 11.999,
+    "p95_ms": 18.531,
+    "restore_check_ms": 61.137,
+    "recovery_definition": "pg_restore start to local SQL checks and readiness; excludes detection, provisioning, routing and remote reconciliation",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "host": "aarch64-apple-darwin",
+    "postgres_patch": "180006"
+  },
+  "rust_tests": 4,
+  "files_sha256": {
+    "Cargo.toml": "ddaab07a7b8d54d5e1a6e0c28259f898d8f775bdf1e9e49a67c08ba8b15781ab",
+    "Cargo.lock": "2bddbccb982b93d32355714bbff7af54ceeb7d781602947d6ab52f2be8e0b3eb",
+    ".gitignore": "635514137c414fe259dfd8dc36968d48acd0fe957accc1379173f737acbd315f",
+    "README.md": "26b7a42f8067a9cd8b7f059399782fab9e5517c8371033c9eaea29f99ecd95bf",
+    "lab.py": "fd22a9551e2e9b2355c4bebaf0cb309951163a8c802dbb2316883f05fea46f1e",
+    "src/main.rs": "f7228da28b53b58f55ba55da4300fe7ad006585a66c4fde9e6e13e651ef510ad",
+    "src/schema.sql": "b3cb477854714105ec007d8c14f827943dba12c14259cad7f70e827eaeeb034c"
+  },
+  "scope": "PostgreSQL18 local application harness; fixed authentication fixtures; admission reservations, transactional schema migration, process death and stale worker fencing, logical backup to separate cluster; no provider or remote side effects"
+}

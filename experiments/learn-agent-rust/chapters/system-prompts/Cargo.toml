@@ -1,0 +1,16 @@
+[package]
+name = "learn-agent-r10"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+async-trait = "0.1"
+futures = "0.3"
+graph-flow = { git = "https://github.com/a-agmon/rs-graph-llm.git", rev = "9bbca193f20a8c4ba23289621549ecb3d35fee64", default-features = false }
+langchain-rust = { git = "https://github.com/Abraxas-365/langchain-rust.git", rev = "5fc3f5aca4380da48829f95d6e2fd0217b1f2013", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

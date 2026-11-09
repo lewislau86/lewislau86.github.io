@@ -1,0 +1,4 @@
+scenario=approval-denied stop=approval_required goal_verified=false completed=false
+task=failed model_calls=6 tool_attempts=4 retries=0 spawned=1 joined=1
+duplicate_trigger_inserted=0 context_compacted=true report_exists=false workspace=removed
+mcp_reaped=true active_jobs=0 primary_unchanged=true reopened_equal=true

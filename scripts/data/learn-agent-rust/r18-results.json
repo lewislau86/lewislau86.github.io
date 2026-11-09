@@ -1,0 +1,334 @@
+{
+  "scope": "R18 dedicated Git repository and real worktrees; native writers; fixture claims; no model or R17 lease integration",
+  "source_sha256": "f99909cd42594cc67e561fc8954f85cdbf5effab569db6936253a38ad5549e35",
+  "readme_sha256": "8465b71ab544eb030a4cca0c103a78f0c2c355b261b45d7dd62fe835b6475b20",
+  "environment": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "git": "git version 2.54.0 (Apple Git-157)",
+    "platform": "macOS-27.2-arm64-arm-64bit"
+  },
+  "regression_tests": [
+    "changed_branch_and_lock_stop_cleanup",
+    "clean_removed_but_branch_ref_survives",
+    "drop_joins_writer_and_preserves_worktree",
+    "existing_root_and_existing_worktree_path_are_preserved",
+    "ignored_files_are_retained",
+    "missing_directory_does_not_trigger_prune_or_recreation",
+    "owner_epoch_is_checked_before_dispatch_and_after_worker_gate",
+    "permissions_and_identity_rejection_have_no_git_side_effect",
+    "separate_indexes_and_common_object_store",
+    "symlink_target_is_never_removed",
+    "unmerged_commit_is_retained_until_explicit_integration",
+    "writer_must_be_joined_before_remove"
+  ],
+  "scenarios": [
+    {
+      "name": "clean",
+      "bindings": 1,
+      "linked": 0,
+      "retained": 0,
+      "removed": 1,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "01e283a93df7a4d1a28ba13527d58b68c6a858c7745d34bd9a13926edd47b779"
+    },
+    {
+      "name": "parallel",
+      "bindings": 2,
+      "linked": 2,
+      "retained": 2,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "codex/r18-beta-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": " M README.md\n",
+        "beta-a1": " M README.md\n"
+      },
+      "target_status": "",
+      "stdout_sha256": "5a65915b2eb113d8ee14188139a57bc2292140ea97fb7193a2e7d86773b5e90d"
+    },
+    {
+      "name": "tracked",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": " M README.md\n"
+      },
+      "target_status": "",
+      "stdout_sha256": "8a4e4c3df5342d1e120ee026109b4a1072d1c524e0e3baaa6dbe568fc537613d"
+    },
+    {
+      "name": "staged",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": "M  README.md\n"
+      },
+      "target_status": "",
+      "stdout_sha256": "1cc8fd5c4d26732439c1963711232dcd9f71c488a08826becd59503f6ccc6c19"
+    },
+    {
+      "name": "untracked",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": "?? notes.txt\n"
+      },
+      "target_status": "",
+      "stdout_sha256": "0a720abb6fb6a3173df981131fce1251d5e3e22e0b51c799743a0e8b7bd3ca18"
+    },
+    {
+      "name": "ignored",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": "!! scratch/cache.bin\n"
+      },
+      "target_status": "",
+      "stdout_sha256": "525a3249fe945056f513332311e3fb6a7c7b066605be3ff883b397b5727ad325"
+    },
+    {
+      "name": "unmerged",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": ""
+      },
+      "target_status": "",
+      "stdout_sha256": "f29c45be04003c4efb7a8f6eb7a61d24dc166e697c65a240e24f72e51b41ded9"
+    },
+    {
+      "name": "accepted",
+      "bindings": 1,
+      "linked": 0,
+      "retained": 0,
+      "removed": 1,
+      "primary_baseline": false,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "a023c92c03b3f82f73b4e8ec8a2da6632f6642849655fc7f8d1e2b5a702f10ea"
+    },
+    {
+      "name": "conflict",
+      "bindings": 2,
+      "linked": 2,
+      "retained": 2,
+      "removed": 0,
+      "primary_baseline": false,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "codex/r18-beta-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": "",
+        "beta-a1": ""
+      },
+      "target_status": "UU README.md\n",
+      "stdout_sha256": "43074a0744dd8e82642621623257dea7e795bb71a060be77f8b75b4e88fa5f31"
+    },
+    {
+      "name": "busy",
+      "bindings": 1,
+      "linked": 0,
+      "retained": 0,
+      "removed": 1,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "281ac1dcad2055aa6ac4e9046a8a3ceae831fdd31827a7d164f6f93f45ecd0dc"
+    },
+    {
+      "name": "stale",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": ""
+      },
+      "target_status": "",
+      "stdout_sha256": "85d3a4aefb1936573e8894b08f99879ad85f0db8b7b5c4c60f6a4bef49d7b839"
+    },
+    {
+      "name": "duplicate",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": ""
+      },
+      "target_status": "",
+      "stdout_sha256": "1ef37473611ebe1c732a07ce02e2f7ed5bc337dcad5c3f212e3099b7c4d07f5d"
+    },
+    {
+      "name": "existing-path",
+      "bindings": 0,
+      "linked": 0,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "2af47473421418bd0ad440c7b1753da0956c7a5befdc073a1d7a587a1355011a"
+    },
+    {
+      "name": "branch-exists",
+      "bindings": 0,
+      "linked": 0,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "d19a9b6d242668e67d7350ece566d1f9af024756e73ab0d250ad568f71229820"
+    },
+    {
+      "name": "denied",
+      "bindings": 0,
+      "linked": 0,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "5d5f0210c8c0c4203a4ee92ea3ecb1c191563ed053db49f1cc13770d839734ad"
+    },
+    {
+      "name": "invalid-task",
+      "bindings": 0,
+      "linked": 0,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "6d1a94b19c71b81d6f97e23686f0d37d32d93ab71bd36d2aa3e62b439c97a6c8"
+    },
+    {
+      "name": "unknown",
+      "bindings": 0,
+      "linked": 0,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "main"
+      ],
+      "statuses": {},
+      "target_status": "",
+      "stdout_sha256": "e5448e282ce323844d8b1f94b1641d07a61702775c3dd69375a61dc4624a11b0"
+    },
+    {
+      "name": "locked",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 1,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": ""
+      },
+      "target_status": "",
+      "stdout_sha256": "d5396d8e29db05aeeab9e96111e9ad59e889c275c593995352fb80d7df1d6474"
+    },
+    {
+      "name": "wrong-branch",
+      "bindings": 1,
+      "linked": 1,
+      "retained": 0,
+      "removed": 0,
+      "primary_baseline": true,
+      "branches": [
+        "codex/manual-review",
+        "codex/r18-alpha-a1",
+        "main"
+      ],
+      "statuses": {
+        "alpha-a1": ""
+      },
+      "target_status": "",
+      "stdout_sha256": "80b5798a48f68f8445c5fbfccb3c8f553d5bd743f7a092ccc351559f2fa71f85"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+init DB
+{"schema":1,"status":"initialized"}
+add DB a-valid Asia/Shanghai 09:00 coalesce --start 2026-11-07T00:59:00Z
+{"cursor":"2026-11-07T00:59:00Z","id":"a-valid","local_time":"09:00","misfire":"coalesce","status":"added","timezone":"Asia/Shanghai"}
+add DB z-future Asia/Shanghai 09:00 coalesce --start 2026-11-07T02:00:00Z
+{"cursor":"2026-11-07T02:00:00Z","id":"z-future","local_time":"09:00","misfire":"coalesce","status":"added","timezone":"Asia/Shanghai"}
+show DB
+{"schedules":[{"cursor":"2026-11-07T00:59:00Z","id":"a-valid","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"},{"cursor":"2026-11-07T02:00:00Z","id":"z-future","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"}],"status":"snapshot","tasks":[]}
+tick DB 2026-11-07T01:00:00Z
+{"error":"clock_regression","status":"error"}
+show DB
+{"schedules":[{"cursor":"2026-11-07T00:59:00Z","id":"a-valid","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"},{"cursor":"2026-11-07T02:00:00Z","id":"z-future","local_time":"09:00","misfire":"coalesce","timezone":"Asia/Shanghai"}],"status":"snapshot","tasks":[]}

@@ -1,0 +1,3409 @@
+{
+  "scope": "R12 single-executor task metadata; real local files, independent CLI processes and killed child barriers; no model or external task execution",
+  "files_sha256": {
+    "Cargo.toml": "4a3a0b26d90b2d5c56bcab65182da04e1c54c76f8cf08c15ab5022d3734156a9",
+    "Cargo.lock": "4a3ba2aa02bc319519464fbb801584436fc4a5b1a2866d70caeb8e799039e905",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    ".gitignore": "d44bdcdeee6e14edcab9c62c62e991c1c3112f383cf799b78c7900acadd73e4a",
+    "README.md": "7698bb5f5700e13747963aa06bc21e1f729ca71c69cad7fc7a2c0f6a30659329",
+    "src/main.rs": "d1bc0090791aad407727cc1cc5946e2ae887c90d49764a87bae0f7c6f8adc118",
+    "src/tasks.rs": "2475f58abdd38a814a86e63900a0ad08e92bcc8c8d310ad696544a303c2c2acf",
+    "src/storage.rs": "c9a7c1f00a154989d25b9e257e1e720fe86d47b2917be0463340c8011cd248c8",
+    "src/tests.rs": "e473f42bf1c30a0bd23d37a428f5f88f8ff7875ec860a363c44b4f718d31380d"
+  },
+  "environment": {
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "host": "aarch64-apple-darwin"
+  },
+  "regression_tests": [
+    "attempts_survive_explicit_retry_and_stop_at_limit",
+    "dependencies_freeze_at_first_start",
+    "dependencies_unlock_only_after_completion",
+    "diamond_needs_both_parents",
+    "duplicate_task_id_and_empty_completion_are_rejected",
+    "field_and_board_limits_are_checked",
+    "forged_completed_dependency_is_rejected_on_load_validation",
+    "indirect_cycle_is_rejected_without_mutating_source",
+    "json_contract_rejects_unknown_fields_and_duplicate_revision",
+    "pending_cannot_be_completed_and_completed_cannot_restart",
+    "self_cycle_missing_and_duplicate_edges_are_rejected",
+    "single_executor_blocks_independent_second_start",
+    "stale_attempt_result_cannot_complete_a_later_run",
+    "stale_revision_and_revision_overflow_are_rejected"
+  ],
+  "scenarios": [
+    {
+      "name": "new-process-chain",
+      "processes": 15,
+      "outcome": "completed=3",
+      "snapshot": {
+        "schema": 1,
+        "revision": 9,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "completed",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": "checked cargo run",
+            "last_error": null
+          },
+          {
+            "id": "check",
+            "title": "task check",
+            "depends_on": [
+              "readme"
+            ],
+            "status": "completed",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": "checked cargo run",
+            "last_error": null
+          },
+          {
+            "id": "guide",
+            "title": "task guide",
+            "depends_on": [
+              "check"
+            ],
+            "status": "completed",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": "checked cargo run",
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "ac0f313e841dfa82f86c641cb80350d4928c7c2563e329a6fe77fc26a3931ad6",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add check expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add guide expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=3 (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply complete readme expected=4 (new process)",
+          "response": {
+            "board": {
+              "revision": 5,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "check"
+            ],
+            "reconcile": [],
+            "revision": 5,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start check expected=5 (new process)",
+          "response": {
+            "board": {
+              "revision": 6,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "check"
+            ],
+            "revision": 6,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 6,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "check"
+            ],
+            "revision": 6,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply complete check expected=6 (new process)",
+          "response": {
+            "board": {
+              "revision": 7,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "guide"
+            ],
+            "reconcile": [],
+            "revision": 7,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start guide expected=7 (new process)",
+          "response": {
+            "board": {
+              "revision": 8,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "guide"
+            ],
+            "revision": 8,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 8,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "guide"
+            ],
+            "revision": 8,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply complete guide expected=8 (new process)",
+          "response": {
+            "board": {
+              "revision": 9,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 9,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 9,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 9,
+            "status": "ok"
+          }
+        }
+      ],
+      "output_sha256": "c3b6cac36eab77192852b80b970b7430f162f6cacc215f71dddaee62e92ca1da"
+    },
+    {
+      "name": "dependency-blocked",
+      "processes": 4,
+      "outcome": "dependency_incomplete",
+      "snapshot": {
+        "schema": 1,
+        "revision": 2,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          },
+          {
+            "id": "guide",
+            "title": "task guide",
+            "depends_on": [
+              "readme"
+            ],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "1125f9757328e878dc77f5ac9a2c993ad31a5d31f3dc40d83efe5ae4326765c1",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add guide expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start guide expected=2 (new process)",
+          "response": {
+            "committed": false,
+            "error": "dependency_incomplete",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "25b6ade46a6773f6c7d16d4f91ab6823512f0a44477809bf1ed858baa51f3f64"
+    },
+    {
+      "name": "dependency-cycle",
+      "processes": 5,
+      "outcome": "dependency_cycle",
+      "snapshot": {
+        "schema": 1,
+        "revision": 3,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          },
+          {
+            "id": "check",
+            "title": "task check",
+            "depends_on": [
+              "readme"
+            ],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          },
+          {
+            "id": "guide",
+            "title": "task guide",
+            "depends_on": [
+              "check"
+            ],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "11efb9a300bfc6117e744a666bbc92bc8177e1ae6317f54198de58cf7c69089a",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add check expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add guide expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "readme"
+                  ],
+                  "id": "check",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task check"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [
+                    "check"
+                  ],
+                  "id": "guide",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task guide"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply set_dependencies readme expected=3 (new process)",
+          "response": {
+            "committed": false,
+            "error": "dependency_cycle",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "334768015ea6e29b401f0e03bfa63f9ebdbf480967c8ed43ccd00c4ffbdd4fb2"
+    },
+    {
+      "name": "self-cycle",
+      "processes": 3,
+      "outcome": "dependency_cycle",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply set_dependencies readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "dependency_cycle",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "21d611811cbd0eff18c4efc545e449c730afb2e7c915559c8c53679ad15ab9a5"
+    },
+    {
+      "name": "missing-dependency",
+      "processes": 3,
+      "outcome": "dependency_missing",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add guide expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "dependency_missing",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "4a5344e4ac92849890e8345bfe6a80550468ca71ab0f6d3f1345002fe83e26e4"
+    },
+    {
+      "name": "duplicate-id",
+      "processes": 3,
+      "outcome": "duplicate_id",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "duplicate_id",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "1c5ce6be9b84c0c129b5ca295da80604fdf4e2dfc0c5073933641749d6dc34ce"
+    },
+    {
+      "name": "illegal-transition",
+      "processes": 3,
+      "outcome": "illegal_transition",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply complete readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "illegal_transition",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "dceadf17beff45ced9520ebc95cd19a4440aeb722d7b2b9cd0183d421d7453ef"
+    },
+    {
+      "name": "stale-revision",
+      "processes": 3,
+      "outcome": "revision_conflict",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=0 (new process)",
+          "response": {
+            "committed": false,
+            "error": "revision_conflict",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "a8bc0b6c6624a9f488a5ca4cdb5e91bc84b52168ec0bcc534d9ccb76425cb55b"
+    },
+    {
+      "name": "stale-attempt",
+      "processes": 7,
+      "outcome": "attempt_conflict",
+      "snapshot": {
+        "schema": 1,
+        "revision": 5,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 2,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": "verified retryable read failure"
+          }
+        ]
+      },
+      "snapshot_sha256": "217fe545412bca7e24ec27bb089ed6e6736dd3b051f1daf7c96eba33d3aa965d",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply fail readme expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "failed",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply retry readme expected=3 (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=4 (new process)",
+          "response": {
+            "board": {
+              "revision": 5,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 2,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 5,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply complete readme expected=5 (new process)",
+          "response": {
+            "committed": false,
+            "error": "attempt_conflict",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "d98924eda5126eb87040cf04e0c316fc2be66acae4a0a765b81130e38e0eaf5c"
+    },
+    {
+      "name": "retry-budget",
+      "processes": 8,
+      "outcome": "attempt_limit",
+      "snapshot": {
+        "schema": 1,
+        "revision": 6,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "failed",
+            "attempts": 2,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": "verified retryable read failure"
+          }
+        ]
+      },
+      "snapshot_sha256": "2e5d4d919ec01954d03b520f6b7473f237017780a27d782f89a4d30f08b0dde1",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply fail readme expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "failed",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply retry readme expected=3 (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=4 (new process)",
+          "response": {
+            "board": {
+              "revision": 5,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 2,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 5,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply fail readme expected=5 (new process)",
+          "response": {
+            "board": {
+              "revision": 6,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 2,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "failed",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 6,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply retry readme expected=6 (new process)",
+          "response": {
+            "committed": false,
+            "error": "attempt_limit",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "4277d9c88ac634ff8a8505949735a8320c4208a7c0d7681f926625f45dce96fd"
+    },
+    {
+      "name": "single-executor",
+      "processes": 7,
+      "outcome": "single_running",
+      "snapshot": {
+        "schema": 1,
+        "revision": 5,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "completed",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": "checked cargo run",
+            "last_error": null
+          },
+          {
+            "id": "other",
+            "title": "task other",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d37b43a8ccb797be5ba537879023b8af1f3aa24581c402aab1d60f9fbbc20171",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add other expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "other",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task other"
+                }
+              ]
+            },
+            "ready": [
+              "readme",
+              "other"
+            ],
+            "reconcile": [],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "other",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task other"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start other expected=3 (new process)",
+          "response": {
+            "committed": false,
+            "error": "executor_busy",
+            "status": "error"
+          }
+        },
+        {
+          "label": "apply complete readme expected=3 (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "other",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task other"
+                }
+              ]
+            },
+            "ready": [
+              "other"
+            ],
+            "reconcile": [],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start other expected=4 (new process)",
+          "response": {
+            "board": {
+              "revision": 5,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": "checked cargo run",
+                  "status": "completed",
+                  "title": "task readme"
+                },
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "other",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task other"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "other"
+            ],
+            "revision": 5,
+            "status": "ok"
+          }
+        }
+      ],
+      "output_sha256": "f79ccf9bc4a9dc0e55fe0c664bdbbb81f0ce9d4696e4b5cd5362571fee352a8b"
+    },
+    {
+      "name": "running-restart",
+      "processes": 8,
+      "outcome": "explicit_recovery_attempt=2",
+      "snapshot": {
+        "schema": 1,
+        "revision": 5,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 2,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": "verified retryable read failure"
+          }
+        ]
+      },
+      "snapshot_sha256": "217fe545412bca7e24ec27bb089ed6e6736dd3b051f1daf7c96eba33d3aa965d",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=2 (new process)",
+          "response": {
+            "committed": false,
+            "error": "illegal_transition",
+            "status": "error"
+          }
+        },
+        {
+          "label": "apply fail readme expected=2 (new process)",
+          "response": {
+            "board": {
+              "revision": 3,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "failed",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 3,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply retry readme expected=3 (new process)",
+          "response": {
+            "board": {
+              "revision": 4,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 4,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=4 (new process)",
+          "response": {
+            "board": {
+              "revision": 5,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 2,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": "verified retryable read failure",
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 5,
+            "status": "ok"
+          }
+        }
+      ],
+      "output_sha256": "dfc8bcfd9422de035733215559aa8802911295e0ff8f632e6ebe6185a9474b1c"
+    },
+    {
+      "name": "save-before-rename",
+      "processes": 5,
+      "outcome": "old_snapshot_preserved",
+      "snapshot": {
+        "schema": 1,
+        "revision": 2,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "227493fd7ace6373b297ddd03746565d08a4381bed80ed44480448714d0d24d2",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "injected_before_rename",
+            "status": "error"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        }
+      ],
+      "output_sha256": "0a2f47eb248f217df7f8a802f8561531f3a6632de42ed9843ee39323314587c5"
+    },
+    {
+      "name": "save-after-rename",
+      "processes": 5,
+      "outcome": "new_snapshot_visible",
+      "snapshot": {
+        "schema": 1,
+        "revision": 2,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "227493fd7ace6373b297ddd03746565d08a4381bed80ed44480448714d0d24d2",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": true,
+            "error": "durability_unknown",
+            "status": "error"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "revision_conflict",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "a9c06a13894a7db4f670402a2b09357a95ee2a91b082060d56f245de740d37f4"
+    },
+    {
+      "name": "crash-before-rename",
+      "processes": 7,
+      "outcome": "kill_before_commit",
+      "snapshot": {
+        "schema": 1,
+        "revision": 2,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "227493fd7ace6373b297ddd03746565d08a4381bed80ed44480448714d0d24d2",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "kill barrier",
+          "response": {
+            "event": "before_rename"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "store_busy",
+            "status": "error"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "pending_unavailable",
+            "status": "error"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        }
+      ],
+      "output_sha256": "8372ca0d763d597eea8ebaa3fa3415aaf71d33bb1101d179f2259309ed454964"
+    },
+    {
+      "name": "crash-after-commit",
+      "processes": 5,
+      "outcome": "kill_after_commit",
+      "snapshot": {
+        "schema": 1,
+        "revision": 2,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "running",
+            "attempts": 1,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "227493fd7ace6373b297ddd03746565d08a4381bed80ed44480448714d0d24d2",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "kill barrier",
+          "response": {
+            "event": "after_commit"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "board": {
+              "revision": 2,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 1,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "running",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [],
+            "reconcile": [
+              "readme"
+            ],
+            "revision": 2,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=2 (new process)",
+          "response": {
+            "committed": false,
+            "error": "illegal_transition",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "2d3771fabda867343d19ab8eb874c4d78b42959e1d651b89d6dc69fdd5434b61"
+    },
+    {
+      "name": "corrupt-json",
+      "processes": 3,
+      "outcome": "corrupt_store",
+      "snapshot": null,
+      "snapshot_sha256": "4457a668e55033f0065114a8a2d2bf46bba7758a56e01fb57114c71de85f4b72",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "corrupt_store",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "53773a019924b07ab52aefaa2d21d97e7d0e04a4658b68de993668e81fbfa947"
+    },
+    {
+      "name": "unknown-schema",
+      "processes": 3,
+      "outcome": "schema_version",
+      "snapshot": {
+        "schema": 2,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "51b99d5c6d260e2a66b9ab5414fcfb356074d42cd0e6ec93abec35e447a089d3",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "schema_version",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "88b2f521f257df0a47bde801fd4f852e7d72b033371c80ba4de9b3d273bd3991"
+    },
+    {
+      "name": "invalid-state",
+      "processes": 3,
+      "outcome": "invalid_state",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "completed",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "bf1d1419e6889ad29f56fd4e532645c84d5ccbfb8ea09fa8e0e717fdb3952582",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "invalid_state",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "8473a00ceff91de4c0df0787f432c0a0fe7bfe443c581a67316b6e8957c842f0"
+    },
+    {
+      "name": "corrupt-cycle",
+      "processes": 3,
+      "outcome": "dependency_cycle",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [
+              "readme"
+            ],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "df66eb073528f5c505d06527efd8747e1b0cc16dac2d3f4d67fa669df155e4c4",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "dependency_cycle",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "aa8f4adbba2d416e681f5eab17bd925d8471f98bf289a82105cb784394d95a12"
+    },
+    {
+      "name": "unknown-field",
+      "processes": 3,
+      "outcome": "corrupt_store",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ],
+        "unexpected": true
+      },
+      "snapshot_sha256": "d9cc78bba354e8429c69c60f6a545506e8bc4208eb03964db0e874c934665c1b",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "corrupt_store",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "53773a019924b07ab52aefaa2d21d97e7d0e04a4658b68de993668e81fbfa947"
+    },
+    {
+      "name": "size-limit",
+      "processes": 3,
+      "outcome": "size_limit",
+      "snapshot": null,
+      "snapshot_sha256": "76c002eec0c9da854ca2ee5dae9fb0069a622274b6638ab712fcb70384304899",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "size_limit",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "3a4703ede9987d00516378b84813f7a264906c777d6d5b495b7c1004bfb87a3f"
+    },
+    {
+      "name": "pending-file",
+      "processes": 3,
+      "outcome": "pending_preserved",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "pending_unavailable",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "8b9c25444f9c3a5bf9e0a3dd8f33204c19a60166ef7c71eaef6b86acf186a2b7"
+    },
+    {
+      "name": "invalid-store-file",
+      "processes": 3,
+      "outcome": "invalid_store_file",
+      "snapshot": null,
+      "snapshot_sha256": null,
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "invalid_store_file",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "51b253a2682cf47def785c80fee3f234c80ac131f4519a78d1d970dbbeeadb81"
+    },
+    {
+      "name": "invalid-request",
+      "processes": 3,
+      "outcome": "invalid_request",
+      "snapshot": {
+        "schema": 1,
+        "revision": 1,
+        "tasks": [
+          {
+            "id": "readme",
+            "title": "task readme",
+            "depends_on": [],
+            "status": "pending",
+            "attempts": 0,
+            "max_attempts": 2,
+            "result": null,
+            "last_error": null
+          }
+        ]
+      },
+      "snapshot_sha256": "d9f021bf88052457d9db41b715ec5c96ef5df269a86f0ae54f985d5fe1630647",
+      "steps": [
+        {
+          "label": "init (new process)",
+          "response": {
+            "board": {
+              "revision": 0,
+              "schema": 1,
+              "tasks": []
+            },
+            "ready": [],
+            "reconcile": [],
+            "revision": 0,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply add readme expected=0 (new process)",
+          "response": {
+            "board": {
+              "revision": 1,
+              "schema": 1,
+              "tasks": [
+                {
+                  "attempts": 0,
+                  "depends_on": [],
+                  "id": "readme",
+                  "last_error": null,
+                  "max_attempts": 2,
+                  "result": null,
+                  "status": "pending",
+                  "title": "task readme"
+                }
+              ]
+            },
+            "ready": [
+              "readme"
+            ],
+            "reconcile": [],
+            "revision": 1,
+            "status": "ok"
+          }
+        },
+        {
+          "label": "apply start readme expected=1 (new process)",
+          "response": {
+            "committed": false,
+            "error": "invalid_request",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "2e19ed6cf1bff8a881b4874f319f3e50f8a792c0bd1e94fae284f0cc1f0a3e87"
+    },
+    {
+      "name": "missing-store",
+      "processes": 1,
+      "outcome": "store_missing",
+      "snapshot": null,
+      "snapshot_sha256": null,
+      "steps": [
+        {
+          "label": "show (new process)",
+          "response": {
+            "committed": false,
+            "error": "store_missing",
+            "status": "error"
+          }
+        }
+      ],
+      "output_sha256": "b37320d6ab1fc9da1bf6dc9b5eec3200cf347ca237683638d30cd3268a14dca4"
+    }
+  ]
+}

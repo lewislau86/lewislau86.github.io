@@ -1,0 +1,1 @@
+{"active": 0, "duplicate_finish_rejected": true, "finished": 4, "passed": true, "rejected_new": true, "scenario": "drain-and-finish"}

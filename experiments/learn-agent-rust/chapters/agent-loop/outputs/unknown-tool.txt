@@ -1,0 +1,8 @@
+场景：unknown-tool；模型：固定规则的脚本模型
+预算：model_turns=3 tool_calls=2
+消息 1 | user | 读取 README.md，告诉我如何启动项目。
+消息 2 | assistant | call_id=read-1 shell(path="README.md")
+消息 3 | tool | call_id=read-1 status=error | unknown_tool：只提供 read_file
+消息 4 | assistant | 任务未完成：unknown_tool：只提供 read_file
+统计：model_turns=2 tool_calls=1 read_attempts=0 read_successes=0 messages=4
+停止：FinalAnswer；fixture_goal_met=false

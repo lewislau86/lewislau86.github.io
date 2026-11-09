@@ -1,0 +1,51 @@
+{
+  "equal": true,
+  "graph_nodes": [
+    "ModelTurn",
+    "ExecuteTools",
+    "ModelTurn"
+  ],
+  "scenario": "turn-limit",
+  "state": {
+    "max_turns": 1,
+    "messages": [
+      {
+        "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
+        "id": null,
+        "images": null,
+        "message_type": "human",
+        "tool_calls": null
+      },
+      {
+        "content": "",
+        "id": null,
+        "images": null,
+        "message_type": "ai",
+        "tool_calls": [
+          {
+            "function": {
+              "arguments": "{\"path\":\".\"}",
+              "name": "list_files"
+            },
+            "id": "list-1",
+            "type": "function"
+          }
+        ]
+      },
+      {
+        "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
+        "id": "list-1",
+        "images": null,
+        "message_type": "tool",
+        "tool_calls": null
+      }
+    ],
+    "model_turns": 1,
+    "pending": [],
+    "seen_ids": [
+      "list-1"
+    ],
+    "stop": "turn_limit",
+    "tool_dispatches": 1
+  }
+}

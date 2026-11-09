@@ -1,0 +1,50 @@
+name: Check R20 integrated agent experiment
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "docs/learn-agent-rust/integrated-agent.md"
+      - "docs/public/learn-agent-rust/code/integrated-agent/**"
+      - "docs/public/learn-agent-rust/outputs/r20-*"
+      - "docs/public/learn-agent-rust/figures/r20-*.svg"
+      - "docs/public/learn-agent-rust/integrated-agent.zip"
+      - "scripts/data/learn-agent-rust/r20-results.json"
+      - "scripts/verify-agent-integration.py"
+      - "scripts/learn-agent-rust-integration-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-integration.yml"
+  pull_request:
+    paths:
+      - "docs/learn-agent-rust/integrated-agent.md"
+      - "docs/public/learn-agent-rust/code/integrated-agent/**"
+      - "docs/public/learn-agent-rust/outputs/r20-*"
+      - "docs/public/learn-agent-rust/figures/r20-*.svg"
+      - "docs/public/learn-agent-rust/integrated-agent.zip"
+      - "scripts/data/learn-agent-rust/r20-results.json"
+      - "scripts/verify-agent-integration.py"
+      - "scripts/learn-agent-rust-integration-figures.py"
+      - "scripts/generate-learn-agent-rust-figures.py"
+      - ".github/workflows/check-agent-integration.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - name: Verify two-library loop, budgets, SQLite, worktree, MCP and extracted archive
+        run: python scripts/verify-agent-integration.py --check
+      - name: Check generated figures
+        run: |
+          python scripts/generate-learn-agent-rust-figures.py --lesson R20
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r20-*.svg'

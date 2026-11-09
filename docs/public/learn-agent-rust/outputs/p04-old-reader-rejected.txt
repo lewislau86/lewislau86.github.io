@@ -1,0 +1,1 @@
+{"error": "IncompatibleSnapshot", "passed": true, "saved_version": 2, "scenario": "old-reader-rejected"}

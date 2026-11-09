@@ -1,0 +1,14 @@
+init DB
+{"schema":1,"status":"initialized"}
+show DB
+{"schedules":[],"status":"snapshot","tasks":[]}
+add DB report No/SuchZone 09:00 coalesce --start 2026-11-07T00:59:00Z
+{"error":"invalid_timezone","status":"error"}
+add DB report Asia/Shanghai 25:00 coalesce --start 2026-11-07T00:59:00Z
+{"error":"invalid_local_time","status":"error"}
+add DB ../report Asia/Shanghai 09:00 coalesce --start 2026-11-07T00:59:00Z
+{"error":"invalid_id","status":"error"}
+add DB report Asia/Shanghai 09:00 all --start 2026-11-07T00:59:00Z
+{"error":"invalid_misfire","status":"error"}
+show DB
+{"schedules":[],"status":"snapshot","tasks":[]}

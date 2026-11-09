@@ -1,0 +1,5 @@
+{
+  "id": "skill/startup-guide",
+  "version": "1.0.0",
+  "text": "先给启动命令，再列环境要求；说明内容来自 README。"
+}

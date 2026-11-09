@@ -1,0 +1,4 @@
+scenario=context-budget stop=context_budget goal_verified=false completed=false
+task=failed model_calls=0 tool_attempts=0 retries=0 spawned=0 joined=0
+duplicate_trigger_inserted=0 context_compacted=false report_exists=false workspace=removed
+mcp_reaped=true active_jobs=0 primary_unchanged=true reopened_equal=true

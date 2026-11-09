@@ -1,0 +1,2 @@
+TASKS {"op":"show"}
+{"error":"store_error","status":"error"}

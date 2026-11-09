@@ -1,0 +1,4052 @@
+{
+  "libraries": {
+    "fsync": "on",
+    "full_page_writes": "on",
+    "postgres_driver": "0.19.12",
+    "server_version_num": "180006",
+    "status": "versions",
+    "synchronous_commit": "on"
+  },
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "processes": 8,
+      "metrics": {
+        "revision": 8,
+        "checkpoints": 9,
+        "model_turns": 2,
+        "tool_dispatches": 2,
+        "messages": 5
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "normal",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "normal",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "normal",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "normal",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "normal",
+            "expected": 6,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 8,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                },
+                {
+                  "role": "assistant",
+                  "text": "已核对启动命令 cargo run"
+                }
+              ],
+              "model_turns": 2,
+              "phase": "done",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "normal"
+          },
+          "fault": null,
+          "result": {
+            "revision": 8,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                },
+                {
+                  "role": "assistant",
+                  "text": "已核对启动命令 cargo run"
+                }
+              ],
+              "model_turns": 2,
+              "phase": "done",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "history",
+            "id": "normal"
+          },
+          "fault": null,
+          "result": {
+            "checkpoints": [
+              {
+                "revision": 0,
+                "save_id": "initial",
+                "state": {
+                  "cursor": 0,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    }
+                  ],
+                  "model_turns": 0,
+                  "phase": "model",
+                  "profile": "read_only",
+                  "tool_dispatches": 0,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 1,
+                "save_id": "step-1",
+                "state": {
+                  "cursor": 0,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "model_in_flight",
+                  "profile": "read_only",
+                  "tool_dispatches": 0,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 2,
+                "save_id": "step-2",
+                "state": {
+                  "cursor": 0,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "tools",
+                  "profile": "read_only",
+                  "tool_dispatches": 0,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 3,
+                "save_id": "step-3",
+                "state": {
+                  "cursor": 0,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "tool_in_flight",
+                  "profile": "read_only",
+                  "tool_dispatches": 1,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 4,
+                "save_id": "step-4",
+                "state": {
+                  "cursor": 1,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    },
+                    {
+                      "call_id": "read-1",
+                      "content": "启动：cargo run\n",
+                      "role": "tool"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "tools",
+                  "profile": "read_only",
+                  "tool_dispatches": 1,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 5,
+                "save_id": "step-5",
+                "state": {
+                  "cursor": 1,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    },
+                    {
+                      "call_id": "read-1",
+                      "content": "启动：cargo run\n",
+                      "role": "tool"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "tool_in_flight",
+                  "profile": "read_only",
+                  "tool_dispatches": 2,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 6,
+                "save_id": "step-6",
+                "state": {
+                  "cursor": 2,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    },
+                    {
+                      "call_id": "read-1",
+                      "content": "启动：cargo run\n",
+                      "role": "tool"
+                    },
+                    {
+                      "call_id": "read-2",
+                      "content": "[package]\nname = \"demo\"\n",
+                      "role": "tool"
+                    }
+                  ],
+                  "model_turns": 1,
+                  "phase": "model",
+                  "profile": "read_only",
+                  "tool_dispatches": 2,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 7,
+                "save_id": "step-7",
+                "state": {
+                  "cursor": 2,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    },
+                    {
+                      "call_id": "read-1",
+                      "content": "启动：cargo run\n",
+                      "role": "tool"
+                    },
+                    {
+                      "call_id": "read-2",
+                      "content": "[package]\nname = \"demo\"\n",
+                      "role": "tool"
+                    }
+                  ],
+                  "model_turns": 2,
+                  "phase": "model_in_flight",
+                  "profile": "read_only",
+                  "tool_dispatches": 2,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              },
+              {
+                "revision": 8,
+                "save_id": "step-8",
+                "state": {
+                  "cursor": 2,
+                  "format_version": 1,
+                  "granularity": "tool",
+                  "max_model_turns": 2,
+                  "max_tool_dispatches": 2,
+                  "messages": [
+                    {
+                      "role": "user",
+                      "text": "读取说明并核对启动命令"
+                    },
+                    {
+                      "ids": [
+                        "read-1",
+                        "read-2"
+                      ],
+                      "role": "assistant_calls"
+                    },
+                    {
+                      "call_id": "read-1",
+                      "content": "启动：cargo run\n",
+                      "role": "tool"
+                    },
+                    {
+                      "call_id": "read-2",
+                      "content": "[package]\nname = \"demo\"\n",
+                      "role": "tool"
+                    },
+                    {
+                      "role": "assistant",
+                      "text": "已核对启动命令 cargo run"
+                    }
+                  ],
+                  "model_turns": 2,
+                  "phase": "done",
+                  "profile": "read_only",
+                  "tool_dispatches": 2,
+                  "uncertain": null,
+                  "workflow_version": "p01-v1"
+                }
+              }
+            ],
+            "status": "history"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "normal",
+            "expected": 8,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 8,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                },
+                {
+                  "role": "assistant",
+                  "text": "已核对启动命令 cargo run"
+                }
+              ],
+              "model_turns": 2,
+              "phase": "done",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "tool-granularity",
+      "processes": 3,
+      "metrics": {
+        "after_tool_step_cursor": 1,
+        "tool_results": 1,
+        "revision": 4
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "tool-granularity",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-granularity",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-granularity",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "batch-granularity",
+      "processes": 3,
+      "metrics": {
+        "after_tool_step_cursor": 2,
+        "tool_results": 2,
+        "revision": 4
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "batch-granularity",
+            "profile": "read_only",
+            "granularity": "batch"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "batch-granularity",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "batch-granularity",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "resume-next-tool",
+      "processes": 5,
+      "metrics": {
+        "first_file_removed": true,
+        "completed": true,
+        "tool_dispatches": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "resume-next-tool",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "resume-next-tool",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "resume-next-tool",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "resume-next-tool",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "resume-next-tool",
+            "expected": 6,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 8,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                },
+                {
+                  "role": "assistant",
+                  "text": "已核对启动命令 cargo run"
+                }
+              ],
+              "model_turns": 2,
+              "phase": "done",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "model-reply-window",
+      "processes": 4,
+      "metrics": {
+        "phase": "reconcile",
+        "uncertain": "model",
+        "model_turns": 1
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "model-reply-window",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "model-reply-window",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": "--exit-after-model",
+          "result": {
+            "status": "process_exit",
+            "code": 76
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "model-reply-window"
+          },
+          "fault": null,
+          "result": {
+            "revision": 1,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "model_in_flight",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "model-reply-window",
+            "expected": 1,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": "model",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "tool-result-window",
+      "processes": 6,
+      "metrics": {
+        "phase": "reconcile",
+        "saved_tool_results": 1,
+        "reserved_dispatches": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "tool-result-window",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-result-window",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-result-window",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-result-window",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": "--exit-after-action",
+          "result": {
+            "status": "process_exit",
+            "code": 75
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "tool-result-window"
+          },
+          "fault": null,
+          "result": {
+            "revision": 5,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tool_in_flight",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-result-window",
+            "expected": 5,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "batch-first-tool-window",
+      "processes": 5,
+      "metrics": {
+        "phase": "reconcile",
+        "saved_tool_results": 0,
+        "reserved_dispatches": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "batch-first-tool-window",
+            "profile": "read_only",
+            "granularity": "batch"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "batch-first-tool-window",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "batch-first-tool-window",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": "--exit-after-action",
+          "result": {
+            "status": "process_exit",
+            "code": 75
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "batch-first-tool-window"
+          },
+          "fault": null,
+          "result": {
+            "revision": 3,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tool_in_flight",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "batch-first-tool-window",
+            "expected": 3,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "external-effect-window",
+      "processes": 7,
+      "metrics": {
+        "phase": "reconcile",
+        "saved_tool_results": 1,
+        "reserved_dispatches": 2,
+        "external_log_lines": 1,
+        "saved_append_results": 0
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "external-effect-window",
+            "profile": "effect",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "effect",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "external-effect-window",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "append-1"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "effect",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "external-effect-window",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "append-1"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "effect",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "external-effect-window",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": "--exit-after-action",
+          "result": {
+            "status": "process_exit",
+            "code": 75
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "external-effect-window"
+          },
+          "fault": null,
+          "result": {
+            "revision": 5,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "append-1"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tool_in_flight",
+              "profile": "effect",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "external-effect-window",
+            "expected": 5,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "append-1"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "effect",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "external-effect-window",
+            "expected": 6,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "append-1"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "effect",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "save-failure",
+      "processes": 6,
+      "metrics": {
+        "phase": "reconcile",
+        "saved_tool_results": 1,
+        "reserved_dispatches": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "save-failure",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "save-failure",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "save-failure",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "save-failure",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": "--fail-before-commit",
+          "result": {
+            "error": "injected_failure",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "save-failure"
+          },
+          "fault": null,
+          "result": {
+            "revision": 5,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tool_in_flight",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "save-failure",
+            "expected": 5,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "exit-before-commit",
+      "processes": 4,
+      "metrics": {
+        "exit_code": 73,
+        "revision_after_exit": 0,
+        "retry_replayed": false,
+        "final_checkpoints": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "exit-before-commit",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "exit-before-commit",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": "--exit-before-commit",
+          "result": {
+            "status": "process_exit",
+            "code": 73
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "exit-before-commit"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "exit-before-commit",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": false,
+            "revision": 1,
+            "status": "saved"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "exit-after-commit",
+      "processes": 4,
+      "metrics": {
+        "exit_code": 74,
+        "revision_after_exit": 1,
+        "retry_replayed": true,
+        "final_checkpoints": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "exit-after-commit",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "exit-after-commit",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": "--exit-after-commit",
+          "result": {
+            "status": "process_exit",
+            "code": 74
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "exit-after-commit"
+          },
+          "fault": null,
+          "result": {
+            "revision": 1,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "exit-after-commit",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": true,
+            "revision": 1,
+            "status": "saved"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "save-identity",
+      "processes": 6,
+      "metrics": {
+        "same_identity_receipt": 1,
+        "current_revision": 2,
+        "checkpoints": 3
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "save-identity",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "save-identity",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": false,
+            "revision": 1,
+            "status": "saved"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "save-identity",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": true,
+            "revision": 1,
+            "status": "saved"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "save-identity",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "batch",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "error": "save_identity_conflict",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "save-identity",
+            "expected": 1,
+            "save_id": "save-b",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": false,
+            "revision": 2,
+            "status": "saved"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "save-identity",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": true,
+            "revision": 1,
+            "status": "saved"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "revision-conflict",
+      "processes": 4,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "revision-conflict",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "revision-conflict",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": false,
+            "revision": 1,
+            "status": "saved"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "revision-conflict",
+            "expected": 0,
+            "save_id": "save-b",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "error": "revision_conflict",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "revision-conflict",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "error": "revision_conflict",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "race-three",
+      "processes": 4,
+      "metrics": {
+        "live_writers": 3,
+        "committed_writers": 1,
+        "busy_or_conflict": 2,
+        "checkpoints": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "race-three",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "lock-and-reader",
+      "processes": 4,
+      "metrics": {
+        "reader_revision_during_write": 0,
+        "revision_after_commit": 1
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "lock-and-reader",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "lock-and-reader"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "lock-and-reader",
+            "expected": 0,
+            "save_id": "contender",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "error": "store_busy",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "database-restart",
+      "processes": 7,
+      "metrics": {
+        "immediate_stop": true,
+        "resumed_cursor": 1,
+        "final_revision": 8
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "database-restart",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "database-restart",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "database-restart",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "database-restart"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "database-restart"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "database-restart",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "database-restart",
+            "expected": 6,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 8,
+            "state": {
+              "cursor": 2,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                },
+                {
+                  "call_id": "read-2",
+                  "content": "[package]\nname = \"demo\"\n",
+                  "role": "tool"
+                },
+                {
+                  "role": "assistant",
+                  "text": "已核对启动命令 cargo run"
+                }
+              ],
+              "model_turns": 2,
+              "phase": "done",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "server-crash-uncommitted",
+      "processes": 4,
+      "metrics": {
+        "revision_after_recovery": 0,
+        "checkpoints_after_retry": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "server-crash-uncommitted",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "server-crash-uncommitted"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "server-crash-uncommitted",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "replayed": false,
+            "revision": 1,
+            "status": "saved"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "format-version",
+      "processes": 3,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "format-version",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "format-version"
+          },
+          "fault": null,
+          "result": {
+            "error": "format_version",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "format-version",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "error": "format_version",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "workflow-version",
+      "processes": 3,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "workflow-version",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "workflow-version"
+          },
+          "fault": null,
+          "result": {
+            "error": "workflow_version",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "workflow-version",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "error": "workflow_version",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "corrupt-state",
+      "processes": 3,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "corrupt-state",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "corrupt-state"
+          },
+          "fault": null,
+          "result": {
+            "error": "corrupt_state",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "corrupt-state",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "error": "corrupt_state",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "invalid-budget",
+      "processes": 3,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "invalid-budget",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "invalid-budget",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 3,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "error": "invalid_budget",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "invalid-budget"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "message-pairing",
+      "processes": 3,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "message-pairing",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "save",
+            "id": "message-pairing",
+            "expected": 0,
+            "save_id": "save-a",
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "role": "tool",
+                  "call_id": "orphan",
+                  "content": "bad"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            }
+          },
+          "fault": null,
+          "result": {
+            "error": "message_pairing",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "message-pairing"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "tool-failure",
+      "processes": 6,
+      "metrics": {
+        "phase": "reconcile",
+        "saved_tool_results": 1,
+        "reserved_dispatches": 2
+      },
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "tool-failure",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-failure",
+            "expected": 0,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 2,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-failure",
+            "expected": 2,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 4,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tools",
+              "profile": "read_only",
+              "tool_dispatches": 1,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-failure",
+            "expected": 4,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "error": "tool_failed",
+            "status": "error"
+          }
+        },
+        {
+          "command": {
+            "op": "show",
+            "id": "tool-failure"
+          },
+          "fault": null,
+          "result": {
+            "revision": 5,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "tool_in_flight",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "snapshot"
+          }
+        },
+        {
+          "command": {
+            "op": "step",
+            "id": "tool-failure",
+            "expected": 5,
+            "workspace": "WORKSPACE"
+          },
+          "fault": null,
+          "result": {
+            "revision": 6,
+            "state": {
+              "cursor": 1,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                },
+                {
+                  "ids": [
+                    "read-1",
+                    "read-2"
+                  ],
+                  "role": "assistant_calls"
+                },
+                {
+                  "call_id": "read-1",
+                  "content": "启动：cargo run\n",
+                  "role": "tool"
+                }
+              ],
+              "model_turns": 1,
+              "phase": "reconcile",
+              "profile": "read_only",
+              "tool_dispatches": 2,
+              "uncertain": "tool",
+              "workflow_version": "p01-v1"
+            },
+            "status": "stepped"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "duplicate-session",
+      "processes": 2,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "create",
+            "id": "duplicate-session",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "revision": 0,
+            "state": {
+              "cursor": 0,
+              "format_version": 1,
+              "granularity": "tool",
+              "max_model_turns": 2,
+              "max_tool_dispatches": 2,
+              "messages": [
+                {
+                  "role": "user",
+                  "text": "读取说明并核对启动命令"
+                }
+              ],
+              "model_turns": 0,
+              "phase": "model",
+              "profile": "read_only",
+              "tool_dispatches": 0,
+              "uncertain": null,
+              "workflow_version": "p01-v1"
+            },
+            "status": "created"
+          }
+        },
+        {
+          "command": {
+            "op": "create",
+            "id": "duplicate-session",
+            "profile": "read_only",
+            "granularity": "tool"
+          },
+          "fault": null,
+          "result": {
+            "error": "duplicate_session",
+            "status": "error"
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "missing-session",
+      "processes": 1,
+      "metrics": {},
+      "passed": true,
+      "steps": [
+        {
+          "command": {
+            "op": "show",
+            "id": "missing-session"
+          },
+          "fault": null,
+          "result": {
+            "error": "session_missing",
+            "status": "error"
+          }
+        }
+      ]
+    }
+  ],
+  "files_sha256": {
+    "Cargo.toml": "5e08385a8aa9f50604c69ca08541c65035b8a1171a1f7cb8a16530a38f5d09fc",
+    "Cargo.lock": "d877d9478b44be19eb73f187fe6a3bb8c9327126187b751e31c1cc44165de03e",
+    ".gitignore": "edd2d6ff92d4ef8515bb702e0bb91ac5309b59dd82ea178e9c90ac2f489a3dad",
+    "README.md": "53b479f7f6f8c3cecf90828283b5aa31b21bb116ec9d14e35672ffe4fd2c4c91",
+    "lab.py": "105088b907123f85d9a9a3335d9f75065eef3aa93fe2f9aacdceb843d8af08b6",
+    "src/main.rs": "da251f370b791789eea22be85c7c70fc85eba82fda06c741f760a96f93b6a1ba",
+    "src/state.rs": "72a46f6d17aa3f6154401267f1971330bdcc6a8b645cbe02b47a214d29c94318",
+    "src/store.rs": "9991fb871b0019a17688708834182b631df4a81a4c86ecfbc91ca62297cad810",
+    "src/driver.rs": "aefb714c01216c65dd5e39d738dcedfe3a3d221f28c63669414d5b8160ebb1d4",
+    "src/tests.rs": "af7870d5fec49a5c880ecdf159b3b75899a35d31437a7834d87947de57de8e26"
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "host": "aarch64-apple-darwin",
+  "contract_tests_passed": 10,
+  "scope": "P01 application state machine, script model, real file tools and PostgreSQL 18; independent client processes, immediate server restart, CAS and uncertain actions; no framework Storage or external service integration"
+}

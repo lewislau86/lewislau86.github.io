@@ -1,0 +1,18 @@
+scenario=stop-timeout source=scripted_request approval=trusted_fixture
+trace[1] event=UserPromptSubmit
+trace[2] hook=UserPromptSubmit/input-log outcome=continue
+trace[3] scripted_request call_id=write-1
+trace[4] authorization=approved_exact_call
+trace[5] event=PreToolUse
+trace[6] hook=PreToolUse/before-check outcome=continue
+trace[7] hook=PreToolUse/before-log outcome=continue
+trace[8] tool=write_summary call_id=write-1
+trace[9] tool_result call_id=write-1 status=ok
+trace[10] event=PostToolUse
+trace[11] hook=PostToolUse/after-check outcome=continue
+trace[12] hook=PostToolUse/after-log outcome=continue
+trace[13] event=Stop
+trace[14] hook=Stop/stop-log outcome=error:TimeoutReaped
+result call_id=write-1 status=ok
+hook_failure=Stop/stop-log:TimeoutReaped
+stats write_attempts=1 write_successes=1 stop_calls=1 hook_failures=1 summary_matches=true stop_reason=completed task_ok=false

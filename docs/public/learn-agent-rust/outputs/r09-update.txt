@@ -1,0 +1,6 @@
+apply session-A expected=0
+{"revision":1,"status":"saved"}
+apply session-C expected=1
+{"revision":2,"status":"saved"}
+recall new-process project-a
+{"fact":{"action":{"kind":"set","value":"English"},"key":"reply_language","revision":2,"scope":"project-a","source":{"quote":"请记住：reply_language=English","role":"user","session":"session-C","turn":1}},"revision":2,"status":"found"}

@@ -57,6 +57,16 @@ ARTIFACTS = {
     ("generation", "sampling.json"): ROOT / "scripts/data/tinyllm-sampling.json",
     ("language-model-loss", "language_model_loss.json"): ROOT / "scripts/data/tinyllm-language-model-loss.json",
     ("learning-rate", "learning_rate_log.json"): ROOT / "scripts/data/tinyllm-learning-rate-log.json",
+    ("regularization", "regularization_log.json"): ROOT / "scripts/data/tinyllm-regularization-log.json",
+    ("gradient-stability", "gradient_stability_log.json"): ROOT / "scripts/data/tinyllm-gradient-stability-log.json",
+    ("training-loop", "training_loop_log.json"): ROOT / "scripts/data/tinyllm-training-loop-log.json",
+    ("training-evaluation", "training_evaluation_log.json"): ROOT / "scripts/data/tinyllm-training-evaluation-log.json",
+    ("hyperparameter-tuning", "hyperparameter_tuning_log.json"): ROOT / "scripts/data/tinyllm-hyperparameter-tuning-log.json",
+    ("large-model-stability", "large_model_stability_log.json"): ROOT / "scripts/data/tinyllm-large-model-stability-log.json",
+    ("mixture-of-experts", "mixture_of_experts_log.json"): ROOT / "scripts/data/tinyllm-mixture-of-experts-log.json",
+    ("attention-kernels", "attention_kernels_log.json"): ROOT / "scripts/data/tinyllm-attention-kernels-log.json",
+    ("quantization", "quantization_log.json"): ROOT / "scripts/data/tinyllm-quantization-log.json",
+    ("initialization-and-residuals", "initialization_residuals_log.json"): ROOT / "scripts/data/tinyllm-initialization-residuals-log.json",
 }
 
 

@@ -52,6 +52,10 @@ token 编号只是索引，不能直接告诉模型“这个词有什么特征�
 
 `transpose` 做的是另一件事：<strong>交换轴</strong>。`hidden.transpose(1, 2)` 得到 `[2, 4, 3]`。原来第二轴代表 token、第三轴代表特征；交换后，第二轴代表特征、第三轴代表 token。不能仅凭数字总数相同，就把 `reshape` 和 `transpose` 当成同一种操作。
 
+![reshape 与 transpose 的区别：同一个装着 0 到 11 的 [3, 4] 张量，reshape(4, 3) 按内存顺序重新分行，第 0 行是 0 1 2；transpose(0, 1) 交换行列，第 0 行是原来的第 0 列 0 4 8](/tinyllm/figures/reshape-vs-transpose.svg)
+
+怎么读这张图：三个张量的数字总数一样，数的位置不同。看橙色的 1、5、9，它们原来是第 1 列：`transpose` 之后正好成了第 1 行，意思是“换个方向看同一张表”；`reshape` 之后散在三行里，因为 `reshape` 只是把内存里排成一串的 12 个数重新分行。[第 6 章](./self-attention.md)拆注意力头时两种操作都要用，顺序不能换。
+
 这一章先把形状和轴的含义看清即可。需要注意内存时再记住：`reshape()` 可能返回共享数据的视图，也可能复制；`view()` 对内存布局要求更严格；如果确实需要独立副本，请明确使用 `clone()`。[PyTorch 的 reshape 文档](https://docs.pytorch.org/docs/stable/generated/torch.reshape.html)说明了这一点。
 
 ## 给每个 token 做同一笔计算
@@ -174,7 +178,7 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 
 ### 代价：用内存换时间
 
-反向传播也有代价。往回走时要用到前向时的中间结果，比如上面的 `x.T @ g` 就需要前向时的 `x`。所以前向过程中，每一层的输出都要先存着，等反向用完才能释放。模型越深、batch 越大，这部分内存越多；训练比推理吃显存，主要就是这个原因。显存不够时可以少存一些、反向时再重算一遍（gradient checkpointing），用时间换回内存，这在[第 21 章](./training-loop.md)和[第 23 章](./large-model-stability.md)再展开。
+反向传播也有代价。往回走时要用到前向时的中间结果，比如上面的 `x.T @ g` 就需要前向时的 `x`。所以前向过程中，每一层的输出都要先存着，等反向用完才能释放。模型越深、batch 越大，这部分内存越多；训练比推理吃显存，主要就是这个原因。显存不够时可以少存一些、反向时再重算一遍（gradient checkpointing），用时间换回内存，这在[第 21 章](./training-loop.md)和[第 24 章](./large-model-stability.md)再展开。
 
 现在把全章连起来看：<strong>张量装输入 → 运算得到预测 → 与目标比较得到损失 → <code>backward()</code> 算梯度 → 更新参数 → 再次预测。</strong>语言模型的运算更复杂、参数更多，但训练的骨架就是这一串。
 
@@ -182,7 +186,7 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 
 前面的主线足够理解本章。配套 notebook 还安排了几组实验，帮助你读后面的模型代码：
 
-1. <strong>轴交换。</strong>注意力里的 Q、K 通常有 `[batch, heads, seq, head_dim]` 四个轴。`q @ k.transpose(-2, -1)` 交换 K 的最后两轴，得到 `[batch, heads, query_len, key_len]` 的分数。先能解释前三轴为何保留，再读这行代码；完整注意力机制留到 第 6 章。
+1. <strong>轴交换。</strong>注意力里的 Q、K 通常有 `[batch, heads, seq, head_dim]` 四个轴。`q @ k.transpose(-2, -1)` 交换 K 的最后两轴，得到 `[batch, heads, query_len, key_len]` 的分数。先能解释前三轴为何保留，再读这行代码；完整注意力机制留到[第 6 章](./self-attention.md)。
 2. <strong>梯度核对。</strong>把 $w$ 分别改为 $w+h$ 和 $w-h$，用 $[L(w+h)-L(w-h)]/(2h)$ 估计梯度。这叫中心差分，是近似值；在适当的 $h$ 和 `float64` 下，应接近手算与自动求导得到的 30。
 3. <strong>停止记录梯度。</strong>`no_grad()` 阻止代码块中的新运算进入求导图；`detach()` 使已有结果脱离原图；`model.eval()` 只改变某些层（如 Dropout）的运行方式，本身不会关闭梯度记录。
 4. <strong>计算设备。</strong>CPU 足够运行本章。若把模型放在 CUDA 或 MPS 上，输入也要放在同一设备。notebook 的可选实验只检查小型前向和反向能否运行。MLX 是另一套框架，`mx.grad` 与 PyTorch 的 `backward()` 不能混用。
@@ -206,6 +210,13 @@ autograd 用的是**反向模式**：从损失这一个数出发，沿计算图�
 ## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
 
 训练时用 <strong>PyTorch autograd</strong> 管理计算图，手算和有限差分只用于核验小例子。这样可以在更换归一化、注意力或门控结构时保留正确的链式求导；若出现梯度异常，先检查张量形状、原地操作和图是否被意外断开。后续章节的架构选择见 [课程总览](index.md#mainline-choices)。
+
+::: warning 常见误区
+- **`reshape` 和 `transpose` 都是“换形状”，可以互换。** `reshape` 按内存顺序重新分组，数据的排列不变；`transpose` 交换轴，同一个元素换了位置。拆注意力头时用错一个，形状对得上，结果却是错的。
+- **`backward()` 会更新参数。** 它只把梯度算出来、累加到 `.grad` 里；改参数的是优化器的 `step()`，清空梯度要 `zero_grad()`，否则下一步会和上一步的梯度加在一起。
+- **`model.eval()` 会关掉梯度。** 它只切换 Dropout 这类层的行为；不想记录计算图要用 `torch.no_grad()`。
+- **自动求导是数值近似。** autograd 按链式法则精确地算导数，和手算一致；有限差分才是近似，只用来核对。
+:::
 
 ## 检查理解
 

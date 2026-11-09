@@ -1,0 +1,3 @@
+scenario=branch-exists
+allocate=worktree_add_failed
+stats bindings=0 linked=0 retained=0 removed=0 primary_baseline=true

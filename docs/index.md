@@ -36,6 +36,12 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 [进入 Burn 教程 →](./burn/index.md)
 
+### [Learn Agent by Rust · 构建可理解、可恢复的 Agent](./learn-agent-rust/index.md)
+
+围绕一个工作区助手，使用 `langchain-rust + graph-flow` 学习模型工具循环、图编排、权限、Skills、RAG、上下文、任务、团队和 MCP，再用恢复、幂等与目标验收实验检查运行边界。主线第 0–24 章与专题 1–6 均有正文和独立实验入口；第 5–7 章集中学习图状态、跨进程会话恢复、并行归并与子图，第 11 章讲 RAG。各章明确区分固定夹具、真实文件或数据库效果，以及尚待验证的真实模型与集成范围。
+
+[进入课程 →](./learn-agent-rust/index.md) · [开始第 0 章 →](./learn-agent-rust/architecture-and-setup.md) · [查看学习路径 →](./learn-agent-rust/learning-path.md) · [环境准备 →](./learn-agent-rust/setup.md)
+
 ## 从这里开始
 
 更多文档将逐步整理。你可以通过左侧目录浏览文档，通过右侧目录定位当前章节，也可以使用顶部搜索查找内容。

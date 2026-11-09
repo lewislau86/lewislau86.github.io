@@ -1,0 +1,8 @@
+init DB
+{"schema":1,"status":"initialized"}
+add DB report Asia/Shanghai 09:00 skip --start 2026-11-07T00:59:00Z
+{"cursor":"2026-11-07T00:59:00Z","id":"report","local_time":"09:00","misfire":"skip","status":"added","timezone":"Asia/Shanghai"}
+tick DB 2026-11-07T01:01:01Z
+{"now":"2026-11-07T01:01:01Z","reports":[{"before":"2026-11-07T00:59:00Z","cursor":"2026-11-07T01:01:01Z","discarded":1,"due_count":1,"id":"report","inserted":0,"selected":null}],"status":"committed"}
+show DB
+{"schedules":[{"cursor":"2026-11-07T01:01:01Z","id":"report","local_time":"09:00","misfire":"skip","timezone":"Asia/Shanghai"}],"status":"snapshot","tasks":[]}
