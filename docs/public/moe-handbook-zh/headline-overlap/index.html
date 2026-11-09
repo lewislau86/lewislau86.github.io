@@ -1,0 +1,1438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>One training step on 1,024 GPUs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --ink: #16181d; --muted: #6b7079; --line: #8a909b; --faint: #e3e6ea; --idle: #eceef1;
+  --fwd: #aab1bc; --bwd: #4f5866; --nv: #2457d6; --net: #d17f00; --nv-text: #2457d6; --net-text: #9a5d00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    --bg: #111214; --ink: #e8eaed; --muted: #9aa0a9; --line: #6b717b; --faint: #2a2d32; --idle: #1e2024;
+    --fwd: #5d6673; --bwd: #a6aebb; --nv: #6893f5; --net: #e69a22; --nv-text: #8fb0ff; --net-text: #f0b04a;
+    color-scheme: dark;
+  }
+}
+:root.dark {
+  --bg: #111214; --ink: #e8eaed; --muted: #9aa0a9; --line: #6b717b; --faint: #2a2d32; --idle: #1e2024;
+  --fwd: #5d6673; --bwd: #a6aebb; --nv: #6893f5; --net: #e69a22; --nv-text: #8fb0ff; --net-text: #f0b04a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body { font: 400 13px/1.4 "IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+.fig { max-width: 840px; margin: 0 auto; padding: 16px 16px 12px; position: relative; }
+.bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; color: var(--muted); font-size: 12px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+button.play { appearance: none; border: 1px solid var(--faint); background: var(--bg); color: var(--ink); width: 30px; height: 30px; border-radius: 4px; cursor: pointer; display: inline-grid; place-items: center; padding: 0; }
+button.play:hover { border-color: var(--line); }
+button.play svg { width: 12px; height: 12px; fill: currentColor; }
+#tip { max-width: 300px; }
+.tip { position: absolute; pointer-events: none; background: var(--bg); color: var(--ink); border: 1px solid var(--faint); border-radius: 4px; padding: 6px 8px; font-size: 12px; line-height: 1.45; max-width: 260px; display: none; z-index: 5; }
+.tip b { font-weight: 600; }
+.tip .m { color: var(--muted); }
+canvas { display: block; touch-action: none; }
+.wrap { display: grid; grid-template-columns: auto minmax(220px, 1fr); gap: 0 28px; align-items: start; }
+@media (max-width: 671px) { .wrap { grid-template-columns: 1fr; } .panel { margin-top: 6px; } }
+.panel { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.kick { color: var(--muted); font-size: 13px; }
+.now { font-size: 30px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.phase { color: var(--muted); font-size: 13px; min-height: 36px; }
+.key { display: grid; gap: 5px; font-size: 12px; color: var(--muted); }
+@media (max-width: 671px) { .key { grid-template-columns: 1fr 1fr; } .phase { min-height: 0; } }
+.key span { display: flex; align-items: center; gap: 8px; }
+.key i { flex: none; width: 11px; height: 11px; border-radius: 2px; display: inline-block; }
+.key i.dot { border-radius: 50%; width: 8px; height: 8px; margin: 0 1.5px; }
+.slow { color: var(--muted); font-size: 12px; margin-left: auto; }
+.sub { font-size: 16px; font-weight: 600; line-height: 1.4; color: var(--ink); min-height: 2.8em; margin: 16px auto 0; max-width: 540px; text-align: center; }
+/* D and E: darker compute cells in dark mode so the light of the particles stands out */
+@media (prefers-color-scheme: dark) { :root:not(.light) { --fwd: #3f4651; --bwd: #737c89; --idle: #1b1d21; } }
+:root.dark { --fwd: #3f4651; --bwd: #737c89; --idle: #1b1d21; }
+
+.spd { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.spd input { width: 96px; accent-color: var(--ink); }
+
+
+/* hue says direction (forward blue, backward orange); shade says kind: light fill = compute, mid = tokens inside a node,
+   dark = traffic between nodes (pipeline sends and the sync among copies); idle and the optimizer step stay neutral */
+:root { --fwd: #87b7f5; --bwd: #ec9d81; --fwd-nv: #3b86e4; --bwd-nv: #d35e2f; /* the tour, from the micro-batch ramps */ --fwd-net: #173d96; --bwd-net: #8f3f00; }
+@media (prefers-color-scheme: dark) { :root:not(.light) { --fwd: #2d4b7c; --bwd: #7d4c22; --fwd-nv: #6f9dff; --bwd-nv: #f29a3d; --fwd-net: #b3cbff; --bwd-net: #ffc88f; } }
+:root.dark { --fwd: #2d4b7c; --bwd: #7d4c22; --fwd-nv: #6f9dff; --bwd-nv: #f29a3d; --fwd-net: #b3cbff; --bwd-net: #ffc88f; }
+
+#strip { transition: opacity .5s; }
+@media (min-width: 672px) { #fig > .cvwrap { grid-column: 1; grid-row: 1; } #fig > .panel { grid-column: 2; grid-row: 1; } #fig > #strip { grid-column: 1 / -1; grid-row: 2; margin-top: 14px; } }
+#strip.off { opacity: 0; pointer-events: none; }
+.chap { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--faint); border: 1px solid var(--faint); border-radius: 4px; overflow: hidden; max-width: 260px; }
+@media (max-width: 671px) { .chap { grid-template-columns: repeat(6, 1fr); max-width: none; } }
+.chap button { appearance: none; border: 0; background: var(--bg); color: var(--muted); font: inherit; font-size: 12px; padding: 5px 0; min-width: 0; cursor: pointer; }
+.chap button.on { color: var(--ink); background: var(--idle); font-weight: 600; }
+.now { min-height: 30px; }
+.now:empty { display: none; }
+.phase, .kick { display: none; }
+.run { display: grid; gap: 4px; min-height: 250px; align-content: start; } /* fixed slot: the panel does not move when the card turns into the legend */
+.run .row { display: grid; grid-template-columns: 14px 1fr; gap: 1px 8px; align-items: baseline; transition: opacity .35s; }
+.run .row.dim { opacity: .28; }
+.run .nm { font-size: 12px; line-height: 1.3; color: var(--ink); }
+.run .pf { grid-column: 2; font: 400 10.5px/1.3 "IBM Plex Mono", ui-monospace, Menlo, monospace; color: var(--muted); overflow-wrap: anywhere; }
+.run .mv { grid-column: 2; font-size: 11.5px; color: var(--muted); }
+.run.card .nm { font-size: 14px; font-weight: 600; }
+.g { display: inline-block; width: 10px; height: 10px; border-radius: 2px; transform: translateY(1px); box-sizing: border-box; }
+.g.dot { border-radius: 50%; width: 9px; height: 9px; }
+.g.chev, .g.chevl { border-radius: 0; width: 10px; height: 10px; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.g.chevl { clip-path: polygon(100% 0, 0 50%, 100% 100%); }
+.g.dia { border-radius: 1px; width: 8px; height: 8px; transform: translateY(1px) rotate(45deg); margin-left: 1px; }
+.g.ring { border-radius: 50%; width: 9px; height: 9px; border: 2px solid; background: transparent !important; }
+
+/* header mode: a banner that loops the real step on all 1,024 GPUs; one button stretches it into the full figure */
+#hroot { position: relative; max-width: 980px; margin: 0 auto; overflow: hidden; }
+#bcv { position: absolute; top: 0; left: 0; display: block; }
+#full { position: absolute; top: 0; left: 0; right: 0; visibility: hidden; }
+#hroot.open #full { position: relative; visibility: visible; }
+#hroot.open #bcv { display: none; }
+#full .panel { transition: opacity .45s; }
+#hroot.settling #full .panel, #hroot.settling #cv { opacity: 0; }
+#cv { transition: opacity .45s; }
+.hbtn { position: absolute; z-index: 3; appearance: none; display: inline-flex; align-items: center; gap: 8px; font: 600 13px/1 "IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 9px 12px; cursor: pointer; transition: opacity .3s; }
+.hbtn:hover { border-color: var(--ink); }
+.hbtn svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; }
+#open { right: 16px; bottom: 14px; }
+#btitle { position: absolute; z-index: 2; top: 16px; left: 22px; pointer-events: none; }
+#btitle h2 { margin: 0; font: 600 30px/1.1 "IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif; letter-spacing: -0.015em; color: var(--ink); }
+#bphase { position: absolute; z-index: 2; margin: 0; font-size: 16px; font-weight: 600; line-height: 1.4; text-align: center; color: var(--ink); pointer-events: none; }
+#btip { max-width: 300px; }
+#hroot.open #bphase { display: none; }
+#hroot.open #btitle, .notitle #btitle h2 { display: none; }
+#close { position: static; padding: 7px 10px; }
+#hroot:not(.collapsed) #open { opacity: 0; pointer-events: none; }
+@media (max-width: 671px) { #open { right: 50%; transform: translateX(50%); bottom: 10px; } }
+/* the banner's notes use the hand of the Smol Training Playbook's Excalidraw figures */
+@font-face { font-family: Virgil; src: url(https://unpkg.com/@excalidraw/excalidraw@0.17.6/dist/excalidraw-assets/Virgil.woff2) format("woff2"); font-display: swap; }
+</style>
+</head>
+<body>
+<div id="hroot" class="collapsed">
+  <div class="tip" id="btip"></div>
+  <div id="btitle"><h2>The Ultimate MoE Training Handbook</h2></div><p id="bphase" aria-live="polite">one training step on 1,024 GPUs</p>
+  <canvas id="bcv" aria-label="All 1,024 GPUs of the cluster running one training step, on a loop"></canvas>
+  <button class="hbtn" id="open" aria-label="Open the interactive figure"><svg viewBox="0 0 14 14"><path d="M8.5 1.5h4v4M12.5 1.5l-4.5 4.5M5.5 12.5h-4v-4M1.5 12.5l4.5-4.5"/></svg>Explore the training step</button>
+  <div id="full">
+<div class="fig wrap" id="fig">
+  <div class="cvwrap"><canvas id="cv"></canvas>
+  <div class="sub" id="sub" aria-live="polite"></div></div>
+  <div class="panel">
+    <div class="kick" id="kick">&nbsp;</div>
+    <div class="now" id="now"></div>
+    <div class="phase" id="phase"></div>
+    <div class="run" id="run"></div>
+    <canvas id="strip" class="off"></canvas>
+    <div class="chap" id="chap"></div>
+    <div class="bar"><button class="play" id="play" aria-label="Play or pause"></button><label class="spd">speed <input type="range" id="spd" min="-2" max="2" step="0.25" value="0" aria-label="Playback speed"></label><span class="slow" id="slow"></span></div>
+  </div>
+  <div class="tip" id="tip"></div>
+</div>
+
+    <button class="hbtn" id="close" aria-label="Back to the banner" style="display:none"><svg viewBox="0 0 14 14"><path d="M12.5 5.5h-4v-4M8.5 5.5l4-4M1.5 8.5h4v4M5.5 8.5l-4 4"/></svg>Collapse</button>
+  </div>
+</div>
+<script>
+// Shared core: data, schedule lookups, theme colors, player. Inlined into each concept.
+// D: the Alps 256-node run's log (256 nodes x 4 GPUs, PP4, EP4,
+// 128 experts, Muon); the stage schedule is a simplified, non-interleaved one with fewer micro-batches, its timings illustrative.
+const D = {"optimizer":"Muon","about":"One training step of a 45-layer MoE on 1,024 GH200 GPUs (Alps), scheduled as Megatron runs --overlap-moe-expert-parallel-comm with two virtual stages per rank. Simulated schedule, illustrative timings. Times in seconds.","hardware":{"nodes":256,"gpusPerNode":4,"gpu":"GH200 (H100 + Grace CPU)","intraNode":"NVLink, every GPU pair directly connected","nicPerGpu":"one Slingshot-11 NIC, 200 Gb/s","fabric":"Slingshot dragonfly (switch placement varies per job)"},"model":{"layers":45,"hidden":2048,"experts":128,"topk":7,"sharedExperts":1,"expertWidth":768,"seq":4096,"vocab":131072},"parallelism":{"tp":1,"pp":4,"ep":4,"dp":256,"expertDp":64,"microBatch":2,"globalBatch":4096,"microbatchesPerPipeline":8,"rankOrder":"EP fastest (the 4 GPUs of one node form one expert group, 32 experts each), then DP (256 GPUs per stage = 64 nodes), PP slowest (4 stages)","layersPerStage":[[[1,6],[25,29]],[[7,12],[30,35]],[[13,18],[36,41]],[[19,24],[42,45]]],"notes":"interleaved: each stage holds two chunks of layers; stage 1 also holds the embedding, stage 4 the LM head","vpp":2},"step":{"total":1.797498,"tokensPerStep":16777216,"tokensPerSecond":9333649,"pipelineIdleFraction":0.265493},"perLayer":{"forward":[{"kind":"compute","op":"attention","profile":"TEDotProductAttention (cuDNN flash attention) + QKV and output GEMMs","moves":null,"start":0,"end":0.001364},{"kind":"compute","op":"router and permute","profile":"fused_topk_with_score_function, _permute_kernel","moves":null,"start":0.001364,"end":0.001515},{"kind":"all-to-all","op":"dispatch all-to-all","profile":"ncclDevKernel_SendRecv (all-to-all in the EP group)","moves":"token hidden states, one copy per chosen expert (top-7), to the GPU holding that expert, over NVLink","start":0.001515,"end":0.002229},{"kind":"compute","op":"experts","profile":"GroupedLinear (TE grouped GEMM)","moves":null,"start":0.002229,"end":0.004407},{"kind":"all-to-all","op":"combine all-to-all","profile":"ncclDevKernel_SendRecv (all-to-all in the EP group)","moves":"expert outputs back to the token's GPU, over NVLink","start":0.004407,"end":0.00512},{"kind":"compute","op":"unpermute","profile":"_unpermute_kernel (weighted sum of the 7 expert outputs)","moves":null,"start":0.00512,"end":0.005272}],"backward":[{"kind":"all-to-all","op":"combine all-to-all, backward","profile":"ncclDevKernel_SendRecv","moves":"output gradients to the GPUs holding the experts, over NVLink","start":0,"end":0.000713},{"kind":"compute","op":"experts, backward","profile":"GroupedLinear backward (TE grouped GEMM)","moves":null,"start":0.000713,"end":0.00507},{"kind":"all-to-all","op":"dispatch all-to-all, backward","profile":"ncclDevKernel_SendRecv","moves":"input gradients back to the token's GPU, over NVLink","start":0.00507,"end":0.005783},{"kind":"compute","op":"router and permute, backward","profile":"_permute_kernel backward, fused_topk backward","moves":null,"start":0.005783,"end":0.005935},{"kind":"compute","op":"attention, backward","profile":"cuDNN flash attention backward + GEMMs","moves":null,"start":0.005935,"end":0.009414}],"note":"one MoE layer for one microbatch on one GPU: attention, route/permute, dispatch all-to-all, experts, combine all-to-all, unpermute; the all-to-all stays inside the node (NVLink)"},"stages":[{"stage":1,"compute":[{"pass":"forward","microbatch":1,"chunk":1,"start":0.013866,"end":0.045497,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":1,"start":0.045497,"end":0.077128,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":1,"start":0.077128,"end":0.108759,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":1,"start":0.108759,"end":0.14039,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":1,"chunk":2,"start":0.14653,"end":0.172889,"layers":5,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":2,"start":0.178161,"end":0.20452,"layers":5,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":2,"start":0.209792,"end":0.236151,"layers":5,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":2,"start":0.241423,"end":0.267782,"layers":5,"allToAllShare":0.270663},{"pass":"forward","microbatch":5,"chunk":1,"start":0.267782,"end":0.299413,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":6,"chunk":1,"start":0.299413,"end":0.331044,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":7,"chunk":1,"start":0.331044,"end":0.362675,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":8,"chunk":1,"start":0.517267,"end":0.590001,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":2,"start":0.517267,"end":0.590001,"layers":5,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":2,"start":0.598872,"end":0.666877,"layers":5,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":2,"start":0.598872,"end":0.666877,"layers":5,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":2,"start":0.683548,"end":0.751553,"layers":5,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":2,"start":0.683548,"end":0.751553,"layers":5,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":2,"start":0.765154,"end":0.833159,"layers":5,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":2,"start":0.765154,"end":0.833159,"layers":5,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":2,"start":0.84983,"end":0.926706,"layers":5,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":1,"start":0.84983,"end":0.926706,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"backward","microbatch":2,"chunk":1,"start":0.931436,"end":0.987917,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":3,"chunk":1,"start":1.016112,"end":1.072593,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":4,"chunk":1,"start":1.072593,"end":1.129075,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":2,"start":1.157269,"end":1.204337,"layers":5,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":2,"start":1.213751,"end":1.260819,"layers":5,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":2,"start":1.293883,"end":1.340951,"layers":5,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":2,"start":1.350365,"end":1.397433,"layers":5,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":1,"start":1.406846,"end":1.463328,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":1,"start":1.463328,"end":1.519809,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":1,"start":1.519809,"end":1.576291,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":1,"start":1.576291,"end":1.632772,"layers":6,"allToAllShare":0.151579}],"sync":[{"kind":"parameter all-gather","start":0,"end":0.152527},{"kind":"optimizer step","start":1.785498,"end":1.797498},{"kind":"gradient reduce-scatter","start":1.632772,"end":1.785298,"chunk":1},{"kind":"gradient reduce-scatter","start":1.397433,"end":1.549959,"chunk":2}]},{"stage":2,"compute":[{"pass":"forward","microbatch":1,"chunk":1,"start":0.047032,"end":0.078663,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":1,"start":0.078663,"end":0.110294,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":1,"start":0.110294,"end":0.141925,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":1,"start":0.141925,"end":0.173556,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":1,"chunk":2,"start":0.174424,"end":0.206055,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":2,"start":0.206055,"end":0.237686,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":2,"start":0.237686,"end":0.269317,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":2,"start":0.269317,"end":0.300948,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":5,"chunk":1,"start":0.300948,"end":0.332579,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":6,"chunk":1,"start":0.434126,"end":0.515732,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":2,"start":0.434126,"end":0.515732,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":1,"start":0.515732,"end":0.597337,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":2,"start":0.515732,"end":0.597337,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":1,"start":0.600407,"end":0.682013,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":2,"start":0.600407,"end":0.682013,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":2,"start":0.682013,"end":0.763619,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":2,"start":0.682013,"end":0.763619,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":2,"start":0.766689,"end":0.848295,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":1,"start":0.766689,"end":0.848295,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":2,"start":0.848295,"end":0.929901,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":1,"start":0.848295,"end":0.929901,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":2,"start":0.932971,"end":1.014577,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":1,"start":0.932971,"end":1.014577,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"backward","microbatch":4,"chunk":1,"start":1.014577,"end":1.071058,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":2,"start":1.099253,"end":1.155734,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":2,"start":1.155734,"end":1.212216,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":2,"start":1.235867,"end":1.292348,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":2,"start":1.292348,"end":1.34883,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":1,"start":1.34883,"end":1.405311,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":1,"start":1.405311,"end":1.461793,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":1,"start":1.461793,"end":1.518274,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":1,"start":1.518274,"end":1.574756,"layers":6,"allToAllShare":0.151579}],"sync":[{"kind":"parameter all-gather","start":0,"end":0.138612},{"kind":"optimizer step","start":1.785498,"end":1.797498},{"kind":"gradient reduce-scatter","start":1.574756,"end":1.713368,"chunk":1},{"kind":"gradient reduce-scatter","start":1.34883,"end":1.487442,"chunk":2}]},{"stage":3,"compute":[{"pass":"forward","microbatch":1,"chunk":1,"start":0.080198,"end":0.111829,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":1,"start":0.111829,"end":0.14346,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":1,"start":0.14346,"end":0.175091,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":1,"start":0.175091,"end":0.206722,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":1,"chunk":2,"start":0.20759,"end":0.239221,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":2,"start":0.239221,"end":0.270852,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":2,"start":0.270852,"end":0.302483,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":2,"start":0.350985,"end":0.432591,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":2,"start":0.350985,"end":0.432591,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":1,"start":0.432591,"end":0.514197,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":2,"start":0.432591,"end":0.514197,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":1,"start":0.517267,"end":0.598872,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":2,"start":0.517267,"end":0.598872,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":1,"start":0.598872,"end":0.680478,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":2,"start":0.598872,"end":0.680478,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":1,"start":0.683548,"end":0.765154,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":1,"start":0.683548,"end":0.765154,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":2,"start":0.765154,"end":0.84676,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":1,"start":0.765154,"end":0.84676,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":2,"start":0.84983,"end":0.931436,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":1,"start":0.84983,"end":0.931436,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":2,"start":0.931436,"end":1.013042,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":1,"start":0.931436,"end":1.013042,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":2,"start":1.016112,"end":1.097718,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":5,"chunk":2,"start":1.016112,"end":1.097718,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"backward","microbatch":6,"chunk":2,"start":1.097718,"end":1.154199,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":2,"start":1.17785,"end":1.234332,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":2,"start":1.234332,"end":1.290813,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":1,"start":1.290813,"end":1.347295,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":1,"start":1.347295,"end":1.403776,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":1,"start":1.403776,"end":1.460258,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":1,"start":1.460258,"end":1.516739,"layers":6,"allToAllShare":0.151579}],"sync":[{"kind":"parameter all-gather","start":0,"end":0.138612},{"kind":"optimizer step","start":1.785498,"end":1.797498},{"kind":"gradient reduce-scatter","start":1.516739,"end":1.655351,"chunk":1},{"kind":"gradient reduce-scatter","start":1.290813,"end":1.429425,"chunk":2}]},{"stage":4,"compute":[{"pass":"forward","microbatch":1,"chunk":1,"start":0.113364,"end":0.144995,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":1,"start":0.144995,"end":0.176626,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":3,"chunk":1,"start":0.176626,"end":0.208257,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":4,"chunk":1,"start":0.208257,"end":0.239888,"layers":6,"allToAllShare":0.270663},{"pass":"forward","microbatch":1,"chunk":2,"start":0.240756,"end":0.269988,"layers":4,"allToAllShare":0.270663},{"pass":"forward","microbatch":2,"chunk":2,"start":0.272387,"end":0.34945,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":2,"start":0.272387,"end":0.34945,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":3,"chunk":2,"start":0.34945,"end":0.426513,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":2,"start":0.34945,"end":0.426513,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":4,"chunk":2,"start":0.434126,"end":0.511188,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":2,"start":0.434126,"end":0.511188,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":1,"start":0.515732,"end":0.594947,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":2,"start":0.515732,"end":0.594947,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":1,"start":0.600407,"end":0.682013,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":1,"chunk":1,"start":0.600407,"end":0.682013,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":1,"start":0.682013,"end":0.763619,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":2,"chunk":1,"start":0.682013,"end":0.763619,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":1,"start":0.766689,"end":0.848295,"layers":6,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":3,"chunk":1,"start":0.766689,"end":0.848295,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":5,"chunk":2,"start":0.848295,"end":0.927749,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":4,"chunk":1,"start":0.848295,"end":0.927749,"layers":6,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":6,"chunk":2,"start":0.932971,"end":1.010034,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":5,"chunk":2,"start":0.932971,"end":1.010034,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":7,"chunk":2,"start":1.014577,"end":1.091639,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":6,"chunk":2,"start":1.014577,"end":1.091639,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"forward","microbatch":8,"chunk":2,"start":1.099253,"end":1.176315,"layers":4,"allToAllShare":0.270663,"paired":true},{"pass":"backward","microbatch":7,"chunk":2,"start":1.099253,"end":1.176315,"layers":4,"allToAllShare":0.151579,"paired":true},{"pass":"backward","microbatch":8,"chunk":2,"start":1.176315,"end":1.23026,"layers":4,"allToAllShare":0.151579},{"pass":"backward","microbatch":5,"chunk":1,"start":1.23026,"end":1.286741,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":6,"chunk":1,"start":1.286741,"end":1.343223,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":7,"chunk":1,"start":1.343223,"end":1.399704,"layers":6,"allToAllShare":0.151579},{"pass":"backward","microbatch":8,"chunk":1,"start":1.399704,"end":1.456186,"layers":6,"allToAllShare":0.151579}],"sync":[{"kind":"parameter all-gather","start":0,"end":0.140976},{"kind":"optimizer step","start":1.785498,"end":1.797498},{"kind":"gradient reduce-scatter","start":1.456186,"end":1.597161,"chunk":1},{"kind":"gradient reduce-scatter","start":1.23026,"end":1.371235,"chunk":2}]}],"pipelineSends":[{"fromStage":1,"toStage":2,"start":0.045497,"end":0.047032,"dir":"forward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.077128,"end":0.078663,"dir":"forward","microbatch":2},{"fromStage":2,"toStage":3,"start":0.078663,"end":0.080198,"dir":"forward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.108759,"end":0.110294,"dir":"forward","microbatch":3},{"fromStage":2,"toStage":3,"start":0.110294,"end":0.111829,"dir":"forward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.111829,"end":0.113364,"dir":"forward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.14039,"end":0.141925,"dir":"forward","microbatch":4},{"fromStage":2,"toStage":3,"start":0.141925,"end":0.14346,"dir":"forward","microbatch":3},{"fromStage":3,"toStage":4,"start":0.14346,"end":0.144995,"dir":"forward","microbatch":2},{"fromStage":4,"toStage":1,"start":0.144995,"end":0.14653,"dir":"forward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.172889,"end":0.174424,"dir":"forward","microbatch":1},{"fromStage":2,"toStage":3,"start":0.173556,"end":0.175091,"dir":"forward","microbatch":4},{"fromStage":3,"toStage":4,"start":0.175091,"end":0.176626,"dir":"forward","microbatch":3},{"fromStage":4,"toStage":1,"start":0.176626,"end":0.178161,"dir":"forward","microbatch":2},{"fromStage":1,"toStage":2,"start":0.20452,"end":0.206055,"dir":"forward","microbatch":2},{"fromStage":2,"toStage":3,"start":0.206055,"end":0.20759,"dir":"forward","microbatch":1},{"fromStage":3,"toStage":4,"start":0.206722,"end":0.208257,"dir":"forward","microbatch":4},{"fromStage":4,"toStage":1,"start":0.208257,"end":0.209792,"dir":"forward","microbatch":3},{"fromStage":1,"toStage":2,"start":0.236151,"end":0.237686,"dir":"forward","microbatch":3},{"fromStage":2,"toStage":3,"start":0.237686,"end":0.239221,"dir":"forward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.239221,"end":0.240756,"dir":"forward","microbatch":1},{"fromStage":4,"toStage":1,"start":0.239888,"end":0.241423,"dir":"forward","microbatch":4},{"fromStage":1,"toStage":2,"start":0.267782,"end":0.269317,"dir":"forward","microbatch":4},{"fromStage":2,"toStage":3,"start":0.269317,"end":0.270852,"dir":"forward","microbatch":3},{"fromStage":3,"toStage":4,"start":0.270852,"end":0.272387,"dir":"forward","microbatch":2},{"fromStage":1,"toStage":2,"start":0.299413,"end":0.300948,"dir":"forward","microbatch":5},{"fromStage":2,"toStage":3,"start":0.300948,"end":0.302483,"dir":"forward","microbatch":4},{"fromStage":3,"toStage":4,"start":0.302483,"end":0.304018,"dir":"forward","microbatch":3},{"fromStage":1,"toStage":2,"start":0.331044,"end":0.332579,"dir":"forward","microbatch":6},{"fromStage":2,"toStage":3,"start":0.332579,"end":0.334114,"dir":"forward","microbatch":5},{"fromStage":4,"toStage":3,"start":0.34945,"end":0.350985,"dir":"backward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.362675,"end":0.36421,"dir":"forward","microbatch":7},{"fromStage":4,"toStage":3,"start":0.426513,"end":0.428048,"dir":"backward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.432591,"end":0.434126,"dir":"forward","microbatch":4},{"fromStage":3,"toStage":2,"start":0.432591,"end":0.434126,"dir":"backward","microbatch":1},{"fromStage":4,"toStage":3,"start":0.511188,"end":0.512723,"dir":"backward","microbatch":3},{"fromStage":3,"toStage":4,"start":0.514197,"end":0.515732,"dir":"forward","microbatch":5},{"fromStage":3,"toStage":2,"start":0.514197,"end":0.515732,"dir":"backward","microbatch":2},{"fromStage":2,"toStage":3,"start":0.515732,"end":0.517267,"dir":"forward","microbatch":6},{"fromStage":2,"toStage":1,"start":0.515732,"end":0.517267,"dir":"backward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.590001,"end":0.591536,"dir":"forward","microbatch":8},{"fromStage":1,"toStage":4,"start":0.590001,"end":0.591536,"dir":"backward","microbatch":1},{"fromStage":4,"toStage":1,"start":0.594947,"end":0.596482,"dir":"forward","microbatch":5},{"fromStage":4,"toStage":3,"start":0.594947,"end":0.596482,"dir":"backward","microbatch":4},{"fromStage":2,"toStage":3,"start":0.597337,"end":0.598872,"dir":"forward","microbatch":7},{"fromStage":2,"toStage":1,"start":0.597337,"end":0.598872,"dir":"backward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.598872,"end":0.600407,"dir":"forward","microbatch":6},{"fromStage":3,"toStage":2,"start":0.598872,"end":0.600407,"dir":"backward","microbatch":3},{"fromStage":1,"toStage":2,"start":0.666877,"end":0.668412,"dir":"forward","microbatch":5},{"fromStage":1,"toStage":4,"start":0.666877,"end":0.668412,"dir":"backward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.680478,"end":0.682013,"dir":"forward","microbatch":7},{"fromStage":3,"toStage":2,"start":0.680478,"end":0.682013,"dir":"backward","microbatch":4},{"fromStage":2,"toStage":3,"start":0.682013,"end":0.683548,"dir":"forward","microbatch":8},{"fromStage":2,"toStage":1,"start":0.682013,"end":0.683548,"dir":"backward","microbatch":3},{"fromStage":4,"toStage":1,"start":0.682013,"end":0.683548,"dir":"forward","microbatch":6},{"fromStage":4,"toStage":3,"start":0.682013,"end":0.683548,"dir":"backward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.751553,"end":0.753088,"dir":"forward","microbatch":6},{"fromStage":1,"toStage":4,"start":0.751553,"end":0.753088,"dir":"backward","microbatch":3},{"fromStage":2,"toStage":3,"start":0.763619,"end":0.765154,"dir":"forward","microbatch":5},{"fromStage":2,"toStage":1,"start":0.763619,"end":0.765154,"dir":"backward","microbatch":4},{"fromStage":4,"toStage":1,"start":0.763619,"end":0.765154,"dir":"forward","microbatch":7},{"fromStage":4,"toStage":3,"start":0.763619,"end":0.765154,"dir":"backward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.765154,"end":0.766689,"dir":"forward","microbatch":8},{"fromStage":3,"toStage":2,"start":0.765154,"end":0.766689,"dir":"backward","microbatch":1},{"fromStage":1,"toStage":2,"start":0.833159,"end":0.834694,"dir":"forward","microbatch":7},{"fromStage":1,"toStage":4,"start":0.833159,"end":0.834694,"dir":"backward","microbatch":4},{"fromStage":3,"toStage":4,"start":0.84676,"end":0.848295,"dir":"forward","microbatch":5},{"fromStage":3,"toStage":2,"start":0.84676,"end":0.848295,"dir":"backward","microbatch":2},{"fromStage":2,"toStage":3,"start":0.848295,"end":0.84983,"dir":"forward","microbatch":6},{"fromStage":2,"toStage":1,"start":0.848295,"end":0.84983,"dir":"backward","microbatch":1},{"fromStage":4,"toStage":1,"start":0.848295,"end":0.84983,"dir":"forward","microbatch":8},{"fromStage":4,"toStage":3,"start":0.848295,"end":0.84983,"dir":"backward","microbatch":3},{"fromStage":1,"toStage":2,"start":0.926706,"end":0.928241,"dir":"forward","microbatch":8},{"fromStage":4,"toStage":3,"start":0.927749,"end":0.929284,"dir":"backward","microbatch":4},{"fromStage":2,"toStage":3,"start":0.929901,"end":0.931436,"dir":"forward","microbatch":7},{"fromStage":2,"toStage":1,"start":0.929901,"end":0.931436,"dir":"backward","microbatch":2},{"fromStage":3,"toStage":4,"start":0.931436,"end":0.932971,"dir":"forward","microbatch":6},{"fromStage":3,"toStage":2,"start":0.931436,"end":0.932971,"dir":"backward","microbatch":3},{"fromStage":4,"toStage":3,"start":1.010034,"end":1.011569,"dir":"backward","microbatch":5},{"fromStage":3,"toStage":4,"start":1.013042,"end":1.014577,"dir":"forward","microbatch":7},{"fromStage":3,"toStage":2,"start":1.013042,"end":1.014577,"dir":"backward","microbatch":4},{"fromStage":2,"toStage":3,"start":1.014577,"end":1.016112,"dir":"forward","microbatch":8},{"fromStage":2,"toStage":1,"start":1.014577,"end":1.016112,"dir":"backward","microbatch":3},{"fromStage":2,"toStage":1,"start":1.071058,"end":1.072593,"dir":"backward","microbatch":4},{"fromStage":4,"toStage":3,"start":1.091639,"end":1.093174,"dir":"backward","microbatch":6},{"fromStage":3,"toStage":4,"start":1.097718,"end":1.099253,"dir":"forward","microbatch":8},{"fromStage":3,"toStage":2,"start":1.097718,"end":1.099253,"dir":"backward","microbatch":5},{"fromStage":3,"toStage":2,"start":1.154199,"end":1.155734,"dir":"backward","microbatch":6},{"fromStage":2,"toStage":1,"start":1.155734,"end":1.157269,"dir":"backward","microbatch":5},{"fromStage":4,"toStage":3,"start":1.176315,"end":1.17785,"dir":"backward","microbatch":7},{"fromStage":1,"toStage":4,"start":1.204337,"end":1.205872,"dir":"backward","microbatch":5},{"fromStage":2,"toStage":1,"start":1.212216,"end":1.213751,"dir":"backward","microbatch":6},{"fromStage":4,"toStage":3,"start":1.23026,"end":1.231795,"dir":"backward","microbatch":8},{"fromStage":3,"toStage":2,"start":1.234332,"end":1.235867,"dir":"backward","microbatch":7},{"fromStage":1,"toStage":4,"start":1.260819,"end":1.262354,"dir":"backward","microbatch":6},{"fromStage":4,"toStage":3,"start":1.286741,"end":1.288276,"dir":"backward","microbatch":5},{"fromStage":3,"toStage":2,"start":1.290813,"end":1.292348,"dir":"backward","microbatch":8},{"fromStage":2,"toStage":1,"start":1.292348,"end":1.293883,"dir":"backward","microbatch":7},{"fromStage":1,"toStage":4,"start":1.340951,"end":1.342486,"dir":"backward","microbatch":7},{"fromStage":4,"toStage":3,"start":1.343223,"end":1.344758,"dir":"backward","microbatch":6},{"fromStage":3,"toStage":2,"start":1.347295,"end":1.34883,"dir":"backward","microbatch":5},{"fromStage":2,"toStage":1,"start":1.34883,"end":1.350365,"dir":"backward","microbatch":8},{"fromStage":1,"toStage":4,"start":1.397433,"end":1.398968,"dir":"backward","microbatch":8},{"fromStage":4,"toStage":3,"start":1.399704,"end":1.401239,"dir":"backward","microbatch":7},{"fromStage":3,"toStage":2,"start":1.403776,"end":1.405311,"dir":"backward","microbatch":6},{"fromStage":2,"toStage":1,"start":1.405311,"end":1.406846,"dir":"backward","microbatch":5},{"fromStage":4,"toStage":3,"start":1.456186,"end":1.457721,"dir":"backward","microbatch":8},{"fromStage":3,"toStage":2,"start":1.460258,"end":1.461793,"dir":"backward","microbatch":7},{"fromStage":2,"toStage":1,"start":1.461793,"end":1.463328,"dir":"backward","microbatch":6},{"fromStage":3,"toStage":2,"start":1.516739,"end":1.518274,"dir":"backward","microbatch":8},{"fromStage":2,"toStage":1,"start":1.518274,"end":1.519809,"dir":"backward","microbatch":7},{"fromStage":2,"toStage":1,"start":1.574756,"end":1.576291,"dir":"backward","microbatch":8}],"networkTraffic":{"pipelineForward":{"profile":"ncclDevKernel_SendRecv (point-to-point)","moves":"activations: the hidden states of one micro-batch (8,192 tokens x 2048, bf16, 33.5 MB per GPU), from a GPU to the same-position GPU of the next stage"},"pipelineBackward":{"profile":"ncclDevKernel_SendRecv (point-to-point)","moves":"activation gradients for the same micro-batch, back to the previous stage"},"parameterAllGather":{"profile":"ncclDevKernel_AllGather","moves":"updated parameters (bf16), so every data-parallel copy holds the full weights of its stage; at the start of the step"},"gradientReduceScatter":{"profile":"ncclDevKernel_ReduceScatter","moves":"parameter gradients (fp32), summed across data-parallel copies; during the last backward passes and after"},"optimizer":{"profile":"distributed optimizer step (Muon), no communication","moves":null}},"syncScope":"gradient sync of a stage: expert gradients among the 64 GPUs holding the same experts (one per node of the stage), attention gradients among all 256 GPUs of the stage, over the NICs; pipeline sends go GPU to GPU between consecutive stages over the NICs","lossTimes":[0.269988,0.34945,0.426513,0.511188,0.927749,1.010034,1.091639,1.176315]};
+const TOTAL = D.step.total;
+const ST = D.stages;
+const NS = ST.length;                       // 4 pipeline stages
+const NODES = D.hardware.nodes;             // 256
+const GPN = D.hardware.gpusPerNode;         // 4
+const NPS = NODES / NS;                     // 64 nodes per stage
+const EXPERTS_PER_GPU = D.model.experts / D.parallelism.ep; // 32
+const SEND_VIS = 0.03; // a 1.5 ms send lands on time (its end, when the next stage starts) and lingers 30 ms of step time
+const IDLE = ST.map(s => 1 - s.compute.reduce((a, c) => a + c.end - c.start, 0) / TOTAL);
+console.assert(Math.abs(IDLE.reduce((a, b) => a + b) / NS - D.step.pipelineIdleFraction) < 1e-4, 'idle mean');
+const LAST_FWD = Math.max(...ST.flatMap(s => s.compute.filter(c => c.pass === 'forward').map(c => c.end)));
+const FIRST_BWD = Math.min(...ST.flatMap(s => s.compute.filter(c => c.pass === 'backward').map(c => c.start)));
+const LAST_BWD = Math.max(...ST.flatMap(s => s.compute.filter(c => c.pass === 'backward').map(c => c.end)));
+const OPT = ST[0].sync.find(x => x.kind === 'optimizer step');
+
+function passAt(s, t) { for (const c of ST[s].compute) if (t >= c.start && t < c.end) return c; return null; }
+function syncAt(s, t) { return ST[s].sync.filter(x => t >= x.start && t < x.end && x.kind !== 'optimizer step'); }
+function passBack(s, t, d) { const u = t - d; return t >= OPT.start && u < OPT.start ? null : passAt(s, Math.max(0, u)); }
+function optAt(t) { return t >= OPT.start && t <= OPT.end + 1e-9; }
+function sendsAt(t) { // u: travel (1 = landed), fade: 1 until it lands, then down to 0 over SEND_VIS
+  return D.pipelineSends.filter(p => t >= p.start && t < p.end + SEND_VIS)
+    .map(p => ({ ...p, u: clamp01((t - p.start) / (p.end - p.start)), fade: 1 - clamp01((t - p.end) / SEND_VIS) }));
+}
+function phaseAt(t) {
+  if (t < FIRST_BWD) return 'forward passes fill the pipeline';
+  if (t < LAST_FWD) return 'forward and backward passes interleave';
+  if (t < LAST_BWD) return 'backward passes drain the pipeline';
+  if (t < OPT.start) return 'gradient sync finishes';
+  return 'optimizer step';
+}
+// per-layer op names, from perLayer.note
+const FWD_OPS = ['attention', 'route and permute', 'dispatch', 'experts', 'combine', 'unpermute'];
+const BWD_OPS = ['combine', 'experts', 'dispatch', 'route and permute', 'attention'];
+const fmtMs = x => (x * 1000).toFixed(x < 0.01 ? 1 : 0) + ' ms';
+
+// theme: CSS variables, re-read when the scheme changes
+const C = {};
+function readTheme() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const k of ['bg', 'ink', 'muted', 'line', 'faint', 'idle', 'fwd', 'bwd', 'nv', 'net', 'nvText', 'netText'])
+    C[k] = cs.getPropertyValue('--' + k.replace(/[A-Z]/g, m => '-' + m.toLowerCase())).trim();
+}
+(function initTheme() {
+  const q = new URLSearchParams(location.search).get('theme');
+  if (q) document.documentElement.classList.add(q);
+  const bw = new URLSearchParams(location.search).get('bwd');   // colour preview, e.g. ?bwd=8e6bb0
+  if (bw) document.documentElement.style.setProperty('--bwd', '#' + bw.replace('#', ''));
+  readTheme();
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readTheme);
+})();
+
+// canvas sized to its CSS box at device pixel ratio
+function fitCanvas(cv, w, h) {
+  const r = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(w * r) || cv.height !== Math.round(h * r)) {
+    cv.width = Math.round(w * r); cv.height = Math.round(h * r);
+    cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  }
+  const g = cv.getContext('2d'); g.setTransform(r, 0, 0, r, 0, 0); return g;
+}
+const FONT = '"IBM Plex Sans", -apple-system, "Helvetica Neue", Arial, sans-serif';
+function font(px, w = 400) { return `${w} ${px}px ${FONT}`; }
+// Shared by D and E: smoothed per-stage state colors, particle sprites, the schedule strip, the side panel.
+const REDUCE = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const hexRgb = h => { h = h.replace('#', ''); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); };
+const mix = (a, b, u) => a.map((v, i) => v + (b[i] - v) * u);
+const rgb = c => `rgb(${c[0] | 0},${c[1] | 0},${c[2] | 0})`;
+const isDark = () => hexRgb(C.bg)[0] < 80;
+// a stage's fill, averaged over the last 12 ms of step time so a change of pass fades instead of snapping
+function stageFill(s, t) {
+  const f = hexRgb(C.fwd), b = hexRgb(C.bwd), i = hexRgb(C.idle);
+  let acc = [0, 0, 0];
+  for (let q = 0; q < 6; q++) {
+    const tt = Math.max(0, t - q * 0.0024), p = passAt(s, tt), c = optAt(tt) ? b : p ? (p.pass === 'forward' ? f : b) : i;
+    acc = acc.map((v, k) => v + c[k] / 6);
+  }
+  return rgb(acc);
+}
+// soft round sprite per color, drawn with 'lighter' in dark mode so overlapping particles bloom
+const SPR = {};
+function sprite(col, r) {
+  const key = col + r + isDark();
+  if (SPR[key]) return SPR[key];
+  const s = Math.ceil(r * 4), cv = document.createElement('canvas'); cv.width = cv.height = s * 2;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(s, s, 0, s, s, s), [R, G, B] = hexRgb(col);
+  gr.addColorStop(0, `rgba(${R},${G},${B},1)`); gr.addColorStop(0.22, `rgba(${R},${G},${B},0.9)`);
+  gr.addColorStop(0.45, `rgba(${R},${G},${B},${isDark() ? 0.1 : 0.07})`); gr.addColorStop(1, `rgba(${R},${G},${B},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, s * 2, s * 2);
+  return (SPR[key] = cv);
+}
+function comet(g, col, x0, y0, x1, y1, r, alpha = 1) {
+  g.globalAlpha = alpha * 0.45; g.strokeStyle = col; g.lineWidth = r; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  g.globalAlpha = alpha; const sp = sprite(col, r); g.drawImage(sp, x1 - sp.width / 2, y1 - sp.height / 2);
+}
+const clamp01 = v => Math.max(0, Math.min(1, v));
+const easeIO = u => u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+const hash = n => { n = (n ^ 61) ^ (n >>> 16); n = n + (n << 3); n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); return ((n ^ (n >>> 15)) >>> 0) / 4294967296; };
+
+// micro-batch 1's path, edge to edge between its blocks and over the rest, so no block hides it
+function mbPath(g, pts, h) { // pts[pass]: [start, centre x, centre y, x, y, width]
+  for (const k of ['forward', 'backward']) { const q = pts[k].sort((a, b) => a[0] - b[0]); g.setLineDash(k === 'forward' ? [] : [3, 2]); g.beginPath();
+    for (let i = 1; i < q.length; i++) { const [, x0, y0, , , w0] = q[i - 1], [, x1, y1, , , w1] = q[i], dx = x1 - x0, dy = y1 - y0;
+      const u = w => Math.min(dx ? w / 2 / Math.abs(dx) : 1, dy ? h / 2 / Math.abs(dy) : 1), a = u(w0), b = 1 - u(w1); // where the line leaves and enters a block
+      if (a < b) { g.moveTo(x0 + dx * a, y0 + dy * a); g.lineTo(x0 + dx * b, y0 + dy * b); } }
+    g.stroke(); }
+  g.setLineDash([]);
+}
+// a block's number over micro-batch 1's path: a halo in the block's own shade keeps the path off the digit
+function blockNums(g, nums, px) {
+  g.font = font(px, 700); g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 3; g.lineJoin = 'round';
+  for (const [n, x, y, bg] of nums) { g.strokeStyle = bg; g.strokeText(n, x, y); g.fillStyle = onShade(+n); g.fillText(n, x, y); }
+  g.strokeStyle = C.ink; g.lineJoin = 'miter'; // the outlines that follow
+}
+// schedule strip: 4 thin lanes, playhead, drag to scrub
+function drawStrip(cv, t, W, opt = {}) { // opt.reveal: per-lane share drawn so far
+  const rh = 9, laneH = 2 * rh + 5, gap = 6, lx = 50, H = NS * (laneH + gap) + 18; // per stage a forward row, a backward row, a thin row of its syncs
+  const g = fitCanvas(cv, W, H); g.clearRect(0, 0, W, H);
+  const sw = W - lx, tx = v => lx + v / TOTAL * sw, pts = { forward: [], backward: [] }, nums = [];
+  ST.forEach((S, s) => {
+    const y = s * (laneH + gap);
+    g.fillStyle = C.idle; g.fillRect(lx, y, sw, laneH);
+    if (opt.wait) { // the end hold, as in the banner: grey where the stage ran no pass and summed no gradients (its two pass rows,
+      // so the sync row's marks keep their contrast); gaps under 3 px between passes stay idle, not grey slivers
+      g.fillStyle = rgb(mix(hexRgb(C.idle), hexRgb(C.muted), 0.4 * opt.wait)); g.fillRect(lx, y, tx(OPT.start) - lx, 2 * rh + 1);
+      g.fillStyle = C.idle; for (const cb of S.compute) g.fillRect(tx(cb.start) - 1.5, y, tx(cb.end) - tx(cb.start) + 3, 2 * rh + 1);
+      for (const y_ of S.sync) if (y_.kind === 'gradient reduce-scatter') g.fillRect(tx(y_.start) - 1.5, y, tx(y_.end) - tx(y_.start) + 3, 2 * rh + 1); }
+    for (const cb of S.compute) {
+      const bx = tx(cb.start) + 0.5, bw = Math.max(1, tx(cb.end) - tx(cb.start) - 1), by = y + (cb.pass === 'forward' ? 0 : rh + 1);
+      g.fillStyle = shade(cb); g.fillRect(bx, by, bw, rh);
+      if (bw >= 8) nums.push([String(cb.microbatch), bx + bw / 2, by + rh / 2 + 0.5, shade(cb)]);
+      if (cb.microbatch === 1) pts[cb.pass].push([cb.start, bx + bw / 2, by + rh / 2, bx, by, bw]);
+    }
+    for (const x of S.sync) if (x.kind !== 'optimizer step') { g.fillStyle = C.muted; g.fillRect(tx(x.start), y + 2 * rh + 2, tx(x.end) - tx(x.start), 2); }
+    g.font = font(11); g.fillStyle = C.muted; g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('stage ' + (s + 1), 0, y + rh + 0.5);
+  });
+  // micro-batch 1's path joins lanes, so while they draw themselves it waits until all are nearly drawn (else it dangles)
+  g.strokeStyle = C.ink; g.lineWidth = 1; g.globalAlpha = opt.reveal ? clamp01((Math.min(...opt.reveal) - 0.9) / 0.1) : 1; mbPath(g, pts, rh); g.globalAlpha = 1;
+  blockNums(g, nums, rh - 1);
+  g.lineWidth = 1.3; for (const k of ['forward', 'backward']) for (const q of pts[k]) g.strokeRect(q[3], q[4], q[5], rh);
+  const bot = NS * (laneH + gap) - gap;
+  if (opt.reveal) { // lanes drawn left to right, one after another
+    g.globalAlpha = 0.6; g.fillStyle = C.bg; g.fillRect(lx, 0, sw, bot + 4); g.globalAlpha = 1;
+    g.fillStyle = C.bg; ST.forEach((S, s) => { const r = opt.reveal[s]; g.fillRect(lx + sw * r - 0.5, s * (laneH + gap) - 1, sw * (1 - r) + 1, laneH + gap); });
+    g.font = font(11); g.fillStyle = C.muted; g.textBaseline = 'top'; g.globalAlpha = Math.min(...opt.reveal);
+    g.textAlign = 'left'; g.fillText('start of the step', lx, bot + 4); g.textAlign = 'right'; g.fillText('end', W, bot + 4); g.globalAlpha = 1;
+    return { lx, sw };
+  }
+  g.fillStyle = C.bg; g.globalAlpha = 0.6; g.fillRect(tx(t), 0, lx + sw - tx(t), bot); g.globalAlpha = 1;
+  g.fillStyle = C.ink; g.fillRect(tx(t) - 0.75, 0, 1.5, bot + 2);
+  g.font = font(11); g.fillStyle = C.muted; g.textBaseline = 'top';
+  g.textAlign = 'left'; g.fillText('start of the step', lx, bot + 4); g.textAlign = 'right'; g.fillText('end', W, bot + 4);
+  return { lx, sw };
+}
+function wireStrip(cv, P, geo) {
+  let drag = false;
+  const seek = e => { const r = cv.getBoundingClientRect(), g = geo(); P.playing = false; P.seek((e.clientX - r.left - g.lx) / g.sw * TOTAL); };
+  cv.addEventListener('pointerdown', e => { drag = true; cv.setPointerCapture(e.pointerId); seek(e); });
+  cv.addEventListener('pointermove', e => { if (drag) seek(e); });
+  cv.addEventListener('pointerup', () => { drag = false; });
+}
+const PLAY = '<svg viewBox="0 0 12 12"><path d="M2 1l9 5-9 5z"/></svg>', PAUSE = '<svg viewBox="0 0 12 12"><path d="M2 1h3v10H2zM7 1h3v10H7z"/></svg>';
+
+
+
+const cv = document.getElementById('cv'), strip = document.getElementById('strip'), _sm = document.getElementById('fig').insertBefore(strip, document.querySelector('#fig > .panel')), fig = document.getElementById('fig'), tip = document.getElementById('tip');
+let L = null, SG = null;
+const QPOS = [[0, 0], [1, 0], [1, 1], [0, 1]];  // stages as quadrants, pipeline order 1 2 / 4 3
+const SNAKE = Array.from({ length: NPS }, (_, i) => { const r = Math.floor(i / 8), q = i % 8; return r * 8 + (r % 2 ? 7 - q : q); });
+// a token of node GPU k0 goes to an expert on another GPU of its node (dispatch) and comes back (combine), then again
+const trip = (id, now) => { const v = now * 1.3 + hash(id + 1) * 4, m = Math.floor(v), k0 = Math.floor(hash(id) * 4) % 4,
+  k1 = (k0 + 1 + Math.floor(hash(id * 7 + (m >> 1)) * 3)) % 4; return m % 2 ? [k1, k0, v - m] : [k0, k1, v - m]; };
+const NT = D.networkTraffic, PL = D.perLayer;
+const V = {}; // the direction palette, re-read each frame so a scheme change applies
+function readV() { const cs = getComputedStyle(document.documentElement); for (const k of ['fwd-nv', 'bwd-nv', 'fwd-net', 'bwd-net']) V[k.replace('-', '')] = cs.getPropertyValue('--' + k).trim(); }
+
+// ---- the build, in seconds of screen time ----
+const B = { gpu1: 0.6, node: 1.5, tok: 3.6, bwd: 8.7 };
+// the loss: the token beat's forward ends, the loss is computed on the last stage, and the backward starts
+const LOSS = [7.95, 8.65];
+// uneven load (illustrative): 6 tokens per GPU, routed with popular experts on GPU 3; each GPU's experts run for a time
+// that grows with the copies it received, and the combine waits for the busiest GPU
+const UE0 = 11.45, UE_D = [11.75, 12.35], UE_X = 12.35;
+function rng(seed) { return () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296); }
+const UPICKS = (() => { const r = rng(11), out = [];
+  for (let k = 0; k < GPN; k++) for (let i = 0; i < 6; i++) { const set = new Set();
+    while (set.size < 7) { const hot = r() < 0.3, e = hot ? 64 + Math.floor(r() * 8) : Math.floor(r() * 128); set.add(e); }
+    out.push({ k, i, picks: [...set] }); }
+  return out; })();
+const UCOPIES = (() => { const n = {}; return UPICKS.flatMap(t => t.picks.map(e => ({ t, e, n: (n[e] = (n[e] || 0) + 1) - 1 }))); })();
+const ULOAD = [0, 1, 2, 3].map(k => UCOPIES.filter(c => Math.floor(c.e / 32) === k).length);
+const UDUR = ULOAD.map(l => 0.4 + 1.0 * l / Math.max(...ULOAD));
+const UE_C = [UE_X + Math.max(...UDUR) + 0.1, UE_X + Math.max(...UDUR) + 0.65];
+B.stage = UE_C[1] + 0.3;
+// the stage beat: node 1 copies itself by doubling (1, 2, 4 ... 64 nodes) while the camera pulls back to keep the copies
+// in frame; then every GPU loads its own tokens; then all 64 nodes compute, their all-to-alls staying inside each node
+const DBL = 0.34, D0 = B.stage + 0.35, DE = D0 + 6 * DBL, LD0 = DE + 0.2, LDS = 0.4;
+B.load = LD0; B.a2a = LD0 + LDS + 0.6; B.pipe = B.a2a + 1.4;
+B.pay = B.pipe + 7.0; // room for the wrap from stage 4 back to stage 1
+// the hand-off: the field empties, the schedule draws itself one stage at a time while that stage's quadrant is outlined,
+// the clock reads 0.00 s, then the real step starts from that empty state
+B.hand = B.pay + 1.2; B.step = B.hand + 1.9;
+const LANE = s => B.hand + 0.45 + s * 0.3;
+const INTRO = B.step, RATE = 1 / 9;
+// every GPU reads its own micro-batch, so each GPU of node 1 starts with its own token; each token's 7 experts are
+// illustrative picks (1 or 2 on its own GPU, the rest on the other three), all 28 distinct so the paths stay readable
+const TPICKS = [[5, 40, 51, 77, 90, 101, 120], [12, 25, 44, 70, 83, 109, 125], [2, 19, 36, 58, 66, 88, 115], [9, 30, 47, 61, 73, 98, 112]];
+const ALLPICKS = TPICKS.flat();
+const TOKENS_PER_MB = D.parallelism.microBatch * D.model.seq; // 8,192
+const FIRST_FWD = ST.map(S => Math.min(...S.compute.filter(c => c.pass === 'forward').map(c => c.start)));
+const FIRST_IN = ST.map((S, s) => s === 0 ? FIRST_FWD[0] : Math.min(...D.pipelineSends.filter(p => p.toStage === s + 1).map(p => p.end)));
+const OPS = [ // [start, end, perLayer entry]
+  [3.6, 4.4, PL.forward[0]], [4.4, 5.0, PL.forward[1]], [5.0, 5.9, PL.forward[2]], [5.9, 6.7, PL.forward[3]],
+  [6.7, 7.5, PL.forward[4]], [7.5, 7.9, PL.forward[5]],
+  [8.7, 9.3, PL.backward[0]], [9.3, 9.9, PL.backward[1]], [9.9, 10.5, PL.backward[2]], [10.5, 10.75, PL.backward[3]], [10.75, 11.3, PL.backward[4]],
+];
+// the pipeline beat: stage 1 computes, activations stream to stage 2, which starts as they land, and so on; the rest wait
+const SEND = s => B.pipe + 1.3 + s * 1.2;   // send from stage s to s+1 starts (0-based s)
+const SEND_DUR = 0.75, STAGGER = 0.3;
+const arrive = (s, j, k) => SEND(s - 1) + (STAGGER * hash(s * 4096 + j * 4 + k) + (1 - STAGGER)) * SEND_DUR; // when GPU (s,j,k) receives
+const CHAPTERS = [['GPU', 0], ['token', B.tok], ['stage', B.stage - 0.2], ['pipeline', B.pipe], ['1,024', B.pay], ['step', B.step]];
+const SUBS = [ // what each scale of the tour shows, one line each (Astra: true to the frame, no number details)
+  "We start from one GPU: it holds a slice of its layers' experts, and its node's other GPUs hold the rest.",
+  'Follow one token per GPU out to the experts it picked and back; in the backward pass, its gradients retrace that path.',
+  'Enough copies of the node fill a pipeline stage; they hold the same weights and sum their gradients after the backward.',
+  'Activations pass from stage to stage, then loop back to stage 1, because each stage holds two groups of layers.',
+  'Put the four stages together and you have the whole cluster.',
+  'A full step fills the pipeline, pairs a forward with a backward on each GPU, then ends with the optimizer.',
+];
+const SUB_UNEVEN = "Routing here is uneven: one GPU's experts draw the most tokens, and the whole node waits for it before the combine.";
+const sm = v => { v = clamp01(v); return v * v * (3 - 2 * v); };
+const win = (x, a, b, f = 0.25) => sm((x - a) / f) * (1 - sm((x - b) / f));
+
+function layout(W) {
+  const wide = W >= 640, F = wide ? Math.min(540, W - 250) : W;
+  const gi = wide ? 2 : 1.5, gn = wide ? 5 : 3, qg = wide ? 22 : 14, lab = 24;
+  const c = Math.floor((F - qg - 2 * (8 * gi + 7 * gn)) / 32 * 2) / 2;
+  const node = 2 * c + gi, Q = 8 * node + 7 * gn, x0 = (F - (2 * Q + qg)) / 2;
+  const blocks = QPOS.map(([a, b]) => ({ x: x0 + a * (Q + qg), y: lab + b * (Q + qg) }));
+  return { W, F, wide, gi, gn, qg, lab, c, node, Q, blocks, H: 2 * lab + 2 * Q + qg };
+}
+function gpuW(s, j, k) {
+  const b = L.blocks[s], nx = b.x + (j % 8) * (L.node + L.gn), ny = b.y + Math.floor(j / 8) * (L.node + L.gn);
+  return [nx + (k % 2) * (L.c + L.gi) + L.c / 2, ny + (k >> 1) * (L.c + L.gi) + L.c / 2];
+}
+// inside a GPU of node 1 (world units): the token's home and the 32 expert slots
+const home = k => { const [x, y] = gpuW(0, 0, k); return [x - L.c * 0.25, y - L.c * 0.05]; };
+function slotW(e) { const q = Math.floor(e / 32), le = e % 32, [x, y] = gpuW(0, 0, q); return [x - L.c * 0.35 + (le % 8) * L.c * 0.1, y + L.c * 0.1 + Math.floor(le / 8) * L.c * 0.1]; }
+
+function camKeys() {
+  const [g0x, g0y] = gpuW(0, 0, 0), [g3x, g3y] = gpuW(0, 0, 3), b = L.blocks[0];
+  const kBig = Math.min(L.F * 0.3, 150) / L.c, kNode = Math.min(L.F * 0.36, 180) / L.c, kStage = (L.F - 24) / L.Q;
+  return [[0, g0x, g0y, kBig], [B.node + 0.8, (g0x + g3x) / 2, (g0y + g3y) / 2, kNode], [B.stage + 1.2, b.x + L.Q / 2, b.y + L.Q / 2, kStage], [B.pipe + 1.0, L.F / 2, L.H / 2, 1]];
+}
+function extentCam(x) { // fit the copies placed so far
+  const pitch = L.node + L.gn, box = n => [Math.min(n, 8) * pitch - L.gn, Math.ceil(n / 8) * pitch - L.gn];
+  let w = L.node, h = L.node;
+  for (let d = 0; d < 6; d++) {
+    const u = easeIO(clamp01((x - (D0 + d * DBL)) / DBL)); if (u <= 0) break;
+    const [w0, h0] = box(2 ** d), [w1, h1] = box(2 ** (d + 1)); w = w0 + (w1 - w0) * u; h = h0 + (h1 - h0) * u;
+  }
+  const b = L.blocks[0], kNode = Math.min(L.F * 0.36, 180) / L.c;
+  return [0, b.x + w / 2, b.y + h / 2, Math.min(kNode, Math.min(L.F, L.H) * 0.86 / Math.max(w, h))];
+}
+function camera(x) {
+  let cur;
+  if (x < B.stage) {
+    const K = camKeys(); cur = K[0];
+    const u = sm((x - (K[1][0] - 0.9)) / 0.9);
+    if (u > 0) cur = [0, cur[1] + (K[1][1] - cur[1]) * u, cur[2] + (K[1][2] - cur[2]) * u, Math.exp(Math.log(cur[3]) + (Math.log(K[1][3]) - Math.log(cur[3])) * u)];
+  } else if (x < B.pipe) cur = extentCam(x);
+  else {
+    const a = extentCam(B.pipe), u = sm((x - B.pipe) / 1.1);
+    cur = [0, a[1] + (L.F / 2 - a[1]) * u, a[2] + (L.H / 2 - a[2]) * u, Math.exp(Math.log(a[3]) * (1 - u))];
+  }
+  const [, fx, fy, k] = cur;
+  return { k, S: (a, b) => [L.F / 2 + (a - fx) * k, L.H / 2 + (b - fy) * k], inv: (sx, sy) => [(sx - L.F / 2) / k + fx, (sy - L.H / 2) / k + fy] };
+}
+const nodeXYW = j => { const b = L.blocks[0]; return [b.x + (j % 8) * (L.node + L.gn), b.y + Math.floor(j / 8) * (L.node + L.gn)]; };
+function nodeOff(j, x) { // a copy slides out of the node it was copied from
+  if (j === 0) return [0, 0];
+  const d = Math.floor(Math.log2(j)), par = j - 2 ** d, e = easeIO(clamp01((x - (D0 + d * DBL)) / DBL));
+  const a = nodeXYW(par), b = nodeXYW(j), po = nodeOff(par, x);
+  return [(a[0] - b[0]) * (1 - e) + po[0], (a[1] - b[1]) * (1 - e) + po[1]];
+}
+let INTRO_X = null; // set while drawing the build, so positions follow the copies
+function gpuP(s, j, k) { const p = gpuW(s, j, k); if (INTRO_X == null || s !== 0 || INTRO_X > DE + 0.05) return p; const o = nodeOff(j, INTRO_X); return [p[0] + o[0], p[1] + o[1]]; }
+const LOAD = (j, k) => LD0 + hash(j * 4 + k + 7) * LDS;     // when GPU (stage 1, j, k) receives its own micro-batch
+const NODE_LOAD = j => Math.max(...[0, 1, 2, 3].map(k => LOAD(j, k)));
+const nodeDist = j => Math.hypot(j % 8, Math.floor(j / 8)) / Math.hypot(7, 7);
+function appearAt(s, j, k) {
+  if (s === 0 && j === 0) return [B.gpu1, B.node, B.node + 0.25, B.node + 0.5][k];
+  if (s === 0) return D0 + Math.floor(Math.log2(j)) * DBL;
+  return B.pipe + 0.1 + (s - 1) * 0.25 + nodeDist(j) * 0.4;
+}
+
+// ---- GPU fill during the build ----
+function opAt(x) { for (const o of OPS) if (x >= o[0] && x < o[1]) return o; return null; }
+function introFill(s, j, k, x) {
+  const I = hexRgb(C.idle), F = hexRgb(C.fwd), Bk = hexRgb(C.bwd);
+  let f = 0, b = 0;
+  if (s === 0 && j === 0) for (const [a, e, o] of OPS) {
+    if (o.kind !== 'compute') continue;
+    const w = win(x, a, e, 0.15); if (o.op.includes('backward')) b = Math.max(b, w); else f = Math.max(f, w);
+  }
+  if (s === 0 && j === 0) f = Math.max(f, win(x, UE_X, UE_X + UDUR[k], 0.12));
+  const end = B.hand + 0.1;
+  if (s === 0) f = Math.max(f, win(x, LOAD(j, k) + 0.3, end, 0.3));
+  else f = Math.max(f, win(x, arrive(s, j, k), end, 0.12));
+  // stage 1 takes the wrapped activations into its second group of layers: a deeper blue from their arrival
+  const w2 = s === 0 ? win(x, SEND(3) + (STAGGER * hash(4 * 4096 + j * 4 + k) + (1 - STAGGER)) * SEND_DUR, end, 0.12) : 0;
+  return mix(mix(I, mix(F, hexRgb(RAMP_F[6]), w2), f), Bk, b);
+}
+
+// a particle: solid head for what the forward pass carries, a ring for gradients
+function particle(g, col, x0, y0, x1, y1, r, a, shape = 'dot') {
+  if (a <= 0.01) return;
+  if (shape === 'dot') return comet(g, col, x0, y0, x1, y1, r, a);
+  const ang = Math.atan2(y1 - y0, x1 - x0) || 0;
+  g.globalAlpha = a * 0.4; g.strokeStyle = col; g.lineWidth = r * 0.8; g.lineCap = 'round';
+  g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
+  g.globalAlpha = a; g.fillStyle = col; g.save(); g.translate(x1, y1); g.rotate(ang); g.beginPath();
+  if (shape === 'chev') { const h = r * 2.1; g.moveTo(h * 0.6, 0); g.lineTo(-h * 0.5, -h * 0.55); g.lineTo(-h * 0.5, h * 0.55); }
+  else { const h = r * 1.5; g.moveTo(h, 0); g.lineTo(0, -h); g.lineTo(-h, 0); g.lineTo(0, h); }
+  g.closePath(); g.fill(); g.restore();
+}
+const lerp2 = (A, Bp, u) => [A[0] + (Bp[0] - A[0]) * u, A[1] + (Bp[1] - A[1]) * u];
+
+function draw(t, now, x) {
+  const W = fig.clientWidth - 32;
+  if (!L || L.W !== W) L = layout(W);
+  const g = fitCanvas(cv, L.F, L.H); g.clearRect(0, 0, L.F, L.H);
+  const intro = x < INTRO, { k, S, inv } = intro ? camera(x) : { k: 1, S: (a, b) => [a, b], inv: (a, b) => [a, b] };
+  HIT = HOV ? hitWorld(...inv(HOV.x, HOV.y)) : null; // labels show only for what the pointer (or a tap) is on
+  INTRO_X = intro ? x : null;
+  readV();
+  const cs = L.c * k, pr = Math.min(6, Math.max(1.3, L.c * 0.17 * Math.sqrt(k)));
+  // stage labels, on hover only
+  ST.forEach((Sg, s) => {
+    const al = intro ? sm((x - (s === 0 ? DE - 0.4 : B.pipe + 0.4)) / 0.6) : 1; if (al <= 0) return;
+    const b = L.blocks[s], top = QPOS[s][1] === 0;
+    const [lx, ly] = S(b.x, top ? b.y : b.y + L.Q), y = top ? ly - 9 : ly + 17;
+    g.globalAlpha = al; g.font = font(13, 600); g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'alphabetic';
+    g.fillText('stage ' + (s + 1), lx, y); g.globalAlpha = 1;
+  });
+  // GPUs
+  const outline = intro ? clamp01((cs - 24) / 30) : 0;
+  const order = intro ? win(x, B.pipe + 0.9, INTRO + 99, 0.4) : 1; // the stage order, in the gutters: 1 to 2 to 3 to 4, back to 1
+  if (order > 0) { const Q = L.Q, b = L.blocks, mid = (a, c) => [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
+    const tri = ([x0, y0], dx, dy) => { const [px, py] = S(x0, y0), r = 5, nx = -dy, ny = dx;
+      g.beginPath(); g.moveTo(px + dx * r, py + dy * r); g.lineTo(px - dx * r + nx * r, py - dy * r + ny * r); g.lineTo(px - dx * r - nx * r, py - dy * r - ny * r); g.closePath(); g.fill(); };
+    g.globalAlpha = 0.55 * order; g.fillStyle = C.muted;
+    tri(mid([b[0].x + Q, b[0].y + Q / 2], [b[1].x, b[1].y + Q / 2]), 1, 0); tri(mid([b[1].x + Q / 2, b[1].y + Q], [b[2].x + Q / 2, b[2].y]), 0, 1);
+    tri(mid([b[2].x, b[2].y + Q / 2], [b[3].x + Q, b[3].y + Q / 2]), -1, 0); tri(mid([b[3].x + Q / 2, b[3].y], [b[0].x + Q / 2, b[0].y + Q]), 0, -1);
+    g.globalAlpha = 1; }
+  ST.forEach((Sg, s) => {
+    const sf = intro ? null : (optAt(t) ? C.muted : stageFill(s, t)); // the optimizer step: dark grey, not black
+    for (let j = 0; j < NPS; j++) for (let kk = 0; kk < 4; kk++) {
+      const al = intro ? sm((x - appearAt(s, j, kk)) / (s === 0 && j > 0 ? 0.12 : 0.45)) : 1; if (al <= 0) continue;
+      const [px, py] = S(...gpuP(s, j, kk));
+      if (px < -cs || py < -cs || px > L.F + cs || py > L.H + cs) continue;
+      g.globalAlpha = al;
+      if (!intro && !optAt(t)) cell(g, px, py, cs, shownAt(s, t), C.idle);
+      else { g.fillStyle = sf || rgb(introFill(s, j, kk, x)); g.fillRect(px - cs / 2, py - cs / 2, cs, cs); }
+      if (outline > 0) { g.globalAlpha = al * outline; g.strokeStyle = C.line; g.lineWidth = 1; g.strokeRect(px - cs / 2 + 0.5, py - cs / 2 + 0.5, cs - 1, cs - 1); }
+    }
+  });
+  g.globalAlpha = 1;
+  if (intro) drawNodeMarks(g, x, S, cs);
+  const small = clamp01((44 - cs) / 16), off = 1 - sm((x - B.hand) / 0.35);
+  const ld = x >= B.stage ? 1 : small;
+  if (intro && ld > 0) drawInputs(g, S, cs, (s, j, kk) => s === 0 ? (x < B.stage ? 0 : [off * sm((x - LOAD(j, kk)) / 0.3), (1 - easeIO(clamp01((x - LOAD(j, kk)) / 0.3))) * -cs * 1.4]) : small * off * sm((x - arrive(s, j, kk)) / 0.15));
+  if (!intro && HIT && HIT.k != null) { const [hx, hy] = S(...gpuW(HIT.s, HIT.j, HIT.k)); g.strokeStyle = C.ink; g.lineWidth = 2; g.strokeRect(hx - cs / 2 - 2, hy - cs / 2 - 2, cs + 4, cs + 4); }
+  // 9. each stage's input marks show until its first pass has started, not for the whole step
+  if (!intro) drawInputs(g, S, cs, s => clamp01((t - FIRST_IN[s] + 0.008) / 0.008) * (1 - clamp01((t - FIRST_IN[s] - 0.03) / 0.01)));
+  g.save(); if (isDark()) g.globalCompositeOperation = 'lighter';
+  const hop = (s, j, q, a, bwd, col) => { // col: the step's ink tokens (the tour keeps blue and orange)
+    const [ka, kb, f] = trip(s * 4096 + j * 8 + q, now), A = S(...gpuP(s, j, ka)), Bp = S(...gpuP(s, j, kb));
+    particle(g, col || (bwd ? V.bwdnv : V.fwdnv), ...lerp2(A, Bp, easeIO(Math.max(0, f - 0.22))), ...lerp2(A, Bp, easeIO(f)), pr, col ? a * 0.55 : a, 'dot');
+  };
+  const sync = (s, a, bwd) => {
+    for (let i = 0; i < NPS - 1; i++) {
+      const kk = i % 4, f = (now * 0.8 + hash(s * 977 + i * 4 + kk)) % 1, A = S(...gpuW(s, SNAKE[i], kk)), Bp = S(...gpuW(s, SNAKE[i + 1], kk));
+      particle(g, bwd ? V.bwdnet : V.fwdnet, ...lerp2(A, Bp, easeIO(Math.max(0, f - 0.3))), ...lerp2(A, Bp, easeIO(f)), pr, a * Math.sin(Math.PI * f), 'dia');
+    }
+  };
+  // a send: every GPU of one stage to the same-position GPU of the next (or previous), each a little apart in time
+  const sendSheet = (a, b, u, al, bwd) => {
+    for (let j = 0; j < NPS; j++) for (let kk = 0; kk < 4; kk++) {
+      const off = STAGGER * hash((b) * 4096 + j * 4 + kk), v = clamp01((u - off) / (1 - STAGGER)); if (v <= 0 || v >= 1) continue;
+      const A = S(...gpuW(a, j, kk)), Bp = S(...gpuW(b, j, kk));
+      particle(g, bwd ? V.bwdnet : V.fwdnet, ...lerp2(A, Bp, easeIO(Math.max(0, v - 0.15))), ...lerp2(A, Bp, easeIO(v)), pr, al * Math.min(1, v / 0.15, (1 - v) / 0.1), 'chev');
+    }
+  };
+  if (intro) { drawToken(g, x, S, pr); drawLoad(g, x, S, pr); drawLossBadge(g, x, S, cs); }
+  else drawStepMarks(g, t, S, now);
+  if (intro) {
+    for (let j = 0; j < NPS; j++) { // every node of the stage exchanges tokens while it computes
+      const a = win(x, NODE_LOAD(j) + 0.35, B.hand + 0.1, 0.35);
+      if (a > 0) hop(0, j, 0, a); if (a > 0 && x < B.pipe) hop(0, j, 1, a);
+    }
+    for (let s = 1; s < NS; s++) for (let j = 0; j < NPS; j += 1) { const a = win(x, SEND(s - 1) + SEND_DUR, B.hand + 0.1, 0.35); if (a > 0) hop(s, j, 0, a); }
+    for (let s = 0; s < NS; s++) { const u = (x - SEND(s)) / SEND_DUR; if (u > 0 && u < 1) sendSheet(s, (s + 1) % NS, u, 0.9, false); } // s = 3: the wrap to stage 1
+  } else {
+    ST.forEach((Sg, s) => { const a = busy(s, t), p = [0.006, 0, 0.0024, 0.0036, 0.0048, 0.0072, 0.0096, 0.012].map(d => passAt(s, Math.max(0, t - d))).find(Boolean); /* colour follows the fill fade, and keeps the last pass while fading out */ if (a) for (let j = 0; j < NPS; j++) for (let q = 0; q < 2; q++) hop(s, j, q, a, false, C.ink); });
+    ST.forEach((Sg, s) => { for (const y of syncAt(s, t)) sync(s, 1, y.kind === 'gradient reduce-scatter'); });
+    for (const p of D.pipelineSends) { const u = (t - p.start) / SEND_VIS; if (u > 0 && u < 1) sendSheet(p.fromStage - 1, p.toStage - 1, u, 0.85, p.dir === 'backward'); } // as the banner draws them
+  }
+  g.restore();
+  const sw = L.wide ? fig.clientWidth - 32 : Math.min(W, 520); // wide: the strip spans the figure under the field
+  SG = drawStrip(strip, intro ? 0 : t, sw, { wait: holdAt != null ? clamp01((performance.now() - holdAt) / 400) : 0, syncF: V.fwdnet, syncB: V.bwdnet, a2aF: V.fwdnv, a2aB: V.bwdnv, reveal: intro ? ST.map((_, s) => easeIO(clamp01((x - LANE(s)) / 0.45))) : null });
+  if (intro && x > B.hand) ST.forEach((Sg, s) => { // outline the quadrant whose schedule lane is being drawn
+    const a = win(x, LANE(s), LANE(s) + 0.3, 0.1); if (a <= 0) return;
+    const b = L.blocks[s], [ax, ay] = S(b.x, b.y), w = L.Q * k;
+    const x0 = Math.max(1, ax - 5), y0 = Math.max(1, ay - 5), x1 = Math.min(L.F - 1, ax + w + 5), y1 = Math.min(L.H - 1, ay + w + 5);
+    g.globalAlpha = a; g.strokeStyle = C.ink; g.lineWidth = 1.5; g.beginPath(); g.roundRect(x0, y0, x1 - x0, y1 - y0, 6); g.stroke(); g.globalAlpha = 1;
+  });
+}
+function busy(s, t) { let n = 0; for (let q = 0; q < 6; q++) if (passBack(s, t, q * 0.0024)) n++; return n / 6; }
+
+// one token per GPU: attention at home, the router splits each into 7 copies, the dispatch all-to-all sends every GPU's
+// copies to every other GPU, experts, the combine all-to-all brings them back, unpermute; then gradients retrace it
+function drawToken(g, x, S, pr) {
+  if (x > UE0) return;
+  const fade = sm((x - B.tok + 0.3) / 0.3) * (1 - sm((x - (UE0 - 0.3)) / 0.3)), rr = Math.min(pr, 4.2) * 1.05;
+  const sf = sm((x - B.gpu1) / 0.4) * (1 - sm((x - (UE0 - 0.3)) / 0.3)); // the expert cells show from the first GPU
+  const spread = (k, i) => { const H = home(k), a = -Math.PI / 2 + i / 7 * 2 * Math.PI; return [H[0] + Math.cos(a) * L.c * 0.13, H[1] + Math.sin(a) * L.c * 0.13]; };
+  const at = (a, b) => clamp01((x - a) / (b - a)), o = i => OPS[i], P = (k, i) => slotW(TPICKS[k][i]);
+  let pos = null, ring = false; // pos(k, i) for copy i of GPU k's token, or null: one dot at each home
+  if (x < o(1)[0]) pos = null;
+  else if (x < o(2)[0]) { const u = sm(at(o(1)[0], o(1)[1])); pos = (k, i) => lerp2(home(k), spread(k, i), u); }
+  else if (x < o(3)[0]) { const u = at(o(2)[0], o(2)[1]); pos = (k, i, d = 0) => lerp2(spread(k, i), P(k, i), easeIO(clamp01(u - d))); }
+  else if (x < o(4)[0]) pos = P;
+  else if (x < o(5)[0]) { const u = at(o(4)[0], o(4)[1]); pos = (k, i, d = 0) => lerp2(P(k, i), spread(k, i), easeIO(clamp01(u - d))); }
+  else if (x < o(6)[0]) { const u = sm(at(o(5)[0], o(5)[1])); pos = (k, i) => lerp2(spread(k, i), home(k), u); }
+  else if (x < o(7)[0]) { const u = at(o(6)[0], o(6)[1]); ring = true; pos = (k, i, d = 0) => lerp2(home(k), P(k, i), easeIO(clamp01(u - d))); }
+  else if (x < o(8)[0]) { ring = true; pos = P; }
+  else if (x < o(9)[0]) { const u = at(o(8)[0], o(8)[1]); ring = true; pos = (k, i, d = 0) => lerp2(P(k, i), home(k), easeIO(clamp01(u - d))); }
+  else { ring = true; pos = null; }
+  // expert slots of the node, the picked ones marked
+  const sl = clamp01((L.c * camera(x).k - 60) / 30) * sf;
+  if (sl > 0) for (let e = 0; e < 128; e++) {
+    const [px, py] = S(...slotW(e)), w = L.c * 0.07 * camera(x).k, picked = ALLPICKS.includes(e) && fade > 0.5;
+    const busyE = picked && (opAt(x)?.[2].op.startsWith('experts'));
+    g.globalAlpha = sl * (picked ? 1 : 0.7); g.fillStyle = busyE ? C.ink : picked ? C.line : C.bg;
+    g.fillRect(px - w / 2, py - w / 2, w, w);
+  }
+  g.globalAlpha = 1;
+  if (fade <= 0) return;
+  for (let k = 0; k < GPN; k++) {
+    const lu = sm((x - (LOSS[1] - 0.4)) / 0.4), col = ring ? V.bwdnv : '#' + mix(hexRgb(V.fwdnv), hexRgb(V.bwdnv), x < LOSS[0] ? 0 : Math.round(lu * 8) / 8).map(v => Math.round(v).toString(16).padStart(2, '0')).join(''); // ring: the backward half
+    if (!pos) { const [px, py] = S(...home(k)); particle(g, col, px, py, px, py, rr * 1.15, fade); continue; }
+    for (let i = 0; i < 7; i++) particle(g, col, ...S(...pos(k, i, 0.18)), ...S(...pos(k, i)), rr, fade);
+  }
+}
+
+// uneven load: many tokens, popular experts on GPU 3; it computes longest, the others wait, then the combine
+function drawLoad(g, x, S, pr) {
+  if (x < UE0 - 0.1 || x > B.stage + 0.1) return;
+  const fade = sm((x - UE0) / 0.3) * (1 - sm((x - (B.stage - 0.3)) / 0.3)), k = camera(x).k, r = Math.min(pr, 4) * 0.6;
+  const homeU = (q, i) => { const [cx, cy] = gpuW(0, 0, q); return [cx - L.c * 0.36 + i * L.c * 0.144, cy - L.c * 0.05]; };
+  const at = c => { const [sx, sy] = slotW(c.e); return [sx + ((c.n % 3) - 1) * L.c * 0.026, sy + (Math.floor(c.n / 3) % 3 - 1) * L.c * 0.026]; };
+  const sl = clamp01((L.c * k - 60) / 30) * fade;
+  if (sl > 0) for (let e = 0; e < 128; e++) { // expert slots, darker while that GPU's experts compute
+    const q = Math.floor(e / 32), [px, py] = S(...slotW(e)), w = L.c * 0.07 * k, used = UCOPIES.some(c => c.e === e);
+    const busyE = used && x >= UE_X && x < UE_X + UDUR[q];
+    g.globalAlpha = sl * (used ? 1 : 0.7); g.fillStyle = busyE ? C.ink : used ? C.line : C.bg; g.fillRect(px - w / 2, py - w / 2, w, w);
+  }
+  const wt = win(x, UE_X + Math.min(...UDUR), UE_C[0], 0.15) * fade; // while the others wait, frame the busiest GPU
+  if (wt > 0) { const q = ULOAD.indexOf(Math.max(...ULOAD)), [cx, cy] = S(...gpuW(0, 0, q)), hw = L.c * k / 2 + 4;
+    g.globalAlpha = wt; g.strokeStyle = C.ink; g.lineWidth = 2; g.beginPath(); g.roundRect(cx - hw, cy - hw, 2 * hw, 2 * hw, 5); g.stroke();
+    g.font = font(13, 600); g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'top'; g.fillText('GPU ' + (q + 1), cx - hw + 10, cy - hw + 9); g.globalAlpha = 1; }
+  const ud = easeIO(clamp01((x - UE_D[0]) / (UE_D[1] - UE_D[0]))), uc = easeIO(clamp01((x - UE_C[0]) / (UE_C[1] - UE_C[0])));
+  for (const c of UCOPIES) {
+    const H = homeU(c.t.k, c.t.i), T = at(c), v = x < UE_C[0] ? ud : 1 - uc, d = 0.15;
+    const v0 = x < UE_C[0] ? easeIO(clamp01((x - UE_D[0]) / (UE_D[1] - UE_D[0]) - d)) : 1 - easeIO(clamp01((x - UE_C[0]) / (UE_C[1] - UE_C[0]) - d));
+    particle(g, V.fwdnv, ...S(...lerp2(H, T, v0)), ...S(...lerp2(H, T, v)), r, fade);
+  }
+  g.globalAlpha = 1;
+}
+const LOSS_STEP = ST[3].compute.filter(c => c.pass === 'forward' && ST[3].compute.some(b => b.pass === 'backward' && Math.abs(b.start - c.end) < 1e-4)).map(c => c.end);
+const LAST_BWD_S = ST.map(S => Math.max(...S.compute.filter(c => c.pass === 'backward').map(c => c.end)));
+const lossOn = t => Math.max(0, ...LOSS_STEP.map(e => win(t, e - 0.006, e + 0.014, 0.003)));
+const biasOn = (s, t) => win(t, LAST_BWD_S[s], LAST_BWD_S[s] + 0.03, 0.003);
+// the loss badge beside stage 4's name: a turn from forward (blue) into backward (orange)
+function lossBadge(g, S, a) {
+  if (a <= 0) return;
+  const b = L.blocks[3], [lx, ly] = S(b.x, b.y + L.Q), y = ly + 17;
+  g.font = font(13, 600); const x0 = lx + g.measureText('stage 4').width + 14, named = HIT && HIT.s === 3; // beside the stage name
+  g.globalAlpha = a; g.lineWidth = 2; g.lineCap = 'round';
+  g.strokeStyle = V.fwdnv; g.beginPath(); g.moveTo(x0, y - 9); g.lineTo(x0 + 10, y - 9); g.stroke();
+  g.strokeStyle = V.bwdnv; g.beginPath(); g.arc(x0 + 10, y - 4.5, 4.5, -Math.PI / 2, Math.PI / 2); g.lineTo(x0 + 2, y); g.stroke();
+  g.fillStyle = V.bwdnv; g.beginPath(); g.moveTo(x0, y); g.lineTo(x0 + 4, y - 3); g.lineTo(x0 + 4, y + 3); g.fill();
+  g.font = font(12, 600); g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'alphabetic'; if (named) g.fillText('loss', x0 + 20, y);
+  g.globalAlpha = 1;
+}
+function drawLossBadge(g, x, S, cs) {
+  // no loss badge in the pipeline beat: with two groups per stage, the first lap ends at layer 24, not at the loss
+  // the token beat's loss moment is told by the text line and the card; the tokens turning orange show it
+}
+// the step: the loss turn at stage 4, and the router-bias sync after each stage's last backward (a sweep across its copies)
+function drawStepMarks(g, t, S, now) {
+  lossBadge(g, S, lossOn(t));
+  ST.forEach((Sg, s) => {
+    const a = biasOn(s, t); if (a <= 0) return;
+    const b = L.blocks[s], u = clamp01((t - LAST_BWD_S[s]) / 0.03), xx = b.x + L.Q * easeIO(u);
+    g.globalAlpha = a * 0.85; g.strokeStyle = C.ink; g.lineWidth = 1.5; g.setLineDash([2, 3]);
+    g.beginPath(); g.moveTo(xx, b.y - 3); g.lineTo(xx, b.y + L.Q + 3); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+  });
+}
+
+// each GPU's input, as a small mark in its corner: its own tokens (ink) on stage 1, received activations (amber) later
+function drawInputs(g, S, cs, show) {
+  const m = Math.min(5, Math.max(2, cs * 0.24));
+  ST.forEach((Sg, s) => {
+    g.fillStyle = C.ink; g.strokeStyle = C.ink; g.lineWidth = 1; // neutral: holding input is not activity
+    for (let j = 0; j < NPS; j++) for (let kk = 0; kk < 4; kk++) {
+      const v = show(s, j, kk), [a, dy] = Array.isArray(v) ? v : [v, 0]; if (a <= 0) continue;
+      const [px, py] = S(...gpuP(s, j, kk)), mm = m * (0.4 + 0.6 * a);
+      g.globalAlpha = a; if (s === 0) g.fillRect(px + cs / 2 - mm - 1, py - cs / 2 + 1 + dy, mm, mm); else g.strokeRect(px + cs / 2 - mm - 0.5, py - cs / 2 + 1.5 + dy, mm - 1, mm - 1);
+    }
+  });
+  g.globalAlpha = 1;
+}
+
+// GPU names while they are big, and node 1's frame
+function drawNodeMarks(g, x, S, cs) {
+  const tx = clamp01((cs - 70) / 25);
+  if (tx > 0) for (let kk = 0; kk < 4; kk++) {
+    if (!HIT || HIT.s !== 0 || HIT.j !== 0 || HIT.k !== kk) continue; // a GPU's name and experts, on hover only
+    const al = tx * sm((x - appearAt(0, 0, kk) - 0.2) / 0.4) * (1 - sm((x - D0) / 0.3)); if (al <= 0) continue;
+    const [px, py] = S(...gpuW(0, 0, kk)), x0 = px - cs / 2 + 8, y0 = py - cs / 2 + 7;
+    g.globalAlpha = al; g.textAlign = 'left'; g.textBaseline = 'top';
+    g.font = font(13, 600); g.fillStyle = C.ink; g.fillText('GPU ' + (kk + 1), x0, y0);
+    g.font = font(11); g.fillStyle = C.muted; g.fillText(`experts ${kk * 32 + 1} to ${kk * 32 + 32}`, x0, y0 + 17);
+  }
+  const nf = win(x, B.stage, B.pipe + 0.2, 0.4);
+  if (nf > 0) { // every copy keeps its frame: a node is the boundary its tokens never cross
+    const p = Math.max(1.5, cs * 0.08);
+    g.strokeStyle = C.line; g.lineWidth = 1;
+    for (let j = 0; j < NPS; j++) {
+      const al = nf * sm((x - appearAt(0, j, 0)) / 0.3); if (al <= 0) continue;
+      const [ax, ay] = S(...gpuP(0, j, 0)), [bx, by] = S(...gpuP(0, j, 3));
+      g.globalAlpha = al * 0.9; g.beginPath(); g.roundRect(ax - cs / 2 - p, ay - cs / 2 - p, bx - ax + cs + 2 * p, by - ay + cs + 2 * p, Math.min(6, p * 2)); g.stroke();
+    }
+    g.globalAlpha = 1;
+  }
+  const fr = sm((x - B.node - 0.6) / 0.4) * (1 - sm((x - B.stage - 0.2) / 0.5));
+  if (fr > 0) {
+    const [ax, ay] = S(...gpuW(0, 0, 0)), [bx, by] = S(...gpuW(0, 0, 3)), p = 6 + cs * 0.05;
+    g.globalAlpha = fr; g.strokeStyle = C.ink; g.lineWidth = 1.25; g.beginPath();
+    g.roundRect(ax - cs / 2 - p, ay - cs / 2 - p, bx - ax + cs + 2 * p, by - ay + cs + 2 * p, 6); g.stroke();
+    g.font = font(13, 600); g.fillStyle = C.ink; g.textAlign = 'left'; g.textBaseline = 'bottom'; if (HIT && HIT.s === 0 && HIT.j === 0) g.fillText('node 1', ax - cs / 2 - p, ay - cs / 2 - p - 5);
+  }
+  g.globalAlpha = 1;
+}
+
+// ---- sidebar ----
+const glyph = (cls, col) => `<i class="g ${cls}" style="background:${col};border-color:${col};color:${col}"></i>`;
+const row = (gl, nm, pf, mv, dim) => `<div class="row${dim ? ' dim' : ''}">${gl}<span class="nm">${nm}</span>${pf ? `<span class="pf">${pf}</span>` : ''}${mv ? `<span class="mv">${mv}</span>` : ''}</div>`;
+function introText(x) {
+  let n = 0; for (let s = 0; s < NS; s++) for (let j = 0; j < NPS; j++) for (let kk = 0; kk < 4; kk++) if (x >= appearAt(s, j, kk) + 0.2) n++;
+  if (x >= B.pipe && x < B.pay) n = NPS * GPN * (1 + [0, 1, 2].filter(s => x >= SEND(s) + SEND_DUR * 0.5).length); // stage by stage as each lights
+  if (x >= B.hand) return { count: '', line: 'the schedule of one step: every stage starts empty' };
+  if (x >= B.pay) return { count: '1,024 GPUs', line: 'every GPU of the cluster, in four pipeline stages' };
+  const count = n ? n.toLocaleString('en-US') + (n === 1 ? ' GPU' : ' GPUs') : '';
+  let line = '';
+  if (x >= B.gpu1) line = 'holds a share of the routed experts of its layers';
+  if (x >= B.node) line = 'a node: its GPUs share their experts over NVLink';
+  if (x >= B.tok) line = 'every GPU starts with its own tokens, one shown per GPU';
+  if (x >= LOSS[0]) line = 'the forward ends at the loss, on the last stage; the backward starts there';
+  if (x >= B.bwd) line = 'backward: gradients retrace the path';
+  if (x >= UE0) line = 'the popular experts here sit on one GPU';
+  if (x >= UE_X + Math.min(...UDUR)) line = 'the other GPUs of the node wait for the busiest one';
+  if (x >= D0) line = 'copies of the node hold the same layers';
+  if (x >= B.load) line = 'every copy loads its own micro-batch';
+  if (x >= B.a2a) line = 'tokens cross between GPUs only inside their own node';
+  if (x >= B.pipe) line = 'the stages split the layers between them';
+  if (x >= SEND(0)) line = 'later stages wait for the activations of the stage before (the pipeline bubble)';
+  return { count, line };
+}
+function runCard(x) { // the build: the one operation running now, as the profile names it
+  const o = opAt(x);
+  if (o) {
+    const e = o[2], ring = e.op.includes('backward');
+    const gl = e.kind === 'all-to-all' ? glyph('dot', ring ? V.bwdnv : V.fwdnv) : glyph('', ring ? C.bwd : C.fwd);
+    return row(gl, e.op, '', '');
+  }
+  if (x >= LOSS[0] && x < LOSS[1]) return row(glyph('', C.ink), 'loss', '', '');
+  if (x >= UE_D[0] && x < UE_D[1]) return row(glyph('dot', V.fwdnv), PL.forward[2].op, '', 'many more copies to the popular experts');
+  if (x >= UE_X && x < UE_C[0]) {
+    const busy = [0, 1, 2, 3].filter(k => x < UE_X + UDUR[k]);
+    if (!busy.length) return row(glyph('dot', V.fwdnv), PL.forward[4].op, '', '');
+    return busy.length === GPN ? row(glyph('', C.fwd), 'experts', '', '') : row(glyph('', C.idle), `experts: GPU ${busy.map(k => k + 1).join(', ')} still busy`, '', '');
+  }
+  if (x >= UE_C[0] && x < UE_C[1]) return row(glyph('dot', V.fwdnv), PL.forward[4].op, '', '');
+  if (x >= B.load && x < B.a2a) return row(glyph('', C.ink), 'its own micro-batch, on every GPU', '', '');
+  if (x >= B.a2a && x < SEND(0)) return row(glyph('dot', V.fwdnv), 'dispatch and combine all-to-all, every node', '', 'over NVLink');
+  if (x >= SEND(0) && x < B.pay) return row(glyph('chev', V.fwdnet), 'activations to the next stage', '', '');
+  return '';
+}
+function runList(t, off) { // the step: every kind of work and traffic, lit while it runs somewhere (off: all dim)
+  const any = f => ST.some((_, s) => f(s));
+  const pass = p => any(s => ST[s].compute.some(c => c.pass === p && t >= c.start && t < c.end)), sends = sendsAt(t), sy = kind => any(s => syncAt(s, t).some(y => y.kind === kind));
+  const both = any(s => { const q = passesAt(s, t); return q.f && q.b; });
+  const swatch = bg => `<i class="g" style="background:${bg};border-color:transparent"></i>`, mb = 'micro‑batch';
+  const row_ = (gl, nm, a, b2, dim) => row(gl, nm, a, b2, off || dim);
+  return [
+    row_(glyph('', C.ink), 'input', '', '', t < FIRST_IN[0] || t > Math.max(...FIRST_IN) + 0.04),
+    row_(swatch(`linear-gradient(90deg, ${RAMP_F[0]}, ${RAMP_F[7]})`), `forward, one shade per ${mb}`, '', '', !pass('forward')),
+    row_(swatch(`linear-gradient(90deg, ${RAMP_B[0]}, ${RAMP_B[7]})`), `backward, one shade per ${mb}`, '', '', !pass('backward')),
+    row_(swatch(`linear-gradient(135deg, ${RAMP_F[4]} 30%, ${RAMP_B[4]} 70%)`), 'both at once', '', '', !both),
+    row_(glyph('dot', C.ink), 'tokens, then their gradients, to and from experts in the node', '', '', !pass('forward') && !pass('backward')),
+    row_(...(sends.length && sends.every(p => p.dir === 'backward') ? [glyph('chevl', V.bwdnet)] : [glyph('chev', V.fwdnet)]), 'activations to the next stage, gradients to the previous', '', '', !sends.length),
+    row_(`<i class="g" style="background:${C.muted};border-color:transparent;height:3px;align-self:center"></i>`, 'copies of a stage share weights and sum gradients', '', '', !sy('parameter all-gather') && !sy('gradient reduce-scatter')),
+    row_(glyph('', C.muted), `optimizer step (${D.optimizer})`, '', '', !optAt(t)),
+  ].join('');
+}
+
+// ---- clock and controls ----
+let clock = REDUCE ? INTRO + 0.85 / RATE : 0, playing = !REDUCE, last = null, holdAt = null, visible = true, speed = 1;
+const fmtX = v => (+v.toFixed(v < 1 ? 2 : 1)).toString();
+document.getElementById('spd').oninput = e => { speed = 2 ** +e.target.value; };
+const stepT = () => Math.max(0, Math.min(TOTAL, (clock - INTRO) * RATE));
+const chapEl = document.getElementById('chap');
+CHAPTERS.forEach(([name, at]) => { const b = document.createElement('button'); b.textContent = name; b.onclick = () => { clock = at; holdAt = null; playing = true; }; chapEl.appendChild(b); });
+// the tour slows where a subtitle needs longer to read (250 ms a word) than its beats last; the uneven beat has its
+// own subtitle, so it is timed on its own part of the token scale
+const tourRate = x => { if (x >= INTRO) return 1; let i = 0; CHAPTERS.forEach(([, at], n) => { if (x >= at) i = n; });
+  let a = CHAPTERS[i][1], b = CHAPTERS[i + 1] ? CHAPTERS[i + 1][1] : INTRO, sub = SUBS[i];
+  if (i === 1) { if (x >= UE0) { a = UE0; sub = SUB_UNEVEN; } else b = UE0; }
+  return Math.min(1, (b - a) / Math.max(2.2, sub.split(' ').length * 0.25)); };
+function frame(ms) {
+  if (window.__dHidden) { last = null; requestAnimationFrame(frame); return; }
+  const dt = last == null ? 0 : Math.min(0.1, (ms - last) / 1000); last = ms;
+  if (playing && visible) {
+    if (clock >= INTRO && stepT() >= TOTAL) { holdAt ??= ms; if (ms - holdAt > readT([0, END_SUB]) * 1000) { clock = INTRO; holdAt = null; } }
+    else clock += dt * speed * tourRate(clock);
+  }
+  draw(stepT(), REDUCE ? 0 : clock, clock); // its play clock, so nothing moves while paused
+  tickPanel();
+  requestAnimationFrame(frame);
+}
+let lastRun = '';
+function tickPanel() {
+  const intro = clock < INTRO, t = stepT();
+  const set = (id, v) => { const e = document.getElementById(id); if (e.textContent !== v) e.textContent = v; };
+  if (intro) { const { count, line } = introText(clock); set('kick', clock >= B.hand ? '1,024 GPUs, one training step' : '\u00a0'); set('now', count); set('phase', ''); set('slow', fmtX(speed) + '×'); }
+  else { set('now', '1,024 GPUs'); set('slow', fmtX(speed) + '×'); }
+  const hand = clock >= B.hand, run = document.getElementById('run'), html = intro && !hand ? runCard(clock) : runList(t, intro);
+  if (html !== lastRun) { run.innerHTML = html; lastRun = html; run.classList.toggle('card', intro && !hand); }
+  strip.classList.toggle('off', intro && !hand);
+  let cur = 0; CHAPTERS.forEach(([, at], i) => { if (clock >= at) cur = i; });
+  chapEl.querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === cur));
+  set('sub', holdAt != null ? END_SUB : !intro ? LSUB[phaseOf(LSUB, t)][1] : hand ? 'Next, one full step as Megatron schedules it.'
+    : cur === 1 && clock >= UE0 ? SUB_UNEVEN : SUBS[cur]); // the step: the banner's narration, then its end hold
+  const b = document.getElementById('play'), h = playing ? PAUSE : PLAY; if (b.dataset.s !== h) { b.innerHTML = h; b.dataset.s = h; }
+}
+requestAnimationFrame(frame);
+new IntersectionObserver(es => { visible = es[0].isIntersecting; }).observe(document.body);
+document.getElementById('play').onclick = () => { playing = !playing; };
+addEventListener('keydown', e => {
+  if (e.code === 'Space') { e.preventDefault(); playing = !playing; }
+  if (e.code === 'ArrowRight') { const nx = CHAPTERS.find(([, at]) => at > clock + 0.05); if (nx) { clock = nx[1]; holdAt = null; } }
+});
+let HOV = null, HIT = null, lastPtr = 'mouse';
+function hitWorld(wx, wy) {
+  for (let s = 0; s < NS; s++) {
+    const b = L.blocks[s], lab = 26;
+    if (wx < b.x - 4 || wx > b.x + L.Q + 4 || wy < b.y - (QPOS[s][1] === 0 ? lab : 4) || wy > b.y + L.Q + (QPOS[s][1] === 0 ? 4 : lab)) continue;
+    const q = Math.max(0, Math.min(7, Math.floor((wx - b.x) / (L.node + L.gn)))), rr = Math.max(0, Math.min(7, Math.floor((wy - b.y) / (L.node + L.gn))));
+    const lx = wx - b.x - q * (L.node + L.gn), ly = wy - b.y - rr * (L.node + L.gn);
+    return { s, j: rr * 8 + q, k: (lx > L.c ? 1 : 0) + (ly > L.c ? 2 : 0) };
+  }
+  return null;
+}
+cv.addEventListener('pointerdown', e => { lastPtr = e.pointerType; if (e.pointerType !== 'mouse') { const r = cv.getBoundingClientRect(); HOV = { x: e.clientX - r.left, y: e.clientY - r.top }; } });
+cv.addEventListener('click', () => { if (lastPtr !== 'mouse') return; if (clock < INTRO) { const nx = CHAPTERS.find(([, at]) => at > clock + 0.05); if (nx) { clock = nx[1]; playing = true; } } });
+const SP = { seek: v => { clock = INTRO + Math.max(0, Math.min(TOTAL, v)) / RATE; holdAt = null; }, set playing(v) { playing = v; } };
+wireStrip(strip, SP, () => SG);
+window.__dStep = (v, play) => { clock = INTRO + v / RATE; holdAt = null; playing = play; };
+window.__dT = () => (clock >= INTRO ? stepT() : null);
+window.__dL = () => { const W = fig.clientWidth - 32; if (!L || L.W !== W) L = layout(W); return L; };
+window.__seek = v => { playing = false; SP.seek(v); };
+window.__B = { ...B, LOSS, UE0, UE_D, UE_X, UE_C, UDUR, ULOAD, SEND2: B.pipe + 1.3 + 2 * 1.2 };
+window.__intro = v => { playing = false; clock = v; };
+window.__dTour = () => { clock = 0; holdAt = null; playing = true; }; // the tour from one GPU
+cv.addEventListener('pointermove', e => {
+  if (e.pointerType === 'mouse') { const r0 = cv.getBoundingClientRect(); HOV = { x: e.clientX - r0.left, y: e.clientY - r0.top }; }
+  if (clock < INTRO) { tip.style.display = 'none'; cv.style.cursor = 'pointer'; return; }
+  cv.style.cursor = 'default';
+  const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+  for (let s = 0; s < NS; s++) {
+    const b = L.blocks[s];
+    if (x < b.x || y < b.y || x >= b.x + L.Q || y >= b.y + L.Q) continue;
+    const q = Math.floor((x - b.x) / (L.node + L.gn)), rr = Math.floor((y - b.y) / (L.node + L.gn));
+    const lx = x - b.x - q * (L.node + L.gn), ly = y - b.y - rr * (L.node + L.gn), k = (lx > L.c ? 1 : 0) + (ly > L.c ? 2 : 0);
+    const node = s * NPS + rr * 8 + q, gpu = node * GPN + k, t = stepT(), p = passAt(s, t);
+    tip.innerHTML = gpuInfo(s, rr * 8 + q, k, t);
+    tip.style.display = 'block'; const w = tip.offsetWidth, cx = x + cv.offsetLeft;
+    tip.style.left = (x + 16 + w < L.F ? cx + 16 : cx - w - 16) + 'px'; tip.style.top = (y + cv.offsetTop + 14) + 'px';
+    return;
+  }
+  tip.style.display = 'none';
+});
+cv.addEventListener('pointerleave', e => { tip.style.display = 'none'; if (e.pointerType === 'mouse') HOV = null; });
+window.__hover = (x, y) => { HOV = x == null ? null : { x, y }; };
+
+
+// ================= header mode =================
+if (new URLSearchParams(location.search).get('title') === '0') document.documentElement.classList.add('notitle');
+window.__dHidden = true; // the full figure sleeps until the banner opens
+{ const cb = document.getElementById('close'); cb.style.display = ''; document.querySelector('#fig .panel .bar').appendChild(cb); } // collapse sits with the controls
+// a stage's fill fades through its own tint rather than blending blue into orange, which would read as a third colour
+function stageFill(s, t) { return rgb(fillAt(s, t)); }
+function fillAt(s, t) {
+  const I = hexRgb(C.idle), cur = [0, 0.0024, 0.0048, 0.0072, 0.0096, 0.012].map(d => passBack(s, t, d));
+  const p = cur.find(Boolean); if (!p) return I;
+  const share = cur.filter(q => q && q.pass === p.pass).length / cur.length;
+  return mix(I, hexRgb(p.pass === 'forward' ? C.fwd : C.bwd), share);
+}
+const hroot = document.getElementById('hroot'), bcv = document.getElementById('bcv'), full = document.getElementById('full');
+let bClk = 0, BL = null, bt = REDUCE ? 0.2 : 0, bPlaying = !REDUCE, bLast = null, morph = 0, morphTo = 0, morphFrom = null, hFull = 0;
+// the opening build, in seconds: the whole cluster first (what the banner is about), "1 square = 1 GPU" fading in;
+// then one node's four GPUs grow out of the grid into a row across the banner (zoom), all four lit as one node, while
+// one token's copies go to the experts it picked, on any GPU of the node, and come back; then one token from each
+// other GPU (mates); the row shrinks back into the grid (back to node), the node doubles until it fills stage 1, then
+// the other stages land; then the loop
+const BB = { hold: 3.1, zoom: 4.0, mates: 7.4, back: 10.6, node: 11.2, dbl: 11.4, D: 0.3, st: 14.2, SD: 0.35, end: 16.5 };
+let bu = REDUCE ? BB.end : 0, BK = null;
+function appB(s, j, k) {
+  if (s) return BB.st + (s - 1) * BB.SD;
+  if (j) return BB.dbl + Math.floor(Math.log2(j)) * BB.D;
+  return k ? BB.node : 0;
+}
+// a GPU's opacity in the build: all shown during the opening hold, the others fading as the camera dives, back as placed
+const alphaB = (s, j, k) => Math.max(s || j || k ? 1 - clamp01((bu - BB.hold) / 0.6) : 0, clamp01((bu - appB(s, j, k)) / 0.25));
+function buildKeys() { // [time the camera arrives, bounding box of the GPUs placed by then]
+  const box = f => { const a = [1e9, 1e9, -1e9, -1e9], h = BL.c / 2;
+    for (let s = 0; s < NS; s++) for (let j = 0; j < NPS; j++) for (let k = 0; k < 4; k++) if (f(s, j, k)) {
+      const [x, y] = bGpu(s, j, k); a[0] = Math.min(a[0], x - h); a[1] = Math.min(a[1], y - h); a[2] = Math.max(a[2], x + h); a[3] = Math.max(a[3], y + h); }
+    return a; };
+  const node = box((s, j) => !s && !j);
+  const all = box(() => true), K = [[BB.hold, all], [BB.zoom, all], [BB.zoom + 0.5, node], [BB.dbl - 0.05, node]]; // the grid stays put while the row grows out of it
+  // the camera arrives just as each set of copies lands, so none is drawn outside the frame
+  for (let d = 0; d < 6; d++) K.push([BB.dbl + d * BB.D + 0.06, box((s, j) => !s && j < 2 ** (d + 1))]);
+  for (let i = 1; i < NS; i++) K.push([BB.st + (i - 1) * BB.SD + 0.06, box(s => s <= i)]);
+  return K;
+}
+function buildCam(u) {
+  const all = BK[BK.length - 1][1], i = BK.findIndex(q => q[0] > u);
+  let b = all;
+  if (i === 0) b = BK[0][1];
+  else if (i > 0) { const [t0, b0] = BK[i - 1], [t1, b1] = BK[i], v = easeIO(clamp01((u - t0) / (t1 - t0))); b = b0.map((x, n) => x + (b1[n] - x) * v); }
+  const FW = all[2] - all[0], FH = all[3] - all[1], kmax = Math.min(FH * 0.9, 230) / BL.c;
+  return { k: Math.max(1, Math.min(kmax, FW / (b[2] - b[0]), FH / (b[3] - b[1]))), x: (b[0] + b[2]) / 2, y: (b[1] + b[3]) / 2, fx: (all[0] + all[2]) / 2, fy: (all[1] + all[3]) / 2 };
+}
+
+function bannerLayout(W) {
+  const wide = W >= 640, gi = wide ? 2 : 1.5, gn = wide ? 5 : 3, qg = wide ? 22 : 34, pad = wide ? 22 : 12; // phones: the lower blocks' chips sit between the rows
+  const showTitle = !document.documentElement.classList.contains('notitle');
+  const ts = wide ? Math.round(Math.min(30, W * 0.032)) : 22, ty = showTitle ? 16 : pad, top = (showTitle ? ty + ts * 1.1 + 5 : ty) + (wide ? 14 : 12) + (wide ? (showTitle ? 100 : 70) : 22); // the lens room (wide), clear of the title when shown; the subtitle (2 lines under 900 px, up to 3 on phones); wide: a row of notes
+  const lh = wide ? 12 : 10, gp = wide ? 5 : 4, chips = wide ? 8 + 2 * 17 + 10 : 16, strip = 4 * (2 * lh + 1 + gp);
+  const sub = wide ? 44 : 26, subH = wide ? 48 : 70; // the narration, under the schedule's key: two lines wide, three on phones
+  const below = chips + strip + sub + subH + (wide ? 16 : 52); // wide: the button sits on the key row // chips under the blocks (wide), the schedule, its key and the button
+  let H = 0; // the content sets the height: chips and the two-row schedule need more than the template's 5:2 box
+  const per = wide ? 4 : 2, fit = wide ? Math.min((W - 2 * pad - 3 * qg) / 4, 190) : (W - 2 * pad - qg) / 2;
+  const c = Math.floor((fit - 8 * gi - 7 * gn) / 16 * 2) / 2, node = 2 * c + gi, Q = 8 * node + 7 * gn;
+  const pos = wide ? [[0, 0], [1, 0], [2, 0], [3, 0]] : [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const tw = per * Q + (per - 1) * qg, th = (wide ? 1 : 2) * Q + (wide ? 0 : qg);
+  H = Math.round(top + th + below);
+  const x0 = (W - tw) / 2, y0 = wide ? top + Math.max(0, (H - top - below - th) / 2) : top;
+  const blocks = pos.map(([a, b]) => ({ x: x0 + a * (Q + qg), y: y0 + b * (Q + qg) }));
+  return { W, H, wide, gi, gn, c, node, Q, ts, ty, lh, gp, blocks, stripY: blocks[wide ? 0 : 2].y + Q + chips, subY: blocks[wide ? 0 : 2].y + Q + chips + strip + sub };
+}
+function bGpu(s, j, k) {
+  const b = BL.blocks[s], nx = b.x + (j % 8) * (BL.node + BL.gn), ny = b.y + Math.floor(j / 8) * (BL.node + BL.gn);
+  return [nx + (k % 2) * (BL.c + BL.gi) + BL.c / 2, ny + (k >> 1) * (BL.c + BL.gi) + BL.c / 2];
+}
+// where each GPU sits in the full figure, relative to the banner box, so the stretch lands exactly on it
+let target = null;
+function measureTarget() {
+  const DL = window.__dL(), r0 = hroot.getBoundingClientRect(), rc = document.getElementById('cv').getBoundingClientRect();
+  const ox = rc.left - r0.left, oy = rc.top - r0.top, pos = [];
+  for (let s = 0; s < NS; s++) for (let j = 0; j < NPS; j++) for (let k = 0; k < 4; k++) { const [x, y] = gpuW(s, j, k); pos.push([ox + x, oy + y]); }
+  target = { pos, c: DL.c };
+  hFull = full.scrollHeight;
+}
+function bannerFill(s, t, now) { // the stage's colour, faded over 12 ms of step time; the optimizer step greys every GPU briefly
+  if (bEnd > 0) return hexRgb(C.idle); // the end-of-step hold: the step is over, every GPU idle
+  const f = mix(hexRgb(C.idle), hexRgb(C.muted), win(t, OPT.start, OPT.end, 0.004)); // the optimizer step: dark grey
+  // a stage whose passes are done stays grey while its copies sum their gradients (the reduce-scatter of D's sync)
+  return !passAt(s, t) && syncAt(s, t).some(y => y.kind === 'gradient reduce-scatter') ? mix(hexRgb(C.idle), hexRgb(C.muted), 0.5) : f;
+}
+const lastPass = (s, t) => [0.006, 0, 0.0024, 0.0048, 0.0072, 0.0096, 0.012].map(d => passBack(s, t, d)).find(Boolean);
+
+// ===== overlap version: blue is a forward, orange a backward, and each micro-batch has its own shade (and number) =====
+// light ramps only (the dark steps read heavy): OKLCH lightness 0.88 down to 0.62, chroma 0.06 up to 0.16, at the hues
+// of the dataviz palette's blue (#2a78d6) and orange (#eb6834), so micro-batch k has the same lightness in both passes
+const RAMP_F = ['#bfdafe', '#accefc', '#9ac2f8', '#87b7f5', '#75abf1', '#639fed', '#4f92e8', '#3b86e4'];
+const RAMP_B = ['#fbcbba', '#f7bca7', '#f2ad94', '#ec9d81', '#e68e6e', '#e07e5a', '#da6e46', '#d35e2f'];
+const shade = c => (c.pass === 'forward' ? RAMP_F : RAMP_B)[(c.microbatch - 1) % 8];
+const onShade = m => '#16181d'; // number text: dark on every shade (all light)
+function passesAt(s, t) { // the forward and the backward a stage runs at t (a paired block has both)
+  const r = { f: null, b: null };
+  for (const c of ST[s].compute) if (t >= c.start && t < c.end) r[c.pass === 'forward' ? 'f' : 'b'] = c;
+  return r;
+}
+const passFill = (g, c) => shade(c);
+const GAP = 0.03; // step seconds: a stage idle for less than this between two passes keeps showing the last one
+function shownAt(s, t) {
+  const r = passesAt(s, t); if (r.f || r.b) return r;
+  let prev = null, next = false;
+  for (const c of ST[s].compute) { if (c.end <= t && t - c.end < GAP && (!prev || c.end > prev.end)) prev = c; if (c.start > t && c.start - t < GAP) next = true; }
+  if (!prev || !next) return r;
+  for (const c of ST[s].compute) if (Math.abs(c.end - prev.end) < 1e-9) r[c.pass === 'forward' ? 'f' : 'b'] = c; // a pair ends together
+  return r;
+}
+// a GPU running both passes: its forward micro-batch's blue (top left) and its backward micro-batch's orange (bottom
+// right), joined by a soft diagonal seam blended in OKLCH with the hue turning through violet and pink, so the middle
+// is a warm tone and never the grey an sRGB blend gives; drawn from a cached sprite per pair of shades
+function hex2lab(h) {
+  const f = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  const [r, g, b] = [1, 3, 5].map(i => f(parseInt(h.slice(i, i + 2), 16)));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b), m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b), q = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * q, 1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * q, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * q];
+}
+function lch2css(L, C, H) {
+  const a = C * Math.cos(H), b = C * Math.sin(H);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3, m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3, q = (L - 0.0894841775 * a - 1.2914855480 * b) ** 3;
+  const f = v => { v = Math.max(0, Math.min(1, v)); return Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055)); };
+  return `rgb(${f(4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * q)},${f(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * q)},${f(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * q)})`;
+}
+function blendStops(cf, cb) { // blue (hue ~259 deg) to orange (~41 deg) the increasing way: violet, then pink
+  const [L1, a1, b1] = hex2lab(cf), [L2, a2, b2] = hex2lab(cb), C1 = Math.hypot(a1, b1), C2 = Math.hypot(a2, b2);
+  let h1 = Math.atan2(b1, a1), h2 = Math.atan2(b2, a2); if (h2 < h1) h2 += 2 * Math.PI;
+  return [0, 0.2, 0.4, 0.6, 0.8, 1].map(u => [u, lch2css(L1 + (L2 - L1) * u, C1 + (C2 - C1) * u + 0.02 * Math.sin(Math.PI * u), h1 + (h2 - h1) * u)]);
+}
+const PAIR = {};
+function pairSprite(cf, cb) {
+  const key = cf + cb; if (PAIR[key]) return PAIR[key];
+  const n = 48, cv = document.createElement('canvas'); cv.width = cv.height = n;
+  const x = cv.getContext('2d'), gr = x.createLinearGradient(0, 0, n, n);
+  // each pass keeps its own colour over a third of the square; the blend is only the seam between them
+  for (const [u, col] of blendStops(cf, cb)) gr.addColorStop(0.3 + 0.4 * u, col);
+  gr.addColorStop(0, cf); gr.addColorStop(1, cb);
+  x.fillStyle = gr; x.fillRect(0, 0, n, n); return PAIR[key] = cv;
+}
+// one GPU: idle grey, its forward (blue), its backward (orange), or both (the gradient)
+function cell(g, x, y, c, ps, base) {
+  if (!ps.f && !ps.b) { g.fillStyle = base; g.fillRect(x - c / 2, y - c / 2, c, c); return; }
+  if (ps.f && ps.b) { g.drawImage(pairSprite(shade(ps.f), shade(ps.b)), x - c / 2, y - c / 2, c, c); return; }
+  g.fillStyle = passFill(g, ps.f || ps.b); g.fillRect(x - c / 2, y - c / 2, c, c);
+}
+// the lens: one node of stage 2 magnified over the banner, each GPU labelled with the micro-batches it runs
+let LENS = { x: null, a: 0 }; // the lens's eased centre and opacity
+function drawLens(g, t, now, al, hv) { // hv: the hovered GPU, whose node the lens shows; else a fixed node of stage 2
+  if (bu < BB.end) return; // the build has its own story
+  const ls = hv ? hv.s : t < 0 ? null : 1, z = 30, gi = 3, nw = 2 * z + gi, c = BL.c, p = 2.5; // fades out in the end hold
+  LENS.a += ((ls == null ? 0 : 1) - LENS.a) * 0.15; if (LENS.a < 0.02) return;
+  const s = ls == null ? LENS.s ?? 1 : ls, j = hv ? hv.j : 6; LENS.s = s;
+  const [ax, ay] = bGpu(s, j, 0), [bx] = bGpu(s, j, 3), fw = bx - ax + c + 2 * p, cx = (ax + bx) / 2;
+  LENS.x = cx; // the node's centre: fixed, or the hovered node's (a lens drifting across the banner pulled the eye)
+  const fx = LENS.x - fw / 2, fy = ay - c / 2 - p; // the frame glides with the lens
+  const lx = Math.max(6, Math.min(BL.W - nw - 6, LENS.x - nw / 2)), ly = BL.blocks[0].y - 34 - nw;
+  g.globalAlpha = al * LENS.a; g.strokeStyle = C.muted; g.lineWidth = 1;
+  g.beginPath(); g.roundRect(fx, fy, fw, fw, 3); g.stroke();
+  g.setLineDash([3, 3]); g.beginPath(); g.moveTo(lx - 3, ly + nw + 3); g.lineTo(fx, fy); g.moveTo(lx + nw + 3, ly + nw + 3); g.lineTo(fx + fw, fy); g.stroke(); g.setLineDash([]);
+  g.beginPath(); g.roundRect(lx - 3, ly - 3, nw + 6, nw + 6, 5); g.stroke();
+  const ps = t < 0 || optAt(t) ? { f: null, b: null } : shownAt(s, t), P_ = k => [lx + (k % 2) * (z + gi), ly + (k >> 1) * (z + gi)];
+  const half = (q, x, y, h) => { g.fillStyle = passFill(g, q); g.fillRect(x, y, z, h);
+    g.font = font(11, 700); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = onShade(q.microbatch);
+    const lab = `${q.microbatch} ${q.pass === 'forward' ? '→' : '←'}`; g.fillText(lab, x + z / 2, y + h / 2 + 0.5); };
+  const tag = (q, x, y, al_) => { g.font = font(11, 700); g.textAlign = al_; g.textBaseline = 'middle'; g.fillStyle = onShade(q.microbatch);
+    g.fillText(`${q.microbatch} ${q.pass === 'forward' ? '→' : '←'}`, x, y); };
+  for (let k = 0; k < 4; k++) { const [x, y] = P_(k);
+    if (ps.f && ps.b) g.drawImage(pairSprite(shade(ps.f), shade(ps.b)), x, y, z, z);
+    else if (ps.f || ps.b) { g.fillStyle = passFill(g, ps.f || ps.b); g.fillRect(x, y, z, z); }
+    else { g.fillStyle = C.idle; g.fillRect(x, y, z, z); } }
+  for (let k = 0; k < 4; k++) { const [x, y] = P_(k);
+    if (ps.f && ps.b) { tag(ps.f, x + 3, y + 8, 'left'); tag(ps.b, x + z - 3, y + z - 7, 'right'); }
+    else if (ps.f || ps.b) tag(ps.f || ps.b, x + z / 2, y + z / 2 + 0.5, 'center'); }
+  g.font = `${Math.max(12, Math.min(16, BL.W * 0.016))}px ${HAND}`; g.fillStyle = C.muted; g.textAlign = 'right'; g.textBaseline = 'middle';
+  const lab = hv ? `node ${s * NPS + j + 1}, stage ${s + 1}` : 'one node', right = lx < 200; // the label on the side with room
+  g.textAlign = right ? 'left' : 'right'; g.fillText(lab, right ? lx + nw + 12 : lx - 12, ly + nw / 2);
+  g.globalAlpha = 1;
+}
+// hover: the GPU under the pointer, outlined, and a tooltip with its place, its layers and experts, and what it runs
+let BH = null; // pointer position in banner pixels, or null
+const btip = document.getElementById('btip');
+function gpuAt(x, y) {
+  for (let s = 0; s < NS; s++) { const b = BL.blocks[s], p = BL.node + BL.gn, q = Math.floor((x - b.x) / p), r = Math.floor((y - b.y) / p);
+    if (q < 0 || r < 0 || q > 7 || r > 7) continue;
+    const lx = x - b.x - q * p, ly = y - b.y - r * p, k = (lx > BL.c + BL.gi / 2 ? 1 : 0) + (ly > BL.c + BL.gi / 2 ? 2 : 0);
+    if (lx > BL.node || ly > BL.node) return null; // in the gap between nodes
+    return { s, j: r * 8 + q, k }; }
+  return null;
+}
+function gpuInfo(s, j, k, t) { // the tooltip of one GPU: its place, its layers and experts, what it runs at t (t < 0: none)
+  const node = s * NPS + j, gpu = node * GPN + k, ps = t < 0 ? { f: null, b: null } : passesAt(s, t);
+  const E = D.model.experts / D.parallelism.ep, run = q => `${q.pass} of micro-batch ${q.microbatch} <span class="m">(layers ${layersOf(s, q.chunk)})</span>`;
+  const sum = !ps.f && !ps.b && t >= 0 && syncAt(s, t).some(y_ => y_.kind === 'gradient reduce-scatter');
+  const now = ps.f && ps.b ? `${run(ps.f)}<br>and the ${run(ps.b)}` : ps.f || ps.b ? run(ps.f || ps.b)
+    : t >= 0 && optAt(t) ? 'the optimizer step' : sum ? 'summing gradients with its copies' : 'waiting';
+  return `<b>GPU ${(gpu + 1).toLocaleString('en-US')}</b> <span class="m">of 1,024, node ${node + 1} of ${NS * NPS}</span><br>`
+    + `stage ${s + 1}: layers ${D.parallelism.layersPerStage[s].map(r => r.join(' to ')).join(' and ')}<br>`
+    + `<span class="m">routed experts ${k * E + 1} to ${(k + 1) * E} of each MoE layer</span>` + (t < 0 ? '' : `<br>now: ${now}`);
+}
+function hoverGpu(g, t, h) {
+  if (!h) { btip.style.display = 'none'; return; }
+  const { s, j, k } = h, [x, y] = bGpu(s, j, k), c = BL.c;
+  g.strokeStyle = C.ink; g.lineWidth = 2; g.strokeRect(x - c / 2 - 2, y - c / 2 - 2, c + 4, c + 4);
+  btip.innerHTML = gpuInfo(s, j, k, t);
+  btip.style.display = 'block';
+  const tx = Math.min(BH.x + 16, BL.W - btip.offsetWidth - 6), ty = BH.y + 16 + btip.offsetHeight > BL.H ? BH.y - btip.offsetHeight - 12 : BH.y + 16;
+  btip.style.left = tx + 'px'; btip.style.top = ty + 'px';
+}
+bcv.addEventListener('pointermove', e => { const r = bcv.getBoundingClientRect(); BH = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+bcv.addEventListener('pointerdown', e => { const r = bcv.getBoundingClientRect(); BH = { x: e.clientX - r.left, y: e.clientY - r.top }; });
+bcv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') BH = null; });
+// the order of the stages: arrows in the gaps (wide: 1 to 4 in a row; phones: around the 2 x 2 grid)
+function drawStageOrder(g, al) {
+  const Q = BL.Q, b = BL.blocks, tri = (x, y, dx, dy) => { const r = 4.5, nx = -dy, ny = dx;
+    g.beginPath(); g.moveTo(x + dx * r, y + dy * r); g.lineTo(x - dx * r + nx * r, y - dy * r + ny * r); g.lineTo(x - dx * r - nx * r, y - dy * r - ny * r); g.closePath(); g.fill(); };
+  g.globalAlpha = al * 0.55; g.fillStyle = C.muted;
+  if (BL.wide) for (let i = 0; i < 3; i++) tri((b[i].x + Q + b[i + 1].x) / 2, b[i].y + Q / 2, 1, 0);
+  else { tri((b[0].x + Q + b[1].x) / 2, b[0].y + Q / 2, 1, 0); tri(b[1].x + Q - 8, (b[1].y + Q + b[2].y) / 2, 0, 1);
+    tri((b[3].x + Q + b[2].x) / 2, b[2].y + Q / 2, -1, 0); tri(b[3].x + Q - 8, (b[0].y + Q + b[3].y) / 2, 0, -1); }
+  g.globalAlpha = 1;
+}
+// a forward that wraps from stage 4 back to stage 1 for its second group of layers: on the wide banner it rises
+// out of its block, runs along a channel over the row and drops into stage 1
+function wrapArrow(g, A, Bp, v, al, col, pr) {
+  if (v <= 0) return;
+  const y = Math.min(...BL.blocks.map(b => b.y)) - 6, pts = [A, [A[0], y], [Bp[0], y], Bp];
+  const seg = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i][0], q[1] - pts[i][1])), len = seg.reduce((a, b) => a + b, 0);
+  const at = u => { let d = easeIO(clamp01(u)) * len, i = 0; while (i < seg.length - 1 && d > seg[i]) d -= seg[i++];
+    const f = seg[i] ? d / seg[i] : 0; return lerp2(pts[i], pts[i + 1], f); };
+  particle(g, col, ...at(v - 0.04), ...at(v), pr, al * Math.min(1, v / 0.1), 'chev');
+}
+const layersOf = (s, chunk) => D.parallelism.layersPerStage[s][chunk - 1].join(' to ');
+// the chips under (wide) or over (phones) each block: the micro-batches the stage holds now, one per pass
+function drawChips(g, t, al) {
+  const fs = BL.wide ? 12 : 11, sw = BL.wide ? 13 : 12;
+  g.globalAlpha = al; g.textBaseline = 'middle'; g.textAlign = 'left';
+  BL.blocks.forEach((b, s) => {
+    const ps = t < 0 ? { f: null, b: null } : shownAt(s, t);
+    let x = b.x, y = BL.wide ? b.y + BL.Q + 8 + sw / 2 : b.y - 8 - sw / 2;
+    if (!ps.f && !ps.b && t >= 0) { // between passes: what the stage does instead
+      const what = optAt(t) ? 'optimizer step' : syncAt(s, t).some(y_ => y_.kind === 'gradient reduce-scatter') ? 'summing gradients' : '';
+      if (what) { g.font = font(fs - 1); g.fillStyle = C.muted; g.fillText(what, x, BL.wide ? y + 17 : y); } }
+    for (const c of [ps.f, ps.b]) { if (!c) { if (BL.wide) y += 17; continue; }
+      g.fillStyle = passFill(g, c); g.beginPath(); g.roundRect(x, y - sw / 2, sw, sw, 3); g.fill();
+      g.font = font(fs, 700); g.fillStyle = C.ink; const lab = `${c.microbatch} ${c.pass === 'forward' ? '→' : '←'}`;
+      g.fillText(lab, x + sw + 4, y); x += sw + 4 + g.measureText(lab).width;
+      if (BL.wide) { g.font = font(fs - 1); g.fillStyle = C.muted; const ly = ` layers ${layersOf(s, c.chunk)}`; g.fillText(ly, x, y); x += g.measureText(ly).width; }
+      if (BL.wide) { x = b.x; y += 17; } else x += 10;
+    }
+  });
+  g.globalAlpha = 1;
+}
+
+function drawBanner(t, now) {
+  const W = hroot.clientWidth;
+  if (!BL || BL.W !== W) {
+    BL = bannerLayout(W); BK = buildKeys(); if (!morph) hroot.style.height = BL.H + 'px';
+    const bt_ = document.getElementById('btitle'); bt_.style.left = BL.blocks[0].x + 'px'; bt_.style.top = BL.ty + 'px'; bt_.style.right = BL.blocks[0].x + 'px'; bt_.querySelector('h2').style.fontSize = BL.ts + 'px';
+    const ob = document.getElementById('open'); // wide: on the key row, right-aligned with the field
+    if (BL.wide) { ob.style.right = (BL.W - BL.blocks[3].x - BL.Q) + 'px'; ob.style.bottom = 'auto'; ob.style.top = (BL.subY - 44 + 2) + 'px'; }
+    else { ob.style.right = ob.style.bottom = ob.style.top = ''; }
+    const bp = document.getElementById('bphase'); const side = Math.max(BL.blocks[0].x, (BL.W - 680) / 2); bp.style.left = side + 'px'; bp.style.top = BL.subY + 'px'; bp.style.right = side + 'px'; // a 680 px column
+  }
+  document.getElementById('btitle').style.opacity = document.getElementById('bphase').style.opacity = String(Math.max(0, 1 - morph * 2.5)); // the title steps aside as the banner stretches
+  const e = easeIO(morph), H = Math.round(BL.H + (hFull - BL.H) * e);
+  if (morph > 0) hroot.style.height = H + 'px';
+  const g = fitCanvas(bcv, W, morph > 0 ? H : BL.H); g.clearRect(0, 0, W, H);
+  readV();
+  const cam = bu < BB.end ? buildCam(bu) : null, bf = clamp01((bu - BB.end + 0.4) / 0.4); // bf: the build's last 0.4 s
+  const hold = bu < BB.end ? 1 - clamp01((bu - BB.hold) / 0.5) : 0, live = !cam || hold > 0, la = cam ? hold : 1; // the opening hold runs the loop
+  const c = (BL.c + ((target ? target.c : BL.c) - BL.c) * e) * (cam ? cam.k : 1), pr = Math.max(1.3, c * 0.17);
+  const P = (s, j, k) => { const a = bGpu(s, j, k); if (cam) return [cam.fx + (a[0] - cam.x) * cam.k, cam.fy + (a[1] - cam.y) * cam.k];
+    if (!e || !target) return a; const b = target.pos[(s * NPS + j) * 4 + k]; return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e]; };
+  ST.forEach((S, s) => {
+    const grey = mix(hexRgb(C.idle), hexRgb(C.line), 0.25); // placed GPUs show light grey (cells stay legible), then take the loop's colours
+    const sh = Math.max(bf, hold), ps = bEnd > 0 || optAt(t) || sh < 1 ? { f: null, b: null } : shownAt(s, t);
+    const base = rgb(mix(grey, bannerFill(s, t, now), sh));
+    for (let j = 0; j < NPS; j++) for (let k = 0; k < 4; k++) {
+      if (cam && !s && !j && bu >= BB.hold && bu < BB.node) continue; // the node row draws these
+      if (cam) { const a = alphaB(s, j, k); if (!a) continue; g.globalAlpha = a; }
+      const [x, y] = P(s, j, k); cell(g, x, y, c, ps, base);
+    }
+    g.globalAlpha = 1;
+  });
+  if (bf && e < 1) { // each block's stage number, beside its top-left corner
+    g.globalAlpha = bf * (1 - e); g.font = font(BL.wide ? 12 : 11, 600); g.fillStyle = C.muted; g.textAlign = 'right'; g.textBaseline = 'top';
+    g.textAlign = 'left'; g.textBaseline = 'bottom'; BL.blocks.forEach((b, s) => g.fillText(String(s + 1), b.x, b.y - 12)); g.globalAlpha = 1;
+  }
+  if (cam) buildDetail(g, P, c, pr, now);
+  if (cam && bu >= BB.hold && bu < BB.node) buildNode(g, P, c);
+  // (no "1 square = 1 GPU" note: the build's first line says it)
+  if (cam && !bf && !hold) return;
+  g.save(); // overlap version: no additive glow, the squares are saturated hues now
+  if (live) ST.forEach((S, s) => { // tokens go to experts on other GPUs of their node and back, while its stage runs a pass
+    const a = busy(s, t) * la; if (!a) return;
+    const cols = [C.ink, C.ink], pairedS = (q => q.f && q.b)(passesAt(s, t)); // tokens in ink; fainter on paired squares
+    for (let j = 0; j < NPS; j++) for (let q = 0; q < 2; q++) {
+      const [ka, kb, f] = trip(s * 4096 + j * 8 + q, now), A = P(s, j, ka), Bp = P(s, j, kb);
+      particle(g, cols[q], ...lerp2(A, Bp, easeIO(Math.max(0, f - 0.22))), ...lerp2(A, Bp, easeIO(f)), pr * (pairedS ? 0.65 : 0.85), a * (pairedS ? 0.25 : 0.55), 'dot');
+    }
+  });
+  for (const p of D.pipelineSends) { // pipeline sends, as the first site banner drew them: every GPU to its partner, a little apart, over SEND_VIS of step time
+    const u = (t - p.start) / SEND_VIS; if (!live || u <= 0 || u >= 1) continue;
+    const a = p.fromStage - 1, b = p.toStage - 1, bwd = p.dir === 'backward', wrap = BL.wide && !bwd && b < a, col = bwd ? V.bwdnet : V.fwdnet;
+    for (let j = 0; j < NPS; j++) for (let k = 0; k < 4; k++) {
+      const off = STAGGER * hash(b * 4096 + j * 4 + k), v = clamp01((u - off) / (1 - STAGGER)); if (v <= 0 || v >= 1) continue;
+      const A = P(a, j, k), Bp = P(b, j, k), al = 0.85 * Math.min(1, v / 0.15, (1 - v) / 0.1) * la;
+      if (wrap) wrapArrow(g, A, Bp, v, al, col, pr); // stage 4 back to stage 1 along the channel over the row
+      else particle(g, col, ...lerp2(A, Bp, easeIO(Math.max(0, v - 0.15))), ...lerp2(A, Bp, easeIO(v)), pr, al, 'chev');
+    }
+  }
+  g.restore();
+  if (e < 1) { // a slim schedule under the field, its playhead the loop's only clock
+    const al = (1 - e) * bf;
+    drawChips(g, bEnd > 0 ? -1 : t, al);
+    const x0 = BL.blocks[0].x + 14, x1 = BL.wide ? BL.blocks[3].x + BL.Q : BL.blocks[1].x + BL.Q, y0 = BL.stripY;
+    const wait = bEnd > 0 ? clamp01((readT([0, END_SUB]) - bEnd) / 0.4) * clamp01(bEnd / 0.3) : 0;
+    const w = x1 - x0, lh = BL.lh, gp = BL.gp, sh = 2 * lh + 1, tx = v => x0 + v / TOTAL * w;
+    g.globalAlpha = al;
+    const pts = { forward: [], backward: [] }, nums = []; // micro-batch 1 followed: its blocks joined in time order
+    ST.forEach((S, s) => S.compute.forEach(cb => { if (cb.microbatch !== 1) return;
+      const bx = tx(cb.start) + 0.5, bw = Math.max(1, tx(cb.end) - tx(cb.start) - 1), by = y0 + s * (sh + gp) + (cb.pass === 'forward' ? 0 : lh + 1);
+      pts[cb.pass].push([cb.start, bx + bw / 2, by + lh / 2, bx, by, bw]); }));
+    ST.forEach((S, s) => { const y = y0 + s * (sh + gp); g.fillStyle = C.idle; g.fillRect(x0, y, w, sh); });
+    ST.forEach((S, s) => { const y = y0 + s * (sh + gp);
+      if (wait) { // the hold: the stage's waiting time picked out (all but its passes and its own syncs)
+        g.fillStyle = rgb(mix(hexRgb(C.idle), hexRgb(C.muted), 0.4 * wait)); g.fillRect(x0, y, tx(OPT.start) - x0, sh);
+        g.fillStyle = C.idle; for (const cb of S.compute) g.fillRect(tx(cb.start) - 1.5, y, tx(cb.end) - tx(cb.start) + 3, sh); // a stage running either pass is not waiting (gaps under 3 px too: no grey slivers)
+        for (const y_ of S.sync) if (y_.kind === 'gradient reduce-scatter') g.fillRect(tx(y_.start) - 1.5, y, tx(y_.end) - tx(y_.start) + 3, sh); } // nor one summing its gradients
+      for (const cb of S.compute) {
+        const bx = tx(cb.start) + 0.5, bw = Math.max(1, tx(cb.end) - tx(cb.start) - 1), by = y + (cb.pass === 'forward' ? 0 : lh + 1);
+        g.fillStyle = passFill(g, cb); g.fillRect(bx, by, bw, lh);
+        if (bw >= 9) nums.push([String(cb.microbatch), bx + bw / 2, by + lh / 2 + 0.5, passFill(g, cb)]);
+      }
+      g.font = font(11, 600); g.fillStyle = C.muted; g.textAlign = 'right'; g.textBaseline = 'middle'; g.fillText(String(s + 1), x0 - 4, y + sh / 2); });
+    g.strokeStyle = C.ink; g.lineWidth = 1.2; mbPath(g, pts, lh); blockNums(g, nums, lh - 1);
+    g.lineWidth = 1.5; for (const k of ['forward', 'backward']) for (const q of pts[k]) g.strokeRect(q[3], q[4], q[5], lh);
+    if (bEnd <= 0) { // what has not run yet fades back, so the playhead reads as now
+      g.globalAlpha = al * (isDark() ? 0.45 : 0.6); g.fillStyle = isDark() ? C.line : C.bg; g.fillRect(tx(t), y0 - 1, x1 - tx(t) + 1, NS * (sh + gp)); // dark: towards grey, the background would turn the shades muddy
+      g.globalAlpha = al; g.fillStyle = C.ink; g.fillRect(tx(t) - 0.75, y0 - 3, 1.5, NS * (sh + gp) + 2); }
+    g.globalAlpha = 1;
+    BL.strip = { x0, x1: x0 + w, y1: y0 + NS * (sh + gp) };
+    drawStageOrder(g, al);
+    const hv = BH && al > 0.5 ? gpuAt(BH.x, BH.y) : null;
+    if (BL.wide) { drawNotes(g, al, false, true); drawLens(g, bEnd > 0 ? -1 : t, now, al, hv); }
+    else { // phones: the key under the schedule
+      const ky = BL.strip.y1 + 12, kw = 10; let kx = x0; g.font = font(11); g.textBaseline = 'middle'; g.textAlign = 'left';
+      const say = (txt, col) => { g.fillStyle = col || C.muted; g.fillText(txt, kx, ky); kx += g.measureText(txt).width; };
+      g.fillStyle = RAMP_F[4]; g.fillRect(kx, ky - kw / 2, kw, kw); kx += kw + 4; say('forward   ');
+      g.fillStyle = RAMP_B[4]; g.fillRect(kx, ky - kw / 2, kw, kw); kx += kw + 4; say('backward   ');
+      say('micro-batch'); }
+    hoverGpu(g, bEnd > 0 ? -1 : t, hv);
+  }
+}
+// drawio-style notes on the wide banner, as in the Smol Training Playbook's Excalidraw figures: Virgil lettering,
+// thin dashed curved arrows with open heads, one accent green; on phones the caption carries them
+const HAND = 'Virgil, "Comic Sans MS", cursive';
+document.fonts && document.fonts.load('16px Virgil');
+function handArrow(g, x0, y0, x1, y1) { // leaves the note sideways, turns, and lands head-on on its target
+  const mx = x1, my = y0, a = Math.atan2(y1 - my, x1 - mx);
+  g.setLineDash([4, 3]); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(mx, my, x1, y1); g.stroke(); g.setLineDash([]);
+  g.beginPath(); for (const d of [-0.5, 0.5]) { g.moveTo(x1, y1); g.lineTo(x1 - 7 * Math.cos(a + d), y1 - 7 * Math.sin(a + d)); } g.stroke();
+}
+function drawNotes(g, al, first, noTop) { // noTop: a hover lens takes the top row // first: only "1 square = 1 GPU", for the opening hold
+  const ink = C.muted, L = BL.blocks[0].x, R = BL.blocks[3].x + BL.Q;
+  const notes = ['1 square = 1 GPU']; // the lens (drawLens) replaces the dots note
+  let fs = Math.max(12, Math.min(16, BL.W * 0.016)), ws;
+  const measure = () => { g.font = `${fs}px ${HAND}`; ws = notes.map(n => g.measureText(n).width); };
+  for (measure(); fs > 11 && ws.reduce((a, b) => a + b) + 2 * 40 + 60 > R - L; fs -= 0.5) measure();
+  const gap = R - L - ws.reduce((a, b) => a + b), yb = BL.blocks[0].y - 20, c = BL.c;
+  const top = [];   // the top row of squares: [x, y, stage, node]
+  for (let s = 0; s < NS; s++) for (let j = 0; j < 8; j++) for (let k = 0; k < 2; k++) top.push([...bGpu(s, j, k), s, j]);
+  const near = x => top.reduce((b, q) => Math.abs(q[0] - x) < Math.abs(b[0] - x) ? q : b);
+  g.globalAlpha = al; g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 1.3; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+  let x = L;
+  notes.forEach((n, i) => {
+    if ((first && i) || noTop) return;
+    g.fillText(n, x, yb);
+    const side = i ? -1 : 1, sx = side > 0 ? x + ws[i] + 5 : x - 5, q = near(sx + side * 34);
+    const tx = i ? (bGpu(q[2], q[3], 0)[0] + bGpu(q[2], q[3], 1)[0]) / 2 : q[0];   // a square, then a node
+    handArrow(g, sx, yb - fs * 0.35, tx, q[1] - c / 2 - (i ? 5 : 2), side * 0.3);
+    if (i) { const [ax, ay] = bGpu(q[2], q[3], 0), [bx, by] = bGpu(q[2], q[3], 3), p = 2.5; // that node's frame
+      g.beginPath(); g.roundRect(ax - c / 2 - p, ay - c / 2 - p, bx - ax + c + 2 * p, by - ay + c + 2 * p, 3); g.stroke(); }
+    x += ws[i] + (gap || 0);
+  });
+  if (first) { g.globalAlpha = 1; return; }
+  // the key, under the schedule: the two textures on neutral swatches, then the micro-batch hues, numbered
+  const sy = Math.min(BL.strip.y1 + fs + 10, BL.H - 10), sw = Math.round(fs * 0.85);
+  let xx = BL.strip.x0;
+  const say = t => { g.fillStyle = ink; g.fillText(t, xx, sy); xx += g.measureText(t).width; };
+  const ramp = pass => { for (let m = 1; m <= 8; m++) { g.fillStyle = shade({ pass, microbatch: m }); g.beginPath(); g.roundRect(xx, sy - sw + 1, sw, sw, 2); g.fill();
+    g.font = font(sw - 3, 700); g.fillStyle = onShade(m); g.textAlign = 'center'; g.fillText(String(m), xx + sw / 2, sy - 1);
+    g.font = `${fs}px ${HAND}`; g.textAlign = 'left'; xx += sw + 2; } xx += 6; };
+  say('micro-batch:   forward '); ramp('forward'); say('  backward '); ramp('backward'); // leads with what the shades are; ends before the button
+  g.globalAlpha = 1;
+}
+// what one GPU holds, from the build's first frame: its share of the experts as small cells, and tokens moving
+// between them; the cells give way to plain squares once the camera has pulled back too far to draw them
+function buildDetail(g, P, c, pr, now) {
+  if (bu < BB.node) return;
+  const n = D.model.experts / D.parallelism.ep, cols = 8, rows = Math.ceil(n / cols), cs = c * 0.84 / cols, cells = cs >= 3;
+  const cell = (s, j, k, e) => { const [x, y] = P(s, j, k); return [x - c * 0.42 + (e % cols + 0.5) * cs, y - rows * cs / 2 + (Math.floor(e / cols) + 0.5) * cs]; };
+  g.save(); if (isDark()) g.globalCompositeOperation = 'lighter';
+  for (let s = 0; s < NS; s++) for (let j = 0; j < NPS; j++) {
+    let kn = 0; while (kn < 4 && bu >= appB(s, j, kn) + 0.15) kn++;   // the GPUs of this node placed so far
+    if (!kn) continue;
+    if (cells) { g.fillStyle = C.bg; g.globalAlpha = 0.7;
+      for (let k = 0; k < kn; k++) for (let e = 0; e < n; e++) { const [x, y] = cell(s, j, k, e); g.fillRect(x - cs * 0.35, y - cs * 0.35, cs * 0.7, cs * 0.7); } }
+    const home = id => { const [x, y] = P(s, j, Math.floor(hash(id * 3) * kn)); return [x, y + (cells ? c * 0.36 : 0)]; }; // the token's own GPU
+    const at = (id, m) => { const k = Math.floor(hash(id * 7 + m) * kn), e = Math.floor(hash(id * 13 + m) * n); return cells ? cell(s, j, k, e) : P(s, j, k); };
+    for (let q = 0; q < (s || j ? 1 : 3); q++) {
+      const id = s * 4096 + j * 8 + q, v = now * 0.9 + hash(id + 1) * 4, m = Math.floor(v), f = v - m, h = Math.floor(m / 2), out = m % 2 === 0;
+      const A = out ? home(id) : at(id, h), Bp = out ? at(id, h) : home(id);  // dispatch to a picked expert, then combine back
+      particle(g, V.fwdnv, ...lerp2(A, Bp, easeIO(Math.max(0, f - 0.22))), ...lerp2(A, Bp, easeIO(f)), cells ? Math.max(1.3, cs * 0.28) : pr, 1, 'dot');
+    }
+  }
+  g.restore();
+}
+// one node, large: four GPUs in a row (2 x 2 on phones), each with its share of the experts as cells and a row of
+// its tokens; a token lights up, its top-k experts light up, a copy goes to each and comes back (dispatch, combine).
+// Counts from D (the Alps run: 128 routed experts, EP 4 so 32 per GPU, top-7; the shared expert is not drawn); which
+// experts a token picks and the timing are scripted. One frame encloses the four GPUs as one node.
+const NPG = D.model.experts / D.parallelism.ep, TOPK = D.model.topk, NTOK = 8;
+const PICKS = [[0, 5], [0, 22], [1, 9], [1, 27], [2, 3], [2, 18], [3, 12]].slice(0, TOPK).map(([k, e]) => [k, e % NPG]); // the lit token's picks: [GPU, expert]
+const picksOf = k => Array.from({ length: TOPK }, (_, i) => [(k + 1 + i % 3) % 4, Math.floor(hash(k * 31 + i) * NPG)]);
+function tokTrip(u, d) { // a trip's phases over d seconds: [token lit, picks lit, copies out (0..1), copies back (0..1)]
+  const q = u / d; if (q < 0 || q > 1) return null;
+  return { lit: clamp01(q / 0.08) * (1 - clamp01((q - 0.92) / 0.08)), pick: clamp01((q - 0.08) / 0.18) * (1 - clamp01((q - 0.9) / 0.1)),
+    out: easeIO(clamp01((q - 0.26) / 0.24)), back: easeIO(clamp01((q - 0.62) / 0.24)) };
+}
+function buildNode(g, P, c) {
+  const L = BL.blocks[0].x, R = BL.wide ? BL.blocks[3].x + BL.Q : BL.blocks[1].x + BL.Q;
+  const T = BL.blocks[0].y, B = BL.wide ? BL.blocks[0].y + BL.Q : BL.blocks[2].y + BL.Q;
+  const cols = BL.wide ? 4 : 2, rows = 4 / cols, G = Math.min((R - L) / (cols + 0.12 * (cols - 1)), (B - T) / (rows + 0.12 * (rows - 1))), gp = 0.12 * G;
+  const ox = (L + R - cols * G - (cols - 1) * gp) / 2, oy = (T + B - rows * G - (rows - 1) * gp) / 2;
+  const mo = easeIO(clamp01((bu - BB.hold) / (BB.zoom - BB.hold))), mb = easeIO(clamp01((bu - BB.back) / (BB.node - BB.back)));
+  const slot = k => BL.wide ? [0, 2, 1, 3][k] : k; // the row's left pair folds into the node's left column, so no GPU crosses another
+  const rect = k => { const a = bGpu(0, 0, k), i = slot(k), row = [ox + (i % cols) * (G + gp) + G / 2, oy + Math.floor(i / cols) * (G + gp) + G / 2], d = P(0, 0, k);
+    return mb > 0 ? [...lerp2(row, d, mb), G + (c - G) * Math.min(1, mb * 1.7)] : [...lerp2(a, row, mo), BL.c + (G - BL.c) * mo]; }; // shrink ahead of the move so the GPUs never overlap
+  const det = Math.min(clamp01((mo - 0.6) / 0.4), 1 - clamp01(mb / 0.5)); // cells and tokens only while the row is large
+  const mate = 0.35 + 0.65 * clamp01((bu - BB.zoom) / 0.5); // the node's four GPUs read as one node from the start
+  // inside a GPU of size z centred at (x, y): the token row on top, the expert cells under it
+  const tok = (x, y, z, i) => { const w = z * 0.84 / NTOK; return [x - z * 0.42 + (i + 0.5) * w, y - z * 0.34]; };
+  const cell = (x, y, z, e) => { const cw = z * 0.84 / 8, r0 = y - z * 0.16; return [x - z * 0.42 + (e % 8 + 0.5) * cw, r0 + (Math.floor(e / 8) + 0.5) * cw]; };
+  // the trips running now: the single token of the first beat, then one token per GPU once the mates light up
+  const trips = [];
+  const t1 = tokTrip(bu - BB.zoom - 0.3, 3.2); if (t1) trips.push([0, 3, PICKS, t1]);
+  for (let k = 1; k < 4; k++) { const tk = tokTrip(bu - BB.mates - (k - 1) * 0.6, 2.0); if (tk) trips.push([k, (k * 3 + 5) % NTOK, picksOf(k), tk]); }
+  const R_ = [0, 1, 2, 3].map(rect), body = rgb(mix(hexRgb(C.idle), hexRgb(C.line), 0.12)), cellC = rgb(mix(hexRgb(C.idle), hexRgb(C.line), 0.45));
+  if (det) { // the node's frame, so the four GPUs do not read as the four pipeline stages
+    const bx = R_.map(r => r[0] - r[2] / 2), by = R_.map(r => r[1] - r[2] / 2), ex = R_.map(r => r[0] + r[2] / 2), ey = R_.map(r => r[1] + r[2] / 2), p = 0.06 * G;
+    g.globalAlpha = det; g.strokeStyle = C.muted; g.lineWidth = 1; g.setLineDash([4, 3]);
+    g.beginPath(); g.roundRect(Math.min(...bx) - p, Math.min(...by) - p, Math.max(...ex) - Math.min(...bx) + 2 * p, Math.max(...ey) - Math.min(...by) + 2 * p, 8); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.muted; g.font = font(BL.wide ? 12 : 11); g.textAlign = 'right'; g.textBaseline = 'bottom';
+    g.fillText('one node', Math.max(...ex) + p, Math.min(...by) - p - 3);
+  }
+  R_.forEach(([x, y, z], k) => {
+    const a = k ? mate : 1;
+    g.globalAlpha = a; g.fillStyle = body; g.strokeStyle = C.line; g.lineWidth = 1;
+    g.beginPath(); g.roundRect(x - z / 2, y - z / 2, z, z, Math.min(6, z * 0.04)); g.fill(); if (det) { g.globalAlpha = Math.max(a, 0.7); g.stroke(); }
+    if (!det) return;
+    g.globalAlpha = a * det;
+    const tw = z * 0.84 / NTOK * 0.62, cw = z * 0.84 / 8 * 0.72;
+    for (let i = 0; i < NTOK; i++) { const [tx, ty] = tok(x, y, z, i); const lit = trips.find(q => q[0] === k && q[1] === i);
+      g.fillStyle = lit ? rgb(mix(hexRgb(C.muted), hexRgb(V.fwdnv), lit[3].lit)) : C.muted; g.fillRect(tx - tw / 2, ty - tw / 2, tw, tw); }
+    for (let e = 0; e < NPG; e++) { const [cx, cy] = cell(x, y, z, e); g.fillStyle = cellC; g.fillRect(cx - cw / 2, cy - cw / 2, cw, cw); }
+  });
+  if (det) { // picked experts light up, also on the faint GPUs, then the copies go out and come back along faint paths
+    g.save();
+    for (const [k, i, picks, ph] of trips) {
+      const [x, y, z] = R_[k], src = tok(x, y, z, i), cw = z * 0.84 / 8 * 0.72, pr = Math.max(1.6, z * 0.016);
+      for (const [pk, e] of picks) {
+        const [px, py, pz] = R_[pk], dst = cell(px, py, pz, e);
+        g.globalAlpha = det * ph.pick; g.fillStyle = V.fwdnv; g.fillRect(dst[0] - cw / 2, dst[1] - cw / 2, cw, cw);
+        const f = ph.back ? 1 - ph.back : ph.out;
+        if (ph.out > 0) { g.globalAlpha = det * 0.28 * ph.pick; g.strokeStyle = V.fwdnv; g.lineWidth = 1; g.beginPath(); g.moveTo(...src); g.lineTo(...dst); g.stroke(); }
+        if (ph.out > 0 && ph.back < 1) particle(g, V.fwdnv, ...lerp2(src, dst, clamp01(f + (ph.back ? 0.12 : -0.12))), ...lerp2(src, dst, f), pr, det, 'dot'); // the tail trails the motion, never past the ends
+      }
+    }
+    g.restore();
+    { // name the two rows inside the first GPU, once
+      const [x, y, z] = R_[0]; g.globalAlpha = det * (1 - clamp01((bu - BB.mates) / 0.6)); g.fillStyle = C.muted; g.font = font(BL.wide ? 12 : 11); g.textAlign = 'left'; g.textBaseline = 'bottom';
+      g.fillText('tokens', x - z * 0.42, tok(x, y, z, 0)[1] - z * 0.05);
+      g.fillText('routed experts', x - z * 0.42, cell(x, y, z, 0)[1] - z * 0.06);
+    }
+  }
+  g.globalAlpha = 1;
+}
+// one subtitle per change: the build's four beats, then the step's phases; short phases are slowed down to be read
+const BSUB = [[0, 'Every square here is a GPU, and one training step of our MoE runs on all of them.'],
+  [BB.zoom, 'These four GPUs split the experts: each token is sent to every expert it picked, and the outputs return.'],
+  [BB.back, 'Copied over and over, that node fills the first pipeline stage; each copy trains on its own tokens.'],
+  [BB.st, "Three more stages, built the same way, hold the rest of the model's layers."]];
+// the loop names the colours as they first appear; the steady state gets its own line once stage 1 runs its first
+// backward; the gradient sum and the optimizer share the step's last line, the optimizer at the loop's own pace
+const STEADY = Math.min(...ST[0].compute.filter(c => c.pass === 'backward').map(c => c.start));
+// the first forward that wraps from stage 4 back to stage 1 (the second group of layers)
+const WRAP = Math.min(...D.pipelineSends.filter(p => p.dir === 'forward' && p.toStage < p.fromStage).map(p => p.start));
+// the first stage to run out of forwards, and the first gradient sum (one per group of layers, as its last backward ends)
+const DRAIN = Math.min(...ST.map(S => Math.max(...S.compute.filter(c => c.pass === 'forward').map(c => c.end))));
+const SYNC0 = Math.min(...ST.flatMap(S => S.sync.filter(x => x.kind === 'gradient reduce-scatter').map(x => x.start)));
+const LSUB = [[0, 'One at a time, micro-batches enter stage 1 and hand their activations down the pipeline.'],
+  [WRAP, 'Micro-batch 1 wraps back to stage 1; interleaving makes every micro-batch cross the stages twice.'],
+  [FIRST_BWD, 'At the loss, micro-batch 1 turns around and its backward runs the stages in reverse.'],
+  [STEADY, "Here is the heart of the schedule: each GPU runs one micro-batch's forward beside another's backward."],
+  [DRAIN, 'Stage 1 runs out of forwards first, then the others, leaving backwards only.'],
+  [SYNC0, 'The backwards wind down; a stage with none left sums its gradients with its copies.'],
+  [OPT.start, 'Once every stage has summed, the optimizer updates the weights on every GPU.']];
+// the end of each step holds on the full schedule, its waiting time picked out, before the next step
+const END_SUB = 'In the schedule, grey blocks mark time a stage ran no pass: the pipeline bubble.';
+const BRATE = RATE * 0.7, MINPH = 2.2; // step seconds per screen second; a phase lasts at least MINPH s on screen
+const phaseOf = (L, u) => L.reduce((i, q, n) => u >= q[0] ? n : i, 0);
+const readT = q => Math.max(MINPH, q[1].split(' ').length * 0.25); // 250 ms a word
+const rateAt = t => { const i = phaseOf(LSUB, t), len = (LSUB[i + 1] ? LSUB[i + 1][0] : TOTAL) - LSUB[i][0]; return Math.min(BRATE, len / readT(LSUB[i])); };
+let bSub = null, bEnd = 0; // bEnd: seconds left of the end-of-step hold
+function bannerSub() {
+  if (REDUCE || hroot.classList.contains('open')) return;
+  const t = bu < BB.end ? BSUB[phaseOf(BSUB, bu)][1] : bEnd > 0 ? END_SUB : LSUB[phaseOf(LSUB, bt)][1];
+  if (t !== bSub) document.getElementById('bphase').textContent = bSub = t;
+}
+
+function bFrame(ms) {
+  const dt = bLast == null ? 0 : Math.min(0.1, (ms - bLast) / 1000); bLast = ms;
+  if (!hroot.classList.contains('open')) {
+    if (bPlaying && bu < BB.end) { bu += dt; if (bu < BB.hold + 0.5) bt = (bt + dt * rateAt(bt)) % TOTAL; else bt = 0; } // the opening build, once (its hold runs the loop; the first real loop starts at 0)
+    else if (bPlaying && bEnd > 0) { bEnd -= dt; if (bEnd <= 0) bt = 0; } // the hold on the finished schedule, then the next step
+    else if (bPlaying) { bt += dt * rateAt(bt); if (bt >= TOTAL) { bt = TOTAL; bEnd = readT([0, END_SUB]); } }
+    if (morph !== morphTo) {
+      morph = morphTo > morph ? Math.min(morphTo, morph + dt / 0.9) : Math.max(morphTo, morph - dt / 0.8);
+      if (morph === 1) finishOpen();
+      if (morph === 0) { hroot.classList.add('collapsed'); hroot.style.height = BL.H + 'px'; }
+    }
+    if (bPlaying) bClk += dt; // the play clock: tokens and pulses stop with the animation
+    drawBanner(bt, REDUCE ? 0 : bClk);
+    bannerSub();
+  }
+  requestAnimationFrame(bFrame);
+}
+function open() {
+  if (morphTo === 1) return;
+  bu = BB.end; // opening mid-build: the banner jumps to the full grid first
+  hroot.classList.remove('collapsed');
+  window.__dStep(bt, false); window.__dHidden = false;   // let the full figure lay itself out (still invisible) to measure it
+  requestAnimationFrame(() => { measureTarget(); window.__dHidden = true; morphTo = 1; });
+}
+function finishOpen() {
+  hroot.classList.add('open', 'settling'); hroot.style.height = '';
+  if (REDUCE) window.__dStep(bt, false); else window.__dTour();
+  window.__dHidden = false;
+  requestAnimationFrame(() => hroot.classList.remove('settling'));
+}
+function close() {
+  const t = window.__dT(); bt = t == null ? 0 : t;
+  measureTarget(); window.__dHidden = true;
+  hroot.classList.remove('open'); hroot.style.height = hFull + 'px'; morph = 1; morphTo = 0;
+}
+document.getElementById('open').onclick = open;
+document.getElementById('close').onclick = close;
+requestAnimationFrame(bFrame);
+window.__bSeek = v => { bPlaying = false; bt = v; bu = BB.end; };
+window.__bBuild = v => { bPlaying = false; bu = v; };
+window.__bPlay = () => { bPlaying = true; };
+window.__bEnd = v => { bPlaying = false; bu = BB.end; bt = TOTAL; bEnd = v; }; // the end-of-step hold, v seconds left
+window.__open = open; window.__close = close;
+// embedded in the blog's hero: report height and state so the parent can fit the iframe
+if (window.parent !== window) {
+  let lastH = 0, lastOpen = null;
+  const post = () => {
+    const h = Math.ceil(document.body.getBoundingClientRect().height), o = !hroot.classList.contains('collapsed');
+    if (h !== lastH || o !== lastOpen) { lastH = h; lastOpen = o; parent.postMessage({ moeheadline: 1, h, open: o }, '*'); }
+  };
+  new ResizeObserver(post).observe(document.body);
+  new MutationObserver(post).observe(hroot, { attributes: true, attributeFilter: ['class', 'style'] });
+  post();
+}
+window.__morph = v => { bPlaying = false; if (!target) { hroot.classList.remove('collapsed'); window.__dStep(bt, false); window.__dHidden = false; requestAnimationFrame(() => { measureTarget(); window.__dHidden = true; morph = morphTo = v; }); } else morph = morphTo = v; };
+</script>
+</body>
+</html>

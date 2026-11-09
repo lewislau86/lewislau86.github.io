@@ -1,0 +1,13 @@
+终极 MoE 训练手册（中文社区译本）
+
+来源：https://github.com/leonyuhe/moe-handbook-zh
+固定提交：f4ce1efe9501478ceef5e7c9811dd1208bbaca8a
+原文：https://huggingface.co/spaces/huggingface/moe-blogpost
+
+本站复制了该提交 docs/ 中的完整阅读页及图片、交互图资源。
+正文与资源文件未经修改；仅省略预压缩的 .gz 副本、根目录的
+.nojekyll 和 robots.txt，并将本说明、LICENSE.txt、NOTICE.txt 放入目录。
+
+原作者：Nouamane Tazi、Leandro von Werra、Thomas Wolf（Hugging Face）
+中文译者：leonyuhe
+许可：CC BY 4.0；详见 LICENSE.txt 与 NOTICE.txt。

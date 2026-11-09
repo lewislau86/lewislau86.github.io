@@ -1,0 +1,26 @@
+MoE 训练终极手册（中文翻译版）
+================================
+
+原文
+----
+Title: The Ultimate MoE Training Handbook
+Authors: Nouamane Tazi, Leandro von Werra, Thomas Wolf
+Publisher: Hugging Face
+URL: https://huggingface.co/spaces/huggingface/moe-blogpost
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+
+中文翻译
+--------
+Translated and maintained by leonyuhe
+URL: https://github.com/leonyuhe/moe-handbook-zh
+License: CC BY 4.0
+
+说明
+----
+本仓库是上述作品的非官方简体中文翻译。正文、标题、图注与界面文案为译文；
+代码、命令行参数、变量名、URL、模型名、论文名、数字与公式保留原文。
+交互式图表的图内标签与脚注引用卡片保留英文原文。
+
+原文版权归 Hugging Face 及原作者所有。本译文按 CC BY 4.0 许可发布，
+使用时请保留原作者署名、原文链接、译者署名与本仓库链接。
