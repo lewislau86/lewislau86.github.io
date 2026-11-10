@@ -1,5 +1,5 @@
 ---
-title: "第 27 章：推理效率：prefill、decode 与 KV cache（notebook 在线查看）"
+title: "第 28 章：推理效率：prefill、decode 与 KV cache（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 27 章：推理效率：prefill、decode 与 KV cache
+# 第 28 章：推理效率：prefill、decode 与 KV cache
 
 配套教案：https://lewislau86.github.io/tinyllm/inference-efficiency
 
@@ -436,7 +436,7 @@ H100 的 3.35 TB/s 是公布值；200 GB/s 是台式机内存的常见量级，�
 ::: v-pre
 Llama 3 8B 在 H100 上的上限是每秒 417 个 token，和实践中单请求 decode 的速度在同一量级。
 这项估算说明的是：**decode 的天花板由带宽决定，批处理之所以有效，就是因为一次读进权重可以同时伺候多个请求。**
-批量把这份读取代价摊薄，是[第 31 章](https://lewislau86.github.io/tinyllm/batching)的主题。
+批量把这份读取代价摊薄，是[第 32 章](https://lewislau86.github.io/tinyllm/batching)的主题。
 :::
 
 ::: v-pre

@@ -103,7 +103,7 @@
     ]
   },
   {
-    "text": "第五部分 · 数据与训练",
+    "text": "第五部分 · 预训练：数据与训练",
     "collapsed": false,
     "items": [
       {
@@ -147,11 +147,11 @@
         "link": "/tinyllm/hyperparameter-tuning"
       },
       {
-        "text": "第 24 章 · 大规模训练稳定性",
+        "text": "第 25 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
       },
       {
-        "text": "第 25 章 · 稀疏专家（MoE）",
+        "text": "第 26 章 · 稀疏专家（MoE）",
         "link": "/tinyllm/mixture-of-experts"
       }
     ]
@@ -161,19 +161,19 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 26 章 · 自回归生成",
+        "text": "第 27 章 · 自回归生成",
         "link": "/tinyllm/generation"
       },
       {
-        "text": "第 27 章 · 推理效率：prefill、decode 与 KV cache",
+        "text": "第 28 章 · 推理效率：prefill、decode 与 KV cache",
         "link": "/tinyllm/inference-efficiency"
       },
       {
-        "text": "第 28 章 · 注意力内核与算子融合",
+        "text": "第 29 章 · 注意力内核与算子融合",
         "link": "/tinyllm/attention-kernels"
       },
       {
-        "text": "第 29 章 · 量化",
+        "text": "第 30 章 · 量化",
         "link": "/tinyllm/quantization"
       }
     ]
@@ -183,40 +183,89 @@
     "collapsed": true,
     "items": [
       {
-        "text": "第 30 章 · 投机解码",
-        "link": "/tinyllm/speculative-decoding"
+        "text": "第五部分 · 预训练（补）",
+        "items": [
+          {
+            "text": "第 24 章 · 缩放定律与算力预算",
+            "link": "/tinyllm/scaling-laws"
+          }
+        ]
       },
       {
-        "text": "第 31 章 · 批处理与调度",
-        "link": "/tinyllm/batching"
+        "text": "第六部分 · 推理（续）",
+        "items": [
+          {
+            "text": "第 31 章 · 投机解码",
+            "link": "/tinyllm/speculative-decoding"
+          },
+          {
+            "text": "第 32 章 · 批处理与调度",
+            "link": "/tinyllm/batching"
+          },
+          {
+            "text": "第 33 章 · KV 显存管理：分页与前缀缓存",
+            "link": "/tinyllm/kv-memory"
+          },
+          {
+            "text": "第 34 章 · 推理优化：逐项对照与推理服务",
+            "link": "/tinyllm/inference-optimization"
+          }
+        ]
       },
       {
-        "text": "第 32 章 · KV 显存管理：分页与前缀缓存",
-        "link": "/tinyllm/kv-memory"
+        "text": "第七部分 · 中训练",
+        "items": [
+          {
+            "text": "第 35 章 · 退火与数据配比",
+            "link": "/tinyllm/annealing"
+          },
+          {
+            "text": "第 36 章 · 长上下文扩展",
+            "link": "/tinyllm/long-context"
+          },
+          {
+            "text": "第 37 章 · 继续预训练与灾难性遗忘",
+            "link": "/tinyllm/continued-pretraining"
+          }
+        ]
       },
       {
-        "text": "第 33 章 · 推理优化：逐项对照与推理服务",
-        "link": "/tinyllm/inference-optimization"
+        "text": "第八部分 · 后训练",
+        "items": [
+          {
+            "text": "第 38 章 · 指令微调",
+            "link": "/tinyllm/instruction-finetuning"
+          },
+          {
+            "text": "第 39 章 · 参数高效微调（LoRA）",
+            "link": "/tinyllm/lora-finetuning"
+          },
+          {
+            "text": "第 40 章 · 蒸馏与合成数据",
+            "link": "/tinyllm/distillation"
+          },
+          {
+            "text": "第 41 章 · RLHF：奖励模型与 PPO",
+            "link": "/tinyllm/rlhf"
+          },
+          {
+            "text": "第 42 章 · DPO：直接偏好优化",
+            "link": "/tinyllm/preference-alignment"
+          },
+          {
+            "text": "第 43 章 · GRPO 与可验证奖励",
+            "link": "/tinyllm/grpo"
+          }
+        ]
       },
       {
-        "text": "第 34 章 · 指令微调",
-        "link": "/tinyllm/instruction-finetuning"
-      },
-      {
-        "text": "第 35 章 · 参数高效微调（LoRA）",
-        "link": "/tinyllm/lora-finetuning"
-      },
-      {
-        "text": "第 36 章 · RLHF：奖励模型与 PPO",
-        "link": "/tinyllm/rlhf"
-      },
-      {
-        "text": "第 37 章 · DPO 与 GRPO",
-        "link": "/tinyllm/preference-alignment"
-      },
-      {
-        "text": "第 38 章 · LLM 和 Agent 的交互",
-        "link": "/tinyllm/llm-agent-interaction"
+        "text": "第九部分 · 应用",
+        "items": [
+          {
+            "text": "第 44 章 · LLM 和 Agent 的交互",
+            "link": "/tinyllm/llm-agent-interaction"
+          }
+        ]
       }
     ]
   }

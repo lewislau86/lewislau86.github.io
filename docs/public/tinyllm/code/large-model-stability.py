@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 24 章：大规模训练稳定性
+# # 第 25 章：大规模训练稳定性
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/large-model-stability
 #

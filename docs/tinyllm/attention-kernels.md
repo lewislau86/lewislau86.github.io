@@ -1,17 +1,17 @@
 ---
-title: "第 28 章：注意力内核与算子融合"
+title: "第 29 章：注意力内核与算子融合"
 description: "同一个注意力，换一种写法就少存、少搬：用一个挂在 PyTorch 算子分发上的记账员量出朴素注意力的 T×T 分数表要占多少、搬多少；手写 online softmax 和分块注意力，与 scaled_dot_product_attention 对齐到浮点舍入；再看反向为什么只存每行一个数，以及 torch.compile 把一层里的 37 个算子融合成了什么。"
 pageClass: tinyllm-course
 ---
 
-# 第 28 章：注意力内核与算子融合
+# 第 29 章：注意力内核与算子融合
 
 [课程总览](./index.md) · [上一章](./inference-efficiency.md) · [下一章](./quantization.md)
 
 ::: tip 本章学习目标
 能算出朴素注意力的 $T\times T$ 分数表要占多少内存、被读写几遍；能手写 online softmax 和分块注意力，并验证它们与 `F.scaled_dot_product_attention` 的结果只差浮点舍入；能说清块大小怎样决定 K、V 被重读的次数，以及它为什么受片上存储限制；能解释反向传播为什么只需要每行一个 lse；能用读写字节数说明算子融合省下的是什么。
 
-**前置：** [第 6 章](./self-attention.md)的缩放点积注意力与因果掩码，[第 12 章](./tinyllm-model.md)的基线模型，[第 27 章](./inference-efficiency.md)的“带宽决定速度”。
+**前置：** [第 6 章](./self-attention.md)的缩放点积注意力与因果掩码，[第 12 章](./tinyllm-model.md)的基线模型，[第 28 章](./inference-efficiency.md)的“带宽决定速度”。
 
 **实践方式：** [attention-kernels.ipynb](/tinyllm/notebooks/attention-kernels)（也可以直接运行 <a href="/tinyllm/code/attention-kernels.py" download>attention-kernels.py</a>），CPU 约一分钟，需要 PyTorch 和 `tokenizers`；第 7 节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一段会跳过。
 :::
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## 问题：同样的计算，搬多少数据
 
-[第 27 章](./inference-efficiency.md)用 KV cache 去掉了重复计算，还看到 decode 慢在“每做一点计算就要读一遍权重”：速度常常不由算了多少决定，而由搬了多少决定。本章把同一个观察用在一次前向的内部。
+[第 28 章](./inference-efficiency.md)用 KV cache 去掉了重复计算，还看到 decode 慢在“每做一点计算就要读一遍权重”：速度常常不由算了多少决定，而由搬了多少决定。本章把同一个观察用在一次前向的内部。
 
 [第 6 章](./self-attention.md)的注意力写法很直接：算出 $T\times T$ 的分数表，盖掩码，softmax，再乘 V。每一步都把结果完整地写进内存，下一步再读出来。长度 4096 时，这样的一张表在一个头上就有 1600 多万个数。这些数真的有必要全部写下来吗？
 
@@ -32,7 +32,7 @@ pageClass: tinyllm-course
 
 ## 1. 研究对象：第 12 章的基线模型
 
-和第 27 章一样，按[第 12 章](./tinyllm-model.md)的配置训练 300 步（d=128、4 层、4 个头、每头 32 维、上下文 64）。只改了一处：每层的注意力调用全局变量 `ATTN` 指向的函数，后面可以把它换成自己写的版本。
+和第 28 章一样，按[第 12 章](./tinyllm-model.md)的配置训练 300 步（d=128、4 层、4 个头、每头 32 维、上下文 64）。只改了一处：每层的注意力调用全局变量 `ATTN` 指向的函数，后面可以把它换成自己写的版本。
 
 <<< @/public/tinyllm/code/attention-kernels.py#train
 
@@ -215,7 +215,7 @@ SDPA 为反向保存   2.02 MiB
 Q、K、V 梯度的最大差（相对于梯度最大值）：1.4e-06；一张 [1,4,1024,1024] 的表是 16 MiB
 ```
 
-朴素写法存下了 softmax 的输出 $P$ 这一整张表（16 MiB），外加一张布尔掩码和 Q、K、V；SDPA 只存 Q、K、V、输出和每行一个 lse，梯度和朴素写法在浮点舍入范围内一致。反向多算一遍矩阵乘，换来不存一张随长度平方增长的表。这和[第 24 章](./large-model-stability.md)的激活重计算是同一笔交易，只是做在了一个算子内部。
+朴素写法存下了 softmax 的输出 $P$ 这一整张表（16 MiB），外加一张布尔掩码和 Q、K、V；SDPA 只存 Q、K、V、输出和每行一个 lse，梯度和朴素写法在浮点舍入范围内一致。反向多算一遍矩阵乘，换来不存一张随长度平方增长的表。这和[第 25 章](./large-model-stability.md)的激活重计算是同一笔交易，只是做在了一个算子内部。
 
 ## 7. 算子融合：其余的小算子
 
@@ -270,7 +270,7 @@ compile 与 eager 输出的最大误差：3.8e-06
 ## 动手实验
 
 1. **块大小与重读次数。** 在第 5 节的循环里加上块 32 和块 128，验证 K、V 的读写约等于 $T^2 d/B$。再把每头维度从 32 改成 128（Llama 的常见值），块 64 时片上要放多少 KiB？还能放进 A100 的一个 SM 吗？
-2. **不同长度的 Q 和 K。** decode 时 Q 只有 1 行，K、V 有 $T$ 行。用 `tiled_attention` 的思路写一个 `q.shape[2] == 1` 的版本（因果掩码可以去掉），和 SDPA 对齐。这时分块还能省下什么？提示：没有 $T\times T$ 的表可省，[第 32 章](./kv-memory.md)的分页 KV cache 解决的是另一件事。
+2. **不同长度的 Q 和 K。** decode 时 Q 只有 1 行，K、V 有 $T$ 行。用 `tiled_attention` 的思路写一个 `q.shape[2] == 1` 的版本（因果掩码可以去掉），和 SDPA 对齐。这时分块还能省下什么？提示：没有 $T\times T$ 的表可省，[第 33 章](./kv-memory.md)的分页 KV cache 解决的是另一件事。
 3. **融合的边界。** 把 RMSNorm 和它后面的 `qkv` 矩阵乘一起交给 `torch.compile`，看生成的代码里 RMSNorm 有没有被并进矩阵乘。为什么逐元素运算容易融合，而矩阵乘通常不和它们并在一起？
 
 <!-- real-model:start -->
@@ -339,4 +339,4 @@ TinyLLM 的注意力在训练和推理里都调用 `F.scaled_dot_product_attenti
 - [PyTorch：scaled_dot_product_attention](https://docs.pytorch.org/docs/stable/generated/torch.nn.functional.scaled_dot_product_attention.html) · [torch.compile 入门](https://docs.pytorch.org/tutorials/intermediate/torch_compile_tutorial.html)
 - [NVIDIA Ampere 调优指南（共享内存容量）](https://docs.nvidia.com/cuda/ampere-tuning-guide/index.html) · [Hopper 调优指南](https://docs.nvidia.com/cuda/hopper-tuning-guide/index.html)
 
-注意力的读写省下来了，可模型的权重和 KV cache 本身还是那么大：每个数用 32 位或 16 位存。下一章把每个数变短：[第 29 章：量化](./quantization.md)。
+注意力的读写省下来了，可模型的权重和 KV cache 本身还是那么大：每个数用 32 位或 16 位存。下一章把每个数变短：[第 30 章：量化](./quantization.md)。

@@ -104,11 +104,11 @@ python -m pip install -r requirements.txt
 | 包 | 用在哪里 | 不装会怎样 |
 | --- | --- | --- |
 | `torch` | 所有章节 | 无法运行 |
-| `tokenizers` | 第 4、10、12～29 章：训练字节级 BPE | 这几章无法运行 |
+| `tokenizers` | 第 4、10、12～30 章：训练字节级 BPE | 这几章无法运行 |
 | `opencc-python-reimplemented` | 第 14 章：繁体转简体 | 第 14 章无法运行 |
 | `plotly` | 第 4、8、10、16 章的交互图表 | 这几章画图那一步报错 |
 | `jupyterlab` | 在本地打开 notebook | 不影响 `.py` 脚本，只是不能用 notebook |
-| C++ 编译器（不是 pip 包） | 第 28 章最后一节的 `torch.compile`；Linux 装 `g++`，macOS 装 Xcode 命令行工具，Colab 自带 | 那一节打印原因后跳过，其余照常运行 |
+| C++ 编译器（不是 pip 包） | 第 29 章最后一节的 `torch.compile`；Linux 装 `g++`，macOS 装 Xcode 命令行工具，Colab 自带 | 那一节打印原因后跳过，其余照常运行 |
 
 本站最近一次完整运行用的是 Python 3.10.12、torch 2.14.1、tokenizers 0.23.3、opencc-python-reimplemented 0.1.7、plotly 7.1.0。版本更新一些通常没问题；个别随机结果的末几位可能和正文不同。
 

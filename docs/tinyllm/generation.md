@@ -1,10 +1,10 @@
 ---
-title: "第 26 章：自回归生成"
+title: "第 27 章：自回归生成"
 description: "从 logits 到屏幕上的一个字：温度、top-k 与 top-p、重复惩罚、随机种子与停止条件，以及把格式写进掩码的约束解码。"
 pageClass: tinyllm-course
 ---
 
-# 第 26 章：自回归生成
+# 第 27 章：自回归生成
 
 [课程总览](./index.md) · [上一章](./mixture-of-experts.md) · [下一章](./inference-efficiency.md)
 
@@ -241,7 +241,7 @@ TinyLLM 的生成分两种场合。**需要可复现的评估**——比较两�
 
 格式确定的任务（结构化输出、固定模板、受限 API）不靠提示词祈求，改用约束解码把格式写进掩码；本章第 9 节是最小版本，真实系统用文法或自动机生成允许集合，原理相同。
 
-在什么情况下要换：采样参数随任务走，创意写作可以更宽、事实问答应该更窄；需要大批量生成时，逐 token 的 Python 循环太慢，那属于[第 27 章](./inference-efficiency.md)要处理的事。
+在什么情况下要换：采样参数随任务走，创意写作可以更宽、事实问答应该更窄；需要大批量生成时，逐 token 的 Python 循环太慢，那属于[第 28 章](./inference-efficiency.md)要处理的事。
 
 ::: warning 常见误区
 - **温度改了模型的判断。** 温度只是把同一份 logits 除以一个数再取 softmax，候选的排序一点没变；它改的是取样的宽度。把温度调高不会让模型“更有创造力”，只会让低分候选更容易被抽到。
@@ -283,4 +283,4 @@ TinyLLM 的生成分两种场合。**需要可复现的评估**——比较两�
 - [Efficient Guided Generation for Large Language Models，Willard 与 Louf，2023](https://arxiv.org/abs/2307.09702)（Outlines：把正则与文法变成每步的 token 掩码）
 - [Hugging Face：生成策略与 logits 处理器](https://huggingface.co/docs/transformers/main_classes/text_generation)
 
-采样参数定好，生成循环也就定好了。但这一版每生成一个字都要把整段前缀重新算一遍——第 12 章那个 64 token 的窗口，生成 40 个字就要算 40 次全量前向。下一章把重复的部分缓存下来：[第 27 章：推理效率](./inference-efficiency.md)。
+采样参数定好，生成循环也就定好了。但这一版每生成一个字都要把整段前缀重新算一遍——第 12 章那个 64 token 的窗口，生成 40 个字就要算 40 次全量前向。下一章把重复的部分缓存下来：[第 28 章：推理效率](./inference-efficiency.md)。

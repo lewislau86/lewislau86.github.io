@@ -273,7 +273,7 @@ scheduler 先：前 3 步用的学习率 6.67e-04  1.00e-03  1.33e-03；PyTorch 
 
 - **GPU 的随机数和确定性。** GPU 有自己的随机数状态，每张卡一份，要用 `torch.cuda.get_rng_state_all()` 一起存下来。有些 GPU 算子为了速度，默认不保证每次结果相同（比如用原子加法的归约），要逐位复现得打开 [`torch.use_deterministic_algorithms(True)`](https://docs.pytorch.org/docs/stable/notes/randomness.html)，代价是变慢。换了显卡型号、驱动或 PyTorch 版本，逐位相同一般就做不到了，这时只能要求“统计上一致”。
 - **多进程读数据。** `num_workers > 0` 时，每个 worker 进程有自己的随机数，由 `DataLoader` 的生成器派生出种子；用了随机数据增强时，要通过 `worker_init_fn` 和 `generator` 让它可复现。
-- **多卡检查点。** 模型和优化器状态切在多张卡上时，每张卡只存自己那一份，恢复时再按同样的切法装回去（PyTorch 的 `torch.distributed.checkpoint`）。这部分放在[第 24 章](./large-model-stability.md)。
+- **多卡检查点。** 模型和优化器状态切在多张卡上时，每张卡只存自己那一份，恢复时再按同样的切法装回去（PyTorch 的 `torch.distributed.checkpoint`）。这部分放在[第 25 章](./large-model-stability.md)。
 - **多久存一次。** 存得太勤，保存本身占用训练时间；存得太稀，崩溃时丢掉的进度多。一个经典的估算是：保存一次要 $C$ 秒，平均每 $M$ 秒出一次故障，最佳间隔约为 $\sqrt{2CM}$（[Young，1974](https://dl.acm.org/doi/10.1145/361147.361115)）。大模型训练还常常把保存放到后台线程里做，训练不用停下来等。
 
 ## 动手实验

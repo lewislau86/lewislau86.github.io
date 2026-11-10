@@ -1,17 +1,17 @@
 ---
-title: "第 29 章：量化"
+title: "第 30 章：量化"
 description: "用更少的位数存权重、激活和 KV cache：对称与非对称量化，按张量、按通道与分组，INT8 与 INT4 在 3 个模型上的真实损失，激活里的离群通道与 SmoothQuant，KV cache 量化，以及换算到真实模型的体积与带宽上限。"
 pageClass: tinyllm-course
 ---
 
-# 第 29 章：量化
+# 第 30 章：量化
 
 [课程总览](./index.md) · [上一章](./attention-kernels.md) · [下一章](./speculative-decoding.md)
 
 ::: tip 本章学习目标
 能写出对称与非对称量化的公式，并说清零点在什么时候有用；能比较按张量、按通道、分组三种粒度的误差和额外开销，算出“每个权重几位”；能在同一验证集上用损失、KL 和下一个 token 的一致率评价一种量化方案；能解释激活为什么比权重难量化，以及 SmoothQuant 的等价变换；能算出权重和 KV cache 量化后的字节数，以及它对 decode 带宽上限的影响。
 
-**前置：** [第 19 章](./precision.md)的浮点格式，[第 27 章](./inference-efficiency.md)的 KV cache 字节数与“decode 卡在带宽”，[第 28 章](./attention-kernels.md)的读写字节账。
+**前置：** [第 19 章](./precision.md)的浮点格式，[第 28 章](./inference-efficiency.md)的 KV cache 字节数与“decode 卡在带宽”，[第 29 章](./attention-kernels.md)的读写字节账。
 
 **实践方式：** [quantization.ipynb](/tinyllm/notebooks/quantization)（也可以直接运行 <a href="/tinyllm/code/quantization.py" download>quantization.py</a>），CPU 约两分钟（大部分是用 3 个种子各训练一次基线模型），需要 PyTorch 和 `tokenizers`。
 :::
@@ -20,7 +20,7 @@ pageClass: tinyllm-course
 
 ## 问题：每个数要用几位
 
-[第 27 章](./inference-efficiency.md)算过，单请求 decode 每生成一个 token，就要把全部权重从显存读一遍：Llama 3 8B 的 BF16 权重 16 GB，在 H100 上每秒最多读 209 遍。[第 28 章](./attention-kernels.md)省掉了注意力里那张 $T\times T$ 的表，可权重和 KV cache 本身一个字节也没少。
+[第 28 章](./inference-efficiency.md)算过，单请求 decode 每生成一个 token，就要把全部权重从显存读一遍：Llama 3 8B 的 BF16 权重 16 GB，在 H100 上每秒最多读 209 遍。[第 29 章](./attention-kernels.md)省掉了注意力里那张 $T\times T$ 的表，可权重和 KV cache 本身一个字节也没少。
 
 想再快，就得让要搬的东西本身变小。每个权重用 16 位存，是因为训练时需要这个精度；训练结束以后，推理只要算出来的结果差不多，每个数能不能只用 8 位、甚至 4 位？
 
@@ -32,7 +32,7 @@ pageClass: tinyllm-course
 
 ## 1. 研究对象：3 个基线模型
 
-模型代码与第 27、28 章相同：[第 12 章](./tinyllm-model.md)的配置（d=128、4 层、4 个头、词表 4096、上下文 64），训练 300 步。量化的影响要在不止一个模型上看，所以用 3 个种子各训练一次。种子只决定初始参数，batch 顺序由单独的生成器固定。
+模型代码与第 28、29 章相同：[第 12 章](./tinyllm-model.md)的配置（d=128、4 层、4 个头、词表 4096、上下文 64），训练 300 步。量化的影响要在不止一个模型上看，所以用 3 个种子各训练一次。种子只决定初始参数，batch 顺序由单独的生成器固定。
 
 <<< @/public/tinyllm/code/quantization.py#train
 
@@ -208,7 +208,7 @@ $$
 
 ## 7. KV cache 量化
 
-[第 27 章](./inference-efficiency.md)算过，长上下文和高并发时，缓存会比权重还大。缓存里的 K、V 也可以量化：每个 token、每个头的一组（这里是 32 个数）共用一个缩放因子。K、V 写进缓存前量化，读出来时还原，等价于在注意力里先把 K、V 量化一遍：
+[第 28 章](./inference-efficiency.md)算过，长上下文和高并发时，缓存会比权重还大。缓存里的 K、V 也可以量化：每个 token、每个头的一组（这里是 32 个数）共用一个缩放因子。K、V 写进缓存前量化，读出来时还原，等价于在注意力里先把 K、V 量化一遍：
 
 <<< @/public/tinyllm/code/quantization.py#kv-quant
 
@@ -217,7 +217,7 @@ KV cache INT8：损失 -0.0000 [-0.0000, +0.0000]   KL 0.0000   一致率 99.68%
 KV cache INT4：损失 +0.0042 [+0.0020, +0.0064]   KL 0.0037   一致率 94.14%
 ```
 
-KV INT8 和原模型几乎一样；INT4 损失涨 0.004，比权重 INT4 分组 32 的 0.008 还小。缓存的字节数用第 27 章的公式，量化后每元素的字节变小，另外每组多存一个 FP16 缩放因子：
+KV INT8 和原模型几乎一样；INT4 损失涨 0.004，比权重 INT4 分组 32 的 0.008 还小。缓存的字节数用第 28 章的公式，量化后每元素的字节变小，另外每组多存一个 FP16 缩放因子：
 
 <<< @/public/tinyllm/code/quantization.py#kv-bytes
 
@@ -232,7 +232,7 @@ Llama 3 8B 的每组是 128 个数，缩放因子的开销只有 1.6%（INT8）�
 
 ## 8. 换算到真实模型
 
-权重的体积 = 参数个数 × 每个权重的位数 ÷ 8。每个权重的位数要算上缩放因子：分组 128 的 INT4 是 $4 + 16/128 = 4.125$ 位。再用第 27 章的带宽上限估一下单请求 decode 的速度上限：
+权重的体积 = 参数个数 × 每个权重的位数 ÷ 8。每个权重的位数要算上缩放因子：分组 128 的 INT4 是 $4 + 16/128 = 4.125$ 位。再用第 28 章的带宽上限估一下单请求 decode 的速度上限：
 
 <<< @/public/tinyllm/code/quantization.py#real-models
 
@@ -322,4 +322,4 @@ TinyLLM 训练和评估沿用[第 19 章](./precision.md)的精度，不做量�
 - [KIVI：KV cache 的 2 位量化，Liu 等，2024](https://arxiv.org/abs/2402.02750)
 - [Hugging Face transformers：量化概览](https://huggingface.co/docs/transformers/main/en/quantization/overview)
 
-权重变小，每生成一个 token 读得更快了，可还是一次只生成一个 token。下一章换个思路：用一个小模型先猜几个，大模型一次验证完：[第 30 章：投机解码](./speculative-decoding.md)。
+权重变小，每生成一个 token 读得更快了，可还是一次只生成一个 token。下一章换个思路：用一个小模型先猜几个，大模型一次验证完：[第 31 章：投机解码](./speculative-decoding.md)。

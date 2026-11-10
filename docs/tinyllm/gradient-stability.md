@@ -252,7 +252,7 @@ SGD 1.0，裁到 1.0 最大梯度范数 2.34  验证损失 5.187   （乱猜是 
 
 这一节的教训是：**累积写错了，最终损失往往看不出来。** AdamW 对梯度的整体缩放不敏感，裁剪又把大小拉齐了，最终损失只差零点零几，很容易被当成种子噪声。查训练循环的错误，最可靠的办法是**一步对拍**：同一个初始模型、同一个 batch，用两种写法各算一步，直接比较梯度或更新后的参数。
 
-还有两件和累积有关的事。第一，学习率调度器每个**优化器步**推进一次，不是每个 micro-batch 一次（[第 17 章](./learning-rate.md)）。第二，多卡数据并行时，每个 micro-batch 反传完都会在卡之间同步一次梯度，累积期间这是浪费；PyTorch 的 `DistributedDataParallel` 提供了 [`no_sync()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.no_sync)，只在最后一个 micro-batch 同步。多卡训练放在[第 24 章](./large-model-stability.md)。
+还有两件和累积有关的事。第一，学习率调度器每个**优化器步**推进一次，不是每个 micro-batch 一次（[第 17 章](./learning-rate.md)）。第二，多卡数据并行时，每个 micro-batch 反传完都会在卡之间同步一次梯度，累积期间这是浪费；PyTorch 的 `DistributedDataParallel` 提供了 [`no_sync()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.no_sync)，只在最后一个 micro-batch 同步。多卡训练放在[第 25 章](./large-model-stability.md)。
 
 ## 8. FP16 与 loss scaling
 
@@ -337,7 +337,7 @@ TinyLLM 每个优化器步都**按全局范数把梯度裁到 1.0**，并把 `cl
 
 理由来自本章的对照（代理模型、240 步、3 个种子）：AdamW 下不裁剪、裁到 1.0、裁到 0.01 的验证损失分别是 4.814、4.806、4.807，没有可分辨的差别；但第 121 步梯度放大 1000 倍时，不裁剪变差到 5.500，裁到 1.0 是 4.810，和没有尖峰时一样。正确写法的梯度累积和整个 batch 在第一步的梯度只差 $10^{-8}$ 量级，训练 240 步的验证损失相同。
 
-这些选择在什么情况下要换：用 SGD 一类没有自适应步长的优化器时，裁剪阈值会直接决定步长，要和学习率一起调；梯度范数持续上升、被裁剪的比例越来越高时，先查学习率和数值精度，不要只调高阈值；模型放大以后，尖峰更常见，要配合检查点回退（第 21 章）和第 24 章的稳定性手段。
+这些选择在什么情况下要换：用 SGD 一类没有自适应步长的优化器时，裁剪阈值会直接决定步长，要和学习率一起调；梯度范数持续上升、被裁剪的比例越来越高时，先查学习率和数值精度，不要只调高阈值；模型放大以后，尖峰更常见，要配合检查点回退（第 21 章）和第 25 章的稳定性手段。
 
 ::: warning 常见误区
 - **裁剪阈值要精心调。** 用 AdamW 时，阈值从 1.0 改到 0.01 几乎没有影响；它是防尖峰的保险，不是一个敏感的超参数。

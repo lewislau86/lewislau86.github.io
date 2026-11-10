@@ -27,18 +27,24 @@
 | 第 21 章 训练循环与检查点 | [training-loop.py](training-loop.py) | [打开](https://lewislau86.github.io/tinyllm/training-loop) |
 | 第 22 章 训练诊断与评估 | [training-evaluation.py](training-evaluation.py) | [打开](https://lewislau86.github.io/tinyllm/training-evaluation) |
 | 第 23 章 超参数与自动化调参 | [hyperparameter-tuning.py](hyperparameter-tuning.py) | [打开](https://lewislau86.github.io/tinyllm/hyperparameter-tuning) |
-| 第 24 章 大规模训练稳定性 | [large-model-stability.py](large-model-stability.py) | [打开](https://lewislau86.github.io/tinyllm/large-model-stability) |
-| 第 25 章 稀疏专家（MoE） | [mixture-of-experts.py](mixture-of-experts.py) | [打开](https://lewislau86.github.io/tinyllm/mixture-of-experts) |
-| 第 26 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
-| 第 27 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
-| 第 28 章 注意力内核与算子融合 | [attention-kernels.py](attention-kernels.py) | [打开](https://lewislau86.github.io/tinyllm/attention-kernels) |
-| 第 29 章 量化 | [quantization.py](quantization.py) | [打开](https://lewislau86.github.io/tinyllm/quantization) |
+| 第 25 章 大规模训练稳定性 | [large-model-stability.py](large-model-stability.py) | [打开](https://lewislau86.github.io/tinyllm/large-model-stability) |
+| 第 26 章 稀疏专家（MoE） | [mixture-of-experts.py](mixture-of-experts.py) | [打开](https://lewislau86.github.io/tinyllm/mixture-of-experts) |
+| 第 27 章 自回归生成 | [generation.py](generation.py) | [打开](https://lewislau86.github.io/tinyllm/generation) |
+| 第 28 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
+| 第 29 章 注意力内核与算子融合 | [attention-kernels.py](attention-kernels.py) | [打开](https://lewislau86.github.io/tinyllm/attention-kernels) |
+| 第 30 章 量化 | [quantization.py](quantization.py) | [打开](https://lewislau86.github.io/tinyllm/quantization) |
 
 ## 怎么运行
 
 安装步骤、整包下载和常见问题见 [实验环境：安装与代码下载](https://lewislau86.github.io/tinyllm/setup)。
 
-每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、10、12～29 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`；第 28 章最后一节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一节会跳过。
+每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、10、12～30 章还需要 `tokenizers`，第 4、8、10、16 章的交互图表需要 `plotly`；第 29 章最后一节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一节会跳过。
+
+## 可选实验：`extras/`
+
+`extras/` 下的脚本不属于任何一章，也不打包进整包下载、不生成 notebook、CI 不运行，因为它们要下载外部模型：
+
+- `extras/qwen3-variants.py`：同一组问题分别问 Qwen3-0.6B-Base 和 Qwen3-0.6B，对比 base 模型和对话模型（[30 分钟快速体验](https://lewislau86.github.io/tinyllm/quickstart#base-and-chat)）。需要 `pip install "transformers>=4.51" "jinja2>=3.1"`，首次运行下载约 2.7GB。
 
 ## 和网站的关系
 

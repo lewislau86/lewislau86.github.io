@@ -1,5 +1,5 @@
 ---
-title: "第 24 章：大规模训练稳定性（notebook 在线查看）"
+title: "第 25 章：大规模训练稳定性（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 24 章：大规模训练稳定性
+# 第 25 章：大规模训练稳定性
 
 配套教案：https://lewislau86.github.io/tinyllm/large-model-stability
 

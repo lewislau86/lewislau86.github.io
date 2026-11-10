@@ -4,7 +4,7 @@ import { useSvgLinkPrefetchFix } from './svgLinks'
 import { withBase } from 'vitepress'
 
 // 全书唯一的 TinyLLM 架构总图。每章开头用 <TinyLLMMap active="slug" /> 高亮本章负责的零件。
-// 图分成六个区：⓪ 全局、① 数据、② 模型、③ 训练、④ 推理、⑤ 后训练与应用；每一章都有一个框。
+// 图分成六个区：⓪ 全局、① 数据、② 模型、③ 训练、④ 推理、⑤ 中训练、后训练与应用；每一章都有一个框。
 // 高亮本章的框，以及进出这个框的连线；图下方用 io 里的文字写出本章的输入和输出。
 // 新章节成文后，把它的 slug 加进 done；改布局时只改下面几组坐标。
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
@@ -37,6 +37,7 @@ const io: Record<string, [string, string]> = {
   'training-loop': ["数据、模型、优化器、调度器", "逐步更新的模型，以及能逐位续训的检查点"],
   'training-evaluation': ["训练中的损失、梯度、生成样例", "“训练是否正常、哪个模型更好”的判断"],
   'hyperparameter-tuning': ["一组候选超参数和固定的预算", "交给训练循环的学习率、batch、warmup 等"],
+  'scaling-laws': ["一份算力预算", "模型该多大、该训多少 token，以及从小模型外推的损失"],
   'large-model-stability': ["更大的模型和多张卡", "不发散的训练，以及分摊到各卡的显存"],
   'mixture-of-experts': ["注意力之后的 [B, T, d]", "每个 token 只经过 2 个专家的前馈输出（前馈层的替代）"],
   'generation': ["最后一个位置的 logits", "下一个 token，接到输入末尾继续生成"],
@@ -47,10 +48,15 @@ const io: Record<string, [string, string]> = {
   'batching': ["多个并发请求", "按 token 步调度的同一批前向"],
   'kv-memory': ["各请求的 KV cache", "分页、可共享前缀的显存布局"],
   'inference-optimization': ["前面几章的各项优化", "逐项对照的延迟、吞吐，以及一个推理服务"],
+  'annealing': ["稳定段的检查点和一小份高质量数据", "学习率衰减段换过数据的基础模型"],
+  'long-context': ["只见过短序列的基础模型", "能用上更长上下文的基础模型（调整 RoPE 后继续训练）"],
+  'continued-pretraining': ["训好的基础模型和新领域数据", "学会新领域、旧能力少忘的基础模型（混入旧数据回放）"],
   'instruction-finetuning': ["预训练好的模型和指令数据", "会按对话格式回答的模型（复用训练循环）"],
   'lora-finetuning': ["冻结的预训练权重", "一小份低秩增量权重"],
+  'distillation': ["大模型老师和它的输出或概率分布", "学了老师本事的小模型"],
   'rlhf': ["SFT 模型和人类偏好数据", "奖励模型，以及用 PPO 对齐后的模型"],
-  'preference-alignment': ["成对偏好，或能自动判分的任务", "用 DPO / GRPO 对齐后的模型"],
+  'preference-alignment': ["SFT 模型和成对的偏好数据", "不训练奖励模型、直接用 DPO 对齐后的模型"],
+  'grpo': ["SFT 模型和能自动判分的任务", "用 GRPO 训练后、会先推理再回答的模型"],
   'llm-agent-interaction': ["用户问题、工具结果和记忆", "组装好的上下文（重新分词送进模型），以及从输出里解析出的动作"]
 }
 
@@ -65,7 +71,7 @@ const sections: Section[] = [
   {"id": "model", "title": "② 模型：一次前向", "x": 256, "y": 40, "w": 366, "h": 502, "slugs": ["tinyllm-model", "first-run"]},
   {"id": "train", "title": "③ 训练", "x": 636, "y": 40, "w": 354, "h": 502, "slugs": ["gpu-training"]},
   {"id": "infer", "title": "④ 推理", "x": 10, "y": 562, "w": 612, "h": 228, "slugs": []},
-  {"id": "post", "title": "⑤ 后训练与应用", "x": 636, "y": 562, "w": 354, "h": 228, "slugs": []}
+  {"id": "post", "title": "⑤ 中训练、后训练与应用", "x": 636, "y": 562, "w": 354, "h": 228, "slugs": []}
 ]
 
 const containers: Container[] = [
@@ -84,16 +90,17 @@ const nodes: Node[] = [
   {"id": "n1", "label": "RMSNorm", "ch": 11, "slug": "normalization", "x": 330, "y": 138, "w": 180, "h": 28, "small": false},
   {"id": "att", "label": "因果自注意力", "ch": 6, "slug": "self-attention", "x": 330, "y": 184, "w": 180, "h": 34, "small": false},
   {"id": "pos", "label": "RoPE", "ch": 7, "slug": "position-encoding", "x": 522, "y": 184, "w": 70, "h": 34, "small": true},
-  {"id": "kern", "label": "内核", "ch": 28, "slug": "attention-kernels", "x": 522, "y": 226, "w": 70, "h": 28, "small": true},
+  {"id": "kern", "label": "内核", "ch": 29, "slug": "attention-kernels", "x": 522, "y": 226, "w": 70, "h": 28, "small": true},
   {"id": "n2", "label": "RMSNorm", "ch": 11, "slug": "normalization", "x": 330, "y": 286, "w": 180, "h": 28, "small": false},
   {"id": "ffn", "label": "SwiGLU 前馈层", "ch": 8, "slug": "activations-and-ffn", "x": 330, "y": 332, "w": 180, "h": 34, "small": false},
-  {"id": "moe", "label": "MoE", "ch": 25, "slug": "mixture-of-experts", "x": 522, "y": 332, "w": 70, "h": 34, "small": true},
+  {"id": "moe", "label": "MoE", "ch": 26, "slug": "mixture-of-experts", "x": 522, "y": 332, "w": 70, "h": 34, "small": true},
   {"id": "nf", "label": "最终 RMSNorm", "ch": 11, "slug": "normalization", "x": 330, "y": 434, "w": 180, "h": 28, "small": false},
   {"id": "out", "label": "输出层：向量 → logits", "ch": 5, "slug": "embeddings-and-output", "x": 300, "y": 484, "w": 240, "h": 34, "small": false},
   {"id": "eval", "label": "诊断与评估", "ch": 22, "slug": "training-evaluation", "x": 650, "y": 118, "w": 160, "h": 34, "small": false},
   {"id": "hp", "label": "超参数与调参", "ch": 23, "slug": "hyperparameter-tuning", "x": 820, "y": 118, "w": 160, "h": 34, "small": false},
-  {"id": "gpu", "label": "GPU 上训练", "ch": 13, "slug": "gpu-training", "x": 650, "y": 72, "w": 160, "h": 34, "small": false},
-  {"id": "big", "label": "大规模稳定性与并行", "ch": 24, "slug": "large-model-stability", "x": 820, "y": 72, "w": 160, "h": 34, "small": false},
+  {"id": "gpu", "label": "GPU 上训练", "ch": 13, "slug": "gpu-training", "x": 650, "y": 72, "w": 104, "h": 34, "small": false},
+  {"id": "scale", "label": "缩放定律", "ch": 24, "slug": "scaling-laws", "x": 762, "y": 72, "w": 104, "h": 34, "small": false},
+  {"id": "big", "label": "稳定性与并行", "ch": 25, "slug": "large-model-stability", "x": 874, "y": 72, "w": 106, "h": 34, "small": false},
   {"id": "prec", "label": "数值精度 / 混合精度", "ch": 19, "slug": "precision", "x": 664, "y": 196, "w": 190, "h": 34, "small": false},
   {"id": "reg", "label": "正则化", "ch": 18, "slug": "regularization", "x": 866, "y": 252, "w": 100, "h": 34, "small": false},
   {"id": "opt", "label": "优化器更新参数", "ch": 16, "slug": "optimizers", "x": 664, "y": 300, "w": 190, "h": 34, "small": false},
@@ -101,18 +108,23 @@ const nodes: Node[] = [
   {"id": "clip", "label": "梯度裁剪 / 累积", "ch": 20, "slug": "gradient-stability", "x": 664, "y": 364, "w": 190, "h": 34, "small": false},
   {"id": "bwd", "label": "backward 求梯度", "ch": 2, "slug": "tensors-and-autograd", "x": 664, "y": 418, "w": 190, "h": 34, "small": false},
   {"id": "loss", "label": "交叉熵损失", "ch": 15, "slug": "language-model-loss", "x": 664, "y": 474, "w": 190, "h": 34, "small": false},
-  {"id": "gen", "label": "采样：logits → 下一个 token", "ch": 26, "slug": "generation", "x": 300, "y": 578, "w": 240, "h": 34, "small": false},
-  {"id": "kv", "label": "KV cache", "ch": 27, "slug": "inference-efficiency", "x": 24, "y": 660, "w": 140, "h": 34, "small": false},
-  {"id": "quant", "label": "量化", "ch": 29, "slug": "quantization", "x": 174, "y": 660, "w": 140, "h": 34, "small": false},
-  {"id": "spec", "label": "投机解码", "ch": 30, "slug": "speculative-decoding", "x": 324, "y": 660, "w": 140, "h": 34, "small": false},
-  {"id": "batch", "label": "批处理与调度", "ch": 31, "slug": "batching", "x": 474, "y": 660, "w": 140, "h": 34, "small": false},
-  {"id": "kvmem", "label": "KV 显存管理", "ch": 32, "slug": "kv-memory", "x": 24, "y": 712, "w": 140, "h": 34, "small": false},
-  {"id": "serve", "label": "推理优化：逐项对照与服务", "ch": 33, "slug": "inference-optimization", "x": 174, "y": 712, "w": 290, "h": 34, "small": false},
-  {"id": "sft", "label": "指令微调 SFT", "ch": 34, "slug": "instruction-finetuning", "x": 650, "y": 610, "w": 160, "h": 34, "small": false},
-  {"id": "lora", "label": "LoRA", "ch": 35, "slug": "lora-finetuning", "x": 820, "y": 610, "w": 160, "h": 34, "small": false},
-  {"id": "rlhf", "label": "RLHF：奖励 + PPO", "ch": 36, "slug": "rlhf", "x": 650, "y": 656, "w": 160, "h": 34, "small": false},
-  {"id": "dpo", "label": "DPO / GRPO", "ch": 37, "slug": "preference-alignment", "x": 820, "y": 656, "w": 160, "h": 34, "small": false},
-  {"id": "agent", "label": "Agent：组装上下文 → 模型 → 调工具", "ch": 38, "slug": "llm-agent-interaction", "x": 650, "y": 718, "w": 330, "h": 40, "small": false}
+  {"id": "gen", "label": "采样：logits → 下一个 token", "ch": 27, "slug": "generation", "x": 300, "y": 578, "w": 240, "h": 34, "small": false},
+  {"id": "kv", "label": "KV cache", "ch": 28, "slug": "inference-efficiency", "x": 24, "y": 660, "w": 140, "h": 34, "small": false},
+  {"id": "quant", "label": "量化", "ch": 30, "slug": "quantization", "x": 174, "y": 660, "w": 140, "h": 34, "small": false},
+  {"id": "spec", "label": "投机解码", "ch": 31, "slug": "speculative-decoding", "x": 324, "y": 660, "w": 140, "h": 34, "small": false},
+  {"id": "batch", "label": "批处理与调度", "ch": 32, "slug": "batching", "x": 474, "y": 660, "w": 140, "h": 34, "small": false},
+  {"id": "kvmem", "label": "KV 显存管理", "ch": 33, "slug": "kv-memory", "x": 24, "y": 712, "w": 140, "h": 34, "small": false},
+  {"id": "serve", "label": "推理优化：逐项对照与服务", "ch": 34, "slug": "inference-optimization", "x": 174, "y": 712, "w": 290, "h": 34, "small": false},
+  {"id": "mid1", "label": "退火与配比", "ch": 35, "slug": "annealing", "x": 650, "y": 590, "w": 104, "h": 34, "small": false},
+  {"id": "mid2", "label": "长上下文", "ch": 36, "slug": "long-context", "x": 762, "y": 590, "w": 104, "h": 34, "small": false},
+  {"id": "mid3", "label": "继续预训练", "ch": 37, "slug": "continued-pretraining", "x": 874, "y": 590, "w": 106, "h": 34, "small": false},
+  {"id": "sft", "label": "指令微调 SFT", "ch": 38, "slug": "instruction-finetuning", "x": 650, "y": 636, "w": 104, "h": 34, "small": false},
+  {"id": "lora", "label": "LoRA", "ch": 39, "slug": "lora-finetuning", "x": 762, "y": 636, "w": 104, "h": 34, "small": false},
+  {"id": "distill", "label": "蒸馏", "ch": 40, "slug": "distillation", "x": 874, "y": 636, "w": 106, "h": 34, "small": false},
+  {"id": "rlhf", "label": "RLHF + PPO", "ch": 41, "slug": "rlhf", "x": 650, "y": 682, "w": 104, "h": 34, "small": false},
+  {"id": "dpo", "label": "DPO", "ch": 42, "slug": "preference-alignment", "x": 762, "y": 682, "w": 104, "h": 34, "small": false},
+  {"id": "grpo", "label": "GRPO", "ch": 43, "slug": "grpo", "x": 874, "y": 682, "w": 106, "h": 34, "small": false},
+  {"id": "agent", "label": "Agent：组装上下文 → 模型 → 调工具", "ch": 44, "slug": "llm-agent-interaction", "x": 650, "y": 732, "w": 330, "h": 40, "small": false}
 ]
 
 const edges: Edge[] = [
@@ -141,8 +153,9 @@ const edges: Edge[] = [
   {"f": "out", "t": "gen", "d": "M420,518 V578", "kind": "flow", "label": null, "at": null},
   {"f": "gen", "t": "tok", "d": "M300,595 H264 V252 H250", "kind": "loop", "label": "新 token 接到输入末尾", "at": [196, 590]},
   {"f": "gen", "t": null, "d": "M420,612 V632", "kind": "flow", "label": null, "at": null},
-  {"f": "sft", "t": "loop", "d": "M730,610 V548 H812 V530", "kind": "train", "label": "换数据和目标，复用训练循环", "at": [820, 556]},
-  {"f": "agent", "t": "tok", "d": "M650,738 H630 V553 H244 V177 H228", "kind": "loop", "label": "改上下文：重新分词", "at": [574, 578]}
+  {"f": "mid3", "t": "loop", "d": "M927,590 V548 H812 V530", "kind": "train", "label": "换数据和目标，复用训练循环", "at": [820, 556]},
+  {"f": "sft", "t": "loop", "d": "M650,653 H642 V548 H812 V530", "kind": "train", "label": null, "at": null},
+  {"f": "agent", "t": "tok", "d": "M650,752 H630 V553 H244 V177 H228", "kind": "loop", "label": "改上下文：重新分词", "at": [574, 578]}
 ]
 
 const residuals = ["M420,126 H296 V262 H408", "M420,274 H296 V400 H408"]

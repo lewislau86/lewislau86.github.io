@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 25 章：稀疏专家（MoE）
+# # 第 26 章：稀疏专家（MoE）
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/mixture-of-experts
 #

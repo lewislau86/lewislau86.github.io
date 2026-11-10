@@ -11,4 +11,4 @@ head:
 
 # 页面已移动
 
-第 38 章已改为“LLM 和 Agent 的交互”，原 Agent 记忆与检索的内容并入其中。请继续阅读[第 38 章：LLM 和 Agent 的交互](./llm-agent-interaction.md#external-memory)。
+第 44 章已改为“LLM 和 Agent 的交互”，原 Agent 记忆与检索的内容并入其中。请继续阅读[第 44 章：LLM 和 Agent 的交互](./llm-agent-interaction.md#external-memory)。

@@ -1,12 +1,12 @@
 ---
-title: "第 38 章：LLM 和 Agent 的交互"
+title: "第 44 章：LLM 和 Agent 的交互"
 description: "Agent 怎样把对话、工具说明、工具结果和记忆组装成提示词交给模型，又怎样从模型输出里解析出下一步动作：对话模板、工具调用、Agent 循环、上下文预算与外部记忆。"
 pageClass: tinyllm-course
 ---
 
-# 第 38 章：LLM 和 Agent 的交互
+# 第 44 章：LLM 和 Agent 的交互
 
-[课程总览](./index.md) · [上一章](./preference-alignment.md)
+[课程总览](./index.md) · [上一章](./grpo.md)
 
 ::: info 本章状态：规划中
 正文与 notebook 尚未完成。计划覆盖：Agent 发出的消息怎样经过对话模板变成 token；模型怎样按约定格式发起工具调用，Agent 怎样解析、校验、执行并把结果送回；“调用模型 → 执行工具 → 再调用模型”的循环及其终止条件；上下文预算；在模型外保存与检索跨会话记忆。原“Agent 记忆与检索”一章已并入本章第 6 节。
@@ -14,20 +14,20 @@ pageClass: tinyllm-course
 
 <TinyLLMMap active="llm-agent-interaction" />
 
-到第 37 章为止，模型只做一件事：读入一串 token，输出下一个 token 的概率分布。Agent 是包在模型外面的一段普通程序：它决定这一次把什么放进上下文，读模型写出来的文字，再判断是直接回答用户、调用一个工具，还是带着新信息再问一次模型。模型本身不会“调用工具”，也不会“记住用户”；这些本事来自<strong>Agent 和模型之间约定的文本格式</strong>，以及 Agent 在两次调用之间做的事。[第 1 章](./first-run.md)用一个查日志的例子粗略走过这条循环，本章把其中每一环拆开。
+到第 42 章为止，模型只做一件事：读入一串 token，输出下一个 token 的概率分布。Agent 是包在模型外面的一段普通程序：它决定这一次把什么放进上下文，读模型写出来的文字，再判断是直接回答用户、调用一个工具，还是带着新信息再问一次模型。模型本身不会“调用工具”，也不会“记住用户”；这些本事来自<strong>Agent 和模型之间约定的文本格式</strong>，以及 Agent 在两次调用之间做的事。[第 1 章](./first-run.md)用一个查日志的例子粗略走过这条循环，本章把其中每一环拆开。
 
 ## 本章主线选择（待实验验证）
 
-Agent 与模型之间只通过<strong>文本消息</strong>交互：用与[第 34 章](./instruction-finetuning.md) SFT 相同的对话模板渲染 system、user、assistant、tool 四种角色；工具调用写成一行 JSON（工具名加参数），Agent 解析失败或参数不合法时，把错误作为 tool 消息送回模型，而不是静默重试；循环设步数上限。跨会话事实以<strong>带来源、时间和更新状态的文本记录</strong>保存在模型外，新问题到来时检索相关证据，放回当前上下文。
+Agent 与模型之间只通过<strong>文本消息</strong>交互：用与[第 38 章](./instruction-finetuning.md) SFT 相同的对话模板渲染 system、user、assistant、tool 四种角色；工具调用写成一行 JSON（工具名加参数），Agent 解析失败或参数不合法时，把错误作为 tool 消息送回模型，而不是静默重试；循环设步数上限。跨会话事实以<strong>带来源、时间和更新状态的文本记录</strong>保存在模型外，新问题到来时检索相关证据，放回当前上下文。
 
-TinyLLM 很小，计划在一个合成任务上验证这条主线：例如必须借助计算器才能答对的算术题，用 SFT 教模型按格式发起调用，比较“直接回答”“工具调用”“工具调用加[第 26 章](./generation.md)的约束解码”三种做法的答案正确率和格式错误率。这组实验尚未实现。
+TinyLLM 很小，计划在一个合成任务上验证这条主线：例如必须借助计算器才能答对的算术题，用 SFT 教模型按格式发起调用，比较“直接回答”“工具调用”“工具调用加[第 27 章](./generation.md)的约束解码”三种做法的答案正确率和格式错误率。这组实验尚未实现。
 
 ## 1. 一次交互的完整链路 {#one-round-trip}
 
 用户问：“北京现在几度？”模型的参数里不可能有“现在”的气温，Agent 要替它去查。一次完整的交互大致是：
 
 1. Agent 组装消息列表：system 指令、可用工具的说明、之前的对话、这次的问题。
-2. 对话模板把消息列表渲染成一串带特殊标记的文本，经[第 4 章](./tokenization.md)的 tokenizer 编码，模型做 prefill（[第 27 章](./inference-efficiency.md)）。
+2. 对话模板把消息列表渲染成一串带特殊标记的文本，经[第 4 章](./tokenization.md)的 tokenizer 编码，模型做 prefill（[第 28 章](./inference-efficiency.md)）。
 3. 模型没有直接回答，而是按约定格式写出一段工具调用，例如 `{"name": "get_weather", "arguments": {"city": "北京"}}`，接着写出结束标记。
 4. Agent 认出这是一次调用，解析 JSON、检查参数，真的去查天气。
 5. Agent 把查询结果作为一条 tool 消息追加到对话末尾，再调用一次模型。
@@ -56,7 +56,7 @@ Agent 手里是一组带角色的消息，模型只认一串 token。对话模�
 <|im_start|>assistant
 ```
 
-模型在 SFT 阶段（[第 34 章](./instruction-finetuning.md)）见过的就是这种排布，它学会了在 `<|im_start|>assistant` 之后写回答、写完输出 `<|im_end|>`。推理时模板只要差一点，比如换了角色名、漏了换行或结束标记，模型就面对一种训练时没见过的输入。[Hugging Face 的对话模板文档](https://huggingface.co/docs/transformers/main/en/chat_templating)把模板存在 tokenizer 配置里，由 `apply_chat_template` 渲染，目的就是让训练和推理用同一份模板。
+模型在 SFT 阶段（[第 38 章](./instruction-finetuning.md)）见过的就是这种排布，它学会了在 `<|im_start|>assistant` 之后写回答、写完输出 `<|im_end|>`。推理时模板只要差一点，比如换了角色名、漏了换行或结束标记，模型就面对一种训练时没见过的输入。[Hugging Face 的对话模板文档](https://huggingface.co/docs/transformers/main/en/chat_templating)把模板存在 tokenizer 配置里，由 `apply_chat_template` 渲染，目的就是让训练和推理用同一份模板。
 
 ## 3. 工具调用：模型写出一段约定格式的文字 {#tool-calling}
 
@@ -64,7 +64,7 @@ Agent 手里是一组带角色的消息，模型只认一串 token。对话模�
 
 格式靠训练学到，也就可能写错：括号不配对、字段名拼错、参数类型不符。有两道防线：
 
-- 生成时用[第 26 章](./generation.md)的约束解码，把“此刻不合格式的 token”的 logits 置为负无穷，保证写出来的 JSON 一定能解析；它保证格式，不保证内容对。
+- 生成时用[第 27 章](./generation.md)的约束解码，把“此刻不合格式的 token”的 logits 置为负无穷，保证写出来的 JSON 一定能解析；它保证格式，不保证内容对。
 - 执行前由 Agent 校验：工具是否存在、参数是否符合 Schema、这次调用是否在允许范围内。校验失败时把错误原文作为 tool 消息送回，模型往往能在下一轮自己改正。
 
 [MCP（Model Context Protocol）](https://modelcontextprotocol.io/)规定的是 Agent 一侧怎样发现、调用外部工具和数据源，让同一个工具服务可以接到不同的 Agent 上；对模型来说，工具仍然是上下文里的一段说明。
@@ -86,19 +86,19 @@ for step in range(max_steps):
 return "达到步数上限，停止"
 ```
 
-每转一圈，整段对话都要重新交给模型。若不复用缓存，第 k 圈要对前面所有 token 重新 prefill，总计算量随圈数近似平方增长；[第 32 章](./kv-memory.md)的前缀缓存能让不变的前缀直接复用 KV cache。步数上限和“工具连续失败几次就停”这类规则，都写在 Agent 里，模型并不知道自己转了几圈。
+每转一圈，整段对话都要重新交给模型。若不复用缓存，第 k 圈要对前面所有 token 重新 prefill，总计算量随圈数近似平方增长；[第 33 章](./kv-memory.md)的前缀缓存能让不变的前缀直接复用 KV cache。步数上限和“工具连续失败几次就停”这类规则，都写在 Agent 里，模型并不知道自己转了几圈。
 
 当任务需要分支、并行、等人审批、或中途崩溃后从断点继续时，固定的 `for` 循环就不够了，控制流会变成一张带状态的图，这正是 [LangGraph](https://github.com/langchain-ai/langgraph) 这类编排框架做的事。它们改变的是 Agent 一侧的控制流；模型这一侧的接口仍然是“读一段上下文，写一段文字”。
 
 ## 5. 上下文预算 {#context-budget}
 
-上下文里同时挤着 system 指令、工具说明、对话历史、工具返回的结果和检索到的记忆。每多一个 token，prefill 就多一份计算，KV cache 就多一份显存（[第 27 章](./inference-efficiency.md)）；上下文还有长度上限。Agent 常用的办法是截掉早期轮次、把旧对话压成摘要、只保留工具结果里有用的部分。被挤出上下文、以后又可能用到的信息，就要存到模型外面，这就是下一节的外部记忆。
+上下文里同时挤着 system 指令、工具说明、对话历史、工具返回的结果和检索到的记忆。每多一个 token，prefill 就多一份计算，KV cache 就多一份显存（[第 28 章](./inference-efficiency.md)）；上下文还有长度上限。Agent 常用的办法是截掉早期轮次、把旧对话压成摘要、只保留工具结果里有用的部分。被挤出上下文、以后又可能用到的信息，就要存到模型外面，这就是下一节的外部记忆。
 
 ## 6. 外部记忆与检索 {#external-memory}
 
 模型刚回答完一个问题，用户隔天再问“我上次决定用什么方案”，模型参数没有因为那次对话自动更新，昨天的 KV cache 通常也已经释放。若 Agent 想找回这个决定，就需要在模型外保存信息，在新一轮对话中把相关证据重新交给模型。这就是本章所说的<strong>外部记忆</strong>。
 
-模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 5 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 27 章](inference-efficiency.md)。
+模型内部的 token embedding 与检索文本用的 embedding 的区别见 [第 5 章](embeddings-and-output.md)；KV cache 的计算与内存开销见 [第 28 章](inference-efficiency.md)。
 
 ### 四种常被叫作“记忆”的东西 {#four-kinds-of-memory}
 
@@ -111,7 +111,7 @@ return "达到步数上限，停止"
 | KV cache | 当前前缀在各注意力层算出的 K/V 张量 | 通常随生成请求结束；服务系统可在条件满足时复用前缀 | 避免每生成一个 token 就重算相同前缀的 K/V，占用推理内存 |
 | Agent 外部记忆 | 历史文本、提取的事实及来源等 | 可跨请求保存，直到更新或删除 | 检索相关内容，并把可读文本放回当前上下文 |
 
-一轮对话可能经过 <strong>外部记忆检索 → 组装上下文 → tokenizer → 模型前向计算与 KV cache → 逐 token 生成</strong>。KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使保存在向量库里，也要先检索并进入上下文，模型才能在这一轮使用。KV cache 的开销见[第 27 章](inference-efficiency.md)。
+一轮对话可能经过 <strong>外部记忆检索 → 组装上下文 → tokenizer → 模型前向计算与 KV cache → 逐 token 生成</strong>。KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使保存在向量库里，也要先检索并进入上下文，模型才能在这一轮使用。KV cache 的开销见[第 28 章](inference-efficiency.md)。
 
 ### 一条记忆怎样影响下一次回答
 

@@ -1,12 +1,12 @@
 ---
-title: "第 24 章：大规模训练稳定性"
+title: "第 25 章：大规模训练稳定性"
 description: "模型变大以后的三类新问题：数值失控、超参数搬不过去、一张卡装不下。在 16 万参数的小模型上用大学习率复现注意力分数失控并用 QK Norm 压住；用 μP 让最佳学习率不随宽度漂移；再用张量运算模拟激活重计算、数据并行、ZeRO/FSDP 与张量并行，算清显存和通信的账。"
 pageClass: tinyllm-course
 ---
 
-# 第 24 章：大规模训练稳定性
+# 第 25 章：大规模训练稳定性
 
-[课程总览](./index.md) · [上一章](./hyperparameter-tuning.md) · [下一章](./mixture-of-experts.md)
+[课程总览](./index.md) · [上一章](./scaling-laws.md) · [下一章](./mixture-of-experts.md)
 
 ::: tip 本章学习目标
 能说清模型变大以后的三类新问题：数值失控、超参数搬不过去、一张卡装不下，以及各自的常见对策；能在小模型上用大学习率复现注意力分数失控，并用 QK Norm 压住它；能解释 μP 为什么能让小模型上调好的学习率直接用到大模型上；能算出数据并行、ZeRO/FSDP 各阶段每张卡要放多少训练状态，说清激活重计算、数据并行、张量并行各自省的是什么、代价是什么。
@@ -359,4 +359,4 @@ TinyLLM 的主线保持基础的 Pre-RMSNorm 配置和第 10 章的残差输出�
 - [Training Deep Nets with Sublinear Memory Cost，Chen 等，2016](https://arxiv.org/abs/1604.06174)（激活重计算）
 - [PyTorch：`torch.utils.checkpoint`](https://docs.pytorch.org/docs/stable/checkpoint.html) 与 [Distributed Checkpoint](https://docs.pytorch.org/docs/stable/distributed.checkpoint.html)
 
-模型越大越难训，可有没有办法让参数变多、每个 token 的计算量却不变？[第 25 章：稀疏专家（MoE）](./mixture-of-experts.md)。
+模型越大越难训，可有没有办法让参数变多、每个 token 的计算量却不变？[第 26 章：稀疏专家（MoE）](./mixture-of-experts.md)。

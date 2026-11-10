@@ -1524,7 +1524,7 @@ def tinyllm_model_loss():
               f"第 {log['val_step'][-1]} 步时验证损失仍在下降：这个预算下模型还没学够，也还没开始背训练集。")
 
 
-# ---------- 第 26 章：自回归生成 ----------
+# ---------- 第 27 章：自回归生成 ----------
 
 def sampling_truncate():
     """两组六候选概率与 generation.py 第 2 节的 peaked / flat 完全一致（softmax 后的值）。"""
@@ -1637,7 +1637,7 @@ def guided_decoding():
         "掩码保证格式，不保证内容。", 486, body)
 
 
-# ---------- 第 27 章：推理效率 ----------
+# ---------- 第 28 章：推理效率 ----------
 
 def _fmt_bytes(n):
     for unit, size in (("GiB", 2 ** 30), ("MiB", 2 ** 20), ("KiB", 2 ** 10)):
@@ -3092,7 +3092,7 @@ def hp_peek():
               f"按第 96 步挑中的配置最终是 {final[i_e]:.4f}，按最终挑中的是 {final[i_f]:.4f}。")
 
 
-# ---------- 第 24 章：大规模训练稳定性 ----------
+# ---------- 第 25 章：大规模训练稳定性 ----------
 
 def _scale_log():
     src = DATA / "tinyllm-large-model-stability-log.json"
@@ -3212,7 +3212,7 @@ def scale_parallel():
         "每层用之前 all-gather 参数，反向后 reduce-scatter 梯度。张量并行：每个矩阵切开放在不同的卡上，所有卡处理同一个 batch，每个子层之后 all-reduce 激活。", 410, body, width=1000)
 
 
-# ---------- 第 25 章：稀疏专家（MoE） ----------
+# ---------- 第 26 章：稀疏专家（MoE） ----------
 
 def _moe_log():
     src = DATA / "tinyllm-mixture-of-experts-log.json"
@@ -3374,7 +3374,7 @@ def moe_serving():
               "右：假设路由均匀独立，批量变大时一层里至少被一个 token 选中的专家比例；Qwen3-30B-A3B 在批量 64 时已经接近全部，单用户时的带宽优势在高并发下基本消失。")
 
 
-# ---------- 第 28 章：注意力内核与算子融合 ----------
+# ---------- 第 29 章：注意力内核与算子融合 ----------
 
 def _kernels_log():
     src = DATA / "tinyllm-attention-kernels-log.json"
@@ -3535,7 +3535,7 @@ def kernels_fusion():
               + "，".join(f"{r['name']} {r['ops']} 个算子、多搬 {r['traffic'] / r['lower']:.1f} 倍" for r in rows) + "。" + note)
 
 
-# ---------- 第 29 章：量化 ----------
+# ---------- 第 30 章：量化 ----------
 
 def _quant_log():
     src = DATA / "tinyllm-quantization-log.json"
@@ -3827,7 +3827,7 @@ def gqa_heads():
             x = 240 + h * 52
             body += box(x, y + 10, 40, 32, SOFT[BLUE], BLUE, width=1.4) + text(x + 20, y + 31, f"Q{h}", 13, BLUE)
         body += text(830, y + 46, f"KV cache = MHA × {kv}/8", 15, color, "bold")
-    body += text(480, 470, "缓存大小正比于 K/V 的组数（第 27 章的公式）。Llama 3 8B 用 32 个 Q 头、8 组 K/V，缓存是 MHA 的四分之一", 14.5)
+    body += text(480, 470, "缓存大小正比于 K/V 的组数（第 28 章的公式）。Llama 3 8B 用 32 个 Q 头、8 组 K/V，缓存是 MHA 的四分之一", 14.5)
     svg("gqa-heads.svg", "MHA、GQA 与 MQA",
         "三行都有 8 个 Q 头。MHA 每个 Q 头各有一组 K、V，共 8 组；GQA 每 4 个 Q 头共用一组，共 2 组；MQA 所有 Q 头共用 1 组。KV cache 的大小正比于 K/V 的组数，"
         "分别是 MHA 的 8/8、2/8、1/8。", 490, body)
@@ -4324,7 +4324,7 @@ def eval_checklist_flow():
 
 
 def tensor_parallel_swiglu():
-    """第 24 章：SwiGLU 在两张卡上按列切、再按行切。"""
+    """第 25 章：SwiGLU 在两张卡上按列切、再按行切。"""
     body = text(500, 36, "张量并行：一个 SwiGLU 前馈层切到 2 张卡上", 21, weight="bold")
     for g, (color, gx) in enumerate([(BLUE, 60), (TEAL, 530)]):
         body += f'<rect x="{gx}" y="66" width="410" height="330" rx="14" fill="{SOFT[color]}" stroke="{color}" stroke-width="1.6"/>'
@@ -4347,7 +4347,7 @@ def tensor_parallel_swiglu():
 
 
 def activation_recompute():
-    """第 24 章：激活重计算只存每个 Block 的输入，反向时重算。"""
+    """第 25 章：激活重计算只存每个 Block 的输入，反向时重算。"""
     body = text(480, 36, "激活重计算：前向少存，反向时把这一个 Block 再算一遍", 21, weight="bold")
     for row, (title, color, recompute) in enumerate([("普通训练：Block 内部的中间结果全都存着", GRAY, False), ("激活重计算：只存每个 Block 的输入", TEAL, True)]):
         y = 76 + row * 190
@@ -4369,11 +4369,11 @@ def activation_recompute():
     body += text(480, 460, "本章实测：激活省下九成多，梯度逐位相同，每步慢约三成（多了一次前向）", 14.5, INK, "bold")
     svg("activation-recompute.svg", "激活重计算",
         "上：普通训练时，每个 Block 内部的中间结果都要存着等反向用。下：激活重计算只存每个 Block 的输入，内部的中间结果算完就扔，反向传播到这个 Block 时从输入把前向重算一遍。"
-        "第 24 章的实验里，激活显存省下九成多，梯度逐位相同，每步慢约三成。", 480, body)
+        "第 25 章的实验里，激活显存省下九成多，梯度逐位相同，每步慢约三成。", 480, body)
 
 
 def expert_parallel():
-    """第 25 章：专家并行，token 经两次 all-to-all 去对应的卡再回来。"""
+    """第 26 章：专家并行，token 经两次 all-to-all 去对应的卡再回来。"""
     body = text(500, 36, "专家并行：8 个专家放在 4 张卡上，token 要去专家所在的卡算完再回来", 19, weight="bold")
     colors = [BLUE, TEAL, ORANGE, PURPLE]
     toks = [[0, 5, 2, 7], [1, 1, 6, 3], [4, 0, 1, 5], [1, 2, 1, 6]]
@@ -4404,7 +4404,7 @@ def expert_parallel():
 
 
 def sampling_pipeline():
-    """第 26 章：从 logits 到下一个 token 的每一步。"""
+    """第 27 章：从 logits 到下一个 token 的每一步。"""
     body = text(500, 36, "生成循环：从最后一个位置的 logits 到下一个 token", 21, weight="bold")
     steps = [("模型前向", "最后一个位置的 logits", GRAY, "第 12 章"),
              ("重复惩罚", "出现过的 token 降分", ORANGE, "第 8 节"),
@@ -4437,7 +4437,7 @@ def sampling_pipeline():
 
 
 def roofline():
-    """第 27 章：roofline，用 H100 的公布值画 prefill 与 decode 的位置。"""
+    """第 28 章：roofline，用 H100 的公布值画 prefill 与 decode 的位置。"""
     peak, bw = 989e12, 3.35e12            # H100 SXM：BF16 稠密张量算力、显存带宽（NVIDIA 公布值）
     ridge = peak / bw
     I = np.logspace(-0.3, 4, 200)
@@ -4465,7 +4465,7 @@ def roofline():
 
 
 def chunked_prefill_timeline():
-    """第 27 章：长提示词的 prefill 不分块与分块时，别人的 decode 怎样排队。"""
+    """第 28 章：长提示词的 prefill 不分块与分块时，别人的 decode 怎样排队。"""
     body = text(480, 36, "chunked prefill：长提示词切成几块，正在生成的请求可以插进来", 20, weight="bold")
 
     def row(y, label, segs):
@@ -4490,7 +4490,7 @@ def chunked_prefill_timeline():
 
 
 def gpu_memory_hierarchy():
-    """第 28 章：GPU 的存储层次（H100 SXM 公布值）。"""
+    """第 29 章：GPU 的存储层次（H100 SXM 公布值）。"""
     body = text(480, 36, "GPU 的存储层次：越靠近计算单元越快，也越小（H100 SXM）", 20, weight="bold")
     levels = [("HBM 显存", "80 GB", "约 3.35 TB/s", "权重、KV cache、激活都在这里", GRAY, 700),
               ("L2 缓存", "50 MB", "全卡共享", "自动缓存，程序管不了", BLUE, 600),
@@ -4510,7 +4510,7 @@ def gpu_memory_hierarchy():
 
 
 def quant_grouping():
-    """第 29 章：同一个矩阵，按张量、按通道、分组时，哪些权重共用一个缩放因子。"""
+    """第 30 章：同一个矩阵，按张量、按通道、分组时，哪些权重共用一个缩放因子。"""
     body = text(500, 36, "量化粒度：同一种颜色的权重共用一个缩放因子", 21, weight="bold")
     rows, cols, cell = 6, 16, 16
     palette = ["#bfdbfe", "#99f6e4", "#fde68a", "#fecaca", "#ddd6fe", "#fbcfe8", "#bbf7d0", "#fed7aa"]
@@ -4538,7 +4538,7 @@ def quant_grouping():
 
 
 def quant_mapping():
-    """第 29 章：x → q → x̂ 的往返，对称与非对称。"""
+    """第 30 章：x → q → x̂ 的往返，对称与非对称。"""
     body = text(480, 36, "量化是把一段实数映射到一排整数刻度上（INT4）", 21, weight="bold")
     x0, x1 = 120, 860
     for k, (title, lo, hi, levels, color, note) in enumerate([
@@ -4639,6 +4639,86 @@ def save_plot(fig, name, title, description):
     path_.write_text(raw, encoding="utf-8")
 
 
+def qwen3_family():
+    """快速体验附录：以 Qwen3-4B 为例，一个 base 模型怎样分出一族模型。
+    训练阶段取自 Qwen3 技术报告（arXiv 2505.09388）第 3.2、4.5 节；模型名和派生关系取自
+    Hugging Face 上 Qwen 组织各模型卡的 base_model 标注（2026-11 查询）。"""
+    body = text(480, 36, "一个 base，一族模型：以 Qwen3-4B 为例", 21, weight="bold")
+    stages = [
+        (30, GRAY, "第 1 阶段 · 通用", ["30 万亿以上 token", "序列长度 4K", "学语言和世界知识"]),
+        (250, TEAL, "第 2 阶段 · 推理", ["约 5 万亿高质量 token", "多放 STEM、代码、合成数据", "学习率加快衰减"]),
+        (470, TEAL, "第 3 阶段 · 长上下文", ["数千亿 token，序列 32K", "RoPE base 1 万 → 100 万", "长文本占大头"]),
+    ]
+    for x, color, title, lines in stages:
+        body += cbox(x, 66, 190, 108, color)
+        body += text(x + 95, 92, title, 15, color, "bold")
+        for i, s in enumerate(lines):
+            body += text(x + 95, 116 + i * 20, s, 13, INK)
+    for a, b in ((220, 250), (440, 470), (660, 700)):
+        body += arrow(a + 2, 120, b - 3, 120, GRAY, 2.2)
+    body += box(700, 66, 230, 108, "#ffffff", INK, width=2.4)
+    body += text(815, 98, "Qwen3-4B-Base", 17, INK, "bold")
+    body += text(815, 124, "发布：给它文字，它往下接", 13, INK)
+    body += text(815, 146, "上下文 32K", 13, GRAY)
+    # 阶段标注
+    body += line(30, 188, 220, 188, GRAY, 1.6) + text(125, 206, "预训练", 14, GRAY, "bold")
+    body += line(250, 188, 660, 188, TEAL, 1.6) + text(455, 206, "今天常说的“中训练”（报告里算预训练的后两阶段）", 14, TEAL, "bold")
+    # 后训练
+    body += arrow(815, 176, 815, 237, ORANGE, 2.4)
+    body += cbox(700, 240, 230, 104, ORANGE)
+    body += text(815, 266, "后训练：从大模型蒸馏", 15, ORANGE, "bold")
+    body += text(815, 290, "老师是 Qwen3-32B / 235B-A22B", 13, INK)
+    body += text(815, 310, "先学老师写的回答，", 13, INK)
+    body += text(815, 330, "再让自己的分布贴近老师", 13, INK)
+    body += arrow(815, 346, 815, 377, ORANGE, 2.4)
+    body += box(700, 380, 230, 70, "#ffffff", INK, width=2.4)
+    body += text(815, 408, "Qwen3-4B", 17, INK, "bold")
+    body += text(815, 432, "发布：会对话，思考 / 不思考两种模式", 12.5, INK)
+    # 从 base 派生：向量与打分模型
+    body += path("M760 176 V222 H550 V240", PURPLE, 2.2)
+    body += cbox(440, 243, 220, 92, PURPLE)
+    body += text(550, 268, "Qwen3-Embedding-4B", 14.5, PURPLE, "bold")
+    body += text(550, 290, "Qwen3-Reranker-4B", 14.5, PURPLE, "bold")
+    body += text(550, 314, "从 Base 训成向量 / 打分模型", 13, INK)
+    # 读名字
+    body += cbox(30, 228, 398, 172, GRAY)
+    body += text(48, 254, "名字怎么读", 15, INK, "bold", "start")
+    legend = [
+        ("-Base", "只做完预训练和中训练"),
+        ("不带后缀", "做过后训练，能按对话格式回答"),
+        ("-FP8/-AWQ/-GGUF", "同一个模型，换一种存储格式"),
+        ("-Instruct/-Thinking", "只保留一种模式的对话模型"),
+        ("-2507", "2025 年 7 月的更新版"),
+    ]
+    for i, (name, meaning) in enumerate(legend):
+        y = 280 + i * 25
+        body += mtext(48, y, name, 13, BLUE, "bold", "start")
+        body += text(228, y, meaning, 13, INK, anchor="start")
+    # 从对话模型派生
+    body += path("M700 438 H135 V477", GRAY, 2) + path("M365 438 V477", GRAY, 2)
+    body += cbox(30, 480, 210, 96, GRAY)
+    body += text(135, 504, "量化版", 15, INK, "bold")
+    body += mtext(135, 528, "-FP8  -AWQ  -GGUF", 13, BLUE)
+    body += text(135, 552, "不再训练，只压缩权重", 13, INK)
+    body += cbox(260, 480, 210, 96, RED)
+    body += text(365, 504, "安全专项", 15, RED, "bold")
+    body += mtext(365, 528, "Qwen3Guard-*-4B", 13, BLUE)
+    body += text(365, 552, "再做一轮后训练，判断或拒绝", 13, INK)
+    body += path("M815 452 V477", GRAY, 2, dash=True)
+    body += box(700, 480, 230, 96, "#ffffff", GRAY, dash=True, width=1.6)
+    body += text(815, 504, "Qwen3-4B-Instruct-2507", 13.5, INK, "bold")
+    body += text(815, 524, "Qwen3-4B-Thinking-2507", 13.5, INK, "bold")
+    body += text(815, 550, "官方称作两种模式各自的更新版", 12.5, GRAY)
+    body += text(815, 568, "模型卡没写从哪个检查点出发", 12.5, GRAY)
+    body += text(480, 612, "训练阶段来自 Qwen3 技术报告；模型之间的实线取自 Hugging Face 模型卡的 base_model 标注，虚线只有官方文字说明。", 13, GRAY)
+    svg("qwen3-family.svg", "以 Qwen3-4B 为例的模型族谱",
+        "上排是训练阶段：第 1 阶段在 30 万亿以上 token 上用 4K 序列学语言和知识（预训练）；第 2 阶段用约 5 万亿高质量 token 加强推理、学习率加快衰减；"
+        "第 3 阶段用 32K 长序列、把 RoPE base 从 1 万调到 100 万（这两段就是今天常说的中训练）；三段做完发布 Qwen3-4B-Base。"
+        "Base 经过从 Qwen3-32B、235B-A22B 的蒸馏式后训练，得到能对话、有思考和不思考两种模式的 Qwen3-4B。"
+        "Qwen3-Embedding-4B 和 Qwen3-Reranker-4B 从 Base 训出；FP8、AWQ、GGUF 是 Qwen3-4B 的量化版；Qwen3Guard 在 Qwen3-4B 上再做安全专项训练；"
+        "Instruct-2507 与 Thinking-2507 是官方所说的两种模式各自的更新版。", 640, body)
+
+
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     configure_plots()
@@ -4653,6 +4733,7 @@ def main():
     first_run_loss()
     quickstart_loss()
     quickstart_flow()
+    qwen3_family()
     # 第 10、8、4、5、16、19 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
                label_shift, embedding_lookup, tied_output, kv_cache, optimizer_paths, optimizer_curves, adamw_vs_l2,

@@ -1,5 +1,5 @@
 ---
-title: "第 28 章：注意力内核与算子融合（notebook 在线查看）"
+title: "第 29 章：注意力内核与算子融合（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 28 章：注意力内核与算子融合
+# 第 29 章：注意力内核与算子融合
 
 配套教案：https://lewislau86.github.io/tinyllm/attention-kernels
 
@@ -44,7 +44,7 @@ from torch.utils._python_dispatch import TorchDispatchMode
 from torch.utils._pytree import tree_flatten
 from tokenizers import Tokenizer, decoders, models, pre_tokenizers, trainers
 
-torch.set_num_threads(1)                      # 与第 27 章一致：单线程，结果可复现
+torch.set_num_threads(1)                      # 与第 28 章一致：单线程，结果可复现
 torch.manual_seed(0)
 print("PyTorch", torch.__version__, " 线程数", torch.get_num_threads())
 log = {}
@@ -80,7 +80,7 @@ PyTorch 2.14.1+cpu  线程数 1
 ::: v-pre
 ## 1. 研究对象：第 12 章的基线模型
 
-和第 27 章一样，先按[第 12 章](https://lewislau86.github.io/tinyllm/tinyllm-model)的配置训 300 步。
+和第 28 章一样，先按[第 12 章](https://lewislau86.github.io/tinyllm/tinyllm-model)的配置训 300 步。
 唯一的改动：每层的注意力不直接写死，而是调用全局变量 `ATTN` 指向的函数，后面可以把它换成自己写的版本。
 :::
 
@@ -610,7 +610,7 @@ Q、K、V 梯度的最大差（相对于梯度最大值）：1.4e-06；一张 [1
 ::: v-pre
 朴素写法为反向存下了 softmax 的输出 P 这一整张 $T\times T$ 的表（外加一张布尔掩码），
 SDPA 只存 Q、K、V、输出和每行一个 lse，梯度和朴素写法在浮点舍入范围内一致。用多算一遍换少存一张表，
-和[第 24 章](https://lewislau86.github.io/tinyllm/large-model-stability)的激活重计算是同一个交换，只是做在了一个算子内部。
+和[第 25 章](https://lewislau86.github.io/tinyllm/large-model-stability)的激活重计算是同一个交换，只是做在了一个算子内部。
 :::
 
 ::: v-pre

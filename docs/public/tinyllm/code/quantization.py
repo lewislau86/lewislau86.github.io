@@ -1,5 +1,5 @@
 # %% [markdown]
-# # 第 29 章：量化
+# # 第 30 章：量化
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/quantization
 #
@@ -54,7 +54,7 @@ def load_poems(n):
 # %% [markdown]
 # ## 1. 研究对象：3 个第 12 章的基线模型
 #
-# 模型代码与第 27、28 章相同（[第 12 章](https://lewislau86.github.io/tinyllm/tinyllm-model)的配置，训练 300 步）。
+# 模型代码与第 28、29 章相同（[第 12 章](https://lewislau86.github.io/tinyllm/tinyllm-model)的配置，训练 300 步）。
 # 量化的影响要在不止一个模型上看，所以用 3 个种子各训练一次：种子只决定初始参数，batch 顺序由单独的生成器固定。
 # 每层注意力调用全局变量 `ATTN`，第 7 节会在这里插入 KV cache 的量化。
 
@@ -471,7 +471,7 @@ log["absmax_down1_smoothed"] = xs.tolist()
 # %% [markdown]
 # ## 7. KV cache 量化
 #
-# [第 27 章](https://lewislau86.github.io/tinyllm/inference-efficiency)算过，长上下文时缓存会比权重还大。
+# [第 28 章](https://lewislau86.github.io/tinyllm/inference-efficiency)算过，长上下文时缓存会比权重还大。
 # 缓存里的 K、V 也可以量化：每个 token、每个头的一组 K（32 个数）共用一个缩放因子。
 # 在注意力里，K、V 写进缓存前量化、读出来时还原，等价于把下面这个函数换进 `ATTN`：
 
@@ -506,7 +506,7 @@ for bits in (8, 4):
 log["kv_results"] = kv_results
 
 # %% [markdown]
-# 缓存的字节数用第 27 章的公式：$2 \times$ 层数 $\times$ token 数 $\times$ KV 头数 $\times$ 每头维度 $\times$ 每元素字节，
+# 缓存的字节数用第 28 章的公式：$2 \times$ 层数 $\times$ token 数 $\times$ KV 头数 $\times$ 每头维度 $\times$ 每元素字节，
 # 量化后每元素的字节变小，另外每组（每个 token、每个头）多存一个 FP16 缩放因子。
 
 # %%
@@ -525,7 +525,7 @@ for name, cfg in [("TinyLLM，64 个 token", (4, 64, 4, 32)), ("Llama 3 8B，819
 # ## 8. 换算到真实模型
 #
 # 权重的体积 = 参数个数 × 每个权重的位数 ÷ 8。每个权重的位数要算上缩放因子：分组 128 的 INT4 是 $4 + 16/128 = 4.125$ 位。
-# 再用第 27 章的带宽上限（单请求 decode 每生成一个 token 要把权重读一遍）估一下速度的上限。
+# 再用第 28 章的带宽上限（单请求 decode 每生成一个 token 要把权重读一遍）估一下速度的上限。
 
 # %%
 # region real-models

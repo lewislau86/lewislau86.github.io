@@ -1,5 +1,5 @@
 ---
-title: "第 26 章：自回归生成（notebook 在线查看）"
+title: "第 27 章：自回归生成（notebook 在线查看）"
 search: false
 editLink: false
 prev: false
@@ -16,7 +16,7 @@ pageClass: tinyllm-course
 :::
 
 ::: v-pre
-# 第 26 章：自回归生成
+# 第 27 章：自回归生成
 
 配套教案：https://lewislau86.github.io/tinyllm/generation
 

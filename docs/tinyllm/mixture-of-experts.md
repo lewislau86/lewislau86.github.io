@@ -1,17 +1,17 @@
 ---
-title: "第 25 章：稀疏专家（MoE）"
+title: "第 26 章：稀疏专家（MoE）"
 description: "把前馈层换成 8 个专家和一个路由器，每个 token 只用 2 个。在小模型上看清路由、负载均衡和专家分工，把训练到一半的稠密模型无损地“升级”成 MoE；再回答三个实际问题：MoE 必须一开始就定吗、用起来和稠密模型有什么不同、为什么越来越多的大模型（包括小米的 MiMo）选择 MoE。"
 pageClass: tinyllm-course
 ---
 
-# 第 25 章：稀疏专家（MoE）
+# 第 26 章：稀疏专家（MoE）
 
 [课程总览](./index.md) · [上一章](./large-model-stability.md) · [下一章](./generation.md)
 
 ::: tip 本章学习目标
 能写出一个 MoE 层（路由器、top-k、加权求和），说清“总参数”和“激活参数”各决定什么；能解释负载均衡为什么必要，以及辅助损失和无辅助损失的偏置法各自的取舍；能把一个训练好的稠密模型无损地改成 MoE 接着训练（稀疏升级）；能从显存、速度、并发、微调几个方面说清 MoE 和稠密模型在使用上的差别，判断什么场景该选哪一种。
 
-**前置：** [第 3 章](./architecture-evolution.md)里的 MoE 预览，[第 8 章](./activations-and-ffn.md)的 SwiGLU 前馈层，[第 21 章](./training-loop.md)的优化器状态，[第 24 章](./large-model-stability.md)的显存账与数据并行。
+**前置：** [第 3 章](./architecture-evolution.md)里的 MoE 预览，[第 8 章](./activations-and-ffn.md)的 SwiGLU 前馈层，[第 21 章](./training-loop.md)的优化器状态，[第 25 章](./large-model-stability.md)的显存账与数据并行。
 
 **实践方式：** [mixture-of-experts.ipynb](/tinyllm/notebooks/mixture-of-experts)（也可以直接运行 <a href="/tinyllm/code/mixture-of-experts.py" download>mixture-of-experts.py</a>），CPU 约一分半，需要 PyTorch 和 `tokenizers`。
 :::
@@ -225,13 +225,13 @@ DeepSeek-V3           1342 GB         74 GFLOP       74.0 GB
 
 - **个人电脑上跑 MoE**：本地推理通常一次只处理一个请求，正是 MoE 最占便宜的场景。只要内存装得下，像 Qwen3-30B-A3B 这样的模型生成速度接近一个 3B 的稠密模型。内存装不下时，有的推理框架支持把一部分专家放在 CPU 内存里，每个 token 只搬用到的那几个，速度会慢一些，但能跑起来。
 - **云服务上的 MoE**：批量大的时候，带宽优势消失，但每个 token 的计算量仍然只按激活参数算，所以同样的硬件每秒能处理的 token 更多，单价也就更低。代价是部署更复杂，需要很多张卡一起放下全部专家。
-- **结果的稳定性**：在设了专家容量上限的实现里（第 3 节），一个 token 会不会被某个专家丢掉，取决于同一批里还有哪些别的请求；同一个提示词，在不同的并发情况下，输出可能有细微差别。用户偶尔会感觉到“同样的问题，回答不完全一样”，这是原因之一（采样的随机性是另一个，[第 26 章](./generation.md)）。
+- **结果的稳定性**：在设了专家容量上限的实现里（第 3 节），一个 token 会不会被某个专家丢掉，取决于同一批里还有哪些别的请求；同一个提示词，在不同的并发情况下，输出可能有细微差别。用户偶尔会感觉到“同样的问题，回答不完全一样”，这是原因之一（采样的随机性是另一个，[第 27 章](./generation.md)）。
 
 一句话总结：**同样的显存，选稠密；同样的速度或同样的计算预算，选 MoE。** 手机、单卡这类显存紧张的场景，稠密模型往往更合适；云端大规模服务、追求单位成本的场景，MoE 更合适。
 
 ## 7. 专题三：为什么越来越多的厂商选择 MoE
 
-先看事实。小米 MiMo 系列最早的模型 MiMo-7B（2025 年 5 月）是**稠密**模型，主打推理能力，从头预训练了 25 万亿 token（[小米 LLM-Core 团队，2025](https://arxiv.org/abs/2505.07608)）。2026 年 1 月的 MiMo-V2-Flash 换成了 **MoE**：总参数 3090 亿，每个 token 激活 150 亿；技术报告把它的目标描述为“快速、强推理和 agent 能力”，并说它的能力可以和 DeepSeek-V3.2、Kimi-K2 相比，总参数却只有它们的 1/2 和 1/3；推理时再用多 token 预测做投机解码（[第 30 章](./speculative-decoding.md)），解码速度最高提升 2.6 倍（[小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780)）。2026 年 3 月的 MiMo-V2-Pro 总参数 1 万亿、每个 token 激活 420 亿，也是 MoE，注意力按 1:7 混合全局注意力和滑动窗口注意力，上下文 100 万 token；4 月的 V2.5-Pro 沿用这一规模，9 月又发布了同为万亿参数级的 V2.6 系列（[小米 MiMo 模型更新日志](https://mimo.mi.com/docs/en-US/updates/model)）。DeepSeek、Qwen、Kimi 的旗舰模型同样都是 MoE。
+先看事实。小米 MiMo 系列最早的模型 MiMo-7B（2025 年 5 月）是**稠密**模型，主打推理能力，从头预训练了 25 万亿 token（[小米 LLM-Core 团队，2025](https://arxiv.org/abs/2505.07608)）。2026 年 1 月的 MiMo-V2-Flash 换成了 **MoE**：总参数 3090 亿，每个 token 激活 150 亿；技术报告把它的目标描述为“快速、强推理和 agent 能力”，并说它的能力可以和 DeepSeek-V3.2、Kimi-K2 相比，总参数却只有它们的 1/2 和 1/3；推理时再用多 token 预测做投机解码（[第 31 章](./speculative-decoding.md)），解码速度最高提升 2.6 倍（[小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780)）。2026 年 3 月的 MiMo-V2-Pro 总参数 1 万亿、每个 token 激活 420 亿，也是 MoE，注意力按 1:7 混合全局注意力和滑动窗口注意力，上下文 100 万 token；4 月的 V2.5-Pro 沿用这一规模，9 月又发布了同为万亿参数级的 V2.6 系列（[小米 MiMo 模型更新日志](https://mimo.mi.com/docs/en-US/updates/model)）。DeepSeek、Qwen、Kimi 的旗舰模型同样都是 MoE。
 
 技术报告没有专门解释“为什么选 MoE”。下面是从前几节的账出发的**分析**，不是小米的官方说法：
 
@@ -349,4 +349,4 @@ MoE 的基础：
 - [MiMo-V2-Flash Technical Report，小米 LLM-Core 团队，2026](https://arxiv.org/abs/2601.02780) · [小米 MiMo 模型更新日志](https://mimo.mi.com/docs/en-US/updates/model)
 - [Kimi K3: Open Frontier Intelligence，Kimi Team，2026](https://arxiv.org/abs/2607.24653)
 
-第五部分到这里结束：数据、目标、优化、正则化、精度、梯度、训练循环、评估、调参，再到放大以后的稳定性和 MoE。模型训好了，下一部分讲怎样用它：[第 26 章：自回归生成](./generation.md)。
+第五部分到这里结束：数据、目标、优化、正则化、精度、梯度、训练循环、评估、调参，再到放大以后的稳定性和 MoE。模型训好了，下一部分讲怎样用它：[第 27 章：自回归生成](./generation.md)。
