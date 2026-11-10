@@ -142,6 +142,11 @@ SPEC = {
         ("负载均衡损失", "models/mixtral/modeling_mixtral.py", "load_balancing_loss_func", "Switch Transformer 的辅助损失：每个专家分到的比例乘以平均路由概率，再求和，即本章 `self.aux`"),
         ("共享专家", "models/qwen2_moe/modeling_qwen2_moe.py", "Qwen2MoeSparseMoeBlock", "路由专家之外，还有一个每个 token 都经过的共享专家，用一个门控决定它的输出占多少"),
     ]),
+    "scaling-laws": ("transformers 的 Trainer 也用 6ND 记录训练花了多少算力，但它数参数的方式和本章不同：", [
+        ("每一步的算力", "trainer.py", "Trainer.floating_point_ops", "返回 6 × token 数 × `num_parameters(exclude_embeddings=True)`，也就是不算嵌入表；输入、输出共享权重的模型（比如 TinyLLM）会因此漏掉输出层那一份乘法，正是本章第 1 节说的少算"),
+        ("数参数", "modeling_utils.py", "ModuleUtilsMixin.num_parameters", "`exclude_embeddings=True` 时跳过所有 `nn.Embedding` 的权重；共享的那张表在 `named_parameters()` 里只出现一次、挂在嵌入层名下，所以一起被跳过"),
+        ("累计并上报", "trainer.py", ("grep", r'metrics\["total_flos"\]'), "训练结束时把累计的算力写进指标 `total_flos`，可以用来核对一次训练一共花了多少算力"),
+    ]),
     "large-model-stability": ("本章的几个手段，在 transformers 里分别对应下面这几处：", [
         ("QK Norm", QWEN3, ("grep", r"self\.q_norm = "), "Qwen3 给每个头的 q、k 各配一个 RMSNorm，和本章 `qk_norm=True` 的写法相同"),
         ("激活重计算的开关", "modeling_utils.py", "PreTrainedModel.gradient_checkpointing_enable", "给模型里的每一层打开重计算，底层就是本章用的 `torch.utils.checkpoint`"),

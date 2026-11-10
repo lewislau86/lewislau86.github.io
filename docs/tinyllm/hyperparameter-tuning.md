@@ -338,4 +338,4 @@ TinyLLM 调参时先用主线配置跑 3～5 个种子量出**噪声底线**（�
 - [How to set AdamW's weight decay as you scale model and dataset size，Wang 与 Aitchison，2024](https://arxiv.org/abs/2405.13698)（weight decay 的时间尺度）
 - [An Empirical Model of Large-Batch Training，McCandlish 等，2018](https://arxiv.org/abs/1812.06162)（临界 batch 大小）
 
-调参回答的是“给定规模，怎么训”。下一步要问“规模本身怎么定”：同样的算力，模型该多大、该训多少 token？[第 24 章：缩放定律与算力预算](./scaling-laws.md)（规划中）。小模型上调好的数值怎样搬到大模型上、模型变深变宽以后又会出现哪些不稳定，见[第 25 章：大规模训练稳定性](./large-model-stability.md)。
+调参回答的是“给定规模，怎么训”。下一步要问“规模本身怎么定”：同样的算力，模型该多大、该训多少 token？[第 24 章：缩放定律与算力预算](./scaling-laws.md)。小模型上调好的数值怎样搬到大模型上、模型变深变宽以后又会出现哪些不稳定，见[第 25 章：大规模训练稳定性](./large-model-stability.md)。

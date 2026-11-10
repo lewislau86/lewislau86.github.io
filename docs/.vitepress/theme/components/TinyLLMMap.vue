@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
 const props = withDefaults(defineProps<{ active?: string; caption?: boolean }>(), { caption: true })
 
-const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization"])
+const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization"])
 
 // 每章在图中的输入与输出（图注里显示）
 const io: Record<string, [string, string]> = {

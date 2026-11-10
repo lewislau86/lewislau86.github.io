@@ -3092,6 +3092,203 @@ def hp_peek():
               f"按第 96 步挑中的配置最终是 {final[i_e]:.4f}，按最终挑中的是 {final[i_f]:.4f}。")
 
 
+# ---------- 第 24 章：缩放定律与算力预算 ----------
+
+def _sl_log():
+    src = DATA / "tinyllm-scaling-laws-log.json"
+    if not src.exists():
+        print("skip scaling-laws figures: run scripts/build-tinyllm-code.py scaling-laws to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def _sl_parabola(points):
+    """和 scaling-laws.py 的 fit_parabola 相同：最低点左右各两个点，对 ln N 拟合抛物线。"""
+    points = sorted(points, key=lambda r: r["N"])
+    i = min(range(len(points)), key=lambda k: points[k]["loss"])
+    chosen = points[max(0, i - 2):i + 3]
+    x = np.log([r["N"] for r in chosen])
+    a, b, c = np.polyfit(x, [r["loss"] for r in chosen], 2)
+    return chosen, (lambda N: a * np.log(N) ** 2 + b * np.log(N) + c)
+
+
+def sl_six_nd():
+    """6ND 的来历：一个权重、一个 token，前向 2 次运算，反向 4 次；右边是实测核对。"""
+    log = _sl_log()
+    if log is None:
+        return
+    body = text(480, 36, "一个权重、一个 token：前向 2 次运算，反向 4 次", 21, weight="bold")
+    steps = [
+        (40, BLUE, "前向", "y_j += x_i * w_ij", "乘 1 次、加 1 次", "2"),
+        (250, ORANGE, "反向：传给输入", "dx_i += dy_j * w_ij", "让梯度继续往前传", "2"),
+        (460, ORANGE, "反向：给权重", "dw_ij += x_i * dy_j", "优化器要用的梯度", "2"),
+    ]
+    for x, color, title, formula, note, n in steps:
+        body += cbox(x, 70, 190, 150, color)
+        body += text(x + 95, 98, title, 16, color, "bold")
+        body += mtext(x + 95, 136, formula, 14.5, INK)
+        body += text(x + 95, 166, note, 13, GRAY)
+        body += text(x + 95, 202, f"{n} 次", 17, color, "bold")
+    body += text(355, 254, "每个参数、每个 token：2 + 2 + 2 = 6 次 → 一次训练约 6 × 参数量 N × token 数 D", 15, INK, "bold")
+    body += cbox(680, 70, 250, 150, GRAY)
+    body += text(805, 96, "实测一步（1024 个 token）", 14.5, INK, "bold")
+    for i, d in enumerate(("32", "64", "128")):
+        total, no_emb = log["params"][d]
+        ratio = log["flops"][d] / (6 * total * log["tokens_per_step"])
+        body += text(700, 126 + i * 30, f"宽度 {d}", 13.5, INK, anchor="start")
+        body += mtext(910, 126 + i * 30, f"{ratio:.4f}", 13.5, TEAL, "bold", "end")
+    body += text(805, 210, "实测 ÷ (6×全部参数×token)", 12, GRAY)
+    body += box(40, 282, 890, 96, SOFT[TEAL], TEAL, width=1.6)
+    body += text(60, 310, "N 要算哪些参数？", 15, TEAL, "bold", "start")
+    body += text(60, 336, "词嵌入表的“查表”不做乘加，但 TinyLLM 的输出层和它共享同一张表（第 5 章），每个 token 都要乘一遍：", 13.5, INK, anchor="start")
+    no = log["params"]["32"]
+    body += text(60, 360, f"所以全部参数都要算。只算不含嵌入的部分，宽度 32 时会少算 {log['flops']['32'] / (6 * no[1] * log['tokens_per_step']):.1f} 倍。注意力分数那部分运算和序列长度有关，在 64 个 token 时可以忽略。", 13.5, INK, anchor="start")
+    svg("scaling-6nd.svg", "训练算力 6ND 的来历",
+        "一个权重 w_ij 遇到一个 token：前向时乘一次、加一次，共 2 次；反向时要把梯度传给输入（2 次），还要算这个权重自己的梯度（2 次）。"
+        "合计每个参数每个 token 6 次，所以一次训练约 6ND 次浮点运算。用 FlopCounterMode 实测宽度 32、64、128 的一步训练，"
+        "和 6 × 全部参数 × token 数的比值都在 0.997 以上；只算不含嵌入的参数会少算很多，因为共享权重的输出层也要乘一遍。", 400, body)
+
+
+def sl_isoflop():
+    """左：三档算力下验证损失随参数量的变化（IsoFLOP 曲线）；右：最优参数量和 token 数随算力的增长。"""
+    log = _sl_log()
+    if log is None:
+        return
+    runs, budgets, optima = log["runs"], log["budgets"], log["optima"]
+    colors = (TEAL, BLUE, ORANGE)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(12, 4.8), layout="constrained", gridspec_kw={"width_ratios": [1.35, 1]})
+    for C, color, opt in zip(budgets, colors, optima):
+        pts = sorted((r for r in runs if r["C"] == C), key=lambda r: r["N"])
+        chosen, curve = _sl_parabola(pts)
+        a1.plot([r["N"] for r in pts], [r["loss"] for r in pts], "o", color=color, ms=6, alpha=0.9)
+        xs = np.exp(np.linspace(np.log(chosen[0]["N"]), np.log(chosen[-1]["N"]), 60))
+        a1.plot(xs, curve(xs), "-", color=color, lw=2, label=f"C = {C:.0e}".replace("e+", "e"))
+        a1.plot(opt["N"], opt["loss"], "*", color=color, ms=16, mec="white", zorder=4)
+        if C == budgets[-1]:
+            for r in pts:
+                if r["d"] in (16, 32, 128):
+                    a1.annotate(f"宽度 {r['d']}，{r['steps']} 步", (r["N"], r["loss"]), textcoords="offset points",
+                                xytext=(-4, -16) if r["d"] == 16 else (0, -16), ha="left" if r["d"] == 16 else "center",
+                                fontsize=9, color=color)
+    a1.set_xscale("log")
+    a1.set_ylim(4.5, 6.2)
+    a1.set_xlabel("参数量 N（全部参数，对数坐标）")
+    a1.set_ylabel("验证损失（衰减完，nats/token）")
+    a1.legend(title="每一档的算力", fontsize=10, title_fontsize=10)
+    a1.grid(alpha=0.25)
+    Cs = np.array(budgets)
+    Ns = np.array([o["N"] for o in optima])
+    Ds = np.array([o["D"] for o in optima])
+    a2.plot(Cs, Ns, "o", color=BLUE, ms=8)
+    a2.plot(Cs, Ds, "s", color=ORANGE, ms=8)
+    for arr, k, color, name in ((Ns, log["k_N"], BLUE, "最优参数量"), (Ds, log["k_D"], ORANGE, "最优 token 数")):
+        kk, bb = np.polyfit(np.log(Cs), np.log(arr), 1)
+        xs = np.exp(np.linspace(np.log(Cs[0]) - 0.2, np.log(Cs[-1]) + 0.2, 20))
+        a2.plot(xs, np.exp(bb) * xs ** kk, "--", color=color, lw=1.6, label=f"{name} ∝ C^{k:.2f}")
+    for C, N, D in zip(Cs, Ns, Ds):
+        a2.annotate(f"{D / N:.0f} token/参数", (C, D), textcoords="offset points", xytext=(0, 10), ha="center", fontsize=9.5, color=ORANGE)
+    a2.set_xscale("log")
+    a2.set_yscale("log")
+    a2.set_xlabel("训练算力 C（次浮点运算）")
+    a2.set_ylabel("抛物线最低点")
+    a2.legend(fontsize=10, loc="center right")
+    a2.grid(alpha=0.25, which="both")
+    o = optima
+    save_plot(fig, "scaling-isoflop.svg", "IsoFLOP 曲线与最优参数量",
+              f"左：三档算力下，7 个宽度的验证损失随参数量先降后升（单个种子）；对最低点附近拟合抛物线，星号是最低点："
+              f"{o[0]['N']:,.0f}、{o[1]['N']:,.0f}、{o[2]['N']:,.0f} 个参数。宽度 128 只能训练十几到六十几步，损失最高。"
+              f"右：算力每翻一倍，最优参数量增长较慢（∝ C^{log['k_N']:.2f}），最优 token 数增长较快（∝ C^{log['k_D']:.2f}），"
+              f"每个参数分到的 token 从 {o[0]['D'] / o[0]['N']:.0f} 个增加到 {o[2]['D'] / o[2]['N']:.0f} 个。")
+
+
+def sl_extrapolate():
+    """用前两档预测第三档：L(N, D) 的预测曲线、趋势外推的最优点，和实测对照。"""
+    log = _sl_log()
+    if log is None:
+        return
+    runs, C = log["runs"], log["budgets"][-1]
+    p, opt = log["law"], log["optima"][-1]
+    pts = sorted((r for r in runs if r["C"] == C), key=lambda r: r["N"])
+    chosen, curve = _sl_parabola(pts)
+    fig, ax = plt.subplots(figsize=(10, 4.8), layout="constrained")
+    xs = np.exp(np.linspace(np.log(pts[0]["N"]) - 0.1, np.log(pts[-1]["N"]) + 0.1, 120))
+    ax.plot(xs, p["E"] + p["A"] / xs ** p["alpha"] + p["B"] / (C / (6 * xs)) ** p["beta"], "--", color=BLUE, lw=2,
+            label="做法二：只用前两档拟合的 L(N, D)，代入第三档的算力")
+    xc = np.exp(np.linspace(np.log(chosen[0]["N"]), np.log(chosen[-1]["N"]), 60))
+    ax.plot(xc, curve(xc), "-", color=INK, lw=1.6, label="第三档实测点拟合的抛物线")
+    ax.plot([r["N"] for r in pts], [r["loss"] for r in pts], "o", color=INK, ms=7, label="第三档实测（单个种子）", zorder=4)
+    lo, hi = opt["N"] / 1.5, opt["N"] * 1.5
+    ax.axvspan(lo, hi, color=GRAY, alpha=0.12)
+    ax.text(opt["N"], 5.32, f"最低点的 1/1.5～1.5 倍\n损失只高 {curve(lo) - opt['loss']:.3f} / {curve(hi) - opt['loss']:.3f}", ha="center", fontsize=9.5, color=GRAY)
+    for N, color, name, y, side in ((opt["N"], INK, "实测抛物线最低点", 4.46, "left"), (log["N_trend"], ORANGE, "做法一：趋势外推", 4.53, "right"),
+                                    (log["N_law"], BLUE, "做法二的最低点", 4.46, "right")):
+        ax.axvline(N, color=color, lw=1.3, ls=":")
+        ax.text(N * (1.03 if side == "left" else 0.97), y, f"{name} {N:,.0f}", ha=side, fontsize=9, color=color)
+    ax.set_xscale("log")
+    ax.set_ylim(4.42, 5.48)
+    ax.set_xlabel("参数量 N（对数坐标）")
+    ax.set_ylabel(f"验证损失（C = {C:.0e}）".replace("e+", "e"))
+    ax.legend(fontsize=9.5, loc="lower right")
+    ax.grid(alpha=0.25)
+    errs = [p["E"] + p["A"] / r["N"] ** p["alpha"] + p["B"] / r["D"] ** p["beta"] - r["loss"] for r in pts]
+    save_plot(fig, "scaling-extrapolate.svg", "用小预算预测大预算",
+              f"只用前两档的数据预测第三档（算力翻倍）。做法一把前两档的最优参数量连成直线外推，得到 {log['N_trend']:,.0f}，"
+              f"实测抛物线最低点是 {opt['N']:,.0f}。做法二拟合 L(N, D)，预测的损失和实测相差 {min(errs):+.3f}～{max(errs):+.3f}，"
+              f"预测的最低点 {log['N_law']:,.0f} 偏小，但最低点附近很平：参数量在最低点的 1/1.5 到 1.5 倍之间，损失只高 0.02 左右。")
+
+
+def sl_kaplan():
+    """同一批训练，两种记账方式求出的指数，和 Kaplan、Chinchilla 的结论放在一起。"""
+    log = _sl_log()
+    if log is None:
+        return
+    rows = [("Kaplan 等，2020（不算嵌入）", 0.73, RED), ("Chinchilla，2022（全部参数）", 0.50, TEAL),
+            ("本章：不算词嵌入表", log["kaplan"]["k_kaplan"], RED), ("本章：全部参数", log["k_N"], TEAL)]
+    fig, ax = plt.subplots(figsize=(9.5, 3.4), layout="constrained")
+    for i, (name, k, color) in enumerate(rows):
+        ax.plot([0, k], [i, i], color=color, lw=2.2, alpha=0.5)
+        ax.plot(k, i, "o", color=color, ms=11)
+        ax.text(k + 0.015, i, f"{k:.2f}", va="center", fontsize=11, color=color, fontweight="bold")
+    ax.set_yticks(range(len(rows)), [r[0] for r in rows])
+    ax.set_xlim(0, 0.85)
+    ax.invert_yaxis()
+    ax.set_xlabel("最优参数量 ∝ C^a 中的指数 a（越大，多出来的算力越多地花在加大模型上）")
+    ax.axhline(1.5, color=GRAY, lw=0.8, ls=":")
+    ax.grid(alpha=0.25, axis="x")
+    save_plot(fig, "scaling-kaplan.svg", "不同记账方式下的缩放指数",
+              f"上两行是论文结论：Kaplan 等人不算词嵌入参数，得到 0.73；Chinchilla 算全部参数，得到 0.50。"
+              f"下两行是本章同一批训练：按全部参数记账得到 {log['k_N']:.2f}，像 Kaplan 那样不算词嵌入表则变成 {log['kaplan']['k_kaplan']:.2f}，"
+              "朝 Kaplan 的方向偏。本章模型很小、词嵌入表占参数的大头，这个偏差尤其明显。")
+
+
+def sl_inference():
+    """训练 + 推理的总算力：生成的 token 越多，越值得用小一点的模型多训。"""
+    log = _sl_log()
+    if log is None:
+        return
+    inf = log["inference"]
+    rows = inf["rows"]
+    fig, ax = plt.subplots(figsize=(10, 4.6), layout="constrained")
+    T = np.linspace(0, 12e12, 200)
+    colors = (INK, BLUE, TEAL, ORANGE)
+    for r, color in zip(rows, colors):
+        total = (r["train"] + 2 * r["N"] * T) / 1e24
+        ax.plot(T / 1e12, total, color=color, lw=2.2,
+                label=f"{r['N'] / 1e9:.0f}B，训练 {r['D'] / 1e12:.1f} 万亿 token（{r['D'] / r['N']:.0f} 个/参数）")
+        if r["breakeven"]:
+            x = r["breakeven"]
+            ax.plot(x / 1e12, (r["train"] + 2 * r["N"] * x) / 1e24, "o", color=color, ms=7)
+    ax.set_xlabel("部署后一共生成的 token（万亿）")
+    ax.set_ylabel("训练 + 推理的总算力（×10²⁴ 次运算）")
+    ax.legend(fontsize=9.5, loc="upper left", title=f"要达到同样的损失 {inf['target']:.3f}", title_fontsize=9.5)
+    ax.grid(alpha=0.25)
+    r2 = rows[2]
+    save_plot(fig, "scaling-inference.svg", "把推理算进总账",
+              f"用 Chinchilla 数据的重新拟合（Besiroglu 等，2024）计算：要达到 {rows[0]['N'] / 1e9:.0f}B 算力最优模型的损失，"
+              f"{r2['N'] / 1e9:.0f}B 的模型要训练 {r2['D'] / 1e12:.1f} 万亿 token，训练算力多 {r2['train'] / rows[0]['train'] - 1:.0%}，"
+              f"但每生成一个 token 只要一半的算力；部署后生成超过 {r2['breakeven'] / 1e12:.1f} 万亿 token，总账就比最优点省。圆点是各条线与黑线的交点。")
+
+
 # ---------- 第 25 章：大规模训练稳定性 ----------
 
 def _scale_log():
@@ -4749,6 +4946,7 @@ def main():
                loop_structure, ckpt_contents, ckpt_resume,
                eval_pretty_curves, eval_matrix, eval_causality, eval_bootstrap, eval_quality,
                hp_sensitivity, hp_search, hp_halving, hp_peek,
+               sl_six_nd, sl_isoflop, sl_extrapolate, sl_kaplan, sl_inference,
                scale_instability, scale_mup, scale_memory, scale_parallel,
                moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving,
                kernels_memory, kernels_online, kernels_tiling, kernels_fusion,

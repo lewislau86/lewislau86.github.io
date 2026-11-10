@@ -147,6 +147,10 @@
         "link": "/tinyllm/hyperparameter-tuning"
       },
       {
+        "text": "第 24 章 · 缩放定律与算力预算",
+        "link": "/tinyllm/scaling-laws"
+      },
+      {
         "text": "第 25 章 · 大规模训练稳定性",
         "link": "/tinyllm/large-model-stability"
       },
@@ -182,15 +186,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第五部分 · 预训练（补）",
-        "items": [
-          {
-            "text": "第 24 章 · 缩放定律与算力预算",
-            "link": "/tinyllm/scaling-laws"
-          }
-        ]
-      },
       {
         "text": "第六部分 · 推理（续）",
         "items": [
