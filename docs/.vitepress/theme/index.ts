@@ -11,6 +11,7 @@ import OptimizerRace from './components/OptimizerRace.vue'
 import BackpropFlow from './components/BackpropFlow.vue'
 import KVCacheRace from './components/KVCacheRace.vue'
 import ResidualStreamLens from './components/ResidualStreamLens.vue'
+import QuickAttention from './components/QuickAttention.vue'
 import './style.css'
 
 export default {
@@ -30,5 +31,6 @@ export default {
     app.component('BackpropFlow', BackpropFlow)           // 第 2 章
     app.component('KVCacheRace', KVCacheRace)             // 第 28 章
     app.component('ResidualStreamLens', ResidualStreamLens) // 第 8 章
+    app.component('QuickAttention', QuickAttention)       // 30 分钟快速体验，步骤 3
   }
 } satisfies Theme

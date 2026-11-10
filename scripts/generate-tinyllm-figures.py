@@ -339,6 +339,40 @@ def quickstart_loss():
               f"随后升到 {log['val_loss'][-1]:.2f}，超过乱猜的 {log['uniform']:.2f}。两条曲线一分开，模型就从学诗变成了背诗。")
 
 
+def quickstart_position_add():
+    """快速体验步骤 4：每个位置的输入 = 字向量 + 位置向量（数字取自 quickstart.py 的真实输出，前 4 个数）。"""
+    src = DATA / "tinyllm-quickstart-log.json"
+    if not src.exists():
+        print("skip quickstart_position_add: run scripts/build-tinyllm-code.py quickstart first")
+        return
+    demo = json.loads(src.read_text(encoding="utf-8"))["position_demo"]
+    body = text(480, 36, "进模型的向量 = 字向量 + 位置向量（每格是前 4 个数）", 21, weight="bold")
+    rows = [("字向量", "查字表：第几个字", BLUE, demo["tok"]), ("位置向量", "查位置表：第几位", TEAL, demo["pos"]),
+            ("输入向量", "两者逐个数相加", INK, demo["sum"])]
+    x0, w = 150, 150
+    for i, ch in enumerate(demo["names"]):
+        cx = x0 + i * (w + 12) + w / 2
+        hot = i == 2
+        body += text(cx, 78, f"“{ch}”· 第 {i} 位", 15, ORANGE if hot else INK, "bold")
+    for r, (name, sub, color, vals) in enumerate(rows):
+        y = 96 + r * 92
+        body += text(20, y + 30, name, 15, color, "bold", "start")
+        body += text(20, y + 52, sub, 11.5, GRAY, anchor="start")
+        for i in range(5):
+            x = x0 + i * (w + 12)
+            body += box(x, y, w, 62, SOFT.get(color, "#ffffff") if color != INK else "#ffffff", ORANGE if i == 2 else color, width=2.4 if i == 2 else 1.4)
+            for k, v in enumerate(vals[i]):
+                body += mtext(x + 20 + (k % 2) * 62, y + 26 + (k // 2) * 24, f"{v:+.3f}", 12.5, color, anchor="start")
+        if r < 2:
+            body += text(x0 - 22, y + 82, "+" if r == 0 else "=", 22, GRAY, "bold")
+    m = 2
+    body += text(480, 392, f"以“明”为例，第 1 个数：({demo['tok'][m][0]:+.3f}) + ({demo['pos'][m][0]:+.3f}) = {demo['sum'][m][0]:+.3f}；96 个数都这样逐个相加", 14, ORANGE, "bold")
+    body += text(480, 418, "同一个字换到别的位置，加上的是另一行位置向量，进模型的向量就不一样了", 13.5, GRAY)
+    svg("quickstart-position-add.svg", "字向量加位置向量",
+        "“床前明月光”五个字，每个字查字表得到字向量，再按它排在第几位查位置表得到位置向量，两者逐个数相加，就是进模型的向量。"
+        f"以第 2 位（从 0 数）的“明”为例，第一个数是 ({demo['tok'][m][0]:+.3f}) + ({demo['pos'][m][0]:+.3f}) = {demo['sum'][m][0]:+.3f}。", 440, body)
+
+
 def quickstart_flow():
     """快速体验的八步串成一条链路：上排前向，下排反向与更新，⑦ 绕回开头，⑧ 训练完沿顶部弧线生成。
     数字取自 quickstart.py 的真实输出（见 docs/tinyllm/quickstart.md）。"""
@@ -372,9 +406,9 @@ def quickstart_flow():
     # 下排：从右往左，损失 → 梯度 → 更新
     y2, w2 = 330, 170
     row2 = [
-        (755, ORANGE, "⑤ 损失", "交叉熵 7.70", "乱猜水位 ln 1458 = 7.29"),
-        (560, RED, "⑥ 反向传播", "backward() 算梯度", "24 个张量，总范数 3.6"),
-        (365, TEAL, "更新参数", "AdamW 挪一小步", "同一批数据：7.70 → 7.04"),
+        (755, ORANGE, "⑤ 损失", "交叉熵 7.83", "乱猜水位 ln 1458 = 7.29"),
+        (560, RED, "⑥ 反向传播", "backward() 算梯度", "24 个张量，总范数 3.5"),
+        (365, TEAL, "更新参数", "AdamW 挪一小步", "同一批数据：7.83 → 7.07"),
     ]
     for x, color, title, sub, note in row2:
         cx = x + w2 / 2
@@ -398,13 +432,13 @@ def quickstart_flow():
     body += path(f"M860 {top - 2}C860 52 100 52 100 {top - 3}", PURPLE, 2.5, dash=True)
     body += text(480, 94, "⑧ 训练完：按最后一个位置的分数抽一个字，接到文字末尾，重复 40 次", 14, PURPLE, "bold")
 
-    body += text(480, 478, "⑦ 跑完：训练损失 7.33 → 0.27；验证损失第 100 步最低 6.32，之后升到 8.78——模型从“学”变成了“背”。", 14.5, INK)
+    body += text(480, 478, "⑦ 跑完：训练损失 7.29 → 0.28；验证损失第 100 步最低 6.22，之后升到 8.75——模型从“学”变成了“背”。", 14.5, INK)
     body += text(480, 506, "圆圈编号是本页的步骤号；④ 画在 ③ 前面，是因为数据先加上位置、再进注意力。", 13.5, GRAY)
     svg("quickstart-flow.svg", "快速体验的八步流程",
         "上排是前向：文字“床前明月光”经①分词变成 5 个编号，②查词嵌入表得到 (1,5,96) 的向量，④加上位置向量，③经过 3 层带因果掩码的注意力 Block，"
-        "输出层给词表里 1458 个字各打一个分。下排从右往左：⑤用交叉熵和正确答案比，随机参数下是 7.70，乱猜水位 7.29；"
-        "⑥反向传播给 24 个参数张量算出梯度；AdamW 更新参数后同一批数据的损失降到 7.04。⑦换一批数据绕回开头，共重复 1000 步，"
-        "训练损失降到 0.27，验证损失在第 100 步最低 6.32 后升到 8.78。⑧训练完后，按最后一个位置的分数抽一个字接回文字末尾，重复 40 次写出诗句。",
+        "输出层给词表里 1458 个字各打一个分。下排从右往左：⑤用交叉熵和正确答案比，随机参数下是 7.83，乱猜水位 7.29；"
+        "⑥反向传播给 24 个参数张量算出梯度；AdamW 更新参数后同一批数据的损失降到 7.07。⑦换一批数据绕回开头，共重复 1000 步，"
+        "训练损失降到 0.28，验证损失在第 100 步最低 6.22 后升到 8.75。⑧训练完后，按最后一个位置的分数抽一个字接回文字末尾，重复 40 次写出诗句。",
         530, body)
 
 
@@ -4930,6 +4964,7 @@ def main():
     first_run_loss()
     quickstart_loss()
     quickstart_flow()
+    quickstart_position_add()
     qwen3_family()
     # 第 10、8、4、5、16、19 章；数据图需要先运行 scripts/tinyllm-figure-data.py
     for fn in (init_fan_in, residual_depth, residual_path, activation_fit, swiglu_vs_ffn, utf8_lengths, bpe_merges,
