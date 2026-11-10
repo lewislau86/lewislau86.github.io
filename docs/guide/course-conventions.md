@@ -30,6 +30,8 @@
 - 尚未成文的章节集中放进最后一个独立分组 `规划中（尚未成文）`，避免读者顺着“下一篇”掉进空页面。Learn Agent by Rust 的全部侧栏分组默认展开（`collapsed: false`），包括规划章节，方便浏览所有章节标题。
 - 章节成文后，把它从规划分组移到对应部分；TinyLLM 还要同步更新 `TinyLLMMap.vue` 里的 `done` 列表（新增章节还要在 `nodes` 里给它一个框、在 `io` 里写出本章的输入和输出）和总览页的“已成文的章节”表。
 - Learn Agent by Rust 的章节顺序、主题路径、前置关系和正文状态维护在 `scripts/learn-agent-rust-lessons.json`，运行 `python3 scripts/sync-learn-agent-rust-course.py` 更新侧栏、总览目录和学习路径的标记区。脚本只为缺失章节建立规划提纲，不覆盖已有章节正文；`--check` 检查是否过期。标为 `written` 前先完成正文与相应验证，实验状态另在章内记录。
+- 独立部分可以用 `parts[].guide` 指定已成文导读，显示在该部分的正文侧栏；其规划章节仍集中在末尾。已成文章节的显式前后导航只连接 `written` 节点，规划页设置 `status: planned`、`search: false`、`prev: false` 和 `next: false`。D01–D08 是设计模式的稳定实验标识，已成文后登记独立工程与验证器；真实模型运行不纳入默认验证。
+- 设计模式章节按问题、适用范围、业务场景与流程、状态及控制契约、框架实现、正常与故障验收、证据边界组织。已有机制实验只能作为基础，不能代替新模式或模式组合的验证。审查报告分列已成文与规划状态；独立导读不计入实验数量。
 - 该课程用 `<LearnAgentRustMap active="章节主题名" />` 展示章节位置，课程地图从同一章节清单读取状态。R00 标准库源码在 `docs/public/learn-agent-rust/code/`，运行 `python3 scripts/verify-learn-agent-rust.py` 更新输出与配图输入，`--check` 重新执行并检查是否过期；该脚本当前只验证 R00，不代表两库集成通过。 R02 两库工程用 `python3 scripts/verify-learn-agent-rust-r02.py` 在临时解压目录运行，生成输出、证据与章节 zip；`--check` 检查产物是否过期，自制图用 `python3 scripts/generate-learn-agent-rust-figures.py --r02` 刷新。
 
 R05 会话内清单使用 `python3 scripts/verify-learn-agent-rust-r05.py` 生成独立下载工程、20 个场景的输出与源码校验记录；`--check` 从下载包解压后重新执行并检查产物是否过期。运行 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R05` 刷新本章自制图。实验使用脚本模型与真实临时文件读取，清单只存在于当前运行时内存中。
@@ -79,6 +81,8 @@ P06 Agent RSI 使用 `python3 scripts/verify-agent-rsi.py` 生成有限策略实
 RAG 主线章（稳定实验标识 K01）使用 `python3 scripts/verify-agent-rag.py` 生成独立标准库 Rust 工程包、11 个场景的轨迹与源码摘要；`--check` 重跑 8 项 Rust 测试、Clippy、4 道公开标签检索题及最终 zip 解压复验。真实执行词法切块 / BM25、范围过滤、预算与来源更新删除，生成器是固定摘录夹具；真实模型、embedding、框架与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
 
 G01–G03 图编排三章用 `python3 scripts/verify-agent-orchestration.py` 生成真实 graph-flow 独立工程包、14 项 Rust 测试和 19 组场景的输出与证据；`--check` 检查源码与最终章节包的独立编译、格式、Clippy 和场景复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson G01`（同时刷新三章与导读图）。固定业务规则，无模型；G02 真实实现 SQLite SessionStorage 并跨 CLI 进程恢复，限定单业务执行者；G03 的子图为应用 Task 包装器，父子持久恢复另验。
+
+D01–D08 设计模式使用 `python3 scripts/verify-agent-patterns.py` 生成八章独立下载工程、56 个正常与故障场景及源码摘要；`--check` 复核 32 项 Rust 测试、Clippy、D07 跨 CLI JSON 状态、D08 实际报告文件与 36 项本地 HTTP 驱动器任务，再解压最终章节包离线复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson patterns`。输入与决策固定；D08 的 `model_compare.py live` 由读者配置 OPENAI_BASE_URL、OPENAI_MODEL、OPENAI_API_KEY 后另行运行，默认验证不读模型凭据，不将 fixture 通过当真实模型质量结论。
 
 ## 4. 章节模板
 

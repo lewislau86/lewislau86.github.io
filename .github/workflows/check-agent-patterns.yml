@@ -1,0 +1,54 @@
+name: Check Agent design patterns
+on:
+  push:
+    branches: [master]
+    paths: &paths
+      - 'docs/learn-agent-rust/**'
+      - 'docs/public/learn-agent-rust/code/pattern-*/**'
+      - 'docs/public/learn-agent-rust/code/prompt-chaining-routing/**'
+      - 'docs/public/learn-agent-rust/code/parallel-decomposition/**'
+      - 'docs/public/learn-agent-rust/code/plan-execute-replan/**'
+      - 'docs/public/learn-agent-rust/code/orchestrator-workers-handoffs/**'
+      - 'docs/public/learn-agent-rust/code/evaluator-reflection/**'
+      - 'docs/public/learn-agent-rust/code/human-in-the-loop/**'
+      - 'docs/public/learn-agent-rust/*.zip'
+      - 'docs/public/learn-agent-rust/outputs/d0*-*'
+      - 'docs/public/learn-agent-rust/figures/*pattern*.svg'
+      - 'scripts/*agent*patterns*.py'
+      - 'scripts/learn-agent-rust-lessons.json'
+      - 'scripts/data/learn-agent-rust/d0*-results.json'
+      - '.github/workflows/check-agent-patterns.yml'
+  pull_request:
+    paths: *paths
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  patterns:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Prepare Rust
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/agent-patterns-target
+            .cache/agent-patterns-download-target
+          key: agent-patterns-${{ runner.os }}-${{ hashFiles('docs/public/learn-agent-rust/code/pattern-composition/Cargo.lock') }}
+      - name: Fetch pinned dependencies
+        run: cargo fetch --locked --manifest-path docs/public/learn-agent-rust/code/pattern-composition/Cargo.toml
+      - name: Replay Rust, cross-process state, HTTP fixtures and final archives
+        run: python3 scripts/verify-agent-patterns.py --check
+      - name: Check course structure and generated figures
+        run: |
+          python3 scripts/sync-learn-agent-rust-course.py --check
+          python3 scripts/review-learn-agent-rust.py --check
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson patterns
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/*pattern*.svg'

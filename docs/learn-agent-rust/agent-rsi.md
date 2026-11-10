@@ -3,6 +3,9 @@ title: "专题 6：Agent RSI 与受控自我改进"
 description: "从开发集过拟合到候选晋升、发布与回滚，区分任务策略搜索与递归元改进。"
 next: false
 pageClass: learn-agent-rust-course
+prev:
+  text: 专题 5 · 固定工作流与目标控制
+  link: /learn-agent-rust/workflow-and-goal-control
 ---
 
 # 专题 6：Agent RSI 与受控自我改进

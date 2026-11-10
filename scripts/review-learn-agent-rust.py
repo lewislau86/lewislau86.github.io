@@ -15,11 +15,13 @@ def main():
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     lessons = json.loads((ROOT / 'scripts/learn-agent-rust-lessons.json').read_text())['lessons']
+    written = [r for r in lessons if r['status'] == 'written']
+    planned = [r for r in lessons if r['status'] == 'planned']
     prompts = json.loads((ROOT / 'scripts/data/learn-agent-rust/review-prompts.json').read_text())
-    assert set(prompts) == {r['id'] for r in lessons}, 'Each lesson needs an authored review focus'
+    assert set(prompts) == {r['id'] for r in written}, 'Each written lesson needs an authored review focus'
     rows, errors = [], []
     table = ['| 章节 | 图片 / 片段 / 折叠 | 迁移思考焦点 | 证据边界 |', '| --- | --- | --- | --- |']
-    for index, lesson in enumerate(lessons):
+    for index, lesson in enumerate(written):
         p = DOCS / (lesson['slug'] + '.md')
         s = p.read_text()
         requirements = {
@@ -46,9 +48,9 @@ def main():
             if f'title: "{title}"' not in frontmatter or f'\n# {title}\n' not in s:
                 errors.append(lesson['id'] + ': title must match continuous chapter numbering')
             for direction, offset in [('prev', -1), ('next', 1)]:
-                if not 0 <= index + offset < len(lessons):
+                if not 0 <= index + offset < len(written):
                     continue
-                neighbor = lessons[index + offset]
+                neighbor = written[index + offset]
                 prefix = f'第 {neighbor["chapter"]} 章' if 'chapter' in neighbor else f'专题 {int(neighbor["id"][1:])}'
                 expected = f'{direction}:\n  text: {prefix} · {neighbor["title"]}\n  link: /learn-agent-rust/{neighbor["slug"]}'
                 if expected not in frontmatter:
@@ -73,6 +75,28 @@ def main():
                          checks=requirements, **counts, teaching_focus=focus['theme'],
                          evidence_boundary=focus['boundary'],
                          document_path=str(p.relative_to(ROOT))))
+    planning_rows = []
+    if planned:
+        table.extend(['', '以下章节为教学设计，正文与实验待完成；不纳入上表的已成文覆盖率。', '',
+                      '| 规划章节 | 状态 |', '| --- | --- |'])
+    for lesson in planned:
+        p = DOCS / (lesson['slug'] + '.md')
+        s = p.read_text()
+        frontmatter = s.split('---', 2)[1] if s.startswith('---\n') else ''
+        title = f'第 {lesson["chapter"]} 章：{lesson["title"]}'
+        required = [f'title: "{title}"', 'description:', 'status: planned', 'search: false', 'prev: false', 'next: false']
+        if any(item not in frontmatter for item in required) or f'\n# {title}\n' not in s:
+            errors.append(lesson['id'] + ': invalid planned title/status/navigation')
+        planning_sections = ['::: info 本章状态：规划中', '## 本章问题', '## 计划验收',
+                             f'<LearnAgentRustMap active="{lesson["slug"]}" />']
+        if lesson['part'] == 'patterns':
+            planning_sections.extend(['## 适用与不适用', '## 场景与流程', '## 状态与控制契约',
+                                      '## graph-flow 实现方向', '## 已有基础与待补证据'])
+        for item in planning_sections:
+            if item not in s:
+                errors.append(lesson['id'] + ': missing planning section ' + item)
+        table.append(f'| [第 {lesson["chapter"]} 章 · {lesson["title"]}](./{lesson["slug"]}.md) | 教学设计；正文与实验待完成 |')
+        planning_rows.append(dict(id=lesson['id'], slug=lesson['slug'], status='planned', document_path=str(p.relative_to(ROOT))))
     if errors:
         raise SystemExit('\n'.join(errors))
     a, b = '<!-- review-coverage:start -->', '<!-- review-coverage:end -->'
@@ -80,8 +104,9 @@ def main():
     assert report.count(a) == report.count(b) == 1
     before, rest = report.split(a); _, after = rest.split(b)
     updated = before + a + '\n\n' + '\n'.join(table) + '\n\n' + b + after
-    coverage = dict(schema_version=1, scope='documentation structure only; not runtime verification',
-                    lessons=len(rows), all_structure_checks_passed=True, rows=rows)
+    coverage = dict(schema_version=2, scope='documentation structure only; not runtime verification',
+                    lessons=len(lessons), written_lessons=len(rows), planned_lessons=len(planning_rows),
+                    all_structure_checks_passed=True, rows=rows, planning_rows=planning_rows)
     targets = {REPORT: updated, DATA: json.dumps(coverage, ensure_ascii=False, indent=2) + '\n'}
     for path, expected in targets.items():
         if args.check:
@@ -89,7 +114,7 @@ def main():
                 raise SystemExit('Stale coverage: ' + str(path.relative_to(ROOT)))
         else:
             path.write_text(expected)
-    print(f'Review coverage: {len(rows)} lessons; structure, media references and authored transfer questions checked (no runtime claim)')
+    print(f'Review coverage: {len(rows)} written, {len(planning_rows)} planned; documentation checks only (no runtime claim)')
 
 
 if __name__ == '__main__':

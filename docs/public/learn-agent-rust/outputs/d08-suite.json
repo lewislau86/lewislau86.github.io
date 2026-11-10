@@ -1,0 +1,342 @@
+[
+  {
+    "data": {
+      "approved_revision": 2,
+      "effects": 1,
+      "evidence": [
+        "root/README.md"
+      ],
+      "feedback_revision": 1,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 1,
+      "report": "upgrade report",
+      "report_revision": 2,
+      "results": [
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": [
+        "root/README.md"
+      ]
+    },
+    "limit": 32,
+    "scenario": "normal",
+    "stop": "completed",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge",
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "approve",
+      "publish"
+    ],
+    "used": 11
+  },
+  {
+    "data": {
+      "approved_revision": 2,
+      "effects": 1,
+      "evidence": [
+        "member/README.md",
+        "root/README.md"
+      ],
+      "feedback_revision": 1,
+      "joined": true,
+      "members": [
+        "root",
+        "member"
+      ],
+      "plan_revision": 2,
+      "repairs": 1,
+      "report": "upgrade report",
+      "report_revision": 2,
+      "results": [
+        {
+          "member": "member",
+          "ok": true,
+          "revision": 2,
+          "source": "member/README.md"
+        },
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": [
+        "member/README.md",
+        "root/README.md"
+      ]
+    },
+    "limit": 32,
+    "scenario": "discover",
+    "stop": "completed",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge",
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "approve",
+      "publish"
+    ],
+    "used": 12
+  },
+  {
+    "data": {
+      "effects": 0,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 0,
+      "report_revision": 0,
+      "results": [
+        {
+          "member": "root",
+          "ok": false,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": []
+    },
+    "limit": 32,
+    "scenario": "branch_failed",
+    "stop": "branch_failed",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "effects": 0,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 0,
+      "report_revision": 0,
+      "results": [
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 1,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": []
+    },
+    "limit": 32,
+    "scenario": "stale_branch",
+    "stop": "stale_result",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "effects": 0,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 0,
+      "report_revision": 0,
+      "results": [],
+      "revision": 2,
+      "sources": []
+    },
+    "limit": 32,
+    "scenario": "missing_branch",
+    "stop": "member_mismatch",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "approved_revision": 1,
+      "effects": 0,
+      "evidence": [
+        "root/README.md"
+      ],
+      "feedback_revision": 1,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 1,
+      "report": "upgrade report",
+      "report_revision": 2,
+      "results": [
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": [
+        "root/README.md"
+      ]
+    },
+    "limit": 32,
+    "scenario": "stale_approval",
+    "stop": "stale_approval",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge",
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "approve",
+      "publish"
+    ],
+    "used": 11
+  },
+  {
+    "data": {
+      "effects": 0,
+      "evidence": [
+        "root/README.md"
+      ],
+      "feedback_revision": 1,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 1,
+      "report": "upgrade report",
+      "report_revision": 2,
+      "results": [
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": [
+        "root/README.md"
+      ]
+    },
+    "limit": 32,
+    "scenario": "denied",
+    "stop": "denied",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge",
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "approve"
+    ],
+    "used": 10
+  },
+  {
+    "data": {
+      "effects": 0,
+      "evidence": [
+        "root/README.md"
+      ],
+      "feedback_revision": 1,
+      "joined": true,
+      "members": [
+        "root"
+      ],
+      "plan_revision": 1,
+      "repairs": 1,
+      "report": "upgrade report",
+      "report_revision": 2,
+      "results": [
+        {
+          "member": "root",
+          "ok": true,
+          "revision": 2,
+          "source": "root/README.md"
+        }
+      ],
+      "revision": 2,
+      "sources": []
+    },
+    "limit": 32,
+    "scenario": "no_progress",
+    "stop": "no_progress",
+    "trace": [
+      "route",
+      "plan",
+      "parallel",
+      "merge",
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate"
+    ],
+    "used": 9
+  },
+  {
+    "data": {
+      "effects": 0,
+      "members": [
+        "root"
+      ],
+      "repairs": 0,
+      "report_revision": 0,
+      "revision": 2,
+      "sources": []
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "route"
+    ],
+    "used": 1
+  }
+]

@@ -1,16 +1,16 @@
 ---
-title: "第 24 章：完整 Agent 集成"
+title: "第 32 章：完整 Agent 集成"
 description: "让同一个任务经过提示词、共享预算、私有审查、MCP 与工作区，在真实效果和持久化状态之间验收完成。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 23 章 · MCP 外部工具
+  text: 第 31 章 · MCP 外部工具
   link: /learn-agent-rust/mcp-tools
 next:
   text: 专题 1 · PostgreSQL 检查点
   link: /learn-agent-rust/postgres-checkpoints
 ---
 
-# 第 24 章：完整 Agent 集成
+# 第 32 章：完整 Agent 集成
 
 [课程总览](./index.md) · [上一章：MCP 外部工具](./mcp-tools.md) · [下一章：PostgreSQL 检查点](./postgres-checkpoints.md)
 

@@ -1,7 +1,9 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "scope": "documentation structure only; not runtime verification",
-  "lessons": 31,
+  "lessons": 39,
+  "written_lessons": 39,
+  "planned_lessons": 0,
   "all_structure_checks_passed": true,
   "rows": [
     {
@@ -318,6 +320,174 @@
       "teaching_focus": "来源决定解释方式",
       "evidence_boundary": "两库消息组装；真实服务与攻击覆盖另验。",
       "document_path": "docs/learn-agent-rust/system-prompts.md"
+    },
+    {
+      "id": "D01",
+      "slug": "pattern-selection",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "输入合同决定最小结构",
+      "evidence_boundary": "真实 graph-flow；读取与决策是内存夹具，模型质量另验。",
+      "document_path": "docs/learn-agent-rust/pattern-selection.md"
+    },
+    {
+      "id": "D02",
+      "slug": "prompt-chaining-routing",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "中间成功也需要版本",
+      "evidence_boundary": "规则路由与固定抽取；真实 graph-flow 产物门，模型分类另验。",
+      "document_path": "docs/learn-agent-rust/prompt-chaining-routing.md"
+    },
+    {
+      "id": "D03",
+      "slug": "parallel-decomposition",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "归并要验证成员身份",
+      "evidence_boundary": "真实 Tokio 并发与任务回收；停顿是夹具，无生产加速结论。",
+      "document_path": "docs/learn-agent-rust/parallel-decomposition.md"
+    },
+    {
+      "id": "D04",
+      "slug": "plan-execute-replan",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "重规划保留结果账本",
+      "evidence_boundary": "真实图推进与依赖验证；检查动作为内存夹具，无跨进程恢复。",
+      "document_path": "docs/learn-agent-rust/plan-execute-replan.md"
+    },
+    {
+      "id": "D05",
+      "slug": "orchestrator-workers-handoffs",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "返回结果与移交控制分开",
+      "evidence_boundary": "真实 Tokio 动态派发与角色状态；消息为脚本，非真实多模型协作。",
+      "document_path": "docs/learn-agent-rust/orchestrator-workers-handoffs.md"
+    },
+    {
+      "id": "D06",
+      "slug": "evaluator-reflection",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 4,
+      "details": 5,
+      "teaching_focus": "修复后重验完整合同",
+      "evidence_boundary": "真实图与固定规则修复；未复现完整 Reflexion，无模型质量结论。",
+      "document_path": "docs/learn-agent-rust/evaluator-reflection.md"
+    },
+    {
+      "id": "D07",
+      "slug": "human-in-the-loop",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 5,
+      "details": 5,
+      "teaching_focus": "编辑使旧批准失效",
+      "evidence_boundary": "真实跨 CLI JSON 状态；单写者，无认证服务或外部发布。",
+      "document_path": "docs/learn-agent-rust/human-in-the-loop.md"
+    },
+    {
+      "id": "D08",
+      "slug": "pattern-composition",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 6,
+      "details": 5,
+      "teaching_focus": "组合验证接缝",
+      "evidence_boundary": "真实图、Tokio、报告文件与本地 HTTP；模型决策和批准仍为夹具。",
+      "document_path": "docs/learn-agent-rust/pattern-composition.md"
     },
     {
       "id": "R11",
@@ -655,5 +825,6 @@
       "evidence_boundary": "有限策略门控与本地发布；递归元改进另验。",
       "document_path": "docs/learn-agent-rust/agent-rsi.md"
     }
-  ]
+  ],
+  "planning_rows": []
 }

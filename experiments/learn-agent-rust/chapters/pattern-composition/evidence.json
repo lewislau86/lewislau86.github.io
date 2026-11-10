@@ -1,0 +1,379 @@
+{
+  "additional": {
+    "actual_report_checked": true,
+    "http_fixture_tasks": 36,
+    "live_provider": {
+      "reason": "User will configure an OpenAI-compatible endpoint",
+      "status": "not_run"
+    },
+    "scope": "actual Rust graph; fixed decisions; real report file; HTTP comparison runner is a separate Python driver",
+    "stale_approval_no_file": true,
+    "variants": [
+      "single",
+      "chain",
+      "routing",
+      "parallel",
+      "replan",
+      "workers",
+      "repair",
+      "human",
+      "composed"
+    ]
+  },
+  "id": "D08",
+  "results": [
+    {
+      "data": {
+        "approved_revision": 2,
+        "effects": 1,
+        "evidence": [
+          "root/README.md"
+        ],
+        "feedback_revision": 1,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 1,
+        "report": "upgrade report",
+        "report_revision": 2,
+        "results": [
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": [
+          "root/README.md"
+        ]
+      },
+      "limit": 32,
+      "scenario": "normal",
+      "stop": "completed",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge",
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "approve",
+        "publish"
+      ],
+      "used": 11
+    },
+    {
+      "data": {
+        "approved_revision": 2,
+        "effects": 1,
+        "evidence": [
+          "member/README.md",
+          "root/README.md"
+        ],
+        "feedback_revision": 1,
+        "joined": true,
+        "members": [
+          "root",
+          "member"
+        ],
+        "plan_revision": 2,
+        "repairs": 1,
+        "report": "upgrade report",
+        "report_revision": 2,
+        "results": [
+          {
+            "member": "member",
+            "ok": true,
+            "revision": 2,
+            "source": "member/README.md"
+          },
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": [
+          "member/README.md",
+          "root/README.md"
+        ]
+      },
+      "limit": 32,
+      "scenario": "discover",
+      "stop": "completed",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge",
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "approve",
+        "publish"
+      ],
+      "used": 12
+    },
+    {
+      "data": {
+        "effects": 0,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 0,
+        "report_revision": 0,
+        "results": [
+          {
+            "member": "root",
+            "ok": false,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": []
+      },
+      "limit": 32,
+      "scenario": "branch_failed",
+      "stop": "branch_failed",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "effects": 0,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 0,
+        "report_revision": 0,
+        "results": [
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 1,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": []
+      },
+      "limit": 32,
+      "scenario": "stale_branch",
+      "stop": "stale_result",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "effects": 0,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 0,
+        "report_revision": 0,
+        "results": [],
+        "revision": 2,
+        "sources": []
+      },
+      "limit": 32,
+      "scenario": "missing_branch",
+      "stop": "member_mismatch",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "approved_revision": 1,
+        "effects": 0,
+        "evidence": [
+          "root/README.md"
+        ],
+        "feedback_revision": 1,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 1,
+        "report": "upgrade report",
+        "report_revision": 2,
+        "results": [
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": [
+          "root/README.md"
+        ]
+      },
+      "limit": 32,
+      "scenario": "stale_approval",
+      "stop": "stale_approval",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge",
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "approve",
+        "publish"
+      ],
+      "used": 11
+    },
+    {
+      "data": {
+        "effects": 0,
+        "evidence": [
+          "root/README.md"
+        ],
+        "feedback_revision": 1,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 1,
+        "report": "upgrade report",
+        "report_revision": 2,
+        "results": [
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": [
+          "root/README.md"
+        ]
+      },
+      "limit": 32,
+      "scenario": "denied",
+      "stop": "denied",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge",
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "approve"
+      ],
+      "used": 10
+    },
+    {
+      "data": {
+        "effects": 0,
+        "evidence": [
+          "root/README.md"
+        ],
+        "feedback_revision": 1,
+        "joined": true,
+        "members": [
+          "root"
+        ],
+        "plan_revision": 1,
+        "repairs": 1,
+        "report": "upgrade report",
+        "report_revision": 2,
+        "results": [
+          {
+            "member": "root",
+            "ok": true,
+            "revision": 2,
+            "source": "root/README.md"
+          }
+        ],
+        "revision": 2,
+        "sources": []
+      },
+      "limit": 32,
+      "scenario": "no_progress",
+      "stop": "no_progress",
+      "trace": [
+        "route",
+        "plan",
+        "parallel",
+        "merge",
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate"
+      ],
+      "used": 9
+    },
+    {
+      "data": {
+        "effects": 0,
+        "members": [
+          "root"
+        ],
+        "repairs": 0,
+        "report_revision": 0,
+        "revision": 2,
+        "sources": []
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "route"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 9,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "eddf7dd9826a2c366d34a1ddcbd819440b325ff52789e9cf22b86b5d16a310dc",
+    "Cargo.toml": "15fc08d338193715ad232f1ccd41df9befe8ef5548ca3226dcbe59a5b5e150bb",
+    "README.md": "63374a90096e09629c25697d66533ef5ba47638c8df5e3ddec9e731335e72587",
+    "model-cases.json": "46f503671045a6d5757ea4299e17dbd9e40db9ec8f2a4e30954ceee61ab54e69",
+    "model_compare.py": "f0e904c2b6e150ce0cafba817d11b7ee051c8b9994a65ee8467e42c051bfb63a",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "bca6865b78623a9a0df2f83af7ca8ac7b7d786d28ee78d152872586886facc65"
+  }
+}

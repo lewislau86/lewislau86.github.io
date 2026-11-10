@@ -290,6 +290,202 @@
       ]
     },
     {
+      "id": "D01",
+      "slug": "pattern-selection",
+      "kind": "cargo",
+      "archive": "pattern-selection.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D01"
+      ]
+    },
+    {
+      "id": "D02",
+      "slug": "prompt-chaining-routing",
+      "kind": "cargo",
+      "archive": "prompt-chaining-routing.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D02"
+      ]
+    },
+    {
+      "id": "D03",
+      "slug": "parallel-decomposition",
+      "kind": "cargo",
+      "archive": "parallel-decomposition.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D03"
+      ]
+    },
+    {
+      "id": "D04",
+      "slug": "plan-execute-replan",
+      "kind": "cargo",
+      "archive": "plan-execute-replan.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D04"
+      ]
+    },
+    {
+      "id": "D05",
+      "slug": "orchestrator-workers-handoffs",
+      "kind": "cargo",
+      "archive": "orchestrator-workers-handoffs.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D05"
+      ]
+    },
+    {
+      "id": "D06",
+      "slug": "evaluator-reflection",
+      "kind": "cargo",
+      "archive": "evaluator-reflection.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D06"
+      ]
+    },
+    {
+      "id": "D07",
+      "slug": "human-in-the-loop",
+      "kind": "cargo",
+      "archive": "human-in-the-loop.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "init"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "approve",
+          "1",
+          "1"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "edit",
+          "edited report"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "approve",
+          "1",
+          "2"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "resume"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "show"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D07"
+      ]
+    },
+    {
+      "id": "D08",
+      "slug": "pattern-composition",
+      "kind": "cargo",
+      "archive": "pattern-composition.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ],
+        [
+          "{binary}",
+          "discover",
+          "{run}/report.json"
+        ],
+        [
+          "{python}",
+          "model_compare.py",
+          "self-test",
+          "{run}/http"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D08"
+      ]
+    },
+    {
       "id": "R11",
       "slug": "error-recovery",
       "kind": "rustc",

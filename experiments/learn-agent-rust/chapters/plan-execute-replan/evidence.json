@@ -1,0 +1,161 @@
+{
+  "additional": {},
+  "id": "D04",
+  "results": [
+    {
+      "data": {
+        "done": [
+          "root"
+        ],
+        "plan": {
+          "revision": 1,
+          "steps": {
+            "root": []
+          }
+        },
+        "replans": 0
+      },
+      "limit": 32,
+      "scenario": "normal",
+      "stop": "completed",
+      "trace": [
+        "plan",
+        "validate",
+        "execute",
+        "observe",
+        "finish"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "done": [
+          "root",
+          "member"
+        ],
+        "plan": {
+          "revision": 2,
+          "steps": {
+            "member": [
+              "root"
+            ],
+            "root": []
+          }
+        },
+        "replans": 1
+      },
+      "limit": 32,
+      "scenario": "discover",
+      "stop": "completed",
+      "trace": [
+        "plan",
+        "validate",
+        "execute",
+        "observe",
+        "validate",
+        "execute",
+        "observe",
+        "finish"
+      ],
+      "used": 8
+    },
+    {
+      "data": {
+        "done": [],
+        "plan": {
+          "revision": 1,
+          "steps": {
+            "root": [
+              "root"
+            ]
+          }
+        },
+        "replans": 0
+      },
+      "limit": 32,
+      "scenario": "cycle",
+      "stop": "dependency_cycle",
+      "trace": [
+        "plan",
+        "validate"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "done": [],
+        "plan": {
+          "revision": 1,
+          "steps": {
+            "root": [
+              "ghost"
+            ]
+          }
+        },
+        "replans": 0
+      },
+      "limit": 32,
+      "scenario": "unknown",
+      "stop": "unknown_dependency",
+      "trace": [
+        "plan",
+        "validate"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "done": [
+          "root"
+        ],
+        "plan": {
+          "revision": 1,
+          "steps": {
+            "root": []
+          }
+        },
+        "replans": 0
+      },
+      "limit": 32,
+      "scenario": "repeat",
+      "stop": "repeated_plan",
+      "trace": [
+        "plan",
+        "validate",
+        "execute",
+        "observe"
+      ],
+      "used": 4
+    },
+    {
+      "data": {
+        "done": [],
+        "plan": {
+          "revision": 1,
+          "steps": {
+            "root": []
+          }
+        },
+        "replans": 0
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "plan"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 6,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "df9eb0830d84e7156694f1afd6e34619e429d34bc3c94cc5bdde6ee8b4f9d352",
+    "Cargo.toml": "34a77e39c092c3bdf8b8579de64117c5b7554879906392b9a53ed8cdfb335960",
+    "README.md": "2c55166e8d77403d052fc44c3dad92ead761442321864d54cc80083035add26d",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "8f045bb1d9b359f697121c17bf548890e395d6b2413484df8b9e79267abe5311"
+  }
+}

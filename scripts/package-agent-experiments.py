@@ -108,7 +108,8 @@ def main_readme(lessons, report):
     lines = ["# Learn Agent by Rust · 全书实验代码库", "",
         "本目录由网站唯一实验源码和通过检查的章节包生成，可以单独复制或下载使用。",
         "教程正文：https://lewislau86.github.io/learn-agent-rust/ 。章节目录按主题命名，章号与实验标识的对应关系见下表和 manifest.json。",
-        "主线章号按阅读顺序排列；R/G/K/P 是稳定实验标识，命令保留原标识。例如第 11 章 RAG 仍用 K01 运行。", "",
+        "主线章号按阅读顺序排列；R/G/K/D/P 是稳定实验标识，命令保留原标识。例如第 11 章 RAG 仍用 K01 运行。", "",
+        "本包包含 D01–D08 的独立 Rust 模式实验；D08 的模型对照需要自行配置服务，默认只运行本地 fixture。", "",
         "## 先运行一章", "", "需要 Python 3.9+（仅标准库）、Rust 1.99.1、rustfmt、Clippy、Git 与系统 C 编译工具。",
         "已实际检查 macOS；自动检查配置使用 Linux。建议 Windows 读者使用 WSL。", "",
         "```sh", "rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy",
@@ -148,13 +149,14 @@ def render_page(lessons, report):
         "pageClass: learn-agent-rust-course", "---", "", "# 全书实验代码库", "",
         "[课程总览](./index.md) · [环境准备](./setup.md) · [学习路径](./learning-path.md)", "",
         "全书 {} 个实验单元按主题目录打包，包含源码、Cargo 锁文件、夹具、运行说明、发布时输出和检查证据。解压后可独立运行。".format(len(lessons)), "",
+        "下载包包含[第五部分设计模式](./agent-design-patterns.md)的 D01–D08 独立实验。D08 附标准 OpenAI 兼容模型对照入口，真实服务需自行配置；默认只运行固定输入。", "",
         '<a href="/learn-agent-rust/learn-agent-rust-experiments.zip" download>下载全书实验代码库（zip）</a> · [在 GitHub 浏览代码库](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust)', "",
         "## 下载后先跑一章", "", "按[环境准备](./setup.md)安装 Rust 1.99.1、rustfmt、Clippy、Git 和 C 编译工具；统一入口需要 Python 3.9+ 标准库。建议使用 macOS、Linux 或 WSL。", "",
         "解压后进入 `learn-agent-rust-experiments` 目录：", "", "```sh", "python3 run.py list", "python3 run.py doctor", "python3 run.py integrity", "python3 run.py run R01", "python3 run.py test R01", "python3 run.py run R20 --keep ./my-results", "```", "",
         "`run` 编译并执行本页对应的演示；`test` 增加 Rust 测试、格式检查和 Cargo 工程的 Clippy。程序在临时目录运行，`--keep` 保存运行产物。每章也可进入 `chapters/<主题>/`，按 README 单独操作。", "",
         "## 全书重跑", "", "```sh", "python3 run.py test --all", "# 工具链和依赖已缓存后，可检查离线运行：", "python3 run.py test --all --offline", "```", "",
         "首次构建需要网络下载依赖。P01、P04 另需 PostgreSQL 18 服务端工具，脚本以普通用户创建并清理专用临时集群；工具不在 PATH 时设置 `P01_PG_BIN` 和 `P04_PG_BIN`。没有数据库环境时可显式加 `--skip-postgres`，结果会列出跳过项。", "",
-        "## 按章找到实验", "", "目录名与文章主题名一致。主线按章号阅读；R/G/K/P 是稳定实验标识，用于命令与证据定位。例如 RAG 是第 11 章，仍运行 `python3 run.py run K01`。", ""]
+        "## 按章找到实验", "", "目录名与文章主题名一致。主线按章号阅读；R/G/K/D/P 是稳定实验标识，用于命令与证据定位。例如 RAG 是第 11 章，仍运行 `python3 run.py run K01`。", ""]
     for row in lessons:
         lines.extend(["### {} {{#{}}}".format(chapter_label(row), row["slug"]), "",
             "[阅读本章](./{}.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/{})".format(row["slug"], row["slug"]), "",
@@ -183,6 +185,12 @@ def build():
             row["binary"] = re.search(r'^name\s*=\s*"([^"]+)"', chapter["Cargo.toml"].decode(), re.M)[1]
         graph_scope = {'G01': '4 组路由与循环演示', 'G02': '跨进程批准、恢复与终态保护演示', 'G03': '5 组并行、失败、子图与超时演示'}
         row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "11 个检索与证据场景" if row["id"] == "K01" else "本章正常路径演示"
+        if row['id'].startswith('D'):
+            row['run_scope'] = '{} 个固定输入图场景'.format(json.loads(chapter['evidence.json'])['scenarios'])
+            if row['id'] == 'D07':
+                row['run_scope'] += '与跨 CLI 编辑后重新批准'
+            if row['id'] == 'D08':
+                row['run_scope'] += '、真实报告文件与 36 项本地 HTTP 模式对照驱动器任务'
         files.update({"chapters/" + row["slug"] + "/" + name: value for name, value in chapter.items()})
     files["manifest.json"] = encoded(dict(schema_version=1, lessons=lessons))
     files["audit.json"] = REPORT.read_bytes()

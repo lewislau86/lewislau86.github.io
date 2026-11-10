@@ -1,0 +1,122 @@
+[
+  {
+    "data": {
+      "artifact": {
+        "command": "cargo run",
+        "revision": 2,
+        "source": "README.md"
+      },
+      "report": {
+        "command": "cargo run",
+        "revision": 2,
+        "source": "README.md"
+      },
+      "revision": 2,
+      "route": "readme",
+      "source": "README.md"
+    },
+    "limit": 32,
+    "scenario": "readme",
+    "stop": "completed",
+    "trace": [
+      "route",
+      "extract",
+      "gate",
+      "render"
+    ],
+    "used": 4
+  },
+  {
+    "data": {
+      "artifact": {
+        "command": "cargo test",
+        "revision": 2,
+        "source": "Cargo.toml"
+      },
+      "report": {
+        "command": "cargo test",
+        "revision": 2,
+        "source": "Cargo.toml"
+      },
+      "revision": 2,
+      "route": "cargo",
+      "source": "Cargo.toml"
+    },
+    "limit": 32,
+    "scenario": "cargo",
+    "stop": "completed",
+    "trace": [
+      "route",
+      "extract",
+      "gate",
+      "render"
+    ],
+    "used": 4
+  },
+  {
+    "data": {},
+    "limit": 32,
+    "scenario": "unknown",
+    "stop": "needs_input",
+    "trace": [
+      "route"
+    ],
+    "used": 1
+  },
+  {
+    "data": {
+      "artifact": {
+        "command": null,
+        "revision": 2,
+        "source": "README.md"
+      },
+      "revision": 2,
+      "route": "readme",
+      "source": "README.md"
+    },
+    "limit": 32,
+    "scenario": "missing",
+    "stop": "missing_field",
+    "trace": [
+      "route",
+      "extract",
+      "gate"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "artifact": {
+        "command": "cargo run",
+        "revision": 1,
+        "source": "README.md"
+      },
+      "revision": 2,
+      "route": "readme",
+      "source": "README.md"
+    },
+    "limit": 32,
+    "scenario": "stale",
+    "stop": "stale_artifact",
+    "trace": [
+      "route",
+      "extract",
+      "gate"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "revision": 2,
+      "route": "readme",
+      "source": "README.md"
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "route"
+    ],
+    "used": 1
+  }
+]

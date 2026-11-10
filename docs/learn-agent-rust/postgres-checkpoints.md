@@ -2,6 +2,12 @@
 title: "专题 1：PostgreSQL 检查点"
 description: "保存消息、下一步和累计预算，用真实 PostgreSQL 与独立进程验证恢复、并发拒写和不确定动作。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 第 32 章 · 完整 Agent 集成
+  link: /learn-agent-rust/integrated-agent
+next:
+  text: 专题 2 · 外部操作的可靠性
+  link: /learn-agent-rust/side-effect-reliability
 ---
 
 # 专题 1：PostgreSQL 检查点
@@ -13,7 +19,7 @@ pageClass: learn-agent-rust-course
 - 用修订号与保存身份处理并发更新，以及提交后丢失确认的重试。
 - 比较整批工具与逐工具保存，识别动作结果不确定时的恢复边界。
 
-**前置：** [第 2 章的消息与图节点](./tools-and-graph.md)、[第 15 章的错误与预算](./error-recovery.md)、[第 16 章的持久化状态](./task-system.md)。本章工程可独立运行。
+**前置：** [第 2 章的消息与图节点](./tools-and-graph.md)、[第 23 章的错误与预算](./error-recovery.md)、[第 24 章的持久化状态](./task-system.md)。本章工程可独立运行。
 
 **实践方式：** [下载 Cargo 学习包](/learn-agent-rust/postgres-checkpoints-lab.zip)，准备 Rust、Python 3.9+ 和 PostgreSQL 18 服务端工具。模型采用固定响应，无需密钥；验证器自动创建、运行并清理专用临时数据库。
 :::

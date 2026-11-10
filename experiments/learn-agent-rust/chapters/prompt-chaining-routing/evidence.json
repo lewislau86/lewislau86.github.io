@@ -1,0 +1,137 @@
+{
+  "additional": {},
+  "id": "D02",
+  "results": [
+    {
+      "data": {
+        "artifact": {
+          "command": "cargo run",
+          "revision": 2,
+          "source": "README.md"
+        },
+        "report": {
+          "command": "cargo run",
+          "revision": 2,
+          "source": "README.md"
+        },
+        "revision": 2,
+        "route": "readme",
+        "source": "README.md"
+      },
+      "limit": 32,
+      "scenario": "readme",
+      "stop": "completed",
+      "trace": [
+        "route",
+        "extract",
+        "gate",
+        "render"
+      ],
+      "used": 4
+    },
+    {
+      "data": {
+        "artifact": {
+          "command": "cargo test",
+          "revision": 2,
+          "source": "Cargo.toml"
+        },
+        "report": {
+          "command": "cargo test",
+          "revision": 2,
+          "source": "Cargo.toml"
+        },
+        "revision": 2,
+        "route": "cargo",
+        "source": "Cargo.toml"
+      },
+      "limit": 32,
+      "scenario": "cargo",
+      "stop": "completed",
+      "trace": [
+        "route",
+        "extract",
+        "gate",
+        "render"
+      ],
+      "used": 4
+    },
+    {
+      "data": {},
+      "limit": 32,
+      "scenario": "unknown",
+      "stop": "needs_input",
+      "trace": [
+        "route"
+      ],
+      "used": 1
+    },
+    {
+      "data": {
+        "artifact": {
+          "command": null,
+          "revision": 2,
+          "source": "README.md"
+        },
+        "revision": 2,
+        "route": "readme",
+        "source": "README.md"
+      },
+      "limit": 32,
+      "scenario": "missing",
+      "stop": "missing_field",
+      "trace": [
+        "route",
+        "extract",
+        "gate"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "artifact": {
+          "command": "cargo run",
+          "revision": 1,
+          "source": "README.md"
+        },
+        "revision": 2,
+        "route": "readme",
+        "source": "README.md"
+      },
+      "limit": 32,
+      "scenario": "stale",
+      "stop": "stale_artifact",
+      "trace": [
+        "route",
+        "extract",
+        "gate"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "revision": 2,
+        "route": "readme",
+        "source": "README.md"
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "route"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 6,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "12a6f4693ef40a50622b13b04b8b45bab1d01d0ba5a99626b4c1dba7b1993b69",
+    "Cargo.toml": "5506651f36bdb926d44843d73118dfa3e76cc7d221580831514bd7d3e26d252e",
+    "README.md": "6a7c24a66edd3914cd70f97e5823d2c859a07b1d555286204042cc30e6bf6561",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "0d690235fc1308d6123e0a1de6698320293ce9442cb1048a2cb20ed31f63f653"
+  }
+}

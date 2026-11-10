@@ -1,0 +1,110 @@
+[
+  {
+    "data": {
+      "evidence": [
+        "root"
+      ],
+      "reads": 0,
+      "report": 1,
+      "strategy": "Single"
+    },
+    "limit": 32,
+    "scenario": "single",
+    "stop": "completed",
+    "trace": [
+      "choose",
+      "generate",
+      "accept"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "evidence": [
+        "root"
+      ],
+      "reads": 1,
+      "report": 1,
+      "strategy": "Workflow"
+    },
+    "limit": 32,
+    "scenario": "workflow",
+    "stop": "completed",
+    "trace": [
+      "choose",
+      "read",
+      "observe",
+      "generate",
+      "accept"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "evidence": [
+        "root",
+        "member"
+      ],
+      "reads": 2,
+      "report": 2,
+      "strategy": "Adaptive"
+    },
+    "limit": 32,
+    "scenario": "adaptive",
+    "stop": "completed",
+    "trace": [
+      "choose",
+      "read",
+      "observe",
+      "read",
+      "observe",
+      "generate",
+      "accept"
+    ],
+    "used": 7
+  },
+  {
+    "data": {
+      "evidence": [],
+      "reads": 0,
+      "strategy": "Workflow"
+    },
+    "limit": 32,
+    "scenario": "missing",
+    "stop": "missing_evidence",
+    "trace": [
+      "choose",
+      "read"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "evidence": [],
+      "reads": 0,
+      "strategy": "Workflow"
+    },
+    "limit": 32,
+    "scenario": "forbidden",
+    "stop": "permission_denied",
+    "trace": [
+      "choose",
+      "read"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "evidence": [],
+      "reads": 0,
+      "strategy": "Workflow"
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "choose"
+    ],
+    "used": 1
+  }
+]

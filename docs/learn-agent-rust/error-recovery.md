@@ -1,18 +1,18 @@
 ---
-title: "第 15 章：错误分类与恢复"
+title: "第 23 章：错误分类与恢复"
 description: "沿一次读取失败，建立类型化错误、有限退避和累计预算，再检查暂停续跑与写入结果不明的边界。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 14 章 · 系统提示词组装
-  link: /learn-agent-rust/system-prompts
+  text: 第 22 章 · 模式组合与选型实战
+  link: /learn-agent-rust/pattern-composition
 next:
-  text: 第 16 章 · 持久化任务系统
+  text: 第 24 章 · 持久化任务系统
   link: /learn-agent-rust/task-system
 ---
 
-# 第 15 章：错误分类与恢复
+# 第 23 章：错误分类与恢复
 
-[课程总览](./index.md) · [上一章：系统提示词组装](./system-prompts.md) · [下一章：持久化任务系统](./task-system.md)
+[课程总览](./index.md) · [上一章：模式组合与选型实战](./pattern-composition.md) · [下一章：持久化任务系统](./task-system.md)
 
 ::: tip 本章学习目标
 - 按错误类型和操作语义选择重试、反馈或停止。
@@ -210,7 +210,7 @@ $$
 
 测试还会把虚拟时钟先推进一部分，确认恢复只补等剩余时间；另让第二个调用在暂停期间用完共享额度，确认第一个调用恢复后直接停止，累计等待仍为零。
 
-错误恢复状态和累计额度属于运行时控制状态。第 12 章处理模型可见的历史；裁剪历史或生成摘要时，应继续保留这里的账本。跨进程恢复需要把状态、时间语义和保存边界持久化，见[第 16 章](./task-system.md)与[检查点专题](./postgres-checkpoints.md)。
+错误恢复状态和累计额度属于运行时控制状态。第 12 章处理模型可见的历史；裁剪历史或生成摘要时，应继续保留这里的账本。跨进程恢复需要把状态、时间语义和保存边界持久化，见[第 24 章](./task-system.md)与[检查点专题](./postgres-checkpoints.md)。
 
 ## 7. 最容易误判的失败：写好了，却没收到成功
 
@@ -408,4 +408,4 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R11
 - [AWS：Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/)：带业务身份的幂等请求。
 - [参考课程 s11](https://learn.shareai.run/zh/s11/)：模型调用边界的三类恢复问题；其参数与实现语境和本章实验分别说明。
 
-下一章是[第 16 章：持久化任务系统](./task-system.md)。它把任务身份、依赖和状态保存下来，通过独立进程验证任务板恢复；完整运行账本与检查点仍需单独设计。
+下一章是[第 24 章：持久化任务系统](./task-system.md)。它把任务身份、依赖和状态保存下来，通过独立进程验证任务板恢复；完整运行账本与检查点仍需单独设计。

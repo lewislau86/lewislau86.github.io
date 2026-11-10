@@ -1,0 +1,125 @@
+{
+  "additional": {},
+  "id": "D01",
+  "results": [
+    {
+      "data": {
+        "evidence": [
+          "root"
+        ],
+        "reads": 0,
+        "report": 1,
+        "strategy": "Single"
+      },
+      "limit": 32,
+      "scenario": "single",
+      "stop": "completed",
+      "trace": [
+        "choose",
+        "generate",
+        "accept"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "evidence": [
+          "root"
+        ],
+        "reads": 1,
+        "report": 1,
+        "strategy": "Workflow"
+      },
+      "limit": 32,
+      "scenario": "workflow",
+      "stop": "completed",
+      "trace": [
+        "choose",
+        "read",
+        "observe",
+        "generate",
+        "accept"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "evidence": [
+          "root",
+          "member"
+        ],
+        "reads": 2,
+        "report": 2,
+        "strategy": "Adaptive"
+      },
+      "limit": 32,
+      "scenario": "adaptive",
+      "stop": "completed",
+      "trace": [
+        "choose",
+        "read",
+        "observe",
+        "read",
+        "observe",
+        "generate",
+        "accept"
+      ],
+      "used": 7
+    },
+    {
+      "data": {
+        "evidence": [],
+        "reads": 0,
+        "strategy": "Workflow"
+      },
+      "limit": 32,
+      "scenario": "missing",
+      "stop": "missing_evidence",
+      "trace": [
+        "choose",
+        "read"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "evidence": [],
+        "reads": 0,
+        "strategy": "Workflow"
+      },
+      "limit": 32,
+      "scenario": "forbidden",
+      "stop": "permission_denied",
+      "trace": [
+        "choose",
+        "read"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "evidence": [],
+        "reads": 0,
+        "strategy": "Workflow"
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "choose"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 6,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "2713e586bd3d43db882396142e1528faee7beacb286e4db4a831807a1a240950",
+    "Cargo.toml": "463788cf885d3f39bfd7824b8e33db27ed3070f2b93376a3cd920dc1c0da572b",
+    "README.md": "8c445e793d0470cc5a72bd5aaa95306f04216aedade9d41b1e5bb4d0f8dfa7de",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "e48415fd007d7a589047c72621574c88366479a1939aa189014def02e45e2135"
+  }
+}

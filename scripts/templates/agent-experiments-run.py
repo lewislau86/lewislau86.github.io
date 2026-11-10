@@ -102,7 +102,7 @@ def run_lesson(lesson, action, offline, keep):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["list", "doctor", "integrity", "run", "test"])
-    parser.add_argument("lesson", nargs="?", help="R00..R20, G01..G03, K01, P01..P06, or topic slug")
+    parser.add_argument("lesson", nargs="?", help="R00..R20, G01..G03, K01, D01..D08, P01..P06, or topic slug")
     parser.add_argument("--all", action="store_true", help="Run every chapter, including PostgreSQL labs")
     parser.add_argument("--offline", action="store_true", help="Require Cargo dependencies already cached")
     parser.add_argument("--skip-postgres", action="store_true", help="Explicitly omit P01/P04; reported as skipped")

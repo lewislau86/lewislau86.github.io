@@ -2,6 +2,12 @@
 title: "专题 5：固定工作流与目标控制"
 description: "固定业务编排与自主循环怎样结合，目标何时算完成？"
 pageClass: learn-agent-rust-course
+prev:
+  text: 专题 4 · 生产准入与演练
+  link: /learn-agent-rust/production-readiness
+next:
+  text: 专题 6 · Agent RSI 与受控自我改进
+  link: /learn-agent-rust/agent-rsi
 ---
 
 # 专题 5：固定工作流与目标控制
@@ -13,7 +19,7 @@ pageClass: learn-agent-rust-course
 - 分别记录正常返回、产物达标和运行终态，以真实文件决定能否完成。
 - 给继续执行设置累计预算与停滞上限，留下可检查的人工交接记录。
 
-**前置：** [第 15 章：错误分类与恢复](./error-recovery.md)、[第 24 章：完整 Agent 集成](./integrated-agent.md)、[专题 3：模型协议与质量评估](./model-evaluation.md)。本章直接解释所需的验收与预算概念，实验工程独立运行。
+**前置：** [第 23 章：错误分类与恢复](./error-recovery.md)、[第 32 章：完整 Agent 集成](./integrated-agent.md)、[专题 3：模型协议与质量评估](./model-evaluation.md)。本章直接解释所需的验收与预算概念，实验工程独立运行。
 
 **实践方式：** [下载 Rust 学习包](/learn-agent-rust/workflow-and-goal-control-lab.zip)。需要 Rust / Cargo 和 Python 3.9+；实验无需模型密钥或数据库服务。
 :::
@@ -74,7 +80,7 @@ pageClass: learn-agent-rust-course
 
 这类分工与 [Anthropic 对工作流和 Agent 的区分](https://www.anthropic.com/research/building-effective-agents)一致：固定部分用预先定义的路径推进，内部再根据当前结果选择动作。本例把 Agent 接口替换为脚本，先验证控制合同，再考虑接入真实模型。
 
-接入[第 24 章](./integrated-agent.md)时，可把它的完整循环包装成一次 episode，把本章的 Goal 保持在驱动器外。图执行器报告 Completed 时，应用还要检查该轮停止原因和业务验收结果；本实验没有替两库增加或验证这层接线。
+接入[第 32 章](./integrated-agent.md)时，可把它的完整循环包装成一次 episode，把本章的 Goal 保持在驱动器外。图执行器报告 Completed 时，应用还要检查该轮停止原因和业务验收结果；本实验没有替两库增加或验证这层接线。
 
 ## 3. 正常返回以后，再读一次真实文件
 
@@ -178,7 +184,7 @@ denied-path 请求写 ../escape.txt，实际写入被拒绝，工作区外没有
 
 handoff.json 保存目标说明、冻结的输入与期望值、停止原因、累计用量、额度和最近验收结果。输入变化时，人仍能对照原合同。它是可检查的交接记录，不自动发送通知。本章没有实现“恢复命令”，交接也不会自动重置预算或授予执行权限。
 
-如果要接回长期服务，先从[第 15 章](./error-recovery.md)确认错误分类，再用[专题 1](./postgres-checkpoints.md)保存合同、源版本、历史最好进度和累计账本。已有外部业务动作还需[专题 2](./side-effect-reliability.md)的身份与对账；只保存继续次数不能解决重放。
+如果要接回长期服务，先从[第 23 章](./error-recovery.md)确认错误分类，再用[专题 1](./postgres-checkpoints.md)保存合同、源版本、历史最好进度和累计账本。已有外部业务动作还需[专题 2](./side-effect-reliability.md)的身份与对账；只保存继续次数不能解决重放。
 
 ## 7. 动手实验与验证记录
 
@@ -316,9 +322,9 @@ npm run docs:build
 
 - [Anthropic：Building effective agents](https://www.anthropic.com/research/building-effective-agents)：工作流、Agent 与评估反馈循环的架构区分。
 - [Rust std::fs](https://doc.rust-lang.org/std/fs/)：本例真实文件读取、写入与重命名的标准库接口。
-- [第 24 章：完整 Agent 集成](./integrated-agent.md)、[专题 3：模型协议与质量评估](./model-evaluation.md)：内部循环与独立评估的衔接。
+- [第 32 章：完整 Agent 集成](./integrated-agent.md)、[专题 3：模型协议与质量评估](./model-evaluation.md)：内部循环与独立评估的衔接。
 - [本章学习包](/learn-agent-rust/workflow-and-goal-control-lab.zip)：可运行工程、完整验证器、实际输出和源码摘要。
 
-完成本章后继续实践时，可回到[第 24 章](./integrated-agent.md)选择一个集成入口，再按[专题 4：生产准入与演练](./production-readiness.md)明确服务环境和所需证据。
+完成本章后继续实践时，可回到[第 32 章](./integrated-agent.md)选择一个集成入口，再按[专题 4：生产准入与演练](./production-readiness.md)明确服务环境和所需证据。
 
 下一专题：[Agent RSI 与受控自我改进](./agent-rsi.md)，把本次目标内的继续，扩展为对跨版本改进的独立验收。
