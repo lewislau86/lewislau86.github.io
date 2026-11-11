@@ -64,6 +64,8 @@ pageClass: tinyllm-course
 | [第 28 章 · 推理效率](./inference-efficiency.md) | prefill 与 decode 两段的耗时分开量；KV cache 省下的投影行数与缓存字节数；TTFT、TPOT、ITL、E2EL 与 goodput；chunked prefill 与一次算完逐元素一致 | [查看](/tinyllm/notebooks/inference-efficiency) |
 | [第 29 章 · 注意力内核与算子融合](./attention-kernels.md) | 用挂在算子分发上的记账员量出朴素注意力的峰值与读写；手写 online softmax 与分块注意力，和 SDPA 对齐；块大小与 K、V 重读；反向只存每行一个 lse；torch.compile 把一层 37 个算子融合成 6 个内核 | [查看](/tinyllm/notebooks/attention-kernels) |
 | [第 30 章 · 量化](./quantization.md) | 对称与非对称量化；按张量、按通道、分组的误差与位数；INT8/INT4 在 3 个种子上的损失、KL 与一致率；嵌入表最敏感；激活离群通道与 SmoothQuant；KV cache 量化；真实模型的体积与带宽上限 | [查看](/tinyllm/notebooks/quantization) |
+| [第 31 章 · 投机解码](./speculative-decoding.md) | 可以回滚的 KV cache；起草 → 一次前向验证 → 接受到第一处不同，输出与普通贪心逐 token 相同（assert 检查）；按目标蒸馏的草稿把接受率从 0.37 提到 0.45；γ 与 τ 的公式；拒绝采样保持分布（20 万样本与玩具模型的精确分布核对）；加速比 τ/(1+γc)，CPU 上草稿太贵反而变慢；各种草稿来源的对照 | [查看](/tinyllm/notebooks/speculative-decoding) |
+| [第 32 章 · 批处理与调度](./batching.md) | 左补齐的掩码与位置（RoPE 下列号也对、不遮 pad 就错）；按槽位组织、首尾相接的最小连续批处理引擎，所有调度下输出与单独跑逐 token 相同；同一份请求流上静态、动态、连续三种批法的 TTFT、TPOT、吞吐与白算比例；分块 prefill 消除卡顿；按 goodput 选批大小 | [查看](/tinyllm/notebooks/batching) |
 
 ## 课程路线 {#roadmap}
 
@@ -126,8 +128,8 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 - [第 28 章 · 推理效率：prefill、decode 与 KV cache](./inference-efficiency.md)
 - [第 29 章 · 注意力内核与算子融合](./attention-kernels.md)
 - [第 30 章 · 量化](./quantization.md)
-- [第 31 章 · 投机解码](./speculative-decoding.md)（规划中）
-- [第 32 章 · 批处理与调度](./batching.md)（规划中）
+- [第 31 章 · 投机解码](./speculative-decoding.md)
+- [第 32 章 · 批处理与调度](./batching.md)
 - [第 33 章 · KV 显存管理：分页与前缀缓存](./kv-memory.md)（规划中）
 - [第 34 章 · 推理优化：逐项对照与推理服务](./inference-optimization.md)（规划中）
 
@@ -195,8 +197,8 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [28 推理效率](./inference-efficiency.md) | 自回归 decode 用 KV cache，分别测 prefill 与 decode；注意力用 PyTorch 的缩放点积注意力接口 | 避免每步重算前缀；长上下文和并发会增加显存，必要时配合 GQA。报告以“前向次数、投影行数、缓存字节”这类与硬件无关的量为主，墙钟时间标注环境。 |
 | [29 注意力内核](./attention-kernels.md) | 注意力调用 `F.scaled_dot_product_attention`，让 PyTorch 选 FlashAttention 一类的分块内核；逐元素小算子交给 `torch.compile` 融合；手写的朴素与分块版本只用于理解和核对 | 长度 4096 时朴素写法峰值 536 MiB、读写 2120 MiB，SDPA 峰值 2.06 MiB；分块读写约 $T^2 d/B$，块大小受片上存储限制。需要 SDPA 不支持的掩码时换可编程内核或数学实现，先核对结果再在 GPU 上测速度与显存。 |
 | [30 量化](./quantization.md) | 训练和评估不量化；部署受限时先做 INT8 按通道的权重量化，再到 INT4 分组 32（输出层和嵌入表保留高精度）；KV cache 先 INT8 | 3 个种子：INT8 损失变化在 ±0.0002 以内；INT4 按张量涨 0.032，分组 32 只涨 0.008；KV INT4 涨 0.004。要压到 4 位以下或要求更高时换 GPTQ、AWQ 等带校准的方法；速度要在有整数内核的硬件上测。 |
-| [31 投机解码](./speculative-decoding.md) | 贪心解码下用“起草 → 验证”一次接受多个 token，并要求输出与基线逐 token 一致 | 只在起草模型和目标模型接近时有效；接受率要实测，采样模式下必须用拒绝采样才不改变分布。 |
-| [32 批处理](./batching.md) | 主线先单请求；多个请求时用连续批处理按 token 步调度，并记录每个请求的等待时间 | 短请求不必等最长的那个；chunked prefill 能减少长提示词对其他请求的阻塞，代价是调度开销。 |
+| [31 投机解码](./speculative-decoding.md) | 默认不开；保留可回滚的 KV cache、“起草 → 一次前向验证”的循环和“输出与普通贪心逐 token 相同”的断言；零成本的“在已有文本里查”可以打开 | 3 个草稿种子：蒸馏草稿贪心 α≈0.45、采样 α≈0.77（与 Σmin(p, q) 一致）；CPU 上草稿成本 c≈0.5，模型草稿实测变慢，文本里查约快 1.1 倍（单种子）。GPU 上单请求、c 在 0.1 以下时才值得用，批量大时要重算。 |
+| [32 批处理](./batching.md) | 连续批 + 分块 prefill：每个请求一个槽位，新 token 首尾相接、注意力按请求分开；每次前向先给 decode、剩余额度按到达顺序给提示词，额度明显大于最大并发数；批大小按 SLO 下的 goodput 选 | 成本模型、3 份请求流：重负载下连续批 TTFT 中位约为静态批的五分之一、吞吐高约一半，静态批约三分之一位置陪跑；分块把最长卡顿从约 4 降到 1；过载时 goodput 在 B=8～16 最高。时间不是 GPU 实测，KV 按最大长度预留，显存问题留给第 33 章。 |
 | [33 KV 显存管理](./kv-memory.md) | 缓存按固定大小的块分配，用一张块表拼出逻辑序列；相同前缀的块共享 | 分页解决碎片与超配，前缀共享解决重复计算；两者都要淘汰策略，命中率必须按工作负载实测。 |
 | [34 推理优化](./inference-optimization.md) | 以第 28 章的 KV cache 为基线，逐项单独打开前面的优化并各测一次 | 每项都用同一组请求测首字延迟、每 token 延迟和吞吐；输出必须与基线一致（或在同一验证集上质量不降），几项叠加的提升不归给其中某一项。 |
 | [35 退火与数据配比](./annealing.md) | WSD 的衰减段上采样高质量数据；从稳定段的检查点分叉，比较不同的退火数据 | 高质量数据少时容易被背下来，要留出单独的验证集；退火数据的比例和长度要实测。 |

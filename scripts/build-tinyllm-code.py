@@ -68,6 +68,8 @@ ARTIFACTS = {
     ("mixture-of-experts", "mixture_of_experts_log.json"): ROOT / "scripts/data/tinyllm-mixture-of-experts-log.json",
     ("attention-kernels", "attention_kernels_log.json"): ROOT / "scripts/data/tinyllm-attention-kernels-log.json",
     ("quantization", "quantization_log.json"): ROOT / "scripts/data/tinyllm-quantization-log.json",
+    ("speculative-decoding", "speculative_decoding_log.json"): ROOT / "scripts/data/tinyllm-speculative-decoding-log.json",
+    ("batching", "batching_log.json"): ROOT / "scripts/data/tinyllm-batching-log.json",
     ("initialization-and-residuals", "initialization_residuals_log.json"): ROOT / "scripts/data/tinyllm-initialization-residuals-log.json",
 }
 

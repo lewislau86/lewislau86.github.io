@@ -209,6 +209,21 @@ SPEC = {
         ("每层写入缓存", LLAMA, ("grep", r"key_states, value_states = past_key_values\.update"), "拿到这一层新 token 的 K、V 后交给缓存，换回包含全部历史的 K、V"),
         ("追加到末尾", "cache_utils.py", "DynamicLayer.update", "`torch.cat([self.keys, key_states], dim=-2)`：沿序列维拼接，和本章逐步缓存的写法一样"),
     ]),
+    "batching": ("transformers 里有两条批处理的路：普通的 `generate` 用左补齐的矩形批；`generate_batch` 走连续批，调度器每次前向重新决定放谁、各送几个 token：", [
+        ("左补齐时的位置", "generation/utils.py", "GenerationMixin._prepare_position_ids_for_generation", "有 `attention_mask` 时位置是 `attention_mask.long().cumsum(-1) - 1`，pad 处填 0，和本章第 2 节的写法相同"),
+        ("连续批的入口", "generation/continuous_batching/continuous_api.py", "ContinuousMixin.generate_batch", "一次交进一批提示词，后台循环按 token 步调度；`ContinuousBatchingConfig` 的 `max_batch_tokens` 是每次前向的 token 额度，`max_requests_per_batch` 相当于本章的槽位数"),
+        ("FIFO 调度", "generation/continuous_batching/scheduler.py", "FIFOScheduler.schedule_batch", "先排正在 decode 的请求，再排没送完的提示词，最后是等待队列，和本章“连续批 + 分块 prefill”的顺序相同"),
+        ("提示词分块", "generation/continuous_batching/scheduler.py", "Scheduler._schedule_request", "额度够就整段送；不够就先送 `token_budget` 个，剩下的记在 `remaining_prefill_tokens`，下一次接着送"),
+        ("首尾相接的一批", "generation/continuous_batching/input_outputs.py", "ContinuousBatchingIOs.prepare_batch_tensors", "所有请求的新 token 接成一行，位置是 `range(past_length, past_length + query_length)`，`cumulative_seqlens_q` 记每段的边界，`logits_indices` 只取每段最后一个位置，和本章 `Engine.step` 一一对应"),
+    ]),
+    "speculative-decoding": ("transformers 把投机解码叫“辅助生成”（assisted generation）：`generate(assistant_model=...)` 用小模型起草，`generate(prompt_lookup_num_tokens=...)` 在已有文本里查，起草和验证分在两个地方：", [
+        ("小模型起草", "generation/candidate_generator.py", "AssistedCandidateGenerator", "`num_assistant_tokens` 就是每轮起草的个数 γ；`update_candidate_strategy` 里有一条启发式：草稿全部被接受就 +2，否则 −1"),
+        ("在已有文本里查", "generation/candidate_generator.py", "PromptLookupCandidateGenerator", "`max_matching_ngram_size` 默认 2：先找最后 2 个 token、找不到再找最后 1 个，取从左往右第一处匹配（本章只找 2 个、取最近的一处）；都找不到就返回原输入，这一轮退回普通 decode"),
+        ("MTP 模块起草", "generation/candidate_generator.py", "MTPCandidateGenerator", "模型配置里有 `num_mtp_layers` 时可用：拿主模型最后一层的隐藏状态送进 MTP 层猜后面的 token"),
+        ("一次前向验证", "generation/utils.py", "GenerationMixin._assisted_decoding", "目标模型一次前向全部候选；贪心时 `n_matches` 是第一处不同之前的长度，保留匹配的 token 再加目标模型自己的一个，然后 `crop` 掉多余的 KV"),
+        ("拒绝采样", "generation/utils.py", "_speculative_sampling", "`p_i / q_i` 当接受概率，第一次被拒后从 `clamp(p - q, min=0)` 归一化的分布里重抽，全部接受时从最后一个位置多抽一个，和本章 `speculative_sample` 一一对应"),
+        ("KV cache 回滚", "cache_utils.py", "DynamicLayer.crop", "沿序列维去掉末尾若干个位置，对应本章的 `KVCache.crop`；线性注意力层（第 3 章）的状态没有序列维，要先记录历史状态才能回滚"),
+    ]),
 }
 
 
