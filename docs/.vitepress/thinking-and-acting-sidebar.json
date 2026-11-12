@@ -1,0 +1,101 @@
+[
+  {
+    "text": "思考与行动之间",
+    "items": [
+      {
+        "text": "全书总览",
+        "link": "/thinking-and-acting/"
+      }
+    ]
+  },
+  {
+    "text": "第一部分 · Transformer 与 GPT",
+    "items": [
+      {
+        "text": "第 1 章 · Transformer 论文解读",
+        "link": "/thinking-and-acting/transformer"
+      }
+    ]
+  },
+  {
+    "text": "规划中（尚未成文）",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第一部分 · Transformer 与 GPT",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "GPT-2：从语言建模到零样本任务"
+          },
+          {
+            "text": "GPT-3：上下文学习与少样本任务"
+          }
+        ]
+      },
+      {
+        "text": "第二部分 · 模型效率与推理",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "FlashAttention：精确注意力与显存读写"
+          },
+          {
+            "text": "FlashAttention 2–4：并行与硬件协同"
+          },
+          {
+            "text": "DeepSeek-R1：强化学习与推理能力"
+          },
+          {
+            "text": "推理过程的收益与局限"
+          }
+        ]
+      },
+      {
+        "text": "第三部分 · Agent 基础",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "ReAct：推理、行动与环境反馈"
+          },
+          {
+            "text": "Reflexion：语言反馈与反思记忆"
+          },
+          {
+            "text": "工具使用、规划与上下文管理"
+          }
+        ]
+      },
+      {
+        "text": "第四部分 · Agent 自我改进",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "RISE：通过训练学习迭代改进"
+          },
+          {
+            "text": "Dream-RSI：历史回放与探索策略"
+          },
+          {
+            "text": "Agent Harness 的递归改进"
+          }
+        ]
+      },
+      {
+        "text": "第五部分 · 评测与开放问题",
+        "collapsed": false,
+        "items": [
+          {
+            "text": "Agent 评测：任务、环境与指标"
+          },
+          {
+            "text": "可靠性、成本与复现"
+          },
+          {
+            "text": "近期论文与研究方向"
+          }
+        ]
+      }
+    ]
+  }
+]

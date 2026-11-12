@@ -10,6 +10,12 @@ title: 文档首页
 
 ## 文档集
 
+### [思考与行动之间 · Agent 与大模型论文研读](./thinking-and-acting/index.md)
+
+从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。已完成 Transformer 论文解读，其余章节正在规划。
+
+[进入论文研读 →](./thinking-and-acting/index.md) · [阅读 Transformer 论文解读 →](./thinking-and-acting/transformer.md)
+
 ### [TinyLLM · 从零学习语言模型](./tinyllm/index.md)
 
 先用不到 100 行代码跑通一个会写唐诗的小模型，再顺着数据流从分词、词嵌入、注意力一路搭出模型，接着用残差、初始化和归一化让深层网络训得动，最后是预训练、推理、中训练、后训练与应用。课程分九部分、规划 44 章，目前第 1～30 章已有完整教案、配图和配套 notebook；每章开头的架构总图会标出本章负责的零件。只有半小时的话，从[30 分钟快速体验](./tinyllm/quickstart.md)开始。

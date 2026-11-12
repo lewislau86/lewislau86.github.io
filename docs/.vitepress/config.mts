@@ -4,6 +4,7 @@ import miniRedisSidebar from './mini-redis-sidebar.json'
 import miniRedisSourceSidebar from './mini-redis-source-sidebar.json'
 import burnSidebar from './burn-sidebar.json'
 import learnAgentRustSidebar from './learn-agent-rust-sidebar.json'
+import thinkingAndActingSidebar from './thinking-and-acting-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
@@ -19,6 +20,7 @@ export default defineConfig({
     nav: [
       { text: '文档', link: '/' },
       { text: 'TinyLLM', link: '/tinyllm/' },
+      { text: '思考与行动之间', link: '/thinking-and-acting/' },
       { text: 'MoE 手册', link: '/moe-handbook-zh/', target: '_self' },
       { text: 'mini-redis', link: '/mini-redis/' },
       { text: 'Burn', link: '/burn/' },
@@ -27,6 +29,7 @@ export default defineConfig({
       { text: '关于', link: '/about' }
     ],
     sidebar: {
+      '/thinking-and-acting/': thinkingAndActingSidebar,
       '/learn-agent-rust/': learnAgentRustSidebar,
       '/burn/': burnSidebar,
       '/tinyllm/': tinyllmSidebar,
@@ -38,6 +41,7 @@ export default defineConfig({
         items: [
           { text: '文档首页', link: '/' },
           { text: 'TinyLLM 教程', link: '/tinyllm/' },
+          { text: '思考与行动之间', link: '/thinking-and-acting/' },
           { text: '终极 MoE 训练手册', link: '/moe-handbook-zh/', target: '_self' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
           { text: '深入理解 Burn', link: '/burn/' },
