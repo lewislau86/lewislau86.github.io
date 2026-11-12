@@ -1,6 +1,6 @@
 # 课程写作规范
 
-本站的系列教程（TinyLLM、mini-redis、Burn、Learn Agent by Rust）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
+本站的系列教程（TinyLLM、mini-redis、Burn、Learn Agent by Rust、思考与行动之间）按同一套规范组织。新增章节、调整顺序或补配图时，先对照这一页。
 
 ## 1. 网站是唯一来源
 
@@ -14,6 +14,7 @@
 | Burn | `docs/burn/` | `docs/public/burn/` | `burn-sidebar.json` | 已符合 |
 | mini-redis | `docs/mini-redis/` | `docs/public/mini-redis/{source,mini-redis-study.zip}` | `mini-redis-sidebar.json`、`mini-redis-source-sidebar.json` | 已按本规范迁移 |
 | Learn Agent by Rust | `docs/learn-agent-rust/` | `docs/public/learn-agent-rust/{code,outputs,figures}/`，独立工程与章节 zip | `learn-agent-rust-sidebar.json` | 正文状态以章节清单为准，实验状态见各章 |
+| 思考与行动之间 | `docs/thinking-and-acting/` | `docs/public/thinking-and-acting/{code,figures}/`，配图由 `scripts/generate-thinking-acting-figures.py` 生成 | `thinking-and-acting-sidebar.json` | 论文研读；模型机制链接到 TinyLLM，不在本书重复 |
 
 ## 2. 文件名与 URL
 

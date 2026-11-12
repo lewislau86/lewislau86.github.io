@@ -10,12 +10,6 @@ title: 文档首页
 
 ## 文档集
 
-### [思考与行动之间 · Agent 与大模型论文研读](./thinking-and-acting/index.md)
-
-从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。已完成 Transformer 论文解读，其余章节正在规划。
-
-[进入论文研读 →](./thinking-and-acting/index.md) · [阅读 Transformer 论文解读 →](./thinking-and-acting/transformer.md)
-
 ### [TinyLLM · 从零学习语言模型](./tinyllm/index.md)
 
 先用不到 100 行代码跑通一个会写唐诗的小模型，再顺着数据流从分词、词嵌入、注意力一路搭出模型，接着用残差、初始化和归一化让深层网络训得动，最后是预训练、推理、中训练、后训练与应用。课程分九部分、规划 44 章，目前第 1～30 章已有完整教案、配图和配套 notebook；每章开头的架构总图会标出本章负责的零件。只有半小时的话，从[30 分钟快速体验](./tinyllm/quickstart.md)开始。
@@ -28,11 +22,17 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 <a href="/moe-handbook-zh/" target="_self">阅读终极 MoE 训练手册 →</a>
 
-### [mini-redis · 从源码学习 Rust 与 Redis 架构](./mini-redis/index.md)
+### [Learn Agent by Rust · 构建可理解、可恢复的 Agent](./learn-agent-rust/index.md)
 
-沿着一条 SET/GET 请求，学习 Rust 所有权、Tokio 异步任务、共享存储、过期清理、发布订阅与优雅停机。包含整体架构导读、13 章教程、28 篇逐文件源码分析、Rust 源码阅读说明、6 个可运行实验、源码学习包及原始验证记录。第 13 章记录 TTL 测试挂起的定位与修复过程。
+围绕一个工作区助手，使用 `langchain-rust + graph-flow` 学习模型工具循环、图编排、权限、Skills、RAG、上下文、任务、团队和 MCP，再用恢复、幂等与目标验收实验检查运行边界。课程分十部分，39 个节点已成文并有实验入口；[常见 Agent 设计模式](./learn-agent-rust/agent-design-patterns.md)独立成部分，第 15–22 章附独立 Rust 工程、正常与故障复验及组合实验，真实模型对照待配置服务后运行。第 5–7 章讲图编排，第 11 章讲 RAG；各章明确区分固定夹具、真实效果与待验证范围。
 
-[进入 mini-redis 教程 →](./mini-redis/index.md)
+[进入课程 →](./learn-agent-rust/index.md) · [开始第 0 章 →](./learn-agent-rust/architecture-and-setup.md) · [查看学习路径 →](./learn-agent-rust/learning-path.md) · [环境准备 →](./learn-agent-rust/setup.md)
+
+### [思考与行动之间 · Agent 与大模型论文研读](./thinking-and-acting/index.md)
+
+从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。第 1 章重读 Transformer 论文：它的核心论证依赖什么前提、实验证明了什么，以及作者在 2017 年下的判断九年后哪些应验了。其余章节正在规划。
+
+[进入论文研读 →](./thinking-and-acting/index.md) · [阅读第 1 章：重读 Transformer →](./thinking-and-acting/transformer.md)
 
 ### [深入理解 Burn 深度学习框架](./burn/index.md)
 
@@ -42,11 +42,11 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 [进入 Burn 教程 →](./burn/index.md)
 
-### [Learn Agent by Rust · 构建可理解、可恢复的 Agent](./learn-agent-rust/index.md)
+### [mini-redis · 从源码学习 Rust 与 Redis 架构](./mini-redis/index.md)
 
-围绕一个工作区助手，使用 `langchain-rust + graph-flow` 学习模型工具循环、图编排、权限、Skills、RAG、上下文、任务、团队和 MCP，再用恢复、幂等与目标验收实验检查运行边界。课程分十部分，39 个节点已成文并有实验入口；[常见 Agent 设计模式](./learn-agent-rust/agent-design-patterns.md)独立成部分，第 15–22 章附独立 Rust 工程、正常与故障复验及组合实验，真实模型对照待配置服务后运行。第 5–7 章讲图编排，第 11 章讲 RAG；各章明确区分固定夹具、真实效果与待验证范围。
+沿着一条 SET/GET 请求，学习 Rust 所有权、Tokio 异步任务、共享存储、过期清理、发布订阅与优雅停机。包含整体架构导读、13 章教程、28 篇逐文件源码分析、Rust 源码阅读说明、6 个可运行实验、源码学习包及原始验证记录。第 13 章记录 TTL 测试挂起的定位与修复过程。
 
-[进入课程 →](./learn-agent-rust/index.md) · [开始第 0 章 →](./learn-agent-rust/architecture-and-setup.md) · [查看学习路径 →](./learn-agent-rust/learning-path.md) · [环境准备 →](./learn-agent-rust/setup.md)
+[进入 mini-redis 教程 →](./mini-redis/index.md)
 
 ## 从这里开始
 

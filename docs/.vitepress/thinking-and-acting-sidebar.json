@@ -12,7 +12,7 @@
     "text": "第一部分 · Transformer 与 GPT",
     "items": [
       {
-        "text": "第 1 章 · Transformer 论文解读",
+        "text": "第 1 章 · Transformer：重读 Attention Is All You Need",
         "link": "/thinking-and-acting/transformer"
       }
     ]

@@ -19,7 +19,7 @@ description: 从 Transformer 到自我进化 Agent 的论文研读。
 
 ## 第一部分 · Transformer 与 GPT
 
-- [第 1 章 · Transformer：Attention Is All You Need](./transformer.md)（已成文）
+- [第 1 章 · Transformer：重读 Attention Is All You Need](./transformer.md)（已成文）：表 1 的核心论证与 $n<d$ 前提、表 2/表 3 的证据边界、作者的判断九年后的结果
 - GPT-2：从语言建模到零样本任务（规划中）
 - GPT-3：上下文学习与少样本任务（规划中）
 
@@ -50,6 +50,6 @@ description: 从 Transformer 到自我进化 Agent 的论文研读。
 
 ## 研读方式
 
-每篇论文计划围绕六个问题展开：解决什么问题、已有方法有什么限制、核心思路是什么、实验如何验证、结论的边界在哪里，以及它与其他论文有什么联系。
+每篇论文当作一篇论证来读：作者要解决什么问题、已有方法卡在哪里、核心论证依赖什么前提、实验实际证明了什么（哪些差距不能当真）、作者下了哪些判断，以及用今天的眼光看这些判断是否应验。模型机制本身不在这里重复，统一链接到 TinyLLM 中的对应章节。
 
 模型基础可以配合 [TinyLLM 教程](/tinyllm/) 阅读；Agent 的工程实现可参考 [Learn Agent by Rust](/learn-agent-rust/)。
