@@ -1,0 +1,246 @@
+[
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "report": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ],
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "normal",
+    "stop": "completed",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "report": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ],
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "reverse",
+    "stop": "completed",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": false,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "failure",
+    "stop": "branch_failed",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "duplicate",
+    "stop": "member_mismatch",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 1
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "docs",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "stale",
+    "stop": "stale_result",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 2,
+      "results": [
+        {
+          "id": "config",
+          "ok": true,
+          "revision": 2
+        },
+        {
+          "id": "deps",
+          "ok": true,
+          "revision": 2
+        }
+      ]
+    },
+    "limit": 32,
+    "scenario": "missing",
+    "stop": "member_mismatch",
+    "trace": [
+      "dispatch",
+      "merge"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "joined": true,
+      "peak": 0,
+      "results": []
+    },
+    "limit": 32,
+    "scenario": "cancel",
+    "stop": "cancelled",
+    "trace": [
+      "dispatch"
+    ],
+    "used": 4
+  },
+  {
+    "data": {},
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "dispatch"
+    ],
+    "used": 1
+  }
+]

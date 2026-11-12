@@ -1,21 +1,21 @@
 {
   "schema_version": 1,
-  "checked_at": "2026-11-08T04:30:50+00:00",
+  "checked_at": "2026-11-10T14:35:52+00:00",
   "scope": "Every chapter's original --check verifier; deterministic model fixtures; no live external provider",
   "environment": {
     "python": "3.9.6",
     "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
     "host": "aarch64-apple-darwin"
   },
-  "passed": 31,
-  "total": 31,
+  "passed": 39,
+  "total": 39,
   "lessons": [
     {
       "id": "R00",
       "slug": "architecture-and-setup",
       "verifier": "scripts/verify-learn-agent-rust.py",
       "exit_code": 0,
-      "elapsed_seconds": 0.5,
+      "elapsed_seconds": 1.1,
       "summary": "R00: normal, denied-before-read and missing-file scenarios passed; evidence checked",
       "inputs_sha256": {
         "code/architecture-and-setup.rs": "90aeb31e08a599d25e6114bf0f6549e74a53d755634adfe2fa08ddef5e8166cc",
@@ -28,7 +28,7 @@
       "slug": "agent-loop",
       "verifier": "scripts/verify-learn-agent-rust-loop.py",
       "exit_code": 0,
-      "elapsed_seconds": 1.0,
+      "elapsed_seconds": 1.4,
       "summary": "R01: 13 scenarios, 6 Rust contract tests and 3 invalid CLI cases passed; evidence checked",
       "inputs_sha256": {
         "code/agent-loop.rs": "61a4bb00da71cc662a2e84bf23d7cc5aa3defca9fccf6b00e9e5562949202d9f",
@@ -41,7 +41,7 @@
       "slug": "tools-and-graph",
       "verifier": "scripts/verify-learn-agent-rust-r02.py",
       "exit_code": 0,
-      "elapsed_seconds": 6.3,
+      "elapsed_seconds": 10.2,
       "summary": "R02: 9 scenario pairs, message contracts, fmt, tests and Clippy passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -60,7 +60,7 @@
       "slug": "permissions",
       "verifier": "scripts/verify-agent-permissions.py",
       "exit_code": 0,
-      "elapsed_seconds": 1.4,
+      "elapsed_seconds": 1.7,
       "summary": "R03: 10 scenarios, 6 regression tests, extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/permissions.rs": "94af1a33502f46f0445a00498f2e79357f5afc068fffa9cbf58436b95d1b2c26",
@@ -74,7 +74,7 @@
       "slug": "hooks",
       "verifier": "scripts/verify-agent-hooks.py",
       "exit_code": 0,
-      "elapsed_seconds": 1.7,
+      "elapsed_seconds": 2.0,
       "summary": "R04: 14 scenarios, 8 regression tests and extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/hooks.rs": "277cdf33ad8caed2c6d9329b31a55b14161fb895db3e4100a2a0c1c54779b4f9",
@@ -88,7 +88,7 @@
       "slug": "graph-state-routing",
       "verifier": "scripts/verify-agent-orchestration.py",
       "exit_code": 0,
-      "elapsed_seconds": 8.5,
+      "elapsed_seconds": 13.3,
       "summary": "Graph orchestration verified: G01/G02/G03, real graph-flow routing, SQLite resume and parallel/subgraph boundaries",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -107,7 +107,7 @@
       "slug": "graph-pause-resume",
       "verifier": "scripts/verify-agent-orchestration.py",
       "exit_code": 0,
-      "elapsed_seconds": 7.7,
+      "elapsed_seconds": 12.5,
       "summary": "Graph orchestration verified: G01/G02/G03, real graph-flow routing, SQLite resume and parallel/subgraph boundaries",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -126,7 +126,7 @@
       "slug": "graph-parallel-subgraphs",
       "verifier": "scripts/verify-agent-orchestration.py",
       "exit_code": 0,
-      "elapsed_seconds": 7.7,
+      "elapsed_seconds": 14.9,
       "summary": "Graph orchestration verified: G01/G02/G03, real graph-flow routing, SQLite resume and parallel/subgraph boundaries",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -145,7 +145,7 @@
       "slug": "todo-planning",
       "verifier": "scripts/verify-learn-agent-rust-r05.py",
       "exit_code": 0,
-      "elapsed_seconds": 4.7,
+      "elapsed_seconds": 17.2,
       "summary": "R05: 20 scenarios, 6 Rust tests, message contracts, fmt and Clippy passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -164,7 +164,7 @@
       "slug": "subagents",
       "verifier": "scripts/verify-agent-subagents.py",
       "exit_code": 0,
-      "elapsed_seconds": 1.3,
+      "elapsed_seconds": 3.1,
       "summary": "R06: 16 scenarios, 9 Rust contract tests, 2 invalid CLI cases and extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/subagents.rs": "dcea552777b11421818aca1180c0688d18e85187fceb443fc35235ba39fb5531",
@@ -179,7 +179,7 @@
       "slug": "skill-loading",
       "verifier": "scripts/verify-agent-skills.py",
       "exit_code": 0,
-      "elapsed_seconds": 11.6,
+      "elapsed_seconds": 23.7,
       "summary": "R07: 12 scenarios, Rust tests, Clippy, pairing/bytes/permission assertions, offline and final download passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -201,7 +201,7 @@
       "slug": "retrieval-augmented-generation",
       "verifier": "scripts/verify-agent-rag.py",
       "exit_code": 0,
-      "elapsed_seconds": 3.2,
+      "elapsed_seconds": 5.7,
       "summary": "K01 verified: 8 Rust tests, 11 scenarios, 4 labeled queries, source and extracted archive; outputs and hashes match",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -224,7 +224,7 @@
       "slug": "context-compaction",
       "verifier": "scripts/verify-agent-compaction.py",
       "exit_code": 0,
-      "elapsed_seconds": 15.7,
+      "elapsed_seconds": 25.4,
       "summary": "R08: 17 scenarios, 17 Rust tests, Clippy, pairs/facts/budgets/rollback, offline and final download passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -245,7 +245,7 @@
       "slug": "memory",
       "verifier": "scripts/verify-agent-memory.py",
       "exit_code": 0,
-      "elapsed_seconds": 7.8,
+      "elapsed_seconds": 13.0,
       "summary": "R09: 22 scenarios / 57 separate CLI processes, 8 Rust tests, all scenarios repeated from extracted archive; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "92232a06667b4b5c0b7aa20f1035ac18838f7035c392df92d223be0ab7f42052",
@@ -263,7 +263,7 @@
       "slug": "system-prompts",
       "verifier": "scripts/verify-agent-prompts.py",
       "exit_code": 0,
-      "elapsed_seconds": 13.4,
+      "elapsed_seconds": 22.8,
       "summary": "R10: 14 scenarios, 8 Rust tests, fmt, Clippy, source/role/pairing/cache contracts, offline and final archive passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -284,11 +284,165 @@
       }
     },
     {
+      "id": "D01",
+      "slug": "pattern-selection",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 3.8,
+      "summary": "Patterns: 1 chapters / 6 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "2713e586bd3d43db882396142e1528faee7beacb286e4db4a831807a1a240950",
+        "code/Cargo.toml": "463788cf885d3f39bfd7824b8e33db27ed3070f2b93376a3cd920dc1c0da572b",
+        "code/README.md": "8c445e793d0470cc5a72bd5aaa95306f04216aedade9d41b1e5bb4d0f8dfa7de",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "e48415fd007d7a589047c72621574c88366479a1939aa189014def02e45e2135",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d01-results.json": "e2e1b51a26523d4e5c987cd9978dad84c9f0421f4a0031f63f8bf50c80548cdb",
+        "archive/pattern-selection.zip": "5fddec37cfa6336d5e1823c2de25febe5ba640870ec30275f060c2154e6957a3"
+      }
+    },
+    {
+      "id": "D02",
+      "slug": "prompt-chaining-routing",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 3.8,
+      "summary": "Patterns: 1 chapters / 6 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "12a6f4693ef40a50622b13b04b8b45bab1d01d0ba5a99626b4c1dba7b1993b69",
+        "code/Cargo.toml": "5506651f36bdb926d44843d73118dfa3e76cc7d221580831514bd7d3e26d252e",
+        "code/README.md": "6a7c24a66edd3914cd70f97e5823d2c859a07b1d555286204042cc30e6bf6561",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "0d690235fc1308d6123e0a1de6698320293ce9442cb1048a2cb20ed31f63f653",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d02-results.json": "e001cd4d96335396864971481ed2b78d4c7c6f41f7b5c78ce2aa4b15cc413a70",
+        "archive/prompt-chaining-routing.zip": "2d6ce005dce414a63129fb8fc328808843f9ca1c53d8ccb87766ee651ddb6c4c"
+      }
+    },
+    {
+      "id": "D03",
+      "slug": "parallel-decomposition",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.7,
+      "summary": "Patterns: 1 chapters / 8 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "f890346b4815dcc415d5beebdc5385fc6d15519d84ea56050d263c02af8e57bd",
+        "code/Cargo.toml": "309888ac848341fc4f90871013896c07063e23b07efcb6f9467020a05f33acbe",
+        "code/README.md": "b98eba462b79ab4fa1588c8b0ff5d4208e2a7edc11e7968670bdb75816d2849d",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "f6ba66999cc0dcc89deff91aa7c0fb21be3c0159f90895a06838713b6298a99f",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d03-results.json": "3a513ceae6106a78a4cb0b5a76a1f23593925360867e462eebc6951f9343afd7",
+        "archive/parallel-decomposition.zip": "8e5743074a324e10b8d1bc8ee7580e7e0e243cc6b1d75856e47891a2056649ec"
+      }
+    },
+    {
+      "id": "D04",
+      "slug": "plan-execute-replan",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.2,
+      "summary": "Patterns: 1 chapters / 6 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "df9eb0830d84e7156694f1afd6e34619e429d34bc3c94cc5bdde6ee8b4f9d352",
+        "code/Cargo.toml": "34a77e39c092c3bdf8b8579de64117c5b7554879906392b9a53ed8cdfb335960",
+        "code/README.md": "2c55166e8d77403d052fc44c3dad92ead761442321864d54cc80083035add26d",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "8f045bb1d9b359f697121c17bf548890e395d6b2413484df8b9e79267abe5311",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d04-results.json": "de50be15e800655ee047145baaffeddf07e676a10c71ed59a27f3e56b836547d",
+        "archive/plan-execute-replan.zip": "0b51867b465aa88e5de87f15d90134bdf5653626e4b12d3567bb1eab81f0f5f3"
+      }
+    },
+    {
+      "id": "D05",
+      "slug": "orchestrator-workers-handoffs",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.4,
+      "summary": "Patterns: 1 chapters / 7 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "1242e47578d7812d577f59521afeb9a7baef350e486dd7c11ea4b545ccdc7044",
+        "code/Cargo.toml": "8c1a5f46c7d813e53aab418fb91aaed5902eb045aeb3acbf15ada0463ae60f50",
+        "code/README.md": "310b8bb8febf39136f0031341cedb45d4c77acdaa982401a0927a6bc421d57c4",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "0c6c2137fdf336cb7b5be245cd78cf8d3098f86f26acea0f77ddebb9aeccfb0a",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d05-results.json": "2eb2909233a664926a30f8a919bd214d92b1f6ac1edf68b602b9ced343ffd5b4",
+        "archive/orchestrator-workers-handoffs.zip": "3ffbec2df4c1d81cf0248c8b6343a1dabf65e43db807cf14ed5557f424fa6836"
+      }
+    },
+    {
+      "id": "D06",
+      "slug": "evaluator-reflection",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.1,
+      "summary": "Patterns: 1 chapters / 7 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "e7bee402c0e8b113ced329d5e69724bdbf147543d9339a11e32d5f0addc2eab8",
+        "code/Cargo.toml": "9adec0b5d03ec11c1be18e821caa8be10be6545413ed0a8dde59a280e5f320b5",
+        "code/README.md": "bf12d5c1491c0ca931d32caf3fc1bb461acd31598829d58cc48257a54f96b46e",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "deb3513bb0fdea8dc8cca73796a6536d09d7f8e986d5cfd8c8e67e93bb9a22ef",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d06-results.json": "acd841cf5f89977bebb7aba2290b9dc9b17959fccb0d630901c2e3df4bcdbe60",
+        "archive/evaluator-reflection.zip": "43689dd4c361428d9b8992e56be73c464b2bca31e4e939ccb3ef6ad5a1694d89"
+      }
+    },
+    {
+      "id": "D07",
+      "slug": "human-in-the-loop",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 4.5,
+      "summary": "Patterns: 1 chapters / 7 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "23e3b6ce833304adc3ac82a914ca9d05300231be82201474daf1860b83311312",
+        "code/Cargo.toml": "0c2381e583823cdb85662fe3ab0194d9a631ca3aafdf4f83942113037628aa85",
+        "code/README.md": "a205a416443c3f63a205c695c63d7855d30dbed7c856ef21ace361464a6fdd57",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "91e9d7e021ca0e585f28ca1deff32538324aed6c7504dbdb30f2e1a79df3d627",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d07-results.json": "024999b90dc57e6e0df90ebeb9be152ead1856b970ade02612d9365b1322968f",
+        "archive/human-in-the-loop.zip": "0c5eb19bc3038ab2b61aa6eba60a75fbf6f89345556eb454f11a28a19f84df10"
+      }
+    },
+    {
+      "id": "D08",
+      "slug": "pattern-composition",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "exit_code": 0,
+      "elapsed_seconds": 6.3,
+      "summary": "Patterns: 1 chapters / 9 scenarios; sources and artifacts checked; live model NOT RUN",
+      "inputs_sha256": {
+        "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+        "code/Cargo.lock": "eddf7dd9826a2c366d34a1ddcbd819440b325ff52789e9cf22b86b5d16a310dc",
+        "code/Cargo.toml": "15fc08d338193715ad232f1ccd41df9befe8ef5548ca3226dcbe59a5b5e150bb",
+        "code/README.md": "63374a90096e09629c25697d66533ef5ba47638c8df5e3ddec9e731335e72587",
+        "code/model-cases.json": "46f503671045a6d5757ea4299e17dbd9e40db9ec8f2a4e30954ceee61ab54e69",
+        "code/model_compare.py": "f0e904c2b6e150ce0cafba817d11b7ee051c8b9994a65ee8467e42c051bfb63a",
+        "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+        "code/src/main.rs": "bca6865b78623a9a0df2f83af7ca8ac7b7d786d28ee78d152872586886facc65",
+        "scripts/verify-agent-patterns.py": "cdf66c9eb6bd5d63c2f267c19afac0c1f6ee6904f08e34171a30e8d4ecfdbc21",
+        "scripts/data/learn-agent-rust/d08-results.json": "0a7a384b0bfa261eb924ed295c925f7e4d3093337325e8c30d87d7b36a4b7d5c",
+        "archive/pattern-composition.zip": "5341fef6e0891a70deef50f35f82af5c48bdc8d6bfa45e1fa0c924eac8937c4e"
+      }
+    },
+    {
       "id": "R11",
       "slug": "error-recovery",
       "verifier": "scripts/verify-agent-recovery.py",
       "exit_code": 0,
-      "elapsed_seconds": 0.8,
+      "elapsed_seconds": 2.0,
       "summary": "R11: 21 scenarios, 13 Rust tests, actual file assertions and extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/error-recovery.rs": "8809a00d35cdc8d6c669162636c8edefe859a2b6339df3abf91dd3a86d470c71",
@@ -302,7 +456,7 @@
       "slug": "task-system",
       "verifier": "scripts/verify-agent-tasks.py",
       "exit_code": 0,
-      "elapsed_seconds": 11.3,
+      "elapsed_seconds": 16.9,
       "summary": "R12: 26 scenarios / 119 independent CLI processes, 14 Rust tests, Clippy and published archive rerun passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "d44bdcdeee6e14edcab9c62c62e991c1c3112f383cf799b78c7900acadd73e4a",
@@ -324,7 +478,7 @@
       "slug": "background-tasks",
       "verifier": "scripts/verify-agent-background.py",
       "exit_code": 0,
-      "elapsed_seconds": 1.9,
+      "elapsed_seconds": 2.1,
       "summary": "R13: 14 scenarios, 12 Rust tests, actual files and extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/background-tasks.rs": "c0ecaee2712b68e1c60630456932f17703284ed08495bb56b0194b3fe77ab718",
@@ -339,7 +493,7 @@
       "slug": "scheduling",
       "verifier": "scripts/verify-agent-scheduling.py",
       "exit_code": 0,
-      "elapsed_seconds": 16.0,
+      "elapsed_seconds": 24.7,
       "summary": "R14: 27 scenarios / 134 independent CLI processes, 10 Rust tests, Clippy and extracted archive replay passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "ee79c8e3eee39a018348904ff412ace3207aa5e5ec2077a7494ea79921779101",
@@ -358,7 +512,7 @@
       "slug": "agent-teams",
       "verifier": "scripts/verify-agent-teams.py",
       "exit_code": 0,
-      "elapsed_seconds": 19.5,
+      "elapsed_seconds": 28.5,
       "summary": "R15: 22 scenarios, 11 Rust tests, Clippy, mailboxes/private histories/budgets/cancellation/join, offline and final download passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -380,7 +534,7 @@
       "slug": "team-protocols",
       "verifier": "scripts/verify-agent-protocols.py",
       "exit_code": 0,
-      "elapsed_seconds": 23.3,
+      "elapsed_seconds": 32.6,
       "summary": "R16: 28 scenarios, 15 Rust tests, Clippy, exact approval/identity/deadlines/shutdown/join, offline and all final-download scenarios passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -402,7 +556,7 @@
       "slug": "autonomous-workers",
       "verifier": "scripts/verify-agent-workers.py",
       "exit_code": 0,
-      "elapsed_seconds": 10.8,
+      "elapsed_seconds": 19.1,
       "summary": "R17: 25 scenarios / 169 independent CLI processes, 12 Rust tests, Clippy and extracted archive replay passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "068e1dc356ef3127c94bd76801f17b4680eafc165e79ae21fb0902f3b31c3fda",
@@ -423,7 +577,7 @@
       "slug": "worktree-isolation",
       "verifier": "scripts/verify-agent-worktrees.py",
       "exit_code": 0,
-      "elapsed_seconds": 9.5,
+      "elapsed_seconds": 18.1,
       "summary": "R18: 19 scenarios, 12 Rust tests, real Git/files/index checks and extracted download passed; artifacts checked",
       "inputs_sha256": {
         "code/worktree-isolation.rs": "f99909cd42594cc67e561fc8954f85cdbf5effab569db6936253a38ad5549e35",
@@ -438,7 +592,7 @@
       "slug": "mcp-tools",
       "verifier": "scripts/verify-agent-mcp.py",
       "exit_code": 0,
-      "elapsed_seconds": 45.2,
+      "elapsed_seconds": 75.6,
       "summary": "R19: 25 scenarios / 26 real child servers, 8 Rust tests, Clippy, wire/file/PID checks and extracted archive rerun passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "cf8a04f1d8223da5ac629389b637c2e9b4941ff2bdcd1e907b593b978e247cce",
@@ -463,7 +617,7 @@
       "slug": "integrated-agent",
       "verifier": "scripts/verify-agent-integration.py",
       "exit_code": 0,
-      "elapsed_seconds": 18.9,
+      "elapsed_seconds": 36.2,
       "summary": "R20: 18 scenarios, 10 Rust tests, Clippy, actual SQLite/Git/files/messages/MCP/PID checks, extracted final archive offline rerun and JSON CLI passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -488,7 +642,7 @@
       "slug": "postgres-checkpoints",
       "verifier": "scripts/verify-agent-checkpoints.py",
       "exit_code": 0,
-      "elapsed_seconds": 18.7,
+      "elapsed_seconds": 38.1,
       "summary": "P01: 10 Rust tests, Clippy, 25 real PostgreSQL scenarios, 108 CLI processes per pass, extracted package replay; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "edd2d6ff92d4ef8515bb702e0bb91ac5309b59dd82ea178e9c90ac2f489a3dad",
@@ -511,7 +665,7 @@
       "slug": "side-effect-reliability",
       "verifier": "scripts/verify-agent-effects.py",
       "exit_code": 0,
-      "elapsed_seconds": 4.5,
+      "elapsed_seconds": 7.6,
       "summary": "P02: 29 scenarios, 11 Rust tests, Clippy, independent SQL verification, process exits, offline demo and all final-download scenarios passed; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "fecfc195d731ca6d896c5f1111d6e60dc470ff13baa0d960ee450453d909ea0c",
@@ -533,7 +687,7 @@
       "slug": "model-evaluation",
       "verifier": "scripts/verify-agent-evaluation.py",
       "exit_code": 0,
-      "elapsed_seconds": 12.5,
+      "elapsed_seconds": 17.5,
       "summary": "P03: 27 protocol/host cases + 24 graded tasks, 80 real HTTP requests per round; 10 Rust tests, Clippy, independent grades/wire/files, fixture thread cleanup and extracted final archive offline rerun passed; artifacts checked; live provider NOT RUN",
       "inputs_sha256": {
         "code/.gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
@@ -557,7 +711,7 @@
       "slug": "production-readiness",
       "verifier": "scripts/verify-agent-production.py",
       "exit_code": 0,
-      "elapsed_seconds": 26.8,
+      "elapsed_seconds": 45.3,
       "summary": "P04: 4 Rust tests, Clippy, 24 scenarios / 62 CLI processes per pass, extracted download replay; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "635514137c414fe259dfd8dc36968d48acd0fe957accc1379173f737acbd315f",
@@ -577,7 +731,7 @@
       "slug": "workflow-and-goal-control",
       "verifier": "scripts/verify-agent-goals.py",
       "exit_code": 0,
-      "elapsed_seconds": 8.4,
+      "elapsed_seconds": 13.8,
       "summary": "P05: 11 Rust tests, Clippy, 22 scenarios / 24 CLI processes per pass, extracted archive replay; artifacts checked",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
@@ -600,7 +754,7 @@
       "slug": "agent-rsi",
       "verifier": "scripts/verify-agent-rsi.py",
       "exit_code": 0,
-      "elapsed_seconds": 2.8,
+      "elapsed_seconds": 4.6,
       "summary": "P06 verified: 4 Rust tests, 9 runs + 2 CLI refusals, source and extracted archive; outputs and hashes match",
       "inputs_sha256": {
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",

@@ -1,0 +1,153 @@
+[
+  {
+    "data": {
+      "effects": 1,
+      "request": {
+        "approved": 1,
+        "completed": true,
+        "content": "upgrade report",
+        "denied": false,
+        "id": 1,
+        "revision": 1
+      }
+    },
+    "limit": 32,
+    "scenario": "approve",
+    "stop": "completed",
+    "trace": [
+      "prepare",
+      "intervene",
+      "resume",
+      "finish"
+    ],
+    "used": 4
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": null,
+        "completed": false,
+        "content": "target=v2; upgrade report",
+        "denied": false,
+        "id": 1,
+        "revision": 2
+      }
+    },
+    "limit": 32,
+    "scenario": "clarify",
+    "stop": "needs_approval",
+    "trace": [
+      "prepare",
+      "intervene",
+      "resume"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": null,
+        "completed": false,
+        "content": "edited report",
+        "denied": false,
+        "id": 1,
+        "revision": 2
+      }
+    },
+    "limit": 32,
+    "scenario": "edit",
+    "stop": "needs_approval",
+    "trace": [
+      "prepare",
+      "intervene",
+      "resume"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": null,
+        "completed": false,
+        "content": "upgrade report",
+        "denied": true,
+        "id": 1,
+        "revision": 1
+      }
+    },
+    "limit": 32,
+    "scenario": "deny",
+    "stop": "denied",
+    "trace": [
+      "prepare",
+      "intervene",
+      "resume"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": null,
+        "completed": false,
+        "content": "upgrade report",
+        "denied": false,
+        "id": 1,
+        "revision": 1
+      }
+    },
+    "limit": 32,
+    "scenario": "stale",
+    "stop": "stale_approval",
+    "trace": [
+      "prepare",
+      "intervene"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": 1,
+        "completed": false,
+        "content": "upgrade report",
+        "denied": false,
+        "id": 1,
+        "revision": 1
+      }
+    },
+    "limit": 32,
+    "scenario": "duplicate",
+    "stop": "duplicate_decision",
+    "trace": [
+      "prepare",
+      "intervene"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "effects": 0,
+      "request": {
+        "approved": null,
+        "completed": false,
+        "content": "upgrade report",
+        "denied": false,
+        "id": 1,
+        "revision": 1
+      }
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "prepare"
+    ],
+    "used": 1
+  }
+]

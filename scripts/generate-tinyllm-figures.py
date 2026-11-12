@@ -3878,6 +3878,315 @@ def quant_outliers():
               f"激活 INT6 时，按张量量化损失增加 {m('W8A6 按张量'):+.4f}，SmoothQuant 后 {m('W8A6 SmoothQuant + 按张量'):+.4f}，按 token 量化 {m('W8A6 按 token'):+.4f}（3 个种子平均）。")
 
 
+# ---------- 第 31 章：投机解码 ----------
+
+def _spec_log():
+    src = DATA / "tinyllm-speculative-decoding-log.json"
+    if not src.exists():
+        print("skip speculative-decoding figures: run scripts/build-tinyllm-code.py speculative-decoding to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def spec_round():
+    """一轮投机解码：草稿猜 4 个，目标一次前向给出 5 个位置上的选择，接受到第一处不同为止。数据取自脚本 trace 的一轮。"""
+    log = _spec_log()
+    if log is None:
+        return
+    rnd = max((r for r in log["trace"] if r["k"] < len(r["draft"])), key=lambda r: r["k"])   # 接受得最多、但没有全部接受的一轮
+    prev = log["trace"][log["trace"].index(rnd) - 1]
+    last = prev["draft"][:prev["k"]] + [prev["choice"][prev["k"]]]
+    last = last[-1]                                                         # 上一轮留下、还没送进目标模型的 token
+    draft, choice, k = rnd["draft"], rnd["choice"], rnd["k"]
+    g = len(draft)
+    x0, cw, gap = 230, 100, 14
+    cx = lambda j: x0 + j * (cw + gap)
+    body = text(480, 36, f"投机解码的一轮：草稿猜 {g} 个，目标模型一次前向验证", 21, weight="bold")
+    # 第 1 行：目标模型的输入
+    body += text(40, 92, "① 草稿模型连续猜 4 个", 15, ORANGE, "bold", "start")
+    body += text(40, 114, "目标模型把它们和上一轮", 13.5, GRAY, anchor="start")
+    body += text(40, 132, "留下的 token 一次送进去", 13.5, GRAY, anchor="start")
+    cells = [(last, GRAY)] + [(t, ORANGE) for t in draft]
+    for j, (t, color) in enumerate(cells):
+        body += cbox(cx(j), 82, cw, 50, color)
+        body += text(cx(j) + cw / 2, 114, t, 19 if len(t) == 1 else 15, color if color != GRAY else INK, "bold")
+    body += text(cx(0) + cw / 2, 152, "上一轮留下", 12.5, GRAY)
+    body += text((cx(1) + cx(g) + cw) / 2, 152, f"草稿 d1 … d{g}", 12.5, ORANGE)
+    # 斜箭头：位置 j 的输出是位置 j+1 的预测
+    for j in range(g + 1):
+        body += arrow(cx(j) + cw / 2, 164, cx(j + 1) + cw / 2 - 8, 214, BLUE, 2)
+    body += text(40, 196, "② 目标模型一次前向", 15, BLUE, "bold", "start")
+    body += text(40, 218, "每个位置给出它自己", 13.5, GRAY, anchor="start")
+    body += text(40, 236, "选的下一个 token", 13.5, GRAY, anchor="start")
+    # 第 2 行：目标模型的选择（错开一格，和它要验证的草稿上下对齐）
+    for j, t in enumerate(choice):
+        col = j + 1
+        used = j <= k
+        body += cbox(cx(col), 222, cw, 50, BLUE if used else GRAY, dash=not used)
+        body += text(cx(col) + cw / 2, 254, t, 19 if len(t) == 1 else 15, BLUE if used else GRAY, "bold")
+    # 第 3 行：比较
+    body += text(40, 318, "③ 上下逐个比较", 15, TEAL, "bold", "start")
+    body += text(40, 340, "第一处不同就停", 13.5, GRAY, anchor="start")
+    for j in range(g):
+        col = j + 1
+        if j < k:
+            body += text(cx(col) + cw / 2, 326, "✓ 相同，接受", 14, TEAL, "bold")
+        elif j == k:
+            body += text(cx(col) + cw / 2, 326, "× 不同", 14, RED, "bold")
+            body += text(cx(col) + cw / 2, 346, "换成目标的选择", 12.5, RED)
+        else:
+            body += text(cx(col) + cw / 2, 326, "不用比了", 13, GRAY)
+    if k < g:
+        body += text(cx(g + 1) + cw / 2, 326, "用不上", 13, GRAY)
+    # 第 4 行：结果
+    new = draft[:k] + [choice[k]]
+    body += cbox(40, 378, 880, 92, TEAL)
+    body += text(60, 408, f"④ 这一轮前进 {len(new)} 个 token：", 16, TEAL, "bold", "start")
+    xx = 300
+    for i, t in enumerate(new):
+        color = ORANGE if i < k else BLUE
+        body += box(xx, 388, 64, 32, SOFT[color], color)
+        body += text(xx + 32, 410, t, 16 if len(t) == 1 else 12.5, color, "bold")
+        xx += 72
+    body += text(xx + 10, 410, f"（前 {k} 个来自草稿，最后 1 个来自目标模型）", 14, INK, anchor="start")
+    body += text(60, 450, f"目标模型只前向了 1 次。被拒的“{draft[k]}”" + ("及其后的草稿" if k < g - 1 else "")
+                 + "已经写进了 KV cache，要回滚删掉；最后那个 token 下一轮再送进去。", 14, INK, anchor="start")
+    svg("spec-round.svg", "投机解码的一轮",
+        f"上一轮留下的 token“{last}”和草稿模型猜的 {g} 个 token（{'、'.join(draft)}）一起送进目标模型，一次前向得到 {g + 1} 个位置上目标模型自己的选择（{'、'.join(choice)}）。"
+        f"错开一格逐个比较，前 {k} 个相同、全部接受，第 {k + 1} 个不同，换成目标模型的“{choice[k]}”。这一轮前进 {len(new)} 个 token，目标模型只前向 1 次；被拒草稿的 KV 要从缓存里回滚。",
+        490, body)
+
+
+def spec_rejection():
+    """拒绝采样：一个位置上 p、q 与 min(p, q)；四种写法与 p 的总变差距离。"""
+    log = _spec_log()
+    if log is None:
+        return
+    r = log["rejection"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.0), layout="constrained", gridspec_kw={"width_ratios": [1.25, 1]})
+    p, q = np.array(r["p"]) * 100, np.array(r["q"]) * 100
+    x = np.arange(len(p))
+    a1.bar(x - 0.2, p, 0.4, color=BLUE, alpha=0.75, label="目标 p")
+    a1.bar(x + 0.2, q, 0.4, color=ORANGE, alpha=0.75, label="草稿 q")
+    lo = np.minimum(p, q)
+    a1.bar(x - 0.2, lo, 0.4, fill=False, hatch="///", edgecolor=TEAL, lw=0)
+    a1.bar(x + 0.2, lo, 0.4, fill=False, hatch="///", edgecolor=TEAL, lw=0, label="min(p, q)：一定接受的部分")
+    a1.set_xticks(x, r["tokens"], fontsize=13)
+    a1.set_ylabel("概率（%）")
+    a1.set_title(f"“春眠不觉晓，”之后，p 最大的 8 个 token（Σmin(p, q) = {r['overlap']:.3f}）", fontsize=12)
+    a1.set_ylim(0, max(p.max(), q.max()) * 1.35)
+    a1.legend(fontsize=9.5, loc="upper center", ncol=3)
+    names = list(r["tv"])
+    vals = [r["tv"][n] for n in names]
+    colors = [GRAY, TEAL, RED, RED]
+    y = np.arange(len(names))
+    a2.barh(y, vals, color=colors, alpha=0.75)
+    for i, v in enumerate(vals):
+        a2.text(v + 0.003, i, f"{v:.3f}", va="center", fontsize=11)
+    a2.axvline(vals[0], color=GRAY, ls="--", lw=1.2)
+    a2.set_yticks(y, names, fontsize=11.5)
+    a2.invert_yaxis()
+    a2.set_xlim(0, max(vals) * 1.25)
+    a2.set_xlabel("20 万个样本的频率与 p 的总变差距离")
+    a2.set_title("虚线 = 只有抽样误差时的水平", fontsize=12)
+    save_plot(fig, "spec-rejection.svg", "拒绝采样保持目标分布",
+              f"左：提示词“春眠不觉晓，”之后，目标模型 p 和蒸馏草稿 q 在概率最大的 8 个 token 上的分布，斜线部分是 min(p, q)；"
+              f"把它在全部 4096 个 token 上加起来是 {r['overlap']:.3f}，正是草稿 token 被接受的概率。"
+              f"右：20 万个样本的频率与 p 的总变差距离。直接从 p 抽 {vals[0]:.3f}（只有抽样误差），正确的拒绝采样 {vals[1]:.3f}，"
+              f"草稿全部接受 {vals[2]:.3f}，被拒后从 p 重抽 {vals[3]:.3f}。")
+
+
+def spec_gamma():
+    """左：每次前向前进的 token 数随 γ 的变化（3 个种子）与公式；右：加速比公式和本机实测。"""
+    log = _spec_log()
+    if log is None:
+        return
+    sweep, wall = log["sweep"], log["wall"]
+    seeds = sorted(sweep)
+    gammas = sorted(int(g) for g in sweep[seeds[0]])
+    tau = np.array([[sweep[s][str(g)]["tau"] for g in gammas] for s in seeds])
+    alpha1 = np.mean([sweep[s]["1"]["alpha"] for s in seeds])
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained")
+    gg = np.arange(1, 9)
+    a1.plot(gg, (1 - alpha1 ** (gg + 1)) / (1 - alpha1), color=GRAY, ls="--", lw=1.5, label=f"公式 (1−α^(γ+1))/(1−α)，α={alpha1:.2f}")
+    a1.fill_between(gammas, tau.min(0), tau.max(0), color=BLUE, alpha=0.18)
+    a1.plot(gammas, tau.mean(0), "o-", color=BLUE, lw=2, label="贪心，蒸馏草稿（3 个种子，阴影是范围）")
+    sr = log["sample_rows"]
+    for g in (2, 4):
+        t = [(sr[f"{g}-{s}"]["accepted"] + sr[f"{g}-{s}"]["rounds"]) / sr[f"{g}-{s}"]["rounds"] for s in seeds]
+        a1.errorbar([g], [np.mean(t)], yerr=[[np.mean(t) - min(t)], [max(t) - np.mean(t)]], fmt="s", color=ORANGE, ms=8, capsize=4,
+                    label="采样（温度 1），同一批草稿" if g == 2 else None)
+    a_s = np.mean([sr[f"4-{s}"]["accepted"] / sr[f"4-{s}"]["tested"] for s in seeds])
+    a1.plot(gg, (1 - a_s ** (gg + 1)) / (1 - a_s), color=ORANGE, ls=":", lw=1.5, label=f"公式，α={a_s:.2f}")
+    a1.set_xlabel("每轮起草的个数 γ")
+    a1.set_ylabel("每轮前进的 token 数 τ")
+    a1.set_title("γ 超过 4 以后几乎不再增加", fontsize=12.5)
+    a1.legend(fontsize=9.5, loc="upper left")
+    a1.grid(alpha=0.25)
+    gg2 = np.arange(1, 13)
+    spd = lambda a, c: (1 - a ** (gg2 + 1)) / (1 - a) / (1 + gg2 * c)
+    for a, c, color, ls in [(0.45, 0.5, BLUE, "--"), (0.77, 0.5, ORANGE, "--"), (0.45, 0.05, BLUE, "-"), (0.77, 0.05, ORANGE, "-"), (0.9, 0.05, TEAL, "-")]:
+        a2.plot(gg2, spd(a, c), color=color, ls=ls, lw=1.8, label=f"α={a}，c={c}")
+    meas = [np.mean(wall["speedup"][str(g)]) for g in gammas]
+    a2.plot(gammas, meas, "o", color=BLUE, ms=7, label=f"本机实测：贪心，c≈{wall['c']:.2f}")
+    a2.axhline(1, color=INK, lw=1)
+    a2.set_xlabel("每轮起草的个数 γ")
+    a2.set_ylabel("相对普通 decode 的加速比")
+    a2.set_title("加速比 ≈ τ / (1 + γc)：草稿必须便宜", fontsize=12.5)
+    a2.legend(fontsize=9.5, ncol=2, loc="upper left")
+    a2.set_ylim(0, 6.6)
+    a2.grid(alpha=0.25)
+    save_plot(fig, "spec-gamma.svg", "起草长度、接受率与加速比",
+              f"左：蒸馏草稿贪心解码时，每轮（目标模型一次前向）平均前进的 token 数随 γ 增加，从 γ=1 的 {tau.mean(0)[0]:.2f} 到 γ=8 的 {tau.mean(0)[-1]:.2f}；"
+              f"用 γ=1 的接受率 α={alpha1:.2f} 代入的公式在 γ≥3 时偏低，因为接受往往成串出现。同一批草稿在温度 1 采样时接受率约 {a_s:.2f}，γ=4 时每轮前进约 3 个 token。"
+              f"右：加速比公式 τ/(1+γc) 的几条曲线。本机 CPU 上草稿一次前向是目标的 {wall['c']:.2f} 倍，贪心实测加速比从 γ=1 的 {meas[0]:.2f} 降到 γ=8 的 {meas[-1]:.2f}，都低于 1；"
+              f"草稿成本降到 c=0.05 时，α=0.45 最多快 {spd(0.45, 0.05).max():.1f} 倍，α=0.77 最多快 {spd(0.77, 0.05).max():.1f} 倍。")
+
+
+# ---------- 第 32 章：批处理与调度 ----------
+
+def _batch_log():
+    src = DATA / "tinyllm-batching-log.json"
+    if not src.exists():
+        print("skip batching figures: run scripts/build-tinyllm-code.py batching to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def batch_layouts():
+    """矩形批（左补齐）与首尾相接的变长批：同样 4 个提示词，各占多少位置。长度与第 2 节相同。"""
+    lens = [6, 12, 24, 40]
+    colors = [BLUE, TEAL, ORANGE, PURPLE]
+    body = text(480, 36, "同样 4 个提示词，两种拼法", 21, weight="bold")
+    # 上：矩形批
+    body += text(40, 84, "① 拼成矩形（左补齐）", 16, INK, "bold", "start")
+    cell, x0, y0 = 14, 210, 100
+    T = max(lens)
+    for r, n in enumerate(lens):
+        body += text(x0 - 12, y0 + r * (cell + 4) + 11, f"请求 {r + 1}（{n}）", 12.5, GRAY, anchor="end")
+        for c in range(T):
+            real = c >= T - n
+            fill = SOFT[colors[r]] if real else "#f1f5f9"
+            stroke = colors[r] if real else "#cbd5e1"
+            body += f'<rect x="{x0 + c * cell}" y="{y0 + r * (cell + 4)}" width="{cell - 2}" height="{cell}" fill="{fill}" stroke="{stroke}" stroke-width="1"/>'
+    total = sum(lens)
+    body += text(x0 + T * cell + 16, y0 + 20, f"真 token {total} 个", 14, INK, anchor="start")
+    body += text(x0 + T * cell + 16, y0 + 42, f"矩形 {len(lens)} × {T} = {len(lens) * T} 个位置", 14, INK, anchor="start")
+    body += text(x0 + T * cell + 16, y0 + 64, f"灰格（pad）白算 {1 - total / (len(lens) * T):.0%}", 14, RED, "bold", "start")
+    body += text(x0 + T * cell / 2, y0 + 4 * (cell + 4) + 18, "每行最后一列都是真 token；pad 的列要用掩码遮掉，位置从每行第一个真 token 开始数", 12.5, GRAY)
+    # 下：首尾相接
+    y1 = 262
+    body += text(40, y1, "② 首尾相接（不补齐，本章的引擎）", 16, INK, "bold", "start")
+    c2, x1 = 7.4, 90
+    body += text(x1 + total * c2 / 2, y1 + 34, "注意力：每一段只和自己槽位里的 K、V 算（各自的长度、各自的位置）", 13.5, INK)
+    x = x1
+    for r, n in enumerate(lens):
+        body += f'<path d="M{x + 2:.1f} {y1 + 54} V{y1 + 46} H{x + n * c2 - 4:.1f} V{y1 + 54}" stroke="{colors[r]}" stroke-width="1.5" fill="none"/>'
+        body += f'<rect x="{x:.1f}" y="{y1 + 60}" width="{n * c2 - 1.5:.1f}" height="26" rx="4" fill="{SOFT[colors[r]]}" stroke="{colors[r]}" stroke-width="1.5"/>'
+        body += text(x + n * c2 / 2, y1 + 78, f"{n}", 13, colors[r], "bold")
+        x += n * c2
+    body += text(x + 14, y1 + 70, f"共 {total} 个位置", 14, TEAL, "bold", "start")
+    body += text(x + 14, y1 + 90, "没有一个是白算的 pad", 14, TEAL, "bold", "start")
+    body += line(x1, y1 + 98, x - 2, y1 + 98, GRAY, 1.5)
+    body += text((x1 + x) / 2, y1 + 120, "线性层、前馈层：这一整行一起算，权重只读一遍", 13.5, INK)
+    svg("batch-layouts.svg", "矩形批与首尾相接的变长批",
+        f"长度为 6、12、24、40 的 4 个提示词。上：拼成 4×40 的矩形并左补齐，真 token {total} 个，矩形 {len(lens) * T} 个位置，"
+        f"{1 - total / (len(lens) * T):.0%} 是白算的 pad。下：首尾相接排成一行，共 {total} 个位置，没有 pad；"
+        "线性层和前馈层对整行一起算，注意力按段分开，每段只看自己槽位里的 K、V。", 410, body)
+
+
+def batch_timeline():
+    """同一份重负载请求流（种子 0）：静态批与连续批下每个请求的等待和生成时间段。"""
+    log = _batch_log()
+    if log is None:
+        return
+    tl = log["timeline"]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.0), layout="constrained", sharey=True, sharex=True)
+    for ax, (pol, title) in zip(axes, [("static", "静态批（B=8）"), ("continuous", "连续批（B=8）")]):
+        rows = tl[pol]
+        for i, r in enumerate(rows):
+            color = ORANGE if r["prompt"] > 20 else BLUE
+            ax.plot([r["arrive"], r["times"][0]], [i, i], color=GRAY, lw=2.2, alpha=0.45, solid_capstyle="butt")
+            ax.plot([r["times"][0], r["times"][-1]], [i, i], color=color, lw=2.6, solid_capstyle="butt")
+        ttft = sorted(r["times"][0] - r["arrive"] for r in rows)
+        end = max(r["times"][-1] for r in rows)
+        ax.set_title(f"{title}：TTFT 中位 {ttft[len(ttft) // 2]:.0f}，全部完成于 {end:.0f}", fontsize=12.5)
+        ax.set_xlabel("时间（成本模型的单位）")
+        ax.grid(alpha=0.2, axis="x")
+    axes[0].set_ylabel("请求（按到达顺序）")
+    axes[0].invert_yaxis()
+    axes[0].plot([], [], color=GRAY, lw=2.2, alpha=0.45, label="到达 → 第一个 token（等待 + prefill）")
+    axes[0].plot([], [], color=BLUE, lw=2.6, label="生成中（短提示词）")
+    axes[0].plot([], [], color=ORANGE, lw=2.6, label="生成中（长提示词）")
+    axes[0].legend(fontsize=9.5, loc="upper right")
+    save_plot(fig, "batch-timeline.svg", "静态批与连续批的时间线",
+              "同一份 40 个请求的重负载请求流（种子 0），每一行是一个请求：灰色段是从到达到第一个 token，彩色段是生成过程。"
+              "静态批要等凑够 8 个才开始，整批一起结束，后到的请求排很长的队，灰色段越来越长；"
+              "连续批每次前向后立刻补进新请求，灰色段一直很短，全部请求也更早完成。")
+
+
+def batch_chunked():
+    """连续批的每一次 token 间隔：不分块时长提示词进来会让正在生成的请求卡住，分块后间隔都是 1。"""
+    log = _batch_log()
+    if log is None:
+        return
+    tl = log["timeline"]
+    fig, axes = plt.subplots(2, 1, figsize=(11.5, 4.8), layout="constrained", sharex=True, sharey=True)
+    for ax, (pol, title) in zip(axes, [("continuous", "连续批"), ("continuous-chunked", "连续批 + 分块 prefill（每次前向最多 16 个新 token）")]):
+        ts, gaps = [], []
+        for r in tl[pol]:
+            for a, b in zip(r["times"], r["times"][1:]):
+                ts.append(b); gaps.append(b - a)
+        for r in tl[pol]:
+            if r["prompt"] > 20:
+                ax.axvline(r["arrive"], color=ORANGE, lw=1, alpha=0.35)
+        ax.scatter(ts, gaps, s=7, color=BLUE, alpha=0.6)
+        ax.set_title(f"{title}：最长间隔 {max(gaps):.2f}", fontsize=12)
+        ax.set_ylabel("token 间隔")
+        ax.grid(alpha=0.2)
+    axes[1].set_xlabel("时间（成本模型的单位）；橙色竖线是长提示词到达的时刻")
+    save_plot(fig, "batch-chunked.svg", "分块 prefill 消除卡顿",
+              "同一份重负载请求流（种子 0），每个点是某个请求相邻两个 token 之间的间隔。上：不分块时，长提示词（橙色竖线）进来的那次前向要处理几十个新 token，"
+              "正在生成的请求这一步的间隔跳到 1.1～5.4 个单位。下：每次前向最多 16 个新 token，提示词分几次送完，所有间隔都是 1 个单位。")
+
+
+def batch_tradeoff():
+    """左：本机一次前向带 B 个请求的耗时和摊到每个 token 的耗时；右：过载下槽位数 B 的吞吐、goodput 与 TPOT。"""
+    log = _batch_log()
+    if log is None:
+        return
+    bm = {int(k): v for k, v in log["batch_ms"].items()}
+    Bs = sorted(bm)
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained")
+    a1.plot(Bs, [bm[b] for b in Bs], "o-", color=GRAY, label="一次前向的耗时")
+    a1.plot(Bs, [bm[b] / b for b in Bs], "o-", color=BLUE, label="摊到每个 token")
+    a1.set_xscale("log", base=2)
+    a1.set_yscale("log")
+    a1.set_xticks(Bs, [str(b) for b in Bs])
+    a1.set_xlabel("一次前向带的请求数 B（各算 1 个 token）")
+    a1.set_ylabel("毫秒（本机 CPU）")
+    a1.set_title(f"B 从 1 到 {Bs[-1]}：前向变慢 {bm[Bs[-1]] / bm[1]:.1f} 倍，每个 token 便宜 {bm[1] / (bm[Bs[-1]] / Bs[-1]):.0f} 倍", fontsize=11.5)
+    a1.legend(fontsize=10)
+    a1.grid(alpha=0.25, which="both")
+    sl = {int(k): v for k, v in log["slots"].items()}
+    S = sorted(sl)
+    avg = lambda B, k: sum(r[k] for r in sl[B]) / len(sl[B])
+    a2.plot(S, [avg(b, "throughput") for b in S], "o-", color=GRAY, label="吞吐（token/单位）")
+    a2.plot(S, [avg(b, "goodput") for b in S], "o-", color=TEAL, lw=2.2, label="goodput（只算达标请求）")
+    a2.plot(S, [avg(b, "tpot50") for b in S], "s--", color=ORANGE, label="TPOT 中位（单位）")
+    a2.set_xscale("log", base=2)
+    a2.set_xticks(S, [str(b) for b in S])
+    a2.set_xlabel("槽位数 B（过载，连续批，3 份请求流平均）")
+    a2.set_title("吞吐一直涨，goodput 在 B=8～16 之间最高", fontsize=12)
+    a2.legend(fontsize=10, loc="upper left")
+    a2.grid(alpha=0.25)
+    save_plot(fig, "batch-tradeoff.svg", "批大小：吞吐与延迟的交换",
+              f"左：本机 CPU 上一次前向给 B 个请求各算一个 token 的耗时，B 从 1 到 {Bs[-1]}，一次前向从 {bm[1]:.2f} ms 涨到 {bm[Bs[-1]]:.2f} ms，"
+              f"摊到每个 token 从 {bm[1]:.2f} ms 降到 {bm[Bs[-1]] / Bs[-1]:.2f} ms。"
+              f"右：成本模型下的过载请求流，槽位数 B 从 1 到 {S[-1]}，吞吐从 {avg(1, 'throughput'):.2f} 涨到 {avg(S[-1], 'throughput'):.2f}，"
+              f"TPOT 中位从 {avg(1, 'tpot50'):.2f} 涨到 {avg(S[-1], 'tpot50'):.2f}；goodput 在 B=8 和 16 时最高（B=16 在 3 份请求流之间波动很大），B=32 时掉到 {avg(32, 'goodput'):.2f}。")
+
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -4986,6 +5295,8 @@ def main():
                moe_structure, moe_compare, moe_routing, moe_upcycle, moe_serving,
                kernels_memory, kernels_online, kernels_tiling, kernels_fusion,
                quant_levels, quant_granularity, quant_outliers,
+               spec_round, spec_rejection, spec_gamma,
+               batch_layouts, batch_timeline, batch_chunked, batch_tradeoff,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,

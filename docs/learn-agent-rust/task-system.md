@@ -1,16 +1,16 @@
 ---
-title: "第 16 章：持久化任务系统"
+title: "第 24 章：持久化任务系统"
 description: "用稳定任务 ID、依赖校验、合法状态迁移与整板快照，验证跨进程恢复和保存失败的边界。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 15 章 · 错误分类与恢复
+  text: 第 23 章 · 错误分类与恢复
   link: /learn-agent-rust/error-recovery
 next:
-  text: 第 17 章 · 后台任务
+  text: 第 25 章 · 后台任务
   link: /learn-agent-rust/background-tasks
 ---
 
-# 第 16 章：持久化任务系统
+# 第 24 章：持久化任务系统
 
 [课程总览](./index.md) · [上一章：错误分类与恢复](./error-recovery.md) · [下一章：后台任务](./background-tasks.md)
 
@@ -19,7 +19,7 @@ next:
 - 用合法状态迁移、整板版本和尝试序号，拒绝过期或矛盾的更新。
 - 从新进程读取任务，并验证保存失败、异常退出与损坏快照的处理。
 
-**前置：** [第 8 章：可见的任务清单](./todo-planning.md)、[第 15 章：错误分类与恢复](./error-recovery.md)；Rust 的枚举、所有权、`Result` 与文件操作。
+**前置：** [第 8 章：可见的任务清单](./todo-planning.md)、[第 23 章：错误分类与恢复](./error-recovery.md)；Rust 的枚举、所有权、`Result` 与文件操作。
 
 **实践方式：** 下载[独立 Cargo 学习包](/learn-agent-rust/task-system-lab.zip)，使用 Rust 1.99.1。依赖 `serde` 与 `serde_json`，版本由 `Cargo.lock` 固定。首次获取工具链与依赖需要网络；运行无需模型密钥或数据库。
 :::
@@ -206,7 +206,7 @@ cargo run --locked -- demo apply 3 '{"op":"complete","id":"readme","attempt":1,"
 
 真实接入时应分别处理：确认外部操作已完成，提交匹配尝试的 `complete`；确认失败且允许重试，记录 `fail` 后再决定 `retry`；仍不确定，继续保留待核对状态。若旧执行者仍可能运行，必须先停止或隔离它，不能仅靠修改任务板阻止它产生外部效果。
 
-恢复后次数不会清零。`max_attempts=2` 的任务两次失败后，再次 `retry` 返回 `attempt_limit`。这里持久化的是**业务任务开始次数**；第 15 章的模型调用总账、工具内部重试、累计等待与截止时间没有自动纳入本板。完整运行恢复还需要这些状态各自的持久化契约。
+恢复后次数不会清零。`max_attempts=2` 的任务两次失败后，再次 `retry` 返回 `attempt_limit`。这里持久化的是**业务任务开始次数**；第 23 章的模型调用总账、工具内部重试、累计等待与截止时间没有自动纳入本板。完整运行恢复还需要这些状态各自的持久化契约。
 
 ## 8. 损坏记录不能悄悄变成空板
 
@@ -361,4 +361,4 @@ npm run docs:build
 
 </details>
 
-下一章：[第 17 章：后台任务](./background-tasks.md)。为耗时工作建立可查询、可取消、可回收的执行生命周期，并区分持久业务身份与本次执行句柄。
+下一章：[第 25 章：后台任务](./background-tasks.md)。为耗时工作建立可查询、可取消、可回收的执行生命周期，并区分持久业务身份与本次执行句柄。

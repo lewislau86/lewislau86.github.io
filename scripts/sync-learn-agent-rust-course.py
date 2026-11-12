@@ -48,6 +48,12 @@ def load_course():
         if not re.fullmatch(r"[a-z]+(?:-[a-z]+)*", row["slug"]):
             raise ValueError("Invalid topic slug: " + row["slug"])
         visit(row["id"], set())
+    guides = [part["guide"]["slug"] for part in course["parts"] if part.get("guide")]
+    if len(guides) != len(set(guides)) or slugs.intersection(guides):
+        raise ValueError("Part guide must have a unique topic slug")
+    for slug in guides:
+        if not re.fullmatch(r"[a-z]+(?:-[a-z]+)*", slug) or not (DOCS / (slug + ".md")).exists():
+            raise ValueError("Invalid or missing part guide: " + slug)
     return course
 
 
@@ -64,7 +70,11 @@ def reference(row):
 def render_catalog(course):
     lines = []
     for part in course["parts"]:
-        lines.extend(["### " + part["title"], "", part.get("purpose", ""), "", "| 章节 | 本章问题 | 状态 |", "| --- | --- | --- |"])
+        lines.extend(["### " + part["title"], "", part.get("purpose", ""), ""])
+        if part.get("guide"):
+            guide = part["guide"]
+            lines.extend(["[{}](./{}.md)".format(guide["title"], guide["slug"]), ""])
+        lines.extend(["| 章节 | 本章问题 | 状态 |", "| --- | --- | --- |"])
         for row in course["lessons"]:
             if row["part"] == part["id"]:
                 status = "规划中" if row["status"] == "planned" else "正文已成文；实验见章内说明"
@@ -77,12 +87,14 @@ def render_timeline(course):
     lines = []
     for part in course["parts"]:
         lines.extend(["## " + part["title"], "", part.get("purpose", ""), ""])
+        if part.get("guide"):
+            lines.extend(["[{}](./{}.md)".format(part["guide"]["title"], part["guide"]["slug"]), ""])
         for row in course["lessons"]:
             if row["part"] != part["id"]:
                 continue
             # Stable IDs also let the overview link to any point in the roadmap.
             lines.extend(["### {} {{#{}}}".format(label(row), row["id"].lower()), "",
-                          "**实验标识：** `" + row['id'] + "`", ""])
+                          ("**课程标识（实验待实现）：** `" if row["status"] == "planned" else "**实验标识：** `") + row['id'] + "`", ""])
             status = "规划中 · 正文与实验待完成" if row["status"] == "planned" else "正文已成文 · 实验状态见章内"
             lines.extend(["> {} · {}".format(row["domain"], status), "", "**本章问题：** " + row["question"], "", "**新增机制：** " + row["addition"], ""])
             dependencies = "、".join("[{}](#{})".format(item, item.lower()) for item in row["prerequisites"])
@@ -117,6 +129,8 @@ def sidebar(course):
         for part in course["parts"]:
             items = [{"text": label(row), "link": "/learn-agent-rust/" + row["slug"]}
                      for row in course["lessons"] if row["part"] == part["id"] and row["status"] == status]
+            if status == "written" and part.get("guide"):
+                items.insert(0, {"text": part["guide"]["title"], "link": "/learn-agent-rust/" + part["guide"]["slug"]})
             if items:
                 result.append({"text": part["title"], "collapsed": False, "items": items})
         return result
@@ -133,9 +147,10 @@ def skeleton(row, by_id, assets):
     dependencies = "、".join(reference(by_id[item]) for item in row["prerequisites"])
     lines = ["---", "title: " + json.dumps(title, ensure_ascii=False),
              "description: " + json.dumps(row["question"], ensure_ascii=False),
-             "pageClass: learn-agent-rust-course", "search: false", "prev: false", "next: false", "---", "", "# " + title, "",
+             "status: planned", "pageClass: learn-agent-rust-course", "search: false", "prev: false", "next: false", "---", "", "# " + title, "",
              "[课程总览](./index.md) · [学习路径](./learning-path.md) · [课程架构](./architecture.md)", "",
              "::: info 本章状态：规划中", "本页先列出本章问题、实现方向与验收目标。正文、可运行 Rust 示例和实验输出尚未完成。", ":::", "",
+             '<LearnAgentRustMap active="' + row["slug"] + '" />', "",
              "## 本章问题", "", row["question"], "",
              "## 本章主线选择（待实验验证）", "", row["addition"], "",
              "**所在模块：** " + row["domain"], "",

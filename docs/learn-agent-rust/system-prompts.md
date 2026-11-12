@@ -6,13 +6,13 @@ prev:
   text: 第 13 章 · 跨会话记忆
   link: /learn-agent-rust/memory
 next:
-  text: 第 15 章 · 错误分类与恢复
-  link: /learn-agent-rust/error-recovery
+  text: 第 15 章 · 模式选择：单次调用、工作流与自主循环
+  link: /learn-agent-rust/pattern-selection
 ---
 
 # 第 14 章：系统提示词组装
 
-[课程总览](./index.md) · [上一章：跨会话记忆](./memory.md) · [下一章：错误分类与恢复](./error-recovery.md)
+[课程总览](./index.md) · [上一章：跨会话记忆](./memory.md) · [下一章：模式选择](./pattern-selection.md)
 
 ::: tip 本章学习目标
 - 把应用策略、工具目录、环境和选中的知识放到明确的输入位置，保留来源与版本。
@@ -312,4 +312,6 @@ README 中出现“忽略系统限制”，放进 system 角色就更可信吗�
 - [本章独立工程](/learn-agent-rust/system-prompts.zip)与[完整正常记录](/learn-agent-rust/outputs/r10-normal.json)。
 - [Learn Claude Code：系统提示词](https://learn.shareai.run/zh/s10/)：机制与原图参考。
 
-下一章进入[错误分类与恢复](./error-recovery.md)：面对来源变化、工具失败和服务异常，怎样决定是否重试，并保持停止条件和累计预算。
+接下来先看[第五部分 · 常见 Agent 设计模式导读](./agent-design-patterns.md)：根据任务选择提示链、路由、并行、重规划、协调交接与人工介入。第 15–22 章附独立 Rust 工程和故障复验，从[第 15 章 · 模式选择](./pattern-selection.md)开始。
+
+学完模式组合后进入[第 23 章 · 错误分类与恢复](./error-recovery.md)：面对来源变化、工具失败和服务异常，怎样决定是否重试，并保持停止条件和累计预算。

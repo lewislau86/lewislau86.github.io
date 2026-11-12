@@ -1,0 +1,248 @@
+{
+  "additional": {},
+  "id": "D05",
+  "results": [
+    {
+      "data": {
+        "controller": "technical",
+        "handoff": {
+          "allowed": [
+            "read"
+          ],
+          "from": "technical",
+          "id": 1,
+          "revision": 2,
+          "to": "license"
+        },
+        "input_revision": 2,
+        "joined": true,
+        "results": [
+          {
+            "id": "api",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "cli",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          }
+        ],
+        "returned_from": "license",
+        "tasks": [
+          "api",
+          "cli"
+        ]
+      },
+      "limit": 32,
+      "scenario": "normal",
+      "stop": "completed",
+      "trace": [
+        "decompose",
+        "workers",
+        "handoff",
+        "return"
+      ],
+      "used": 6
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "handoff": {
+          "allowed": [
+            "read"
+          ],
+          "from": "technical",
+          "id": 1,
+          "revision": 2,
+          "to": "license"
+        },
+        "input_revision": 2,
+        "joined": true,
+        "results": [
+          {
+            "id": "api",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "cli",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "core",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          }
+        ],
+        "returned_from": "license",
+        "tasks": [
+          "api",
+          "cli",
+          "core"
+        ]
+      },
+      "limit": 32,
+      "scenario": "three",
+      "stop": "completed",
+      "trace": [
+        "decompose",
+        "workers",
+        "handoff",
+        "return"
+      ],
+      "used": 7
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "input_revision": 2,
+        "joined": true,
+        "results": [
+          {
+            "id": "api",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "cli",
+            "ok": false,
+            "private_messages": 1,
+            "revision": 2
+          }
+        ],
+        "tasks": [
+          "api",
+          "cli"
+        ]
+      },
+      "limit": 32,
+      "scenario": "failed_worker",
+      "stop": "worker_failed",
+      "trace": [
+        "decompose",
+        "workers"
+      ],
+      "used": 4
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "input_revision": 2,
+        "joined": true,
+        "results": [
+          {
+            "id": "api",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "cli",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          }
+        ],
+        "tasks": [
+          "api",
+          "cli"
+        ]
+      },
+      "limit": 32,
+      "scenario": "invalid_role",
+      "stop": "invalid_role_or_permission",
+      "trace": [
+        "decompose",
+        "workers",
+        "handoff"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "input_revision": 2,
+        "joined": true,
+        "results": [
+          {
+            "id": "api",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          },
+          {
+            "id": "cli",
+            "ok": true,
+            "private_messages": 1,
+            "revision": 2
+          }
+        ],
+        "tasks": [
+          "api",
+          "cli"
+        ]
+      },
+      "limit": 32,
+      "scenario": "stale",
+      "stop": "stale_handoff",
+      "trace": [
+        "decompose",
+        "workers",
+        "handoff"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "input_revision": 2,
+        "results": [],
+        "tasks": []
+      },
+      "limit": 32,
+      "scenario": "depth",
+      "stop": "delegation_depth",
+      "trace": [
+        "decompose"
+      ],
+      "used": 1
+    },
+    {
+      "data": {
+        "controller": "technical",
+        "input_revision": 2,
+        "results": [],
+        "tasks": [
+          "api",
+          "cli"
+        ]
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "decompose"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 7,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "1242e47578d7812d577f59521afeb9a7baef350e486dd7c11ea4b545ccdc7044",
+    "Cargo.toml": "8c1a5f46c7d813e53aab418fb91aaed5902eb045aeb3acbf15ada0463ae60f50",
+    "README.md": "310b8bb8febf39136f0031341cedb45d4c77acdaa982401a0927a6bc421d57c4",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "0c6c2137fdf336cb7b5be245cd78cf8d3098f86f26acea0f77ddebb9aeccfb0a"
+  }
+}

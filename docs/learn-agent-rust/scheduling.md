@@ -1,16 +1,16 @@
 ---
-title: "第 18 章：定时调度"
+title: "第 26 章：定时调度"
 description: "用具名时区、稳定触发身份和 SQLite 事务，验证每日计划的重启补触发、去重与提交边界。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 17 章 · 后台任务
+  text: 第 25 章 · 后台任务
   link: /learn-agent-rust/background-tasks
 next:
-  text: 第 19 章 · Agent 团队
+  text: 第 27 章 · Agent 团队
   link: /learn-agent-rust/agent-teams
 ---
 
-# 第 18 章：定时调度
+# 第 26 章：定时调度
 
 [课程总览](./index.md) · [上一章](./background-tasks.md) · [学习路径](./learning-path.md#r14) · [下一章](./agent-teams.md)
 
@@ -19,7 +19,7 @@ next:
 - 验证错过触发时补哪一次、重复扫描是否重复入队，以及进程退出后怎样继续。
 - 在同一个数据库事务里保存待执行任务和扫描进度，区分入队成功与任务完成。
 
-**前置：** 理解[第 13 章的跨进程存储](./memory.md)与[第 15 章的有限重试](./error-recovery.md)。课程上的前置为[持久化任务系统](./task-system.md)、[后台任务](./background-tasks.md)，R12 已有持久化任务实验，R13 已提供独立后台实验；本章也提供独立的调度与队列实验，可以直接运行。
+**前置：** 理解[第 13 章的跨进程存储](./memory.md)与[第 23 章的有限重试](./error-recovery.md)。课程上的前置为[持久化任务系统](./task-system.md)、[后台任务](./background-tasks.md)，R12 已有持久化任务实验，R13 已提供独立后台实验；本章也提供独立的调度与队列实验，可以直接运行。
 
 **实践方式：** 下载 [scheduling-lab.zip](/learn-agent-rust/scheduling-lab.zip)，进入解压后的 `scheduling-lab` 执行 `cargo build --locked`。本机验证使用 Rust 1.99.1、edition 2024。SQLite 随依赖编译，首次构建需要网络和 C 编译器；运行时无需模型密钥或数据库服务。
 :::
@@ -169,7 +169,7 @@ cargo run --locked -- resolve America/New_York 2026-11-01 01:30
 
 沿这段代码阅读：`BEGIN IMMEDIATE` → 读取计划 → 计算到期点 → 插入任务 → 更新游标 → `COMMIT`。循环中任何一个计划校验失败，整批计划的修改都会回滚。
 
-`IMMEDIATE` 会在开始时尝试取得写事务，已有写者时可能返回忙，具体行为见 [SQLite 事务文档](https://www.sqlite.org/lang_transaction.html)。本例立即返回 `store_busy`，验证器先持有真实写锁观察拒绝，再释放锁重试；没有进行高并发负载或多机竞争测试。调用方需要重试时，应继续遵循[第 15 章](./error-recovery.md)的次数、等待与总预算约束。
+`IMMEDIATE` 会在开始时尝试取得写事务，已有写者时可能返回忙，具体行为见 [SQLite 事务文档](https://www.sqlite.org/lang_transaction.html)。本例立即返回 `store_busy`，验证器先持有真实写锁观察拒绝，再释放锁重试；没有进行高并发负载或多机竞争测试。调用方需要重试时，应继续遵循[第 23 章](./error-recovery.md)的次数、等待与总预算约束。
 
 ### 同一个触发，怎样认出来？
 

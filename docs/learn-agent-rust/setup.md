@@ -235,9 +235,9 @@ cargo run --locked --offline
 
 第 12 章提供独立的<a href="/learn-agent-rust/context-compaction.zip" download>上下文压缩工程</a>，使用相同工具链与两库源码版本。进入 `context-compaction` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。Agent 与摘要器使用脚本模型，归档只写入自建临时目录；具体预算、对照场景和运行边界见[第 12 章](./context-compaction.md)。
 
-第 19 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 19 章](./agent-teams.md)。
+第 27 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 27 章](./agent-teams.md)。
 
-第 20 章提供独立的<a href="/learn-agent-rust/team-protocols.zip" download>团队协作协议工程</a>。进入解压后的 `team-protocols` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`，固定 Rust 1.99.1 与 Tokio 1.54.1，另用 Serde、SHA-256 和 tempfile。它直接验证请求身份、计划审批、期限、关闭握手与队友回收，首次需下载依赖，运行时无需模型密钥、数据库、graph-flow 或 langchain-rust；实验范围见[第 20 章](./team-protocols.md)。
+第 28 章提供独立的<a href="/learn-agent-rust/team-protocols.zip" download>团队协作协议工程</a>。进入解压后的 `team-protocols` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`，固定 Rust 1.99.1 与 Tokio 1.54.1，另用 Serde、SHA-256 和 tempfile。它直接验证请求身份、计划审批、期限、关闭握手与队友回收，首次需下载依赖，运行时无需模型密钥、数据库、graph-flow 或 langchain-rust；实验范围见[第 28 章](./team-protocols.md)。
 
 专题 2 提供独立的<a href="/learn-agent-rust/side-effect-reliability.zip" download>外部操作可靠性工程</a>。进入 `side-effect-reliability` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 和 `cargo test --locked`。它固定 Rust 1.99.1，使用随工程编译的 SQLite，需要本机 C 编译工具链；无需安装数据库服务或配置 API Key。默认演示仅操作自建临时目录，独立客户端与 provider 进程通过本机 CLI JSON 通信；详细故障实验见[专题 2](./side-effect-reliability.md)。
 

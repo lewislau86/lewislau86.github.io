@@ -93,7 +93,7 @@
     ]
   },
   {
-    "text": "第三部分 · 计划与上下文隔离",
+    "text": "第三部分 · 计划与子任务基础",
     "collapsed": false,
     "items": [
       {
@@ -133,65 +133,107 @@
     ]
   },
   {
-    "text": "第五部分 · 恢复、长任务与调度",
+    "text": "第五部分 · 常见 Agent 设计模式",
     "collapsed": false,
     "items": [
       {
-        "text": "第 15 章 · 错误分类与恢复",
+        "text": "本部分导读 · 模式选择与运行边界",
+        "link": "/learn-agent-rust/agent-design-patterns"
+      },
+      {
+        "text": "第 15 章 · 模式选择：单次调用、工作流与自主循环",
+        "link": "/learn-agent-rust/pattern-selection"
+      },
+      {
+        "text": "第 16 章 · 提示链与条件路由",
+        "link": "/learn-agent-rust/prompt-chaining-routing"
+      },
+      {
+        "text": "第 17 章 · 并行分解与结果归并",
+        "link": "/learn-agent-rust/parallel-decomposition"
+      },
+      {
+        "text": "第 18 章 · 规划、执行与动态重规划",
+        "link": "/learn-agent-rust/plan-execute-replan"
+      },
+      {
+        "text": "第 19 章 · 协调者、工作者与任务交接",
+        "link": "/learn-agent-rust/orchestrator-workers-handoffs"
+      },
+      {
+        "text": "第 20 章 · 评估、反思与有界修复",
+        "link": "/learn-agent-rust/evaluator-reflection"
+      },
+      {
+        "text": "第 21 章 · 人工介入与审批恢复",
+        "link": "/learn-agent-rust/human-in-the-loop"
+      },
+      {
+        "text": "第 22 章 · 模式组合与选型实战",
+        "link": "/learn-agent-rust/pattern-composition"
+      }
+    ]
+  },
+  {
+    "text": "第六部分 · 恢复、长任务与调度",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "第 23 章 · 错误分类与恢复",
         "link": "/learn-agent-rust/error-recovery"
       },
       {
-        "text": "第 16 章 · 持久化任务系统",
+        "text": "第 24 章 · 持久化任务系统",
         "link": "/learn-agent-rust/task-system"
       },
       {
-        "text": "第 17 章 · 后台任务",
+        "text": "第 25 章 · 后台任务",
         "link": "/learn-agent-rust/background-tasks"
       },
       {
-        "text": "第 18 章 · 定时调度",
+        "text": "第 26 章 · 定时调度",
         "link": "/learn-agent-rust/scheduling"
       }
     ]
   },
   {
-    "text": "第六部分 · 团队协作与资源归属",
+    "text": "第七部分 · 团队协作与资源归属",
     "collapsed": false,
     "items": [
       {
-        "text": "第 19 章 · Agent 团队",
+        "text": "第 27 章 · Agent 团队",
         "link": "/learn-agent-rust/agent-teams"
       },
       {
-        "text": "第 20 章 · 团队协作协议",
+        "text": "第 28 章 · 团队协作协议",
         "link": "/learn-agent-rust/team-protocols"
       },
       {
-        "text": "第 21 章 · 自主任务领取",
+        "text": "第 29 章 · 自主任务领取",
         "link": "/learn-agent-rust/autonomous-workers"
       },
       {
-        "text": "第 22 章 · 工作区隔离",
+        "text": "第 30 章 · 工作区隔离",
         "link": "/learn-agent-rust/worktree-isolation"
       }
     ]
   },
   {
-    "text": "第七部分 · 外部能力与整体集成",
+    "text": "第八部分 · 外部能力与整体集成",
     "collapsed": false,
     "items": [
       {
-        "text": "第 23 章 · MCP 外部工具",
+        "text": "第 31 章 · MCP 外部工具",
         "link": "/learn-agent-rust/mcp-tools"
       },
       {
-        "text": "第 24 章 · 完整 Agent 集成",
+        "text": "第 32 章 · 完整 Agent 集成",
         "link": "/learn-agent-rust/integrated-agent"
       }
     ]
   },
   {
-    "text": "第八部分 · 可靠性与目标验收",
+    "text": "第九部分 · 可靠性与目标验收",
     "collapsed": false,
     "items": [
       {
@@ -217,7 +259,7 @@
     ]
   },
   {
-    "text": "第九部分 · 受控演进与研究",
+    "text": "第十部分 · 受控演进与研究",
     "collapsed": false,
     "items": [
       {

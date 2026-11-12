@@ -1,0 +1,233 @@
+[
+  {
+    "data": {
+      "controller": "technical",
+      "handoff": {
+        "allowed": [
+          "read"
+        ],
+        "from": "technical",
+        "id": 1,
+        "revision": 2,
+        "to": "license"
+      },
+      "input_revision": 2,
+      "joined": true,
+      "results": [
+        {
+          "id": "api",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "cli",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        }
+      ],
+      "returned_from": "license",
+      "tasks": [
+        "api",
+        "cli"
+      ]
+    },
+    "limit": 32,
+    "scenario": "normal",
+    "stop": "completed",
+    "trace": [
+      "decompose",
+      "workers",
+      "handoff",
+      "return"
+    ],
+    "used": 6
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "handoff": {
+        "allowed": [
+          "read"
+        ],
+        "from": "technical",
+        "id": 1,
+        "revision": 2,
+        "to": "license"
+      },
+      "input_revision": 2,
+      "joined": true,
+      "results": [
+        {
+          "id": "api",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "cli",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "core",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        }
+      ],
+      "returned_from": "license",
+      "tasks": [
+        "api",
+        "cli",
+        "core"
+      ]
+    },
+    "limit": 32,
+    "scenario": "three",
+    "stop": "completed",
+    "trace": [
+      "decompose",
+      "workers",
+      "handoff",
+      "return"
+    ],
+    "used": 7
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "input_revision": 2,
+      "joined": true,
+      "results": [
+        {
+          "id": "api",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "cli",
+          "ok": false,
+          "private_messages": 1,
+          "revision": 2
+        }
+      ],
+      "tasks": [
+        "api",
+        "cli"
+      ]
+    },
+    "limit": 32,
+    "scenario": "failed_worker",
+    "stop": "worker_failed",
+    "trace": [
+      "decompose",
+      "workers"
+    ],
+    "used": 4
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "input_revision": 2,
+      "joined": true,
+      "results": [
+        {
+          "id": "api",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "cli",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        }
+      ],
+      "tasks": [
+        "api",
+        "cli"
+      ]
+    },
+    "limit": 32,
+    "scenario": "invalid_role",
+    "stop": "invalid_role_or_permission",
+    "trace": [
+      "decompose",
+      "workers",
+      "handoff"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "input_revision": 2,
+      "joined": true,
+      "results": [
+        {
+          "id": "api",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        },
+        {
+          "id": "cli",
+          "ok": true,
+          "private_messages": 1,
+          "revision": 2
+        }
+      ],
+      "tasks": [
+        "api",
+        "cli"
+      ]
+    },
+    "limit": 32,
+    "scenario": "stale",
+    "stop": "stale_handoff",
+    "trace": [
+      "decompose",
+      "workers",
+      "handoff"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "input_revision": 2,
+      "results": [],
+      "tasks": []
+    },
+    "limit": 32,
+    "scenario": "depth",
+    "stop": "delegation_depth",
+    "trace": [
+      "decompose"
+    ],
+    "used": 1
+  },
+  {
+    "data": {
+      "controller": "technical",
+      "input_revision": 2,
+      "results": [],
+      "tasks": [
+        "api",
+        "cli"
+      ]
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "decompose"
+    ],
+    "used": 1
+  }
+]

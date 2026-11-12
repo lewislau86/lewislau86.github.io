@@ -2,6 +2,12 @@
 title: "专题 4：生产准入与演练"
 description: "用真实 PostgreSQL 与独立 Rust 进程，验证租户授权、旧会话迁移、容量准入、故障接管和隔离恢复。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 专题 3 · 模型协议与质量评估
+  link: /learn-agent-rust/model-evaluation
+next:
+  text: 专题 5 · 固定工作流与目标控制
+  link: /learn-agent-rust/workflow-and-goal-control
 ---
 
 # 专题 4：生产准入与演练

@@ -56,7 +56,7 @@ def main():
         print("Checking {}: {} --check".format(lesson["id"], lesson["verifier"]), flush=True)
         with (args.logs / (lesson["id"] + ".log")).open("w", encoding="utf-8") as log:
             try:
-                process = subprocess.run([sys.executable, lesson["verifier"], "--check"], cwd=ROOT,
+                process = subprocess.run([sys.executable, lesson["verifier"], *lesson.get("verifier_args", []), "--check"], cwd=ROOT,
                                          stdout=log, stderr=subprocess.STDOUT, timeout=1500)
                 code = process.returncode
             except subprocess.TimeoutExpired:

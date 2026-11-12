@@ -2,6 +2,12 @@
 title: "专题 2：外部操作的可靠性"
 description: "用独立客户端与工单服务复现提交后的未知结果，验证操作身份、幂等、Outbox 和对账。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 专题 1 · PostgreSQL 检查点
+  link: /learn-agent-rust/postgres-checkpoints
+next:
+  text: 专题 3 · 模型协议与质量评估
+  link: /learn-agent-rust/model-evaluation
 ---
 
 # 专题 2：外部操作的可靠性

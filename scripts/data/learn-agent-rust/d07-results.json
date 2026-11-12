@@ -1,0 +1,176 @@
+{
+  "additional": {
+    "corrupt_preserved": true,
+    "denied_cannot_resume": true,
+    "duplicate_rejected": true,
+    "edit_invalidates_approval": true,
+    "independent_cli_processes": 15,
+    "scope": "single-writer local JSON state; atomic rename, no database/identity service/external publish",
+    "unknown_identity_rejected": true
+  },
+  "id": "D07",
+  "results": [
+    {
+      "data": {
+        "effects": 1,
+        "request": {
+          "approved": 1,
+          "completed": true,
+          "content": "upgrade report",
+          "denied": false,
+          "id": 1,
+          "revision": 1
+        }
+      },
+      "limit": 32,
+      "scenario": "approve",
+      "stop": "completed",
+      "trace": [
+        "prepare",
+        "intervene",
+        "resume",
+        "finish"
+      ],
+      "used": 4
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": null,
+          "completed": false,
+          "content": "target=v2; upgrade report",
+          "denied": false,
+          "id": 1,
+          "revision": 2
+        }
+      },
+      "limit": 32,
+      "scenario": "clarify",
+      "stop": "needs_approval",
+      "trace": [
+        "prepare",
+        "intervene",
+        "resume"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": null,
+          "completed": false,
+          "content": "edited report",
+          "denied": false,
+          "id": 1,
+          "revision": 2
+        }
+      },
+      "limit": 32,
+      "scenario": "edit",
+      "stop": "needs_approval",
+      "trace": [
+        "prepare",
+        "intervene",
+        "resume"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": null,
+          "completed": false,
+          "content": "upgrade report",
+          "denied": true,
+          "id": 1,
+          "revision": 1
+        }
+      },
+      "limit": 32,
+      "scenario": "deny",
+      "stop": "denied",
+      "trace": [
+        "prepare",
+        "intervene",
+        "resume"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": null,
+          "completed": false,
+          "content": "upgrade report",
+          "denied": false,
+          "id": 1,
+          "revision": 1
+        }
+      },
+      "limit": 32,
+      "scenario": "stale",
+      "stop": "stale_approval",
+      "trace": [
+        "prepare",
+        "intervene"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": 1,
+          "completed": false,
+          "content": "upgrade report",
+          "denied": false,
+          "id": 1,
+          "revision": 1
+        }
+      },
+      "limit": 32,
+      "scenario": "duplicate",
+      "stop": "duplicate_decision",
+      "trace": [
+        "prepare",
+        "intervene"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "effects": 0,
+        "request": {
+          "approved": null,
+          "completed": false,
+          "content": "upgrade report",
+          "denied": false,
+          "id": 1,
+          "revision": 1
+        }
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "prepare"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 7,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "23e3b6ce833304adc3ac82a914ca9d05300231be82201474daf1860b83311312",
+    "Cargo.toml": "0c2381e583823cdb85662fe3ab0194d9a631ca3aafdf4f83942113037628aa85",
+    "README.md": "a205a416443c3f63a205c695c63d7855d30dbed7c856ef21ace361464a6fdd57",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "91e9d7e021ca0e585f28ca1deff32538324aed6c7504dbdb30f2e1a79df3d627"
+  }
+}

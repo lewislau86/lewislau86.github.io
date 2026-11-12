@@ -1,16 +1,16 @@
 ---
-title: "第 20 章：团队协作协议"
+title: "第 28 章：团队协作协议"
 description: "把计划审批、进度汇报与关闭握手变成可校验的状态迁移，验证消息身份、原计划执行、期限和队友回收。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 19 章 · Agent 团队
+  text: 第 27 章 · Agent 团队
   link: /learn-agent-rust/agent-teams
 next:
-  text: 第 21 章 · 自主任务领取
+  text: 第 29 章 · 自主任务领取
   link: /learn-agent-rust/autonomous-workers
 ---
 
-# 第 20 章：团队协作协议
+# 第 28 章：团队协作协议
 
 [课程总览](./index.md) · [上一章](./agent-teams.md) · [学习路径](./learning-path.md#r16) · [下一章](./autonomous-workers.md)
 
@@ -19,7 +19,7 @@ next:
 - 将批准绑定到具体计划，在执行入口检查内容、期限与工具权限，并验证退回、重提和重放。
 - 区分关闭请求的批准与队友实际退出，处理拒绝、超时、panic 和取消后的句柄回收。
 
-**前置：** [第 19 章：Agent 团队](./agent-teams.md)的有界邮箱与队友生命周期，以及[第 3 章：权限与审批](./permissions.md)的执行门控。
+**前置：** [第 27 章：Agent 团队](./agent-teams.md)的有界邮箱与队友生命周期，以及[第 3 章：权限与审批](./permissions.md)的执行门控。
 
 **实践方式：** 下载<a href="/learn-agent-rust/team-protocols.zip" download>完整 team-protocols.zip</a>，进入解压后的 `team-protocols` 目录，运行 `cargo run --locked`。固定 Rust 1.99.1、Tokio 1.54.1，首次获取依赖需要网络。本章是独立协议内核，无需模型密钥、数据库或两库依赖；框架安装仍见[环境准备](./setup.md#install-frameworks)。
 :::

@@ -1,0 +1,261 @@
+{
+  "additional": {},
+  "id": "D03",
+  "results": [
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "report": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ],
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "normal",
+      "stop": "completed",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "report": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ],
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "reverse",
+      "stop": "completed",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": false,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "failure",
+      "stop": "branch_failed",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "duplicate",
+      "stop": "member_mismatch",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 1
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "docs",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "stale",
+      "stop": "stale_result",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 2,
+        "results": [
+          {
+            "id": "config",
+            "ok": true,
+            "revision": 2
+          },
+          {
+            "id": "deps",
+            "ok": true,
+            "revision": 2
+          }
+        ]
+      },
+      "limit": 32,
+      "scenario": "missing",
+      "stop": "member_mismatch",
+      "trace": [
+        "dispatch",
+        "merge"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "joined": true,
+        "peak": 0,
+        "results": []
+      },
+      "limit": 32,
+      "scenario": "cancel",
+      "stop": "cancelled",
+      "trace": [
+        "dispatch"
+      ],
+      "used": 4
+    },
+    {
+      "data": {},
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "dispatch"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 8,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "f890346b4815dcc415d5beebdc5385fc6d15519d84ea56050d263c02af8e57bd",
+    "Cargo.toml": "309888ac848341fc4f90871013896c07063e23b07efcb6f9467020a05f33acbe",
+    "README.md": "b98eba462b79ab4fa1588c8b0ff5d4208e2a7edc11e7968670bdb75816d2849d",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "f6ba66999cc0dcc89deff91aa7c0fb21be3c0159f90895a06838713b6298a99f"
+  }
+}

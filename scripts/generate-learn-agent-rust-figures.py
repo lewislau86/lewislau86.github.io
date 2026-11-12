@@ -267,10 +267,16 @@ def r02_figures():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
-    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R16", "R18", "R19", "R20", "P02", "P01", "R17", "P04", "P03", "P05", "P06", "K01", "G01", "G02", "G03", "all"], default="all")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R16", "R18", "R19", "R20", "P02", "P01", "R17", "P04", "P03", "P05", "P06", "K01", "G01", "G02", "G03", "patterns", "all"], default="all")
     args = parser.parse_args()
     if args.r02:
         args.lesson = "R02"
+    if args.lesson in ("patterns", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("pattern_figures", ROOT / "scripts/learn-agent-rust-pattern-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     if args.lesson in ("P05", "all"):
         import importlib.util

@@ -2,6 +2,12 @@
 title: "专题 3：模型协议与质量评估"
 description: "用真实本地 HTTP 和固定带标签任务，分开验收模型适配、任务完成、延迟与计费证据。"
 pageClass: learn-agent-rust-course
+prev:
+  text: 专题 2 · 外部操作的可靠性
+  link: /learn-agent-rust/side-effect-reliability
+next:
+  text: 专题 4 · 生产准入与演练
+  link: /learn-agent-rust/production-readiness
 ---
 
 # 专题 3：模型协议与质量评估

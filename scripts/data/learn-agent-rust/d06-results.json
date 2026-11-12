@@ -1,0 +1,210 @@
+{
+  "additional": {},
+  "id": "D06",
+  "results": [
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 2,
+          "sources": [
+            "README.md"
+          ],
+          "text": "upgrade reviewed"
+        },
+        "feedback": {
+          "candidate_revision": 1,
+          "criterion": "missing_evidence"
+        },
+        "repairs": 1
+      },
+      "limit": 32,
+      "scenario": "normal",
+      "stop": "completed",
+      "trace": [
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "accept"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [
+            "README.md"
+          ],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 1,
+          "sources": [
+            "README.md"
+          ],
+          "text": "upgrade reviewed"
+        },
+        "repairs": 0
+      },
+      "limit": 32,
+      "scenario": "already_good",
+      "stop": "completed",
+      "trace": [
+        "generate",
+        "evaluate",
+        "accept"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "feedback": {
+          "candidate_revision": 0,
+          "criterion": "missing_evidence"
+        },
+        "repairs": 0
+      },
+      "limit": 32,
+      "scenario": "stale",
+      "stop": "stale_feedback",
+      "trace": [
+        "generate",
+        "evaluate",
+        "repair"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "repairs": 0
+      },
+      "limit": 32,
+      "scenario": "malformed",
+      "stop": "invalid_feedback",
+      "trace": [
+        "generate",
+        "evaluate"
+      ],
+      "used": 2
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "feedback": {
+          "candidate_revision": 1,
+          "criterion": "missing_evidence"
+        },
+        "repairs": 0
+      },
+      "limit": 32,
+      "scenario": "no_progress",
+      "stop": "no_progress",
+      "trace": [
+        "generate",
+        "evaluate",
+        "repair"
+      ],
+      "used": 3
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 2,
+          "sources": [
+            "README.md"
+          ],
+          "text": ""
+        },
+        "feedback": {
+          "candidate_revision": 2,
+          "criterion": "empty_report"
+        },
+        "repairs": 1
+      },
+      "limit": 32,
+      "scenario": "new_error",
+      "stop": "no_progress",
+      "trace": [
+        "generate",
+        "evaluate",
+        "repair",
+        "evaluate",
+        "repair"
+      ],
+      "used": 5
+    },
+    {
+      "data": {
+        "baseline": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "candidate": {
+          "revision": 1,
+          "sources": [],
+          "text": "upgrade reviewed"
+        },
+        "repairs": 0
+      },
+      "limit": 1,
+      "scenario": "budget",
+      "stop": "budget_exhausted",
+      "trace": [
+        "generate"
+      ],
+      "used": 1
+    }
+  ],
+  "rust_tests": 4,
+  "scenarios": 7,
+  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  "source_sha256": {
+    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
+    "Cargo.lock": "e7bee402c0e8b113ced329d5e69724bdbf147543d9339a11e32d5f0addc2eab8",
+    "Cargo.toml": "9adec0b5d03ec11c1be18e821caa8be10be6545413ed0a8dde59a280e5f320b5",
+    "README.md": "bf12d5c1491c0ca931d32caf3fc1bb461acd31598829d58cc48257a54f96b46e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "deb3513bb0fdea8dc8cca73796a6536d09d7f8e986d5cfd8c8e67e93bb9a22ef"
+  }
+}

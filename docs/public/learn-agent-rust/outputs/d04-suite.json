@@ -1,0 +1,146 @@
+[
+  {
+    "data": {
+      "done": [
+        "root"
+      ],
+      "plan": {
+        "revision": 1,
+        "steps": {
+          "root": []
+        }
+      },
+      "replans": 0
+    },
+    "limit": 32,
+    "scenario": "normal",
+    "stop": "completed",
+    "trace": [
+      "plan",
+      "validate",
+      "execute",
+      "observe",
+      "finish"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "done": [
+        "root",
+        "member"
+      ],
+      "plan": {
+        "revision": 2,
+        "steps": {
+          "member": [
+            "root"
+          ],
+          "root": []
+        }
+      },
+      "replans": 1
+    },
+    "limit": 32,
+    "scenario": "discover",
+    "stop": "completed",
+    "trace": [
+      "plan",
+      "validate",
+      "execute",
+      "observe",
+      "validate",
+      "execute",
+      "observe",
+      "finish"
+    ],
+    "used": 8
+  },
+  {
+    "data": {
+      "done": [],
+      "plan": {
+        "revision": 1,
+        "steps": {
+          "root": [
+            "root"
+          ]
+        }
+      },
+      "replans": 0
+    },
+    "limit": 32,
+    "scenario": "cycle",
+    "stop": "dependency_cycle",
+    "trace": [
+      "plan",
+      "validate"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "done": [],
+      "plan": {
+        "revision": 1,
+        "steps": {
+          "root": [
+            "ghost"
+          ]
+        }
+      },
+      "replans": 0
+    },
+    "limit": 32,
+    "scenario": "unknown",
+    "stop": "unknown_dependency",
+    "trace": [
+      "plan",
+      "validate"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "done": [
+        "root"
+      ],
+      "plan": {
+        "revision": 1,
+        "steps": {
+          "root": []
+        }
+      },
+      "replans": 0
+    },
+    "limit": 32,
+    "scenario": "repeat",
+    "stop": "repeated_plan",
+    "trace": [
+      "plan",
+      "validate",
+      "execute",
+      "observe"
+    ],
+    "used": 4
+  },
+  {
+    "data": {
+      "done": [],
+      "plan": {
+        "revision": 1,
+        "steps": {
+          "root": []
+        }
+      },
+      "replans": 0
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "plan"
+    ],
+    "used": 1
+  }
+]

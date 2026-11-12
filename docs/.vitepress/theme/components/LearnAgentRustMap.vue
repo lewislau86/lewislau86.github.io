@@ -5,6 +5,7 @@ import course from '../../../../scripts/learn-agent-rust-lessons.json'
 
 const props = defineProps<{ active: string }>()
 const current = computed(() => course.lessons.find(lesson => lesson.slug === props.active))
+const currentPart = computed(() => current.value?.part ?? course.parts.find(part => part.guide?.slug === props.active)?.id)
 const chapterLabel = (lesson: { id: string; chapter?: number }) => lesson.chapter !== undefined
   ? `第 ${lesson.chapter} 章` : `专题 ${Number(lesson.id.slice(1))}`
 const parts = computed(() => course.parts.map(part => ({
@@ -18,11 +19,11 @@ const parts = computed(() => course.parts.map(part => ({
     <p class="map-title">本章在全书中的位置</p>
     <p v-if="current" class="current">{{ chapterLabel(current) }} · {{ current.title }}：{{ current.question }}</p>
     <ol class="parts">
-      <li v-for="part in parts" :key="part.id" :class="{ active: current?.part === part.id }">
-        <a :href="withBase('/learn-agent-rust/learning-path.html#' + part.lessons[0].id.toLowerCase())">
+      <li v-for="part in parts" :key="part.id" :class="{ active: currentPart === part.id }">
+        <a :href="withBase(part.guide ? '/learn-agent-rust/' + part.guide.slug + '.html' : '/learn-agent-rust/learning-path.html#' + part.lessons[0].id.toLowerCase())">
           {{ part.title }}
         </a>
-        <span>{{ part.lessons.length }} 个学习节点</span>
+        <span>{{ part.lessons.length }} 个学习节点<template v-if="part.lessons.some(lesson => lesson.status === 'planned')">（含规划）</template></span>
       </li>
     </ol>
     <details>
@@ -36,7 +37,7 @@ const parts = computed(() => course.parts.map(part => ({
         </a>
       </div>
     </details>
-    <p class="map-note">模块卡片链接到学习路径；正文与实验状态以章节页为准。</p>
+    <p class="map-note">模块卡片链接到部分导读或学习路径；正文与实验状态以章节页为准。</p>
   </nav>
 </template>
 

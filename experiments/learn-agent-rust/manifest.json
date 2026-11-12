@@ -487,6 +487,321 @@
       "run_scope": "本章正常路径演示"
     },
     {
+      "id": "D01",
+      "slug": "pattern-selection",
+      "title": "模式选择：单次调用、工作流与自主循环",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "任务需要多少控制结构，什么时候值得让模型决定下一步？",
+      "addition": "比较单次调用、预设工作流和有界工具循环，建立成本与风险基线。",
+      "outcome": "为同一任务选择最小足够结构，说明控制权、停止条件和升级结构的证据。",
+      "prerequisites": [
+        "R01",
+        "G01",
+        "R10"
+      ],
+      "chapter": 15,
+      "kind": "cargo",
+      "archive": "pattern-selection.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D01"
+      ],
+      "binary": "agent-d01-lab",
+      "run_scope": "6 个固定输入图场景"
+    },
+    {
+      "id": "D02",
+      "slug": "prompt-chaining-routing",
+      "title": "提示链与条件路由",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "已知步骤怎样串联，不同输入怎样进入合适的处理分支？",
+      "addition": "步骤间结构化产物、质量门、类型化路由与兜底分支。",
+      "outcome": "拒绝不合格中间产物与非法路由，验证各分支只消费自己的输入。",
+      "prerequisites": [
+        "D01",
+        "G01"
+      ],
+      "chapter": 16,
+      "kind": "cargo",
+      "archive": "prompt-chaining-routing.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D02"
+      ],
+      "binary": "agent-d02-lab",
+      "run_scope": "6 个固定输入图场景"
+    },
+    {
+      "id": "D03",
+      "slug": "parallel-decomposition",
+      "title": "并行分解与结果归并",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "独立子问题怎样同时处理，再合成可用结论？",
+      "addition": "固定任务分片、独立状态、有界并发与确定性归并。",
+      "outcome": "验证成员齐全、超时和局部失败策略，比较同任务的串行与并行结果和耗时。",
+      "prerequisites": [
+        "D02",
+        "G03"
+      ],
+      "chapter": 17,
+      "kind": "cargo",
+      "archive": "parallel-decomposition.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D03"
+      ],
+      "binary": "agent-d03-lab",
+      "run_scope": "8 个固定输入图场景"
+    },
+    {
+      "id": "D04",
+      "slug": "plan-execute-replan",
+      "title": "规划、执行与动态重规划",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "未知步骤怎样先规划，并根据执行证据调整剩余工作？",
+      "addition": "计划版本、步骤依赖、结果账本与有界重规划。",
+      "outcome": "根据新证据废弃过期步骤，保留已确认效果，拒绝循环规划和预算越界。",
+      "prerequisites": [
+        "D02",
+        "R05",
+        "R06"
+      ],
+      "chapter": 18,
+      "kind": "cargo",
+      "archive": "plan-execute-replan.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D04"
+      ],
+      "binary": "agent-d04-lab",
+      "run_scope": "6 个固定输入图场景"
+    },
+    {
+      "id": "D05",
+      "slug": "orchestrator-workers-handoffs",
+      "title": "协调者、工作者与任务交接",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "何时由中心分派子任务，何时将下一轮控制权交给专门角色？",
+      "addition": "动态分解、独立工作者上下文、汇总契约与显式控制权交接。",
+      "outcome": "区分子调用、协调汇总与交接，验证交接载荷、唯一控制者和委派预算。",
+      "prerequisites": [
+        "D03",
+        "D04",
+        "R06"
+      ],
+      "chapter": 19,
+      "kind": "cargo",
+      "archive": "orchestrator-workers-handoffs.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D05"
+      ],
+      "binary": "agent-d05-lab",
+      "run_scope": "7 个固定输入图场景"
+    },
+    {
+      "id": "D06",
+      "slug": "evaluator-reflection",
+      "title": "评估、反思与有界修复",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "怎样依据可检查反馈修复结果，而不是无限自我评价？",
+      "addition": "生成与评估分离、结构化缺陷、修复上限与保留基线。",
+      "outcome": "让错误产物触发修复，在无改进或预算耗尽时停止，并用独立标准比较修复前后。",
+      "prerequisites": [
+        "D02",
+        "G01"
+      ],
+      "chapter": 20,
+      "kind": "cargo",
+      "archive": "evaluator-reflection.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D06"
+      ],
+      "binary": "agent-d06-lab",
+      "run_scope": "7 个固定输入图场景"
+    },
+    {
+      "id": "D07",
+      "slug": "human-in-the-loop",
+      "title": "人工介入与审批恢复",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "哪里需要人的补充、选择或批准，恢复时怎样确认批准仍有效？",
+      "addition": "澄清、编辑与审批三类暂停，动作修订绑定和失效处理。",
+      "outcome": "验证等待、拒绝、编辑后重新审批、重复批准与恢复后动作身份。",
+      "prerequisites": [
+        "D02",
+        "G02",
+        "R03"
+      ],
+      "chapter": 21,
+      "kind": "cargo",
+      "archive": "human-in-the-loop.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "init"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "approve",
+          "1",
+          "1"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "edit",
+          "edited report"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "approve",
+          "1",
+          "2"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "resume"
+        ],
+        [
+          "{binary}",
+          "disk",
+          "{run}/request.json",
+          "show"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D07"
+      ],
+      "binary": "agent-d07-lab",
+      "run_scope": "7 个固定输入图场景与跨 CLI 编辑后重新批准"
+    },
+    {
+      "id": "D08",
+      "slug": "pattern-composition",
+      "title": "模式组合与选型实战",
+      "part": "patterns",
+      "domain": "常见 Agent 设计模式",
+      "status": "written",
+      "question": "怎样将多个模式组合为一条可以解释和验收的任务链？",
+      "addition": "需求到拓扑、最小基线、组合契约与分层验收。",
+      "outcome": "为升级报告选择并验证必要模式，分别记录流程正确性、效果和模型质量。",
+      "prerequisites": [
+        "D03",
+        "D04",
+        "D05",
+        "D06",
+        "D07"
+      ],
+      "chapter": 22,
+      "kind": "cargo",
+      "archive": "pattern-composition.zip",
+      "verifier": "scripts/verify-agent-patterns.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}",
+          "suite"
+        ],
+        [
+          "{binary}",
+          "discover",
+          "{run}/report.json"
+        ],
+        [
+          "{python}",
+          "model_compare.py",
+          "self-test",
+          "{run}/http"
+        ]
+      ],
+      "verifier_args": [
+        "--lesson",
+        "D08"
+      ],
+      "binary": "agent-d08-lab",
+      "run_scope": "9 个固定输入图场景、真实报告文件与 36 项本地 HTTP 模式对照驱动器任务"
+    },
+    {
       "id": "R11",
       "slug": "error-recovery",
       "title": "错误分类与恢复",
@@ -500,7 +815,7 @@
         "R02",
         "R08"
       ],
-      "chapter": 15,
+      "chapter": 23,
       "kind": "rustc",
       "archive": "error-recovery-lab.zip",
       "verifier": "scripts/verify-agent-recovery.py",
@@ -528,7 +843,7 @@
         "R05",
         "R11"
       ],
-      "chapter": 16,
+      "chapter": 24,
       "kind": "cargo",
       "archive": "task-system-lab.zip",
       "verifier": "scripts/verify-agent-tasks.py",
@@ -582,7 +897,7 @@
       "prerequisites": [
         "R12"
       ],
-      "chapter": 17,
+      "chapter": 25,
       "kind": "rustc",
       "archive": "background-tasks-lab.zip",
       "verifier": "scripts/verify-agent-background.py",
@@ -610,7 +925,7 @@
         "R12",
         "R13"
       ],
-      "chapter": 18,
+      "chapter": 26,
       "kind": "cargo",
       "archive": "scheduling-lab.zip",
       "verifier": "scripts/verify-agent-scheduling.py",
@@ -668,7 +983,7 @@
         "R12",
         "R13"
       ],
-      "chapter": 19,
+      "chapter": 27,
       "kind": "cargo",
       "archive": "agent-teams.zip",
       "verifier": "scripts/verify-agent-teams.py",
@@ -694,7 +1009,7 @@
       "prerequisites": [
         "R15"
       ],
-      "chapter": 20,
+      "chapter": 28,
       "kind": "cargo",
       "archive": "team-protocols.zip",
       "verifier": "scripts/verify-agent-protocols.py",
@@ -721,7 +1036,7 @@
         "R12",
         "R16"
       ],
-      "chapter": 21,
+      "chapter": 29,
       "kind": "cargo",
       "archive": "autonomous-workers-lab.zip",
       "verifier": "scripts/verify-agent-workers.py",
@@ -770,7 +1085,7 @@
         "R03",
         "R17"
       ],
-      "chapter": 22,
+      "chapter": 30,
       "kind": "rustc",
       "archive": "worktree-isolation-lab.zip",
       "verifier": "scripts/verify-agent-worktrees.py",
@@ -799,7 +1114,7 @@
         "R03",
         "R11"
       ],
-      "chapter": 23,
+      "chapter": 31,
       "kind": "cargo",
       "archive": "mcp-tools-lab.zip",
       "verifier": "scripts/verify-agent-mcp.py",
@@ -838,7 +1153,7 @@
         "R18",
         "R19"
       ],
-      "chapter": 24,
+      "chapter": 32,
       "kind": "cargo",
       "archive": "integrated-agent.zip",
       "verifier": "scripts/verify-agent-integration.py",

@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
 const props = withDefaults(defineProps<{ active?: string; caption?: boolean }>(), { caption: true })
 
-const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization"])
+const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching"])
 
 // 每章在图中的输入与输出（图注里显示）
 const io: Record<string, [string, string]> = {
@@ -44,8 +44,8 @@ const io: Record<string, [string, string]> = {
   'inference-efficiency': ["提示词和已经生成的 token", "缓存起来的 K、V，以及分开测的 prefill / decode 延迟"],
   'attention-kernels': ["每层的 Q、K、V", "同样的注意力输出，但不写出 T×T 的分数表"],
   'quantization': ["训练好的权重、激活和 KV cache", "更少位数的存储，以及它带来的质量变化"],
-  'speculative-decoding': ["小模型猜的几个 token", "大模型一次验证后接受的 token，输出不变"],
-  'batching': ["多个并发请求", "按 token 步调度的同一批前向"],
+  'speculative-decoding': ["草稿猜的几个 token", "目标模型一次前向验证后接受的 token：贪心时输出不变，采样时分布不变"],
+  'batching': ["多个长短不一、先后到达的请求", "按 token 步调度、首尾相接的同一批前向，每个请求的输出不变"],
   'kv-memory': ["各请求的 KV cache", "分页、可共享前缀的显存布局"],
   'inference-optimization': ["前面几章的各项优化", "逐项对照的延迟、吞吐，以及一个推理服务"],
   'annealing': ["稳定段的检查点和一小份高质量数据", "学习率衰减段换过数据的基础模型"],

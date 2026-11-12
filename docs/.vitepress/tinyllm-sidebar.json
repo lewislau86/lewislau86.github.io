@@ -179,6 +179,14 @@
       {
         "text": "第 30 章 · 量化",
         "link": "/tinyllm/quantization"
+      },
+      {
+        "text": "第 31 章 · 投机解码",
+        "link": "/tinyllm/speculative-decoding"
+      },
+      {
+        "text": "第 32 章 · 批处理与调度",
+        "link": "/tinyllm/batching"
       }
     ]
   },
@@ -189,14 +197,6 @@
       {
         "text": "第六部分 · 推理（续）",
         "items": [
-          {
-            "text": "第 31 章 · 投机解码",
-            "link": "/tinyllm/speculative-decoding"
-          },
-          {
-            "text": "第 32 章 · 批处理与调度",
-            "link": "/tinyllm/batching"
-          },
           {
             "text": "第 33 章 · KV 显存管理：分页与前缀缓存",
             "link": "/tinyllm/kv-memory"

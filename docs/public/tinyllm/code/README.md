@@ -34,6 +34,8 @@
 | 第 28 章 推理效率 | [inference-efficiency.py](inference-efficiency.py) | [打开](https://lewislau86.github.io/tinyllm/inference-efficiency) |
 | 第 29 章 注意力内核与算子融合 | [attention-kernels.py](attention-kernels.py) | [打开](https://lewislau86.github.io/tinyllm/attention-kernels) |
 | 第 30 章 量化 | [quantization.py](quantization.py) | [打开](https://lewislau86.github.io/tinyllm/quantization) |
+| 第 31 章 投机解码 | [speculative-decoding.py](speculative-decoding.py) | [打开](https://lewislau86.github.io/tinyllm/speculative-decoding) |
+| 第 32 章 批处理与调度 | [batching.py](batching.py) | [打开](https://lewislau86.github.io/tinyllm/batching) |
 
 ## 怎么运行
 

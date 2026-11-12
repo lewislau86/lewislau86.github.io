@@ -1,0 +1,195 @@
+[
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 2,
+        "sources": [
+          "README.md"
+        ],
+        "text": "upgrade reviewed"
+      },
+      "feedback": {
+        "candidate_revision": 1,
+        "criterion": "missing_evidence"
+      },
+      "repairs": 1
+    },
+    "limit": 32,
+    "scenario": "normal",
+    "stop": "completed",
+    "trace": [
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "accept"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [
+          "README.md"
+        ],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 1,
+        "sources": [
+          "README.md"
+        ],
+        "text": "upgrade reviewed"
+      },
+      "repairs": 0
+    },
+    "limit": 32,
+    "scenario": "already_good",
+    "stop": "completed",
+    "trace": [
+      "generate",
+      "evaluate",
+      "accept"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "feedback": {
+        "candidate_revision": 0,
+        "criterion": "missing_evidence"
+      },
+      "repairs": 0
+    },
+    "limit": 32,
+    "scenario": "stale",
+    "stop": "stale_feedback",
+    "trace": [
+      "generate",
+      "evaluate",
+      "repair"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "repairs": 0
+    },
+    "limit": 32,
+    "scenario": "malformed",
+    "stop": "invalid_feedback",
+    "trace": [
+      "generate",
+      "evaluate"
+    ],
+    "used": 2
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "feedback": {
+        "candidate_revision": 1,
+        "criterion": "missing_evidence"
+      },
+      "repairs": 0
+    },
+    "limit": 32,
+    "scenario": "no_progress",
+    "stop": "no_progress",
+    "trace": [
+      "generate",
+      "evaluate",
+      "repair"
+    ],
+    "used": 3
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 2,
+        "sources": [
+          "README.md"
+        ],
+        "text": ""
+      },
+      "feedback": {
+        "candidate_revision": 2,
+        "criterion": "empty_report"
+      },
+      "repairs": 1
+    },
+    "limit": 32,
+    "scenario": "new_error",
+    "stop": "no_progress",
+    "trace": [
+      "generate",
+      "evaluate",
+      "repair",
+      "evaluate",
+      "repair"
+    ],
+    "used": 5
+  },
+  {
+    "data": {
+      "baseline": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "candidate": {
+        "revision": 1,
+        "sources": [],
+        "text": "upgrade reviewed"
+      },
+      "repairs": 0
+    },
+    "limit": 1,
+    "scenario": "budget",
+    "stop": "budget_exhausted",
+    "trace": [
+      "generate"
+    ],
+    "used": 1
+  }
+]
