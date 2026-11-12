@@ -37,6 +37,7 @@
 | 第 31 章 投机解码 | [speculative-decoding.py](speculative-decoding.py) | [打开](https://lewislau86.github.io/tinyllm/speculative-decoding) |
 | 第 32 章 批处理与调度 | [batching.py](batching.py) | [打开](https://lewislau86.github.io/tinyllm/batching) |
 | 第 33 章 KV 显存管理：分页与前缀缓存 | [kv-memory.py](kv-memory.py) | [打开](https://lewislau86.github.io/tinyllm/kv-memory) |
+| 第 34 章 推理优化：逐项对照与推理服务 | [inference-optimization.py](inference-optimization.py) | [打开](https://lewislau86.github.io/tinyllm/inference-optimization) |
 
 ## 怎么运行
 

@@ -216,6 +216,15 @@ SPEC = {
         ("提示词分块", "generation/continuous_batching/scheduler.py", "Scheduler._schedule_request", "额度够就整段送；不够就先送 `token_budget` 个，剩下的记在 `remaining_prefill_tokens`，下一次接着送"),
         ("首尾相接的一批", "generation/continuous_batching/input_outputs.py", "ContinuousBatchingIOs.prepare_batch_tensors", "所有请求的新 token 接成一行，位置是 `range(past_length, past_length + query_length)`，`cumulative_seqlens_q` 记每段的边界，`logits_indices` 只取每段最后一个位置，和本章 `Engine.step` 一一对应"),
     ]),
+    "inference-optimization": ("transformers 自带一个 OpenAI 兼容的服务：`transformers serve`，用 FastAPI + uvicorn 写成，加 `--continuous-batching` 才走第 32、33 章的连续批和分页缓存；它的结构和本章的小服务一一对应：", [
+        ("命令行入口", "cli/serve.py", "Serve", "`continuous_batching` 默认 False（一次一个请求地 `generate`），打开后 `--cb-block-size`、`--cb-num-blocks`、`--cb-max-batch-tokens`、`--cb-max-memory-percent` 等拼成 `ContinuousBatchingConfig`，就是本章 Replica 的那几个开关"),
+        ("路由与健康检查", "cli/serving/server.py", "build_server", "`/v1/chat/completions`、`/v1/completions`、`/v1/models`、`/health` 等；连续批的后台线程死掉时 `/health` 返回 503，和本章退出时让健康检查变 503 是同一个用意"),
+        ("独占模型的线程", "cli/serving/utils.py", "InferenceThread", "所有推理都放在同一个线程里跑，注释写的原因是 `torch.compile` 的 CUDA graph 状态存在线程本地；本章的引擎线程也是一个线程独占模型"),
+        ("连续批的流式请求", "cli/serving/utils.py", "CBGenerateManager.generate_streaming", "`add_request(..., streaming=True)` 交给连续批的后台循环，再给这个请求注册一个回调，把每一步的输出放进它自己的 `asyncio.Queue`，对应本章每个请求的 `queue.Queue`"),
+        ("边出 token 边解码", "cli/serving/utils.py", "CBStreamer", "连续批的结果交给它，用 tokenizers 的 `DecodeStream` 逐个 token 解码，半个字先攒着、凑成完整的 UTF-8 再吐出来，和本章流式返回的写法相同"),
+        ("SSE 格式", "cli/serving/utils.py", "BaseHandler.chunk_to_sse", "每一段写成 `data: {json}` 再空一行，客户端按行读"),
+        ("退出", "cli/serve.py", "Serve.kill_server", "先停生成管理器和模型，再让 uvicorn `should_exit`；生产里还要先把实例从负载均衡里摘掉，等手上的请求跑完（本章第 8 节的做法）"),
+    ]),
     "kv-memory": ("transformers 的连续批（`generate_batch`）用的就是分页缓存，前缀共享、抢占和 offloading 都在 `continuous_batching` 目录里：", [
         ("块大小与开关", "generation/configuration_utils.py", "ContinuousBatchingConfig", "`page_size` 默认 256（每块放多少个 token）；`allow_block_sharing` 默认打开前缀共享；`cpu_offload_space` 默认 0，即不往内存搬、被抢占的请求直接重算"),
         ("块池", "generation/continuous_batching/cache.py", "PagedAttentionCache", "整块缓存是一个预先分配好的大张量，再切成块分给各个请求；`can_store_request_tokens` 相当于本章的 `grow`：块不够就返回 False，什么也不改"),

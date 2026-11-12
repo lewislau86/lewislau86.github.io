@@ -191,6 +191,10 @@
       {
         "text": "第 33 章 · KV 显存管理：分页与前缀缓存",
         "link": "/tinyllm/kv-memory"
+      },
+      {
+        "text": "第 34 章 · 推理优化：逐项对照与推理服务",
+        "link": "/tinyllm/inference-optimization"
       }
     ]
   },
@@ -198,15 +202,6 @@
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第六部分 · 推理（续）",
-        "items": [
-          {
-            "text": "第 34 章 · 推理优化：逐项对照与推理服务",
-            "link": "/tinyllm/inference-optimization"
-          }
-        ]
-      },
       {
         "text": "第七部分 · 中训练",
         "items": [

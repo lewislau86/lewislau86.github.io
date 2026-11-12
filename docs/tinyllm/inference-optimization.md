@@ -1,6 +1,6 @@
 ---
 title: "第 34 章：推理优化：逐项对照与推理服务"
-description: "把前七章的优化放进同一个推理系统，逐项单独打开、各测一次；再往外看多卡、多机、路由与可观测性，最后把 TinyLLM 包成一个能对外服务的接口。"
+description: "把第 30～33 章的优化装进同一个可以逐项开关的引擎，在同一份请求流上一次只打开一项、再全部打开一次去掉一项，看哪些收益能叠加、哪些会互相抵消；再开几个实例比较路由，最后用标准库包成一个 OpenAI 兼容、能流式返回、能看指标、能优雅退出的推理服务。"
 pageClass: tinyllm-course
 ---
 
@@ -8,29 +8,382 @@ pageClass: tinyllm-course
 
 [课程总览](./index.md) · [上一章](./kv-memory.md) · [下一章](./annealing.md)
 
-::: info 本章状态：规划中
-正文与 notebook 尚未完成。第六部分的前七章各解决一个环节：[第 27 章](./generation.md)决定每一步怎样选字，[第 28 章](./inference-efficiency.md)用 KV cache 避免重算前缀并给出指标，[第 29 章](./attention-kernels.md)换掉注意力内核的写法，[第 30 章](./quantization.md)压缩权重和缓存，[第 31 章](./speculative-decoding.md)一次推进多个位置，[第 32 章](./batching.md)把请求排进同一个循环，[第 33 章](./kv-memory.md)管理显存里的 KV。本章做三件事：
+::: tip 本章学习目标
+能把几项推理优化装进同一个引擎，每一项都是一个开关，并用 `assert` 保证任何组合下每个请求的输出都和对应模型单独贪心生成的逐 token 相同；能设计“一次只打开一项”和“全部打开、一次去掉一项”两组对照，说清为什么两组给出的排序不一样，哪一项在什么条件下会帮倒忙；能比较几种多实例路由，说清前缀优先为什么必须加负载上限；能写出一个最小的推理服务：HTTP 线程和独占模型的引擎线程分开，支持流式返回、指标和优雅退出，并验证经 HTTP 拿到的文本和本地直接调用相同。
 
-- **合成一张对照表。** 每一项只单独打开，用同一份请求流、同样的输出长度测首字延迟、每 token 延迟、吞吐和显存；输出必须与基线逐 token 一致（量化则要求同一验证集上质量不降），否则不算优化。几项叠加后的提升不归给其中任何一项。
-- **再往外看一层。** 一张卡放不下时的并行方式（数据、张量、流水线、专家并行）、把 prefill 与 decode 分到不同机器（PD 分离）、请求该发往哪台机器（路由：最少负载、前缀命中、KV 压力），以及能看见什么（可观测性：每一层各自的指标）。
-- **包成服务。** 用 FastAPI 起一个 `/v1/chat/completions` 兼容接口，流式返回；把日志、指标和优雅退出接上，然后在本地跑通与 `curl` 的往返。
+**前置：** [第 28 章](./inference-efficiency.md)的 TTFT、TPOT 与 goodput，[第 30 章](./quantization.md)的 INT8 按通道量化，[第 31 章](./speculative-decoding.md)的“在已有文本里查”，[第 32 章](./batching.md)的连续批、分块 prefill 与成本模型，[第 33 章](./kv-memory.md)的块池、前缀缓存与抢占。
+
+**实践方式：** [inference-optimization.ipynb](/tinyllm/notebooks/inference-optimization)（也可以直接运行 <a href="/tinyllm/code/inference-optimization.py" download>inference-optimization.py</a>），CPU 约一分半，需要 PyTorch 和 `tokenizers`；服务只用 Python 标准库。
 :::
 
 <TinyLLMMap active="inference-optimization" />
 
-## 本章主线选择（待实验验证）
+## 问题：几项优化放在一起，还剩多少
 
-主线是<strong>一项一项单独测</strong>：以[第 28 章](./inference-efficiency.md)的单请求 KV cache 循环为基线，每次只加一项优化，其余全部固定，同一份请求流跑完记录四个指标。对照实验照[课程规范](/guide/course-conventions)的写法：请求流由独立生成器预先排好，至少三个种子，报告平均与范围，并写明实验边界（CPU、模型尺寸、最大上下文）。凡是输出与基线不一致的实现，先当 bug 查，不当作“优化”。
+第六部分前面几章各自解决推理的一个环节，每一章都在“其他条件不变”的情况下量自己的收益：量化让权重变小，投机解码让每次前向多走几步，连续批让很多请求共用一次前向，分页和前缀缓存让 KV cache 少占显存、少算 prefill。
 
-并行、PD 分离、路由与可观测性在这条基线上只做<strong>概念与最小模拟</strong>：张量并行把一个线性层按列切开、拼回来验证结果一致；流水线用微型 stage 排出时间线、量气泡；路由用一个带前缀树的调度器比较命中率。真实的吞吐与显存收益依赖多卡和网络，报告时要标注来源，或者注明尚未实测。
+真正部署时这些优化是一起开的，这时有两个问题前面没有回答：
 
-最后一步是把模型包进服务。这一步的产出是接口与观测手段，不是新的算法结论；验收标准是同一份请求经 HTTP 送达后，输出与本地直接调用逐 token 一致。
+- **收益能不能相加？** 第 31 章已经提醒过，投机解码的收益来自“多验证几个位置几乎不要钱”，批大了以后这个前提就不成立了。别的优化之间也可能这样互相影响。
+- **该开哪几项？** 只有把它们放进同一个系统、用同一份请求流、同一套指标，才能比较。
+
+这一章先把它们装进同一个引擎，做两组对照：在什么都没开的基线上**一次只打开一项**；在全部打开的系统上**一次去掉一项**。然后再往外走两步：开几个实例时请求发给谁，以及怎样把引擎包成一个能对外服务的接口。
+
+::: info 本章代码从哪里来
+本章所有代码都在一个文件里：<a href="/tinyllm/code/inference-optimization.py" download>inference-optimization.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/inference-optimization.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python inference-optimization.py` 从头跑到尾即可，加 `--serve` 会起一个一直运行的服务。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/inference-optimization)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/inference-optimization.ipynb)。正文引用的输出来自 torch 2.14.1+cpu、tokenizers 0.23.3；以“[计时，本机]”开头的输出和机器有关，正文只引用它们的大致数值。
+:::
+
+## 1. 研究对象：第 12 章的基线模型
+
+模型与第 28～33 章相同：d=128、4 层、4 个头、词表 4096、上下文 64，训练 300 步，种子 0。
+
+<<< @/public/tinyllm/code/inference-optimization.py#train
+
+## 2. 一个可以逐项开关的引擎
+
+前面几章的优化写在各自的脚本里，这里把它们装进同一个引擎 `Replica`。每一项都是一个开关：
+
+| 开关 | 含义 | 来自 |
+| --- | --- | --- |
+| `max_running` | 同时最多跑几个请求；1 是一次一个，大于 1 是连续批 | [第 32 章](./batching.md) |
+| `chunk` | 分块 prefill 的额度：decode 行（连同草稿）先排，剩下的额度给提示词 | [第 32 章](./batching.md) |
+| `block` | 块大小：等于上下文上限 64 时就是按上限预留，小了就是分页 | [第 33 章](./kv-memory.md) |
+| `prefix` | 前缀缓存 | [第 33 章](./kv-memory.md) |
+| `quant` | INT8 权重 | [第 30 章](./quantization.md) |
+| `gamma` | 投机解码每轮起草几个 token，草稿用“在已有文本里查”，不用另训草稿模型 | [第 31 章](./speculative-decoding.md) |
+
+[第 29 章](./attention-kernels.md)的注意力内核没有做成开关：本章的序列最长 64 个位置，朴素写法和 SDPA 的差别在这个长度上量不出来，引擎里的注意力一直用 SDPA。块池、块表和前缀缓存的代码和第 33 章完全相同，这里不再列出。
+
+一次前向和第 33 章相比只改两处：模型作为参数传进来，换成 INT8 模型只改这里；返回每一行所有新位置的 logits，因为投机解码要逐个位置验证草稿。
+
+<<< @/public/tinyllm/code/inference-optimization.py#paged-step
+
+<<< @/public/tinyllm/code/inference-optimization.py#drafter
+
+`Replica` 是一个实例：一个块池、一个等待队列、一组正在跑的请求，和一个只属于它的时钟。`step` 每调用一次，做五件事：给正在生成的请求起草、保证块够用（不够就抢占最晚进来的）；按到达顺序放新请求进来；决定这次前向里每个请求送哪些 token（decode 在前，提示词按额度分块）；前向一次；收结果，逐个位置验证草稿，没被接受的草稿从缓存里退掉。时间沿用第 32 章的成本模型，只多一个参数：一次前向花 $\max(w, N/K)$ 个单位，N 是这次前向的新 token 数，K=16，$w$ 是读一遍权重的时间，FP32 时为 1。
+
+<<< @/public/tinyllm/code/inference-optimization.py#replica
+
+几个细节：草稿的长度不超过“还要生成的 token 数减 1”，所以一轮最多正好写完；块不够时先放弃草稿，还不够才抢占；退草稿时缩短 `seq.length`，再把多出来的整块还回池子。前缀缓存只登记写满的块，登记发生在退草稿之后，所以没被接受的草稿不会被别人命中。
+
+外面再套一层离散事件模拟：请求按到达时间交给某个实例（只有一个实例时就是它），哪个实例的时钟最早就让它走一步。最后检查每个请求的输出都和对应模型单独贪心生成的相同：
+
+<<< @/public/tinyllm/code/inference-optimization.py#cluster
+
+## 3. INT8 模型、请求流和指标
+
+INT8 用第 30 章的按通道对称量化，但比第 30 章的结论更保守：只量化 Block 里的线性层，嵌入表（也是输出层，第 30 章测出它对量化最敏感）保留 FP32。这里是“假量化”：把权重量化再还原成浮点，只模拟误差，CPU 上不会变快。它在成本模型里的作用，是每次前向要读的权重变少：
+
+<<< @/public/tinyllm/code/inference-optimization.py#quant
+
+```text
+INT8 按通道量化 Block 里的线性层（785,920 个参数），嵌入表 524,288 个参数保留 FP32：
+权重 5.00 MiB → 2.76 MiB，每次前向读权重的量是原来的 0.55
+验证损失 5.5852 → 5.5851
+```
+
+INT8 只把权重压到原来的 0.55，而不是四分之一：TinyLLM 的词表 4096、宽度 128，嵌入表占了全部参数的 40%，这里没量化它，就省不下来（照第 30 章连嵌入表一起量化，这个数约是 0.25，下面 INT8 的收益会更大）。大模型的嵌入表只占百分之几，INT8 能把读权重的量压到接近一半（相对 FP16）。
+
+两份请求流：**通用**是第 32 章的请求流（四分之三短提示词、生成 8～40 个；四分之一 40 个 token 的长提示词、生成 4～12 个）；**系统提示词**是第 33 章的请求流（每个请求开头都是同一段 24 个 token）。到达都按过载算，平均每个单位一个请求，就是第 32 章第 8 节、第 33 章第 4 节用的负载。每个请求预先算好 FP32 和 INT8 两个模型单独贪心生成的输出，作为对齐的基准：
+
+<<< @/public/tinyllm/code/inference-optimization.py#workloads
+
+```text
+240 个请求里，INT8 模型的贪心输出和 FP32 逐 token 相同的有 224 个
+```
+
+INT8 的验证损失几乎不变（差 0.0001），但贪心输出有 16 个请求和 FP32 不完全一样：只要某一步最可能的两个 token 分数很接近，量化误差就可能让它们换位，后面的文本就分岔了（第 30 章的“一致率”）。所以 INT8 这一项不能要求“输出不变”，它对齐的是 INT8 模型自己的贪心输出，质量另外看验证损失。
+
+指标和第 32、33 章相同：TTFT 中位、TPOT 中位、最长卡顿（一个请求相邻两个 token 的最长间隔）、吞吐、goodput（TTFT 不超过 20 个单位、TPOT 不超过 1.5 个单位的请求才算），再加上 KV 平均占用的位置数和每份请求流的前向次数。
+
+<<< @/public/tinyllm/code/inference-optimization.py#metrics
+
+## 4. 一次只打开一项
+
+基线是第 28 章的做法：一次只跑一个请求，KV cache 按上限预留，FP32 权重，普通贪心。在它上面一次只打开一项。分块 prefill 只在多个请求同时跑时才有意义，所以不单列；分页单独打开时什么也不改变（只有一个请求），所以和前缀缓存一起打开。
+
+<<< @/public/tinyllm/code/inference-optimization.py#configs
+
+<<< @/public/tinyllm/code/inference-optimization.py#alone
+
+```text
+【通用】
+  基线         TTFT 中位 398.5  TPOT 中位 1.00  最长卡顿 1.00  吞吐  0.98  goodput  0.05 [ 0.04,  0.06]  KV 平均  64  前向 794
+  连续批        TTFT 中位  32.2  TPOT 中位 1.15  最长卡顿 3.52  吞吐  5.75  goodput  1.94 [ 1.47,  2.27]  KV 平均 437  前向 119
+  分页 + 前缀缓存  TTFT 中位 398.5  TPOT 中位 1.00  最长卡顿 1.00  吞吐  0.98  goodput  0.05 [ 0.04,  0.06]  KV 平均  25  前向 794
+  INT8 权重    TTFT 中位 215.6  TPOT 中位 0.55  最长卡顿 0.55  吞吐  1.74  goodput  0.09 [ 0.07,  0.10]  KV 平均  64  前向 794
+  投机（γ=3）    TTFT 中位 367.2  TPOT 中位 0.99  最长卡顿 1.00  吞吐  1.08  goodput  0.05 [ 0.04,  0.06]  KV 平均  64  前向 723
+【系统提示词】
+  基线         TTFT 中位 335.5  TPOT 中位 1.00  最长卡顿 1.00  吞吐  0.95  goodput  0.03 [ 0.03,  0.03]  KV 平均  64  前向 657
+  连续批        TTFT 中位  47.5  TPOT 中位 1.55  最长卡顿 8.17  吞吐  4.43  goodput  0.47 [ 0.32,  0.67]  KV 平均 465  前向  93
+  分页 + 前缀缓存  TTFT 中位 318.6  TPOT 中位 1.00  最长卡顿 1.00  吞吐  1.00  goodput  0.04 [ 0.03,  0.05]  KV 平均  41  前向 657
+  INT8 权重    TTFT 中位 193.9  TPOT 中位 0.55  最长卡顿 0.55  吞吐  1.58  goodput  0.10 [ 0.08,  0.13]  KV 平均  64  前向 657
+  投机（γ=3）    TTFT 中位 331.5  TPOT 中位 1.00  最长卡顿 1.00  吞吐  0.96  goodput  0.03 [ 0.03,  0.03]  KV 平均  64  前向 650
+全部请求的输出都和各自模型的贪心输出逐 token 相同
+```
+
+每格是 3 份请求流的平均，goodput 后面的方括号是范围。基线下每个单位来一个请求，可一个请求平均要跑约 20 个单位，队伍越排越长，TTFT 中位达到三四百个单位，几乎没有请求达标。逐项看：
+
+- **连续批**是唯一一项让系统“跟得上”的：每次前向带多个请求，吞吐涨到约 5.7 和 4.4，TTFT 降到几十。这一行和第 32、33 章 B=8 的数字相同（goodput 1.94）。
+- **INT8** 让每次前向从 1 个单位降到 0.55，单请求的 TPOT 跟着降到 0.55，吞吐提高到 1.7～1.8 倍；可系统仍然严重过载，goodput 只从 0.05 涨到 0.09、从 0.03 涨到 0.10。
+- **投机**把前向次数减少了约 9%（794 → 723）：一次只跑一个请求时，一次前向多验证 3 个位置不多花时间，接受一个算一个。
+- **分页 + 前缀缓存**在通用请求流上什么都没变（只是 KV 平均占用从 64 降到 25）；在系统提示词请求流上，每个请求省下 24 个 token 的 prefill，TTFT 中位只从 335.5 降到 318.6。只有一个请求在跑，省下来的显存没人用；省下的 prefill 不到一个请求总时间的十分之一。
+
+单看这一组，排序是：连续批远远第一，INT8 第二，投机和前缀缓存可有可无。
+
+## 5. 全部打开，再一次去掉一项
+
+“一次只打开一项”回答的是“在什么都没有的系统上，这一项值多少”。可部署时其他几项已经开着，真正要问的是“在全部打开的系统上去掉这一项，会损失多少”。全部打开是：连续批（最多 12 个）、分块 prefill（额度 16 个 token）、分页（块大小 8）、前缀缓存、INT8 权重、投机（γ=3）。
+
+<<< @/public/tinyllm/code/inference-optimization.py#leave-one-out
+
+```text
+【通用】
+  全部打开       TTFT 中位  20.2  TPOT 中位 0.97  最长卡顿 1.27  吞吐  8.31  goodput  4.86 [ 3.66,  6.37]  KV 平均 230  前向 106
+  去掉连续批      TTFT 中位 199.3  TPOT 中位 0.55  最长卡顿 0.55  吞吐  1.89  goodput  0.10 [ 0.09,  0.11]  KV 平均  25  前向 744
+  去掉分块 prefill TTFT 中位  18.2  TPOT 中位 1.27  最长卡顿 5.46  吞吐  8.34  goodput  4.71 [ 3.81,  6.42]  KV 平均 246  前向  80
+  去掉分页       TTFT 中位  21.8  TPOT 中位 0.78  最长卡顿 1.15  吞吐  8.26  goodput  4.17 [ 3.64,  4.99]  KV 平均 464  前向 118
+  去掉前缀缓存     TTFT 中位  20.2  TPOT 中位 0.97  最长卡顿 1.27  吞吐  8.31  goodput  4.86 [ 3.66,  6.37]  KV 平均 230  前向 106
+  去掉 INT8    TTFT 中位  20.5  TPOT 中位 0.99  最长卡顿 1.17  吞吐  7.56  goodput  4.33 [ 3.49,  5.52]  KV 平均 220  前向 105
+  去掉投机       TTFT 中位  16.3  TPOT 中位 0.97  最长卡顿 1.00  吞吐  8.81  goodput  5.87 [ 5.01,  6.87]  KV 平均 237  前向 106
+【系统提示词】
+  全部打开       TTFT 中位   8.0  TPOT 中位 0.90  最长卡顿 1.10  吞吐 10.12  goodput  9.75 [ 8.66, 10.46]  KV 平均 192  前向  76
+  去掉连续批      TTFT 中位 165.9  TPOT 中位 0.55  最长卡顿 0.55  吞吐  1.83  goodput  0.12 [ 0.10,  0.15]  KV 平均  41  前向 650
+  去掉分块 prefill TTFT 中位   6.4  TPOT 中位 0.96  最长卡顿 1.77  吞吐 10.34  goodput 10.34 [10.16, 10.68]  KV 平均 189  前向  72
+  去掉分页       TTFT 中位  39.0  TPOT 中位 1.00  最长卡顿 1.00  吞吐  5.35  goodput  1.66 [ 1.58,  1.75]  KV 平均 474  前向 130
+  去掉前缀缓存     TTFT 中位  39.0  TPOT 中位 1.00  最长卡顿 1.00  吞吐  5.35  goodput  1.66 [ 1.58,  1.75]  KV 平均 381  前向 130
+  去掉 INT8    TTFT 中位   9.4  TPOT 中位 1.00  最长卡顿 1.15  吞吐  8.72  goodput  7.90 [ 5.78,  9.29]  KV 平均 189  前向  75
+  去掉投机       TTFT 中位   6.5  TPOT 中位 0.85  最长卡顿 1.00  吞吐 10.79  goodput 10.79 [10.28, 11.27]  KV 平均 190  前向  76
+投机的接受率（全部打开时）：通用 34%（起草 201 个/流）  系统提示词 10%（起草 82 个/流）
+```
+
+先猜一下：在系统提示词请求流上，去掉哪一项损失最大？逐项看：
+
+- **前缀缓存从“可有可无”变成仅次于连续批的一项。** 单独打开时 goodput 只从 0.03 到 0.04；在全部打开的系统里去掉它，从 9.75 掉到 1.66，只剩六分之一。连续批让系统里同时有十来个请求、算力已经吃紧，这时每个请求省下 24 个 token 的 prefill，就是省下实实在在的算力（下面会看到，这里显存并不紧张，损失几乎全来自多算的 prefill）。在通用请求流上，请求之间没有共同的前缀，去掉它一个数都不变。
+- **投机从“小有帮助”变成“帮倒忙”。** 去掉它以后两份请求流都变好：通用 4.86 → 5.87，系统提示词 9.75 → 10.79，主要是 TTFT 变好（20.2 → 16.3、8.0 → 6.5），TPOT 几乎没变。“在已有文本里查”多数时候查不到，平均每次前向只有一两个草稿，前向的 token 数没怎么变多；问题出在额度上：decode 行连同草稿先排，草稿占掉了 16 个 token 的额度里本该给提示词的份，新请求的提示词送得更慢。而草稿的接受率只有 34% 和 10%，换来的 decode 加速抵不上。一次只跑一个请求时没有这个问题，额度和算力都是空着的。这和第 31、32 章的提醒是同一件事：投机多送的 token，在系统忙的时候都要和别人抢。
+- **INT8 两边都是正的**：通用 4.33 → 4.86，系统提示词 7.90 → 9.75，绝对值上比单独打开时（+0.04、+0.07）大得多。批里 token 不多的那些步（decode 为主）花的时间正是“读一遍权重”，INT8 把这一项降到了 0.55。
+- **去掉分页**在通用请求流上 goodput 从 4.86 掉到 4.17，KV 平均占用从 230 涨到 464，显存又被按上限预留占满了。在系统提示词请求流上，“去掉分页”和“去掉前缀缓存”两行完全相同，这不是笔误：块大小等于 64 时没有一块能写满，前缀缓存也就跟着失效了，这一行其实是“分页和前缀缓存都去掉”；而两行的调度一模一样，是因为此时卡住系统的是算力，不是显存：约九成的前向都用满了 16 个 token 的额度，同时在跑的请求都到了 12 个的上限，块池最多用到四百六七十个位置、从没抢占过。多出来的显存放不进更多请求，对时间也就没有影响。
+- **分块 prefill（额度 16）好坏参半**：通用请求流上去掉它 goodput 略降（4.86 → 4.71），最长卡顿从 1.27 涨到 5.46；系统提示词请求流上去掉它反而略好（9.75 → 10.34）。第 32 章说过，分块的额度要明显大于同时在 decode 的请求数，这里最多 12 个请求在 decode，额度 16 只给提示词留了 4 个，提示词送得太慢。
+- **连续批**仍然是地基：去掉它，两份请求流都回到 0.1 左右。
+
+![两份过载请求流上的 goodput（对数坐标）：上面一组是单独打开一项，只有连续批有数量级的提升；中间一组是全部打开再去掉一项，去掉连续批、分页、前缀缓存损失最大，去掉投机反而变好；最下面是本章的选择](/tinyllm/figures/io-ablation.svg)
+
+怎么读这张图：每根柱子是 3 份请求流的平均 goodput，横线是范围，横轴是对数坐标。上面一组（蓝色）都和灰色的基线比，中间一组（橙色）都和绿色的“全部打开”比。同一项优化在两组里的位置很不一样：前缀缓存在上面一组几乎和基线一样长，在中间一组却是右图最短的之一；投机在上面一组和基线差不多，在中间一组却比“全部打开”还长。
+
+所以这几项的收益不能相加，也不能用“单独打开”的排序来决定开哪几项。同一项优化值多少，取决于其他几项开没开：连续批让前缀缓存和 INT8 变值钱，让投机变成负担。
+
+## 6. 本章的选择
+
+根据上面两张表，去掉投机，分块的额度从 16 放宽到 32：
+
+<<< @/public/tinyllm/code/inference-optimization.py#choice
+
+```text
+【通用】
+  本章的选择      TTFT 中位  15.8  TPOT 中位 1.13  最长卡顿 2.00  吞吐  8.73  goodput  6.14 [ 4.80,  6.89]  KV 平均 243  前向  92
+【系统提示词】
+  本章的选择      TTFT 中位   5.0  TPOT 中位 0.87  最长卡顿 1.73  吞吐 11.02  goodput 11.02 [10.70, 11.52]  KV 平均 185  前向  74
+```
+
+和“全部打开”比，goodput 从 4.86 到 6.14、从 9.75 到 11.02。和基线比是一百倍以上，不过基线 40 个请求里只有一两个达标，这个倍数主要说明基线完全跟不上，不宜当成精确的加速比。要说清楚的是，这个配置是看着同样这几份请求流选出来的，没有留出单独的请求流来验证；额度 16、32 和不分块之间的差别也都在 3 份请求流的范围之内。换一份负载，应该重新做一遍第 4、5 节的对照，而不是照搬这一行。
+
+本机的墙钟时间（处理完种子 0 的一份请求流的 CPU 时间，与成本模型无关）也是同一个方向：连续批、全部打开和本章的选择都在 0.2 秒左右，基线约 0.8 秒；单开投机约 0.7 秒，几乎没省。INT8 在这里是假量化，CPU 上不会变快，所以墙钟时间里看不到它的收益。
+
+## 7. 多个实例：请求发给谁
+
+一个实例忙不过来，就开几个一样的实例，前面放一个**路由器**决定每个请求发给谁。有了前缀缓存以后，“发给谁”会影响命中：多轮对话的下一轮发回上一轮的那个实例，才能用上它留着的块；发到别处，就要从头 prefill。比较四种路由：
+
+- **轮询**：一个接一个轮着发；
+- **最少负载**：发给排队加正在跑的请求最少的实例；
+- **前缀优先**：发给缓存里能命中最长前缀的实例，一样长时选最闲的；
+- **前缀优先 + 负载上限**：命中最长的那个实例如果比最闲的多排了超过 4 个请求，就改发最闲的。
+
+两份负载：48 段多轮对话（第 33 章的多轮对话，放大到平均每 0.5 个单位开始一段）；所有请求共用同一段系统提示词的“热门前缀”（把三份系统提示词请求流合在一起，平均每 0.25 个单位到达一个）。4 个实例，每个都是本章的选择，KV 显存各 512 个位置。种子 0 真跑模型并检查输出，种子 1、2 只记账。
+
+<<< @/public/tinyllm/code/inference-optimization.py#route-workloads
+
+<<< @/public/tinyllm/code/inference-optimization.py#routers
+
+<<< @/public/tinyllm/code/inference-optimization.py#route-compare
+
+```text
+【多轮对话】
+  轮询         命中  10%  TTFT 中位  3.94  P90   8.87  goodput  6.28 [ 5.63,  6.92]  最忙的实例干的活是平均的 1.08 倍
+  最少负载       命中  15%  TTFT 中位  3.96  P90   8.58  goodput  7.83 [ 7.11,  9.04]  最忙的实例干的活是平均的 1.06 倍
+  前缀优先       命中  50%  TTFT 中位  1.73  P90   3.74  goodput 11.59 [ 9.92, 12.51]  最忙的实例干的活是平均的 1.12 倍
+  前缀优先 + 负载上限 命中  48%  TTFT 中位  1.90  P90   4.31  goodput 11.69 [ 9.86, 12.61]  最忙的实例干的活是平均的 1.08 倍
+【热门前缀】
+  轮询         命中  78%  TTFT 中位  2.30  P90   8.04  goodput 41.79 [41.12, 42.84]  最忙的实例干的活是平均的 1.01 倍
+  最少负载       命中  78%  TTFT 中位  2.30  P90   7.73  goodput 40.09 [39.87, 40.48]  最忙的实例干的活是平均的 1.06 倍
+  前缀优先       命中  80%  TTFT 中位 62.29  P90 112.34  goodput  2.37 [ 2.23,  2.50]  最忙的实例干的活是平均的 4.00 倍
+  前缀优先 + 负载上限 命中  78%  TTFT 中位  3.36  P90   8.59  goodput 40.13 [39.62, 41.11]  最忙的实例干的活是平均的 1.06 倍
+```
+
+- **多轮对话：前缀优先把命中率从 10% 提到 50%，goodput 从 6.3 提到 11.6。** 轮询和最少负载不管上一轮在哪，下一轮有四分之三的机会落到别的实例上，前面几轮的块就用不上。命中 50% 和第 33 章单实例、显存充足时多轮对话的命中率上限（53%，那份对话流更小）在同一水平。
+- **热门前缀：只看前缀会把所有请求都发给同一个实例。** 第一个请求落在某个实例上，它就有了这段系统提示词，之后每个请求在它那里都命中最长，于是全部发过去：最忙的实例干了平均 4 倍的活（另外三个闲着），goodput 从约 40 掉到 2.4。热门前缀其实每个实例都只要算一次，轮询下命中率也有 78%。
+- **加上负载上限，两种负载都不吃亏**：多轮对话上和前缀优先几乎一样（11.7），热门前缀上回到 40.1。真实系统里的前缀感知路由都有类似的平衡项，例如 SGLang 的路由器（现在叫 [SGLang Model Gateway](https://docs.sglang.io/docs/advanced_features/sgl_model_gateway)）的 cache-aware 策略：各实例的负载差距同时超过一个绝对阈值和一个相对阈值（`--balance-abs-threshold`、`--balance-rel-threshold`）时，改发给排队最短的实例。
+
+![左：多轮对话上四种路由的 goodput，前缀优先和加了负载上限的版本约 11.6，轮询约 6.3；右：热门前缀上，前缀优先只有约 2.4，最忙实例负载 4 倍，其余三种约 40](/tinyllm/figures/io-routing.svg)
+
+怎么读这张图：柱子上的三行字依次是 goodput、前缀命中率、最忙的实例干的活是平均的几倍。左图里命中率决定了高低；右图里四种路由的命中率都差不多，决定高低的是最后一行：负载一旦集中到一个实例上，命中率再高也没用。
+
+再往外还有两件事，本章只说概念，不做实验：
+
+- **一张卡放不下时的并行。** 张量并行把一个线性层按列或按行切到几张卡上，每层多一两次 all-reduce，[第 25 章](./large-model-stability.md)已经用小矩阵模拟过；流水线并行把不同的层放在不同的卡上，要用多个微批填满流水线。推理和训练的区别是 decode 每步只有几个 token，计算很少，通信占的比例更大，所以张量并行一般只在同一台机器内、用高速互连的几张卡之间做。
+- **prefill 和 decode 分开部署（PD 分离）。** 第 32 章的分块 prefill 让两者在同一批 GPU 上少互相干扰；[DistServe](https://arxiv.org/abs/2401.09670) 走另一条路，把它们放到不同的机器上，各自按 TTFT 和 TPOT 的目标配资源，代价是 prefill 算出的 KV cache 要传给 decode 的机器。第 33 章第 8 节那张“搬回来还是重算”的表，也是 PD 分离要算的账：KV 字节数越少（GQA、量化），传输越划算。
+
+## 8. 包成服务
+
+最后把本章的选择包成一个 OpenAI 兼容的 HTTP 接口：`POST /v1/chat/completions`（普通和流式两种返回）、`GET /metrics`（指标）、`GET /health`（健康检查）。只用 Python 标准库，任何环境都能跑；生产环境一般用 FastAPI + uvicorn 这样的异步框架，结构是一样的（见章末“在真实模型里”）。
+
+![推理服务的结构：客户端的请求由 HTTP 线程解析、分词后放进收件箱；唯一的引擎线程取出新请求交给 Replica 一步一步跑，把新 token 放进各请求自己的队列；HTTP 线程从队列里取 token，攒成完整的字后写回](/tinyllm/figures/io-server.svg)
+
+怎么读这张图：从左往右是请求的路，从右往左是结果的路。关键是中间那两个队列：HTTP 线程只往收件箱里放请求、从自己的队列里取 token，从不碰模型；模型和块池只在引擎线程里动，不会出现两个请求同时改块池的情况；唯一要加锁的地方是“检查还收不收请求”和“放进收件箱”这两步，不能让退出插在它们中间，否则一个请求会落进已经停掉的引擎里，永远等不到结果。下面红框是优雅退出的三步。
+
+几个要点：
+
+- **一个线程独占模型。** 引擎线程如果出错，就不再收请求、让 `/health` 返回 503，并结束手上的请求，免得客户端一直挂着。 所有 HTTP 线程共享一个引擎线程，连续批正是在这里发生的：不管同时来多少个连接，引擎线程每一步都把它们排进同一次前向。
+- **流式返回用 SSE**（Server-Sent Events）：响应头是 `text/event-stream`，每出一段文字写一行 `data: {json}` 再空一行，最后写 `data: [DONE]`。
+- **一个汉字可能拆在两个 token 里。** 字节级 BPE 的一个 token 可能只是一个汉字 UTF-8 编码的一部分，直接解码会得到“�”。tokenizers 的 `DecodeStream` 会把不完整的字节攒着，凑成完整的字再吐出来。
+- **本模型没有对话模板**，`messages` 里的内容直接接起来当提示词；真正的对话模型要先套对话模板（[第 44 章](./llm-agent-interaction.md)）。
+
+<<< @/public/tinyllm/code/inference-optimization.py#server
+
+验证：8 个请求同时发出，一半普通、一半流式，经 HTTP 拿到的文本要和本地直接贪心生成的完全相同；然后读一次 `/metrics`：
+
+<<< @/public/tinyllm/code/inference-optimization.py#server-test
+
+```text
+8 个并发请求（4 个普通、4 个流式）：全部 200，8/8 与本地直接贪心生成的文本相同
+流式请求 1 收到 8 条事件，最后一条是 [DONE]
+请求 0 的回答：宫锦三十段，山中一水开。
+—— GET /metrics ——
+tinyllm_requests_total{status="ok"} 8
+tinyllm_requests_total{status="rejected"} 0
+tinyllm_generated_tokens_total 56
+tinyllm_running_requests 0
+tinyllm_waiting_requests 0
+tinyllm_kv_blocks_used 0
+tinyllm_kv_blocks_cached 8
+tinyllm_kv_blocks_total 64
+tinyllm_prefix_hit_tokens_total 0
+tinyllm_prefill_tokens_total 44
+tinyllm_preemptions_total 0
+```
+
+8 个请求一共只生成了 56 个 token：模型写完一句就输出 `<eos>`，服务遇到 `<eos>` 就停，不会写满 `max_tokens`。请求都结束以后，在用的块是 0，有 8 块是“留着的”（第 33 章的 `idle`），等下一个开头相同的请求来命中。`/metrics` 用的是 Prometheus 的文本格式，监控系统定时来抓。上面省略了 TTFT 的两行，它们是墙钟时间，本机上中位约 10 ms。
+
+指标要分层看，每一层回答一个问题：请求层（多少个成功、多少个被拒、TTFT 和 TPOT 的分位数）说用户感受到了什么；调度层（排队和正在跑的请求数、抢占次数）说瓶颈在哪里；显存层（在用、留着、总共的块数，前缀命中的 token）说 KV cache 够不够、缓存有没有用上。比如 TTFT 变差时，先看排队的请求数是不是在涨，再看抢占次数和块的占用，就能分清是算力不够、显存不够还是请求突然变多。
+
+最后是**优雅退出**：服务要重启或下线时，不能把正在生成的请求掐断。做法分三步：先不收新请求（直接回 503，`/health` 也变成 503，前面的负载均衡器看到后就不再往这里发）；引擎线程把手上的请求跑完；最后关掉 HTTP 服务。
+
+<<< @/public/tinyllm/code/inference-optimization.py#shutdown
+
+```text
+退出时正在跑的请求：200，生成了 7 个 token，finish_reason=stop
+退出开始后才到的请求：503 服务正在退出，请重试其他实例
+```
+
+自己试的时候，运行 `python inference-optimization.py --serve`，在另一个终端里用 curl 调用（示意，输出因机器而异）：
+
+```sh
+curl -N http://127.0.0.1:8000/v1/chat/completions -H "Content-Type: application/json" \
+  -d '{"messages":[{"role":"user","content":"床前明月光，"}],"max_tokens":24,"stream":true}'
+```
+
+因为接口和 OpenAI 的一样，`openai` 这类客户端库把 `base_url` 指到 `http://127.0.0.1:8000/v1` 也能直接用。
+
+## 动手实验
+
+1. **只在批小时投机。** 改 `Replica.step`：正在跑的请求不超过 2 个时才起草。在第 5 节“全部打开”的配置上比较 goodput，能不能既保住“单独打开”时那点收益，又不在批大时帮倒忙？
+2. **换一个负载。** 把到达放慢到每 2 个单位一个请求（`SCALE = 2.0`，第 32 章的重负载），重做第 4、5 节。哪几项的排序变了？为什么负载轻的时候 INT8 和投机都更值钱？
+3. **路由的负载上限。** 把 `prefix_aware(slack=4)` 的 4 改成 1、16，在两份路由负载上比较。上限太紧、太松各会怎样？
+4. **流式取消。** 客户端在流式返回中途断开时，服务现在仍会把这个请求生成完。改成写 SSE 失败时通知引擎线程，把这个请求从 `running` 里拿掉、还掉它的块。
+
+<!-- real-model:start -->
+
+## 在真实模型里
+
+transformers 自带一个 OpenAI 兼容的服务：`transformers serve`，用 FastAPI + uvicorn 写成，加 `--continuous-batching` 才走第 32、33 章的连续批和分页缓存；它的结构和本章的小服务一一对应。下表的链接都指向 Hugging Face transformers 的固定版本 `v5.21`，精确到行。读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。
+
+| 本章的零件 | 真实代码 | 对照要点 |
+| --- | --- | --- |
+| 命令行入口 | [`Serve`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serve.py#L41-L247) | `continuous_batching` 默认 False（一次一个请求地 `generate`），打开后 `--cb-block-size`、`--cb-num-blocks`、`--cb-max-batch-tokens`、`--cb-max-memory-percent` 等拼成 `ContinuousBatchingConfig`，就是本章 Replica 的那几个开关 |
+| 路由与健康检查 | [`build_server`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serving/server.py#L45-L156) | `/v1/chat/completions`、`/v1/completions`、`/v1/models`、`/health` 等；连续批的后台线程死掉时 `/health` 返回 503，和本章退出时让健康检查变 503 是同一个用意 |
+| 独占模型的线程 | [`InferenceThread`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serving/utils.py#L648-L690) | 所有推理都放在同一个线程里跑，注释写的原因是 `torch.compile` 的 CUDA graph 状态存在线程本地；本章的引擎线程也是一个线程独占模型 |
+| 连续批的流式请求 | [`CBGenerateManager.generate_streaming`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serving/utils.py#L879-L933) | `add_request(..., streaming=True)` 交给连续批的后台循环，再给这个请求注册一个回调，把每一步的输出放进它自己的 `asyncio.Queue`，对应本章每个请求的 `queue.Queue` |
+| 边出 token 边解码 | [`CBStreamer`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serving/utils.py#L555-L630) | 连续批的结果交给它，用 tokenizers 的 `DecodeStream` 逐个 token 解码，半个字先攒着、凑成完整的 UTF-8 再吐出来，和本章流式返回的写法相同 |
+| SSE 格式 | [`BaseHandler.chunk_to_sse`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serving/utils.py#L1117-L1121) | 每一段写成 `data: {json}` 再空一行，客户端按行读 |
+| 退出 | [`Serve.kill_server`](https://github.com/huggingface/transformers/blob/v5.21/src/transformers/cli/serve.py#L241-L247) | 先停生成管理器和模型，再让 uvicorn `should_exit`；生产里还要先把实例从负载均衡里摘掉，等手上的请求跑完（本章第 8 节的做法） |
+
+想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。
+
+<!-- real-model:end -->
+
+## 本章结论：TinyLLM 的选择 {#tinyllm-choice}
+
+TinyLLM 的推理服务用<strong>本章的选择</strong>：连续批（同时最多 12 个请求）、分块 prefill（每次前向最多 32 个新 token，额度大于并发数）、分页（块大小 8）、前缀缓存（LRU）、INT8 按通道量化 Block 里的线性层（嵌入表保留 FP32）；批处理时不开投机解码。多个实例前面用“前缀优先 + 负载上限”的路由。服务是一个线程独占模型、HTTP 线程只收发的结构，提供 OpenAI 兼容的 `/v1/chat/completions`（支持 SSE 流式）、`/metrics` 和 `/health`，退出时先拒新请求、跑完手上的再关。任何一项优化都要先满足“输出和对应模型单独贪心生成的逐 token 相同”，量化另看验证损失。
+
+为什么：两份过载请求流（各 3 个种子）上，单独打开时只有连续批有数量级的提升；全部打开再去掉一项时，去掉前缀缓存让系统提示词请求流的 goodput 从 9.75 掉到 1.66，去掉 INT8 两份都变差，去掉投机两份都变好（4.86 → 5.87、9.75 → 10.79）：批处理下草稿挤掉了分给提示词的额度，接受率又只有 34% 和 10%。本章的选择在两份请求流上的 goodput 是 6.14 和 11.02。多实例时，前缀优先把多轮对话的命中率从 10% 提到 50%，但遇到热门前缀会把全部请求压到一个实例上，goodput 从约 40 掉到 2.4，加负载上限后恢复。服务经 HTTP 返回的 8 个并发请求和本地直接生成的文本完全相同。
+
+实验边界：时间用的是成本模型，INT8 只按权重字节数折算，没有算反量化的开销，CPU 上是假量化；成本模型不收 KV 读取和注意力的代价，序列最长 64，注意力内核的差别看不到；“本章的选择”是在同样这几份请求流上挑出来的，没有留出验证，分块额度 16、32 和不分块之间的差别在请求流之间的波动范围内；投机只试了“在已有文本里查”，没有试蒸馏的草稿模型；路由的种子 1、2 只记账，而且模拟里路由器看到的实例状态可能比请求到达的时刻超前一步；INT8 只量化了 Block 里的线性层；服务只在本机用 8 个并发请求验证过，没有压测，也没有处理客户端中途断开，`/metrics` 读状态时不加锁，读数可能差一步。什么情况下要换：负载轻、并发低（比如本地单用户）时，投机解码重新值得打开；嵌入表占比小的大模型上，INT8 的收益更大，还可以试 INT4；多机部署时再考虑张量并行和 PD 分离，并在自己的硬件上实测，不要直接用本章成本模型下的数字。
+
+::: warning 常见误区
+- **每项优化的收益可以相加。** 本章的两组对照给出的排序完全不同：前缀缓存单独打开几乎没用，放进全栈里是损失最大的几项之一；投机单独打开略有收益，放进全栈里帮倒忙。
+- **投机解码总能加速。** 它的前提是算力有富余，多验证几个位置几乎不要钱；系统忙的时候，草稿要和别的请求抢同一份额度和算力，接受率不高时就是净损失。
+- **量化后的输出应该和原模型一样。** 量化改变了模型本身，贪心输出会在分数接近的位置分岔（本章 240 个请求里有 16 个）；要看的是验证损失和任务质量，不能用“输出不变”来要求它。
+- **前缀感知路由总比轮询好。** 它在多轮对话上好得多，可遇到所有请求都共用的热门前缀，会把负载全压到一个实例上；必须配一个负载上限。
+- **服务就是在 HTTP 处理函数里调一下模型。** 那样每个请求各跑各的，没有批处理，多个线程还会同时碰模型和 KV cache；要让一个引擎线程独占模型，HTTP 线程只负责收发。
+:::
+
+## 检查理解
+
+1. 在系统提示词请求流上，“前缀缓存”单独打开时 goodput 只从 0.03 到 0.04，在全部打开的系统里去掉它却从 9.75 掉到 1.66。用一两句话解释这个差别。
+
+   <details><summary>参考答案</summary>
+
+   单独打开时一次只跑一个请求，省下的 24 个 token 的 prefill（约 1 个单位）和一个请求约 20 个单位的总时间比微不足道。全部打开时连续批让十来个请求同时跑、系统已经算满，省下的 prefill 就是省下的算力，直接变成更短的排队；这要有“很多请求同时在跑、算力吃紧”才成立。
+
+   </details>
+
+2. 假设全部打开时，一步里有 12 个请求在 decode，而且每个请求都起草了 3 个 token（这是上限，实测平均每次前向只有一两个草稿）。按本章的成本模型（INT8，$w=0.55$，K=16），不投机时这一步花多少个单位？投机时呢？按 34% 的接受率，每单位时间产出多少个 token？
+
+   <details><summary>参考答案</summary>
+
+   不投机：12 个 token，$\max(0.55, 12/16) = 0.75$ 个单位，产出 12 个，每单位 16 个。投机：每个请求送 1 + 3 = 4 个，共 48 个，花 $48/16 = 3$ 个单位。34% 是“被接受的草稿 ÷ 起草的草稿”，每个请求 3 个草稿平均接受约 1 个，加上自己的 1 个，共产出约 24 个 token，每单位约 8 个，只有不投机时的一半。而且这一步把额度全占了，提示词一个也送不进去。
+
+   </details>
+
+3. 为什么本章把 INT8 写成“每次前向读权重的量是原来的 0.55”，而不是四分之一？对一个 70B 的模型（从 FP16 量化到 INT8），这个数大约是多少？
+
+   <details><summary>参考答案</summary>
+
+   TinyLLM 的嵌入表（也是输出层）有 524,288 个参数，占全部参数的 40%，本章没有量化它（第 30 章测出它对量化最敏感）；只有 Block 里的线性层从 4 字节变成 1 字节（加上每行一个缩放因子）。70B 模型的嵌入表和输出层一共只占百分之几，从 FP16 到 INT8 大约就是 0.5 多一点。
+
+   </details>
+
+4. 热门前缀负载上，轮询的命中率是 78%，前缀优先是 80%，为什么两者的 goodput 差了十几倍？
+
+   <details><summary>参考答案</summary>
+
+   所有请求共用同一段系统提示词，每个实例只要算过一次就一直能命中，所以轮询下命中率也很高，前缀优先只多了 2 个百分点。可是前缀优先把所有请求都发给了第一个缓存了这段提示词的实例，它干了平均 4 倍的活，另外三个实例闲着；请求在那一个实例上排长队，TTFT 中位涨到 62，几乎都不达标。
+
+   </details>
+
+5. 服务退出时，为什么要让 `/health` 也返回 503，而不是只拒绝新的 `/v1/chat/completions` 请求？
+
+   <details><summary>参考答案</summary>
+
+   前面的负载均衡器靠健康检查决定往哪些实例发请求。`/health` 还返回 200 的话，它会继续把新请求发过来，每一个都被拒绝，用户看到的就是一连串错误；返回 503 后，它把这个实例从列表里摘掉，新请求发往别的实例，这个实例安心跑完手上的请求再退出。
+
+   </details>
 
 ## 参考资料
 
-- [Efficient Memory Management for Large Language Model Serving with PagedAttention，Kwon 等，2023](https://arxiv.org/abs/2309.06180)
-- [Orca: A Distributed Serving System for Transformer-Based Generative Models，Yu 等，2022](https://www.usenix.org/conference/osdi22/presentation/yu)（迭代级调度，连续批处理的来源）
+- [Orca：按迭代调度与选择性批处理，Yu 等，OSDI 2022](https://www.usenix.org/conference/osdi22/presentation/yu) · [vLLM / PagedAttention，Kwon 等，SOSP 2023](https://arxiv.org/abs/2309.06180)
 - [Fast Inference from Transformers via Speculative Decoding，Leviathan 等，2023](https://arxiv.org/abs/2211.17192)
-- [DistServe：把 prefill 与 decode 拆到不同机器，Zhong 等，2024](https://arxiv.org/abs/2401.09670)
-- [PyTorch：torch.compile 教程](https://docs.pytorch.org/tutorials/intermediate/torch_compile_tutorial.html)
-- [vLLM 文档](https://docs.vllm.ai/)（生产系统的对照实现）
+- [SGLang：RadixAttention 与缓存感知的调度，Zheng 等，2023](https://arxiv.org/abs/2312.07104) · [DistServe：prefill 与 decode 分离部署，Zhong 等，OSDI 2024](https://arxiv.org/abs/2401.09670)
+- [MDN：Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events) · [Prometheus：文本格式](https://prometheus.io/docs/instrumenting/exposition_formats/)
+- [OpenAI API：Chat Completions](https://platform.openai.com/docs/api-reference/chat) · [vLLM 文档](https://docs.vllm.ai/)（生产系统的对照实现）
+
+第六部分到这里结束：模型训好以后，怎样让它又快又省地服务很多人。接下来回到训练，看预训练的最后一段：学习率衰减时换上一小份高质量数据，基础模型会怎样变化。[第 35 章：退火与数据配比](./annealing.md)。

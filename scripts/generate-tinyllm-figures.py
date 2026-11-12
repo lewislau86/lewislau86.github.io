@@ -4392,6 +4392,121 @@ def kv_prefix_eviction():
               f"右：多轮对话上四种淘汰策略的命中率，阴影是 3 份请求流的范围。显存 768 时三种保留策略都是 {lru[-1]:.0%}；"
               f"显存 512 时 LRU {lru[4]:.0%}、FIFO {fifo[4]:.0%}，差得最多；显存太紧（256）时几种保留策略都留不住多少，差别不大；不保留始终是 0。")
 
+# ---------- 第 34 章：推理优化 ----------
+
+def _io_log():
+    src = DATA / "tinyllm-inference-optimization-log.json"
+    if not src.exists():
+        print("skip inference-optimization figures: run scripts/build-tinyllm-code.py inference-optimization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def io_ablation():
+    """两份请求流上：单独打开每一项、全部打开再去掉一项、本章的选择，goodput 的平均和范围（对数坐标）。"""
+    log = _io_log()
+    if log is None:
+        return
+    ab = log["ablation"]
+    rows = [("基线", "alone", "基线", GRAY), ("+ 连续批", "alone", "连续批", BLUE), ("+ 分页与前缀缓存", "alone", "分页 + 前缀缓存", BLUE),
+            ("+ INT8 权重", "alone", "INT8 权重", BLUE), ("+ 投机（γ=3）", "alone", "投机（γ=3）", BLUE), None,
+            ("全部打开", "loo", "全部打开", TEAL), ("− 连续批", "loo", "去掉连续批", ORANGE), ("− 分块 prefill", "loo", "去掉分块 prefill", ORANGE),
+            ("− 分页", "loo", "去掉分页", ORANGE), ("− 前缀缓存", "loo", "去掉前缀缓存", ORANGE), ("− INT8", "loo", "去掉 INT8", ORANGE),
+            ("− 投机", "loo", "去掉投机", ORANGE), None, ("本章的选择", "choice", None, PURPLE)]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.6), layout="constrained", sharey=True)
+    for ax, w in zip(axes, ["通用", "系统提示词"]):
+        labels, y = [], 0
+        for row in rows:
+            if row is None:
+                y += 0.6
+                continue
+            name, kind, key, color = row
+            data = ab[f"choice | {w}"] if kind == "choice" else ab[f"{kind} | {w} | {key}"]
+            g = [r["goodput"] for r in data]
+            m = sum(g) / len(g)
+            ax.barh(y, m, color=color, height=0.72)
+            ax.plot([min(g), max(g)], [y, y], color=INK, lw=1.2)
+            ax.text(max(max(g), m) * 1.12, y, f"{m:.2f}", va="center", fontsize=9.5)
+            labels.append((y, name))
+            y += 1
+        ax.set_xscale("log")
+        ax.set_xlim(0.02, 40)
+        ax.set_title(f"{w}请求流（过载，3 份）", fontsize=12)
+        ax.set_xlabel("goodput（达标请求的 token / 单位，对数坐标）")
+        ax.grid(alpha=0.2, axis="x", which="both")
+    axes[0].set_yticks([p for p, _ in labels], [n for _, n in labels])
+    axes[0].invert_yaxis()
+    full = {w: sum(r["goodput"] for r in ab[f"loo | {w} | 全部打开"]) / 3 for w in ["通用", "系统提示词"]}
+    save_plot(fig, "io-ablation.svg", "逐项对照：单独打开与去掉一项",
+              "两份过载请求流上的 goodput（对数坐标，横线是 3 份请求流的范围）。上面一组是在基线上单独打开一项：连续批让 goodput 涨了十几到四十几倍，INT8 涨到 2～3 倍多，"
+              "分页与前缀缓存、投机几乎不动。中间一组是全部打开（通用 "
+              f"{full['通用']:.2f}、系统提示词 {full['系统提示词']:.2f}）再一次去掉一项：去掉连续批掉到 0.1 左右；系统提示词请求流上去掉分页或前缀缓存都掉到 1.7；"
+              "去掉 INT8 两份都变差；去掉投机两份都变好。最下面是去掉投机、分块额度放宽到 32 的本章选择。")
+
+
+def io_routing():
+    """4 个实例、四种路由：多轮对话与热门前缀两份负载上的 goodput、命中率和最忙实例的负载倍数。"""
+    log = _io_log()
+    if log is None:
+        return
+    rt = log["routing"]
+    names = ["轮询", "最少负载", "前缀优先", "前缀优先 + 负载上限"]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained")
+    for ax, w in zip(axes, ["多轮对话", "热门前缀"]):
+        for i, n in enumerate(names):
+            data = rt[f"{w} | {n}"]
+            g = [r["goodput"] for r in data]
+            m = sum(g) / 3
+            hit = sum(r["hit"] for r in data) / 3
+            imb = sum(r["imbalance"] for r in data) / 3
+            ax.bar(i, m, color=[GRAY, BLUE, ORANGE, TEAL][i], width=0.65)
+            ax.plot([i, i], [min(g), max(g)], color=INK, lw=1.2)
+            ax.annotate(f"{m:.1f}\n命中 {hit:.0%}\n最忙 {imb:.2f}×", (i, max(g)), xytext=(0, 4), textcoords="offset points",
+                        ha="center", va="bottom", fontsize=9.5)
+        ax.set_xticks(range(4), ["轮询", "最少负载", "前缀优先", "前缀优先\n+ 负载上限"])
+        ax.set_ylabel("goodput（3 份平均）")
+        ax.set_title(w, fontsize=12)
+        ax.margins(y=0.3)
+        ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "io-routing.svg", "多实例的路由",
+              "4 个实例、四种路由，柱子上标着 goodput、前缀命中率和最忙实例干的活是平均的几倍。左：多轮对话，前缀优先把下一轮发回上一轮的实例，"
+              "命中率从轮询的约 10% 升到约 50%，goodput 从约 6 升到约 12。右：所有请求共用一段系统提示词，前缀优先把全部请求都发给第一个实例，"
+              "最忙的实例干了平均 4 倍的活，goodput 只有约 2；加上负载上限后回到约 40，和轮询相当。")
+
+
+def io_server():
+    """本章服务的结构：HTTP 线程、收件箱、独占模型的引擎线程、每个请求自己的队列。"""
+    body = text(480, 34, "一个最小的推理服务：HTTP 线程不碰模型，引擎线程独占模型", 20, weight="bold")
+    body += cbox(30, 70, 190, 238, GRAY)
+    body += text(125, 96, "客户端", 15, GRAY, "bold")
+    for i, t in enumerate(["POST /v1/chat/completions", "  stream=false：一次返回", "  stream=true：SSE 逐段", "GET /metrics", "GET /health"]):
+        body += text(44, 128 + i * 30, t, 12.5, INK, anchor="start")
+    body += cbox(270, 70, 190, 238, BLUE)
+    body += text(365, 96, "HTTP 线程（每个连接一个）", 13.5, BLUE, "bold")
+    for i, t in enumerate(["解析 JSON、分词", "检查长度，退出中就回 503", "submit → 收件箱", "从自己的队列取 token", "DecodeStream 攒成整字", "写回 JSON 或 SSE"]):
+        body += text(365, 128 + i * 28, t, 12.5, INK)
+    body += arrow(222, 140, 266, 140, GRAY, 2)
+    body += arrow(266, 260, 222, 260, GRAY, 2)
+    body += cbox(510, 70, 140, 60, ORANGE)
+    body += text(580, 96, "收件箱", 14, ORANGE, "bold") + text(580, 116, "queue.Queue", 12, INK)
+    body += cbox(510, 248, 140, 60, ORANGE)
+    body += text(580, 274, "每个请求的队列", 13, ORANGE, "bold") + text(580, 294, "新 token / 结束", 12, INK)
+    body += arrow(462, 100, 506, 100, BLUE, 2)
+    body += arrow(506, 278, 462, 278, ORANGE, 2)
+    body += cbox(700, 70, 230, 238, TEAL)
+    body += text(815, 96, "引擎线程（只有一个）", 14, TEAL, "bold")
+    for i, t in enumerate(["取收件箱里的新请求", "Replica.step()：", "  抢占 / 放人 / 分块", "  一次前向（INT8 权重）", "  块池 + 前缀缓存", "把新 token 放进各自的队列"]):
+        body += text(716, 128 + i * 28, t, 12.5, INK, anchor="start")
+    body += arrow(652, 100, 696, 100, ORANGE, 2)
+    body += arrow(696, 278, 652, 278, TEAL, 2)
+    body += box(270, 336, 660, 70, "#ffffff", RED, width=1.6)
+    body += text(600, 360, "优雅退出：① accepting = False，新请求一律 503（/health 也变 503，负载均衡器把流量切走）", 12.5, RED)
+    body += text(600, 384, "② 引擎线程把收件箱和正在跑的请求都跑完　③ 线程结束，关掉 HTTP 服务", 12.5, RED)
+    svg("io-server.svg", "推理服务的结构",
+        "客户端发来的请求由 HTTP 线程解析、分词后放进收件箱；唯一的引擎线程取出新请求交给 Replica，一步一步跑（抢占、放人、分块、一次前向、块池和前缀缓存），"
+        "把每一步新出的 token 放进各请求自己的队列；HTTP 线程从队列里取 token，用 DecodeStream 攒成完整的字，按普通 JSON 或 SSE 流写回。"
+        "优雅退出时先拒绝新请求并让健康检查返回 503，再把手上的请求跑完，最后关掉服务。", 424, body)
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -5503,6 +5618,7 @@ def main():
                spec_round, spec_rejection, spec_gamma,
                batch_layouts, batch_timeline, batch_chunked, batch_tradeoff,
                kv_layouts, kv_sharing, kv_waste, kv_prefix_eviction,
+               io_ablation, io_routing, io_server,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,
