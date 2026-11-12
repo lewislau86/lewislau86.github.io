@@ -4187,6 +4187,211 @@ def batch_tradeoff():
               f"TPOT 中位从 {avg(1, 'tpot50'):.2f} 涨到 {avg(S[-1], 'tpot50'):.2f}；goodput 在 B=8 和 16 时最高（B=16 在 3 份请求流之间波动很大），B=32 时掉到 {avg(32, 'goodput'):.2f}。")
 
 
+# ---------- 第 33 章：KV 显存管理 ----------
+
+def _kv_log():
+    src = DATA / "tinyllm-kv-memory-log.json"
+    if not src.exists():
+        print("skip kv-memory figures: run scripts/build-tinyllm-code.py kv-memory to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kv_layouts():
+    """同样 3 个请求：按最大长度预留一整段，和按块表分页。示意，长度是举例。"""
+    reqs = [("A", 20, 30, BLUE, [7, 2, 12]), ("B", 9, 26, TEAL, [0, 15]), ("C", 37, 45, ORANGE, [4, 9, 18, 1, 21])]
+    body = text(480, 36, "同样 3 个请求的 K、V，两种放法", 21, weight="bold")
+    body += text(40, 80, "① 按上下文上限预留（第 32 章的槽位）", 16, INK, "bold", "start")
+    cell, x0, y0 = 8.6, 150, 96
+    for r, (name, written, final, color, _) in enumerate(reqs):
+        y = y0 + r * 24
+        body += text(x0 - 12, y + 13, f"请求 {name}：已写 {written}", 12.5, GRAY, anchor="end")
+        for c in range(64):
+            if c < written:
+                fill, stroke = color, color
+            elif c < final:
+                fill, stroke = SOFT[color], color
+            else:
+                fill, stroke = "#f1f5f9", "#cbd5e1"
+            body += f'<rect x="{x0 + c * cell:.1f}" y="{y}" width="{cell - 1.5:.1f}" height="16" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>'
+    written = sum(r[1] for r in reqs)
+    xr = x0 + 64 * cell + 16
+    body += text(xr, y0 + 8, "预留 3 × 64 = 192 个位置", 13.5, INK, anchor="start")
+    body += text(xr, y0 + 28, f"存着 K、V 的只有 {written} 个", 13.5, RED, "bold", "start")
+    body += text(xr, y0 + 48, "实心：已写；浅色：以后才会写", 12, GRAY, anchor="start")
+    body += text(xr, y0 + 66, "灰格：到请求结束都用不上", 12, GRAY, anchor="start")
+    # 下：分页
+    y1 = 196
+    body += text(40, y1, "② 分页（块大小 8）：每个请求一张块表，块按需从池子里拿", 16, INK, "bold", "start")
+    owner = {}
+    for name, written_, _, color, table in reqs:
+        for j, b in enumerate(table):
+            owner[b] = (name, color, min(8, written_ - j * 8))
+    for r, (name, written_, _, color, table) in enumerate(reqs):
+        y = y1 + 30 + r * 46
+        body += text(40, y + 20, f"请求 {name} 的块表", 13.5, color, "bold", "start")
+        for j, b in enumerate(table):
+            bx = 150 + j * 40
+            body += box(bx, y + 2, 36, 26, SOFT[color], color, width=1.5)
+            body += mtext(bx + 18, y + 20, str(b), 13, color, "bold")
+        body += text(150, y + 42, "逻辑块 0 1 2 …  →  物理块号", 11, GRAY, anchor="start") if r == 2 else ""
+    px, py, bw = 400, y1 + 24, 66
+    body += text(px + 4 * bw, py - 2, "物理块池（24 块，每块 8 个位置）", 13.5, INK, "bold")
+    for b in range(24):
+        bx, by = px + (b % 8) * bw, py + 12 + (b // 8) * 44
+        if b in owner:
+            name, color, filled = owner[b]
+            body += box(bx, by, bw - 6, 34, "#ffffff", color, width=1.6)
+            for c in range(8):
+                fill = color if c < filled else "#ffffff"
+                body += f'<rect x="{bx + 3 + c * 6.8:.1f}" y="{by + 15}" width="5.6" height="15" fill="{fill}" stroke="{color}" stroke-width="0.6"/>'
+            body += mtext(bx + 4, by + 12, f"#{b}", 10.5, color, "bold", "start") + text(bx + bw - 10, by + 12, name, 10.5, color, "bold", "end")
+        else:
+            body += box(bx, by, bw - 6, 34, "#f8fafc", "#cbd5e1", dash=True, width=1.2)
+            body += mtext(bx + 4, by + 12, f"#{b}", 10.5, GRAY, anchor="start")
+            body += text(bx + (bw - 6) / 2, by + 28, "空闲", 11, GRAY)
+    n_blocks = sum(len(r[4]) for r in reqs)
+    body += text(480, py + 160, f"分出去 {n_blocks} 块 = {n_blocks * 8} 个位置，存着 K、V 的 {written} 个：浪费只剩每个请求最后一块没写满的部分", 14, TEAL, "bold")
+    body += text(480, py + 184, "块在池子里不必连续；注意力按块表把块拼回来读，第 p 个位置在 table[p // 8] 的第 p % 8 格", 13, GRAY)
+    svg("kv-layouts.svg", "按上限预留与分页的 KV 布局",
+        f"示意：3 个请求分别已写 20、9、37 个位置。上：每个请求按上下文上限预留 64 个位置，共 192 个，存着 K、V 的只有 {written} 个，"
+        "其余有的以后才会写，有的到请求结束都用不上。下：分页，块大小 8，每个请求一张块表记录逻辑块放在哪个物理块，"
+        f"3 个请求一共拿了 {n_blocks} 块、{n_blocks * 8} 个位置，物理块在池子里不连续，空闲块留给别的请求。", py + 200, body)
+
+
+def kv_sharing():
+    """前缀共享（块级哈希链）和 fork 后的写时复制。示意，块号是举例。"""
+    body = text(480, 36, "共享块：引用计数决定能不能直接写", 21, weight="bold")
+    # 左：前缀共享
+    body += text(240, 74, "① 前缀共享：同一段系统提示词", 16, BLUE, "bold")
+    keys = ["k1 = hash(·, 第 0～7 个)", "k2 = hash(k1, 第 8～15 个)", "k3 = hash(k2, 第 16～23 个)"]
+    for j, k in enumerate(keys):
+        body += cbox(40, 92 + j * 40, 210, 30, BLUE)
+        body += text(145, 112 + j * 40, k, 12, INK)
+        body += arrow(252, 107 + j * 40, 296, 107 + j * 40, BLUE, 1.6)
+        body += box(300, 92 + j * 40, 90, 30, SOFT[BLUE], BLUE, width=1.6)
+        body += text(345, 112 + j * 40, f"块 #{[3, 8, 5][j]}  引用 2", 12, BLUE, "bold")
+    body += text(240, 228, "请求 A 的块表：[3, 8, 5, 11]", 13, INK)
+    body += text(240, 250, "请求 B 的块表：[3, 8, 5, 14]", 13, INK)
+    body += text(240, 278, "前 3 块只算一次、只存一份；各自的第 4 块不同", 12.5, GRAY)
+    body += text(240, 300, "键链着前一块的键：同一个键 = 同一段完整前缀", 12.5, GRAY)
+    body += text(240, 322, "没写满的块不登记，也不会被别人命中", 12.5, GRAY)
+    body += line(480, 64, 480, 340, "#cbd5e1", 1.5)
+    # 右：fork + 写时复制
+    body += text(720, 74, "② fork 4 条采样：37 个 token 的提示词", 16, ORANGE, "bold")
+    for j in range(4):
+        bx = 520 + j * 66
+        body += box(bx, 92, 58, 30, SOFT[ORANGE], ORANGE, width=1.6)
+        body += text(bx + 29, 112, "引用 4", 11.5, ORANGE, "bold")
+    body += box(788, 92, 150, 30, "#ffffff", RED, width=2)
+    body += text(863, 112, "只写了 5/8 格 · 引用 4", 11.5, RED, "bold")
+    body += text(647, 142, "前 4 块写满：只读，4 条一直共用", 12.5, ORANGE)
+    body += text(863, 142, "第 5 块：4 条都要往里写", 12.5, RED)
+    rows = [("第 1 条要写第 38 个 token", "引用 4 > 1 → 复制一块再写", True),
+            ("第 2 条", "引用 3 > 1 → 复制", True),
+            ("第 3 条", "引用 2 > 1 → 复制", True),
+            ("第 4 条", "引用 1 → 原块直接写", False)]
+    for j, (who, what, copy) in enumerate(rows):
+        y = 168 + j * 34
+        body += text(530, y + 16, who, 12.5, INK, anchor="start")
+        body += box(712, y, 230, 26, SOFT[RED] if copy else SOFT[TEAL], RED if copy else TEAL, width=1.4)
+        body += text(827, y + 18, what, 12, RED if copy else TEAL, "bold")
+    body += text(720, 322, "写时复制 3 次；块数峰值 16，各自 prefill 要 28", 13.5, TEAL, "bold")
+    svg("kv-sharing.svg", "前缀共享与写时复制",
+        "示意。左：两个请求开头是同一段 24 个 token 的系统提示词，正好 3 个写满的块，每块的键是前一块的键加这一块 token 的哈希；"
+        "两张块表的前 3 项指向同样的物理块，引用计数 2，只算一次、只存一份。右：37 个 token 的提示词 prefill 一次后 fork 出 4 条采样，"
+        "4 个写满的块一直共用；第 5 块只写了 5 格，每条都要往里写，前 3 条写时引用计数大于 1，先复制一块再写，第 4 条写时引用计数已经是 1，直接写。"
+        "共复制 3 次，块数峰值 16，各自 prefill 要 28 块。", 350, body)
+
+
+def kv_waste():
+    """左：种子 0、重负载下，块大小 64 与 8 的分配量随时间；右：各块大小的平均分配量拆成存着的、以后才写的、白占的。"""
+    log = _kv_log()
+    if log is None:
+        return
+    tr = log["trace"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.35, 1]})
+    t64, t8 = tr["64"], tr["8"]
+    a1.step(t64["t"], t64["alloc"], where="pre", color=GRAY, lw=1.8, label="块大小 64：分配出去的位置")
+    a1.step(t64["t"], t64["used"], where="pre", color=BLUE, lw=1.4, label="块大小 64：存着 K、V 的位置")
+    a1.step(t8["t"], t8["alloc"], where="pre", color=TEAL, lw=1.8, label="块大小 8：分配出去的位置")
+    a1.step(t8["t"], t8["used"], where="pre", color=TEAL, lw=1.0, ls="--", label="块大小 8：存着 K、V 的位置")
+    a1.axhline(512, color=RED, lw=1, ls=":")
+    a1.text(2, 520, "显存上限 512", color=RED, fontsize=10)
+    a1.set_xlabel("时间（成本模型的单位）")
+    a1.set_ylabel("位置数")
+    a1.set_title("同一份请求流（种子 0，重负载）", fontsize=12)
+    a1.legend(fontsize=9, loc="upper center", ncol=2)
+    a1.grid(alpha=0.2)
+    a1.set_ylim(0, 700)
+    w = log["waste"]
+    bss = ["64", "16", "8", "4", "1"]
+    avg = lambda bs, k: sum(r[k] for r in w[bs]) / len(w[bs])
+    used = np.array([avg(b, "used") for b in bss])
+    alloc = np.array([avg(b, "alloc") for b in bss])
+    fut64 = avg("64", "future")
+    y = np.arange(len(bss))
+    a2.barh(y, used, color=BLUE, label="存着 K、V")
+    a2.barh(y[0], fut64, left=used[0], color="#fcd34d", label="以后才会写（只看块大小 64）")
+    a2.barh(y[0], alloc[0] - used[0] - fut64, left=used[0] + fut64, color="#cbd5e1", label="分配了但空着")
+    a2.barh(y[1:], alloc[1:] - used[1:], left=used[1:], color="#cbd5e1")
+    for i in range(len(bss)):
+        a2.text(alloc[i] + 6, y[i], f"{used[i] / alloc[i]:.0%}", va="center", fontsize=10.5, color=INK)
+    a2.set_yticks(y, [f"块大小 {b}" for b in bss])
+    a2.invert_yaxis()
+    a2.set_xlabel("平均占用的位置数（3 份请求流）")
+    a2.set_title("百分比 = 存着 K、V 的占分配的比例", fontsize=12)
+    a2.legend(fontsize=9, loc="lower right")
+    a2.set_xlim(0, 640)
+    a2.grid(alpha=0.2, axis="x")
+    save_plot(fig, "kv-waste.svg", "分配出去的显存里有多少存着 K、V",
+              f"左：同一份重负载请求流（种子 0）随时间的显存占用。块大小 64 时每个请求一进来就拿走 64 个位置，灰线常年贴着 512 的上限，"
+              f"真正存着 K、V 的蓝线只有它的三分之一左右；块大小 8 时分配的位置（绿线）紧跟实际写入的位置。"
+              f"右：3 份请求流的平均。块大小 64 时存着 K、V 的占 {used[0] / alloc[0]:.0%}，以后才会写的占 {fut64 / alloc[0]:.0%}，"
+              f"其余到请求结束都用不上；块大小 16、8、4、1 时这个比例是 "
+              + "、".join(f"{used[i] / alloc[i]:.0%}" for i in range(1, len(bss))) + "，浪费只剩每个请求最后一块没写满的部分。")
+
+
+def kv_prefix_eviction():
+    """左：两种共享场景下实际算的 prefill token 与 TTFT；右：多轮对话上四种淘汰策略的命中率随显存变化。"""
+    log = _kv_log()
+    if log is None:
+        return
+    pr, ev = log["prefix"], log["eviction"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained")
+    names = ["系统提示词", "多轮对话"]
+    avg = lambda key, k: sum(r[k] for r in pr[key]) / len(pr[key])
+    x = np.arange(2)
+    for off, label, color in ((-0.18, "不共享", GRAY), (0.18, "前缀缓存", BLUE)):
+        comp = [avg(f"{n}-{label}", "prefill") - avg(f"{n}-{label}", "cached") for n in names]
+        ttft = [avg(f"{n}-{label}", "ttft50") for n in names]
+        bars = a1.bar(x + off, comp, 0.34, color=color, label=label)
+        for b, c, t in zip(bars, comp, ttft):
+            a1.text(b.get_x() + b.get_width() / 2, c + 20, f"{c:.0f}\nTTFT {t:.1f}", ha="center", fontsize=9.5)
+    a1.set_xticks(x, names)
+    a1.set_ylabel("实际算的 prefill token（3 份平均）")
+    a1.set_ylim(0, 2050)
+    a1.set_title("块大小 8、显存 512 个位置", fontsize=12)
+    a1.legend(fontsize=10, loc="upper right")
+    a1.grid(alpha=0.2, axis="y")
+    pools = sorted(int(p) for p in ev)
+    for pol, label, color, ls in (("lru", "LRU", BLUE, "-"), ("fifo", "FIFO", ORANGE, "-"), ("all", "缺块时一次清空", PURPLE, "--"), ("none", "不保留", GRAY, ":")):
+        hs = np.array([ev[str(p)][pol] for p in pools])
+        a2.plot(pools, hs.mean(1) * 100, "o" + ls, color=color, label=label, ms=4)
+        a2.fill_between(pools, hs.min(1) * 100, hs.max(1) * 100, color=color, alpha=0.12)
+    a2.set_xlabel("显存（能放多少个位置的 K、V）")
+    a2.set_ylabel("命中率 %（多轮对话）")
+    a2.set_title("中等显存时，淘汰谁最要紧", fontsize=12)
+    a2.legend(fontsize=10, loc="upper left")
+    a2.grid(alpha=0.2)
+    lru, fifo = (np.array([ev[str(p)][k] for p in pools]).mean(1) for k in ("lru", "fifo"))
+    save_plot(fig, "kv-prefix-eviction.svg", "前缀缓存的收益与淘汰策略",
+              f"左：块大小 8、显存 512 个位置时实际算的 prefill token。系统提示词场景从 {avg('系统提示词-不共享', 'prefill'):.0f} 个降到 "
+              f"{avg('系统提示词-前缀缓存', 'prefill') - avg('系统提示词-前缀缓存', 'cached'):.0f} 个，TTFT 中位从 {avg('系统提示词-不共享', 'ttft50'):.1f} 降到 {avg('系统提示词-前缀缓存', 'ttft50'):.1f}；"
+              f"多轮对话从 {avg('多轮对话-不共享', 'prefill'):.0f} 个降到 {avg('多轮对话-前缀缓存', 'prefill') - avg('多轮对话-前缀缓存', 'cached'):.0f} 个。"
+              f"右：多轮对话上四种淘汰策略的命中率，阴影是 3 份请求流的范围。显存 768 时三种保留策略都是 {lru[-1]:.0%}；"
+              f"显存 512 时 LRU {lru[4]:.0%}、FIFO {fifo[4]:.0%}，差得最多；显存太紧（256）时几种保留策略都留不住多少，差别不大；不保留始终是 0。")
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -5297,6 +5502,7 @@ def main():
                quant_levels, quant_granularity, quant_outliers,
                spec_round, spec_rejection, spec_gamma,
                batch_layouts, batch_timeline, batch_chunked, batch_tradeoff,
+               kv_layouts, kv_sharing, kv_waste, kv_prefix_eviction,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,

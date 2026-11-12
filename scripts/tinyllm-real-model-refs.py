@@ -216,6 +216,18 @@ SPEC = {
         ("提示词分块", "generation/continuous_batching/scheduler.py", "Scheduler._schedule_request", "额度够就整段送；不够就先送 `token_budget` 个，剩下的记在 `remaining_prefill_tokens`，下一次接着送"),
         ("首尾相接的一批", "generation/continuous_batching/input_outputs.py", "ContinuousBatchingIOs.prepare_batch_tensors", "所有请求的新 token 接成一行，位置是 `range(past_length, past_length + query_length)`，`cumulative_seqlens_q` 记每段的边界，`logits_indices` 只取每段最后一个位置，和本章 `Engine.step` 一一对应"),
     ]),
+    "kv-memory": ("transformers 的连续批（`generate_batch`）用的就是分页缓存，前缀共享、抢占和 offloading 都在 `continuous_batching` 目录里：", [
+        ("块大小与开关", "generation/configuration_utils.py", "ContinuousBatchingConfig", "`page_size` 默认 256（每块放多少个 token）；`allow_block_sharing` 默认打开前缀共享；`cpu_offload_space` 默认 0，即不往内存搬、被抢占的请求直接重算"),
+        ("块池", "generation/continuous_batching/cache.py", "PagedAttentionCache", "整块缓存是一个预先分配好的大张量，再切成块分给各个请求；`can_store_request_tokens` 相当于本章的 `grow`：块不够就返回 False，什么也不改"),
+        ("按需追加块", "generation/continuous_batching/cache_allocators/full_attention.py", "FullAttentionCacheAllocator.allocate_cache_to_request", "算出“已有长度 + 新 token”要几块，不够的从空闲池里拿，接到这个请求的块表末尾"),
+        ("位置 → 物理下标", "generation/continuous_batching/cache_allocators/full_attention.py", "FullAttentionCacheAllocator.get_write_indices", "第 p 个位置写到 `block_table[p // page_size]` 那一块的第 `p % page_size` 格，和本章 `paged_step` 的写法相同"),
+        ("块的哈希", "generation/continuous_batching/cache_allocators/cache_allocator.py", "compute_block_hash", "前一块的哈希加这一块的 token 一起算，所以同一个哈希代表同一段完整前缀；用 blake2b 而不是 Python 的 `hash`，因为多卡之间要一致"),
+        ("命中前缀", "generation/continuous_batching/cache_allocators/cache_allocator.py", "CacheAllocator.match_prefix_blocks", "循环上限是 `(len(prompt_ids) - 1) // tokens_per_page`：和本章一样，至少留最后一个 token 去算 logits"),
+        ("引用计数与留着的块", "generation/continuous_batching/cache_allocators/cache_allocator.py", "BlockLedger.release", "引用降到 0 时，有哈希的块进 `cached_blocks` 留着等人命中，没哈希的直接回空闲池，对应本章的 `idle`"),
+        ("淘汰", "generation/continuous_batching/cache.py", "PagedAttentionCache.evict_cached_blocks", "空闲不够安全线时把留着的块一次全部清空，相当于本章第 7 节的“缺块时一次清空”；注释写的是“缓存的块只是额外的好处，不值得让正在跑的请求挨饿”"),
+        ("fork", "generation/continuous_batching/cache_allocators/cache_allocator.py", "CacheAllocator.fork_blocks", "写满的块共享、引用计数加 1；没写满的块在 fork 时就复制一份，而不是像本章那样等到写的时候再复制"),
+        ("抢占：搬走或重算", "generation/continuous_batching/offloading_manager.py", "OffloadingManager.offload_requests", "先清掉留着的块；还不够，就从分不到块的请求里挑几个抢占（至少留一个在跑）。CPU 上放得下就把它的块拷过去，放不下就“软重置”：扔掉缓存，把已生成的 token 接到提示词后面重新排队，下次从头 prefill，和本章第 3 节的重算一样"),
+    ]),
     "speculative-decoding": ("transformers 把投机解码叫“辅助生成”（assisted generation）：`generate(assistant_model=...)` 用小模型起草，`generate(prompt_lookup_num_tokens=...)` 在已有文本里查，起草和验证分在两个地方：", [
         ("小模型起草", "generation/candidate_generator.py", "AssistedCandidateGenerator", "`num_assistant_tokens` 就是每轮起草的个数 γ；`update_candidate_strategy` 里有一条启发式：草稿全部被接受就 +2，否则 −1"),
         ("在已有文本里查", "generation/candidate_generator.py", "PromptLookupCandidateGenerator", "`max_matching_ngram_size` 默认 2：先找最后 2 个 token、找不到再找最后 1 个，取从左往右第一处匹配（本章只找 2 个、取最近的一处）；都找不到就返回原输入，这一轮退回普通 decode"),

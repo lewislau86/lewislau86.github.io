@@ -187,6 +187,10 @@
       {
         "text": "第 32 章 · 批处理与调度",
         "link": "/tinyllm/batching"
+      },
+      {
+        "text": "第 33 章 · KV 显存管理：分页与前缀缓存",
+        "link": "/tinyllm/kv-memory"
       }
     ]
   },
@@ -197,10 +201,6 @@
       {
         "text": "第六部分 · 推理（续）",
         "items": [
-          {
-            "text": "第 33 章 · KV 显存管理：分页与前缀缓存",
-            "link": "/tinyllm/kv-memory"
-          },
           {
             "text": "第 34 章 · 推理优化：逐项对照与推理服务",
             "link": "/tinyllm/inference-optimization"
