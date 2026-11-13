@@ -361,7 +361,6 @@ for n in (25, 50, 100):
               f"高质量验证 {mean_range([r['hq_val'] for r in res])}（比 0% {sum(d) / 3:+.3f}）  普通验证 {sum(r['gen_val'] for r in res) / 3:.3f}")
 # endregion pool-size
 log["pool"] = {f"{n}|{p}": v for (n, p), v in pool.items()}
-log["pool_tokens"] = {n: len(to_stream(hq_train[:n])) for n in (25, 50, 100)}
 
 # %% [markdown]
 # ## 5. 退火段多长
