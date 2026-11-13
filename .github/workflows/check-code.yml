@@ -2,7 +2,8 @@ name: Check tutorial code
 
 # 网站能构建，不代表教程代码能复现。这个工作流和部署分开运行：
 # - outputs：几秒钟，检查 notebook 是否和章节脚本一致、正文引用的输出是否出现在 notebook 里；
-# - scripts：完整运行所有 TinyLLM 章节脚本（含小模型训练），大约十几分钟。
+# - scripts：完整运行所有 TinyLLM 章节脚本（含小模型训练）。章节多了以后单个任务会超过 60 分钟，
+#   所以按文件名排序后交错分成 4 份并行跑（--shard K/4），每份十几分钟。
 on:
   push:
     branches: [master]
@@ -37,6 +38,11 @@ jobs:
   scripts:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false          # 一份失败时其余几份照常跑完，方便一次看到所有出错的章节
+      matrix:
+        shard: [1, 2, 3, 4]
+    name: scripts (${{ matrix.shard }}/4)
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -50,4 +56,4 @@ jobs:
           grep -v '^jupyterlab' docs/public/tinyllm/requirements.txt > /tmp/requirements-ci.txt
           python -m pip install -r /tmp/requirements-ci.txt
       - name: 从头运行每一章的脚本
-        run: python scripts/build-tinyllm-code.py --check
+        run: python scripts/build-tinyllm-code.py --check --shard ${{ matrix.shard }}/4

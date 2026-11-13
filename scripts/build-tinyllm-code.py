@@ -12,6 +12,8 @@ Usage (needs torch, nbformat, nbclient, ipykernel):
   python scripts/build-tinyllm-code.py              # run all scripts, rebuild all notebooks
   python scripts/build-tinyllm-code.py first-run    # only some chapters
   python scripts/build-tinyllm-code.py --check      # only run the scripts, write nothing
+  python scripts/build-tinyllm-code.py --check --shard 2/4
+                                                    # only the 2nd of 4 interleaved slices of the chapters (CI runs them in parallel)
   python scripts/build-tinyllm-code.py --pages      # only re-render the in-site notebook viewer pages
   python scripts/build-tinyllm-code.py --run-notebooks <chapter>...
                                                     # re-execute a notebook that has no code/*.py yet
@@ -284,8 +286,16 @@ def render_page(nb_path: Path) -> None:
 
 
 def main() -> None:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    check_only = "--check" in sys.argv
+    argv = sys.argv[1:]
+    shard = None
+    if "--shard" in argv:  # --shard K/N：按文件名排序后，只取第 K 份（第 K、K+N、K+2N…个），K 从 1 数
+        value = argv.pop(argv.index("--shard") + 1)
+        k, n = (int(x) for x in value.split("/"))
+        if not 1 <= k <= n:
+            raise SystemExit(f"--shard 要写成 K/N 且 1 ≤ K ≤ N，收到 {value}")
+        shard = (k, n)
+    args = [a for a in argv if not a.startswith("--")]
+    check_only = "--check" in argv
     if "--run-notebooks" in sys.argv:  # 原地重跑尚未迁移章节的 notebook，再刷新预览页
         if not args:
             raise SystemExit("--run-notebooks needs chapter names, e.g. activations-and-ffn")
@@ -301,6 +311,9 @@ def main() -> None:
     scripts = sorted(CODE.glob("*.py"))
     if args:
         scripts = [p for p in scripts if p.stem in args]
+    if shard:
+        k, n = shard
+        scripts = scripts[k - 1::n]
     if not scripts:
         raise SystemExit("no matching scripts in " + str(CODE))
     for path in scripts:
