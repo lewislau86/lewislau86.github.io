@@ -5,6 +5,7 @@ import miniRedisSourceSidebar from './mini-redis-source-sidebar.json'
 import burnSidebar from './burn-sidebar.json'
 import learnAgentRustSidebar from './learn-agent-rust-sidebar.json'
 import thinkingAndActingSidebar from './thinking-and-acting-sidebar.json'
+import nautilusTraderSidebar from './nautilus-trader-sidebar.json'
 
 export default defineConfig({
   lang: 'zh-CN',
@@ -25,11 +26,13 @@ export default defineConfig({
       { text: '思考与行动之间', link: '/thinking-and-acting/' },
       { text: 'Burn', link: '/burn/' },
       { text: 'mini-redis', link: '/mini-redis/' },
+      { text: 'nautilus_trader', link: '/nautilus-trader/' },
       { text: '讨论', link: '/discuss' },
       { text: '关于', link: '/about' }
     ],
     sidebar: {
       '/thinking-and-acting/': thinkingAndActingSidebar,
+      '/nautilus-trader/': nautilusTraderSidebar,
       '/learn-agent-rust/': learnAgentRustSidebar,
       '/burn/': burnSidebar,
       '/tinyllm/': tinyllmSidebar,
@@ -46,6 +49,7 @@ export default defineConfig({
           { text: '思考与行动之间', link: '/thinking-and-acting/' },
           { text: '深入理解 Burn', link: '/burn/' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
+          { text: 'nautilus_trader 源码笔记', link: '/nautilus-trader/' },
           { text: '关于', link: '/about' }
         ]
       },

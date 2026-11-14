@@ -1,0 +1,15 @@
+[
+  {
+    "text": "nautilus_trader 源码笔记",
+    "items": [
+      {
+        "text": "笔记目录",
+        "link": "/nautilus-trader/"
+      },
+      {
+        "text": "给 nautilus_trader 加一个券商：富途适配器怎么做",
+        "link": "/nautilus-trader/futu-adapter"
+      }
+    ]
+  }
+]

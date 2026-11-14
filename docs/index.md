@@ -48,6 +48,12 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 [进入 mini-redis 教程 →](./mini-redis/index.md)
 
+### [nautilus_trader 源码笔记 · 从 Rust 源码读量化交易平台](./nautilus-trader/index.md)
+
+读开源交易平台 nautilus_trader 的 Rust 源码，以“给它接入一个新券商（富途）”为主线：适配器要实现哪些 trait、事件怎样回到引擎、对账怎样做，以及富途 OpenD 私有协议的要点。第一篇说明富途适配器为什么应当参照 Interactive Brokers 适配器来写，并给出从协议层到实盘节点的五个里程碑。
+
+[进入笔记 →](./nautilus-trader/index.md) · [阅读第一篇：富途适配器怎么做 →](./nautilus-trader/futu-adapter.md)
+
 ## 从这里开始
 
 更多文档将逐步整理。你可以通过左侧目录浏览文档，通过右侧目录定位当前章节，也可以使用顶部搜索查找内容。
