@@ -26,7 +26,7 @@ export default defineConfig({
       { text: '思考与行动之间', link: '/thinking-and-acting/' },
       { text: 'Burn', link: '/burn/' },
       { text: 'mini-redis', link: '/mini-redis/' },
-      { text: 'nautilus_trader', link: '/nautilus-trader/' },
+      { text: 'NautilusTrader', link: '/nautilus-trader/' },
       { text: '讨论', link: '/discuss' },
       { text: '关于', link: '/about' }
     ],
@@ -49,7 +49,7 @@ export default defineConfig({
           { text: '思考与行动之间', link: '/thinking-and-acting/' },
           { text: '深入理解 Burn', link: '/burn/' },
           { text: 'mini-redis 源码分析', link: '/mini-redis/' },
-          { text: 'nautilus_trader 源码笔记', link: '/nautilus-trader/' },
+          { text: '深入理解 NautilusTrader', link: '/nautilus-trader/' },
           { text: '关于', link: '/about' }
         ]
       },

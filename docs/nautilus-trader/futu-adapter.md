@@ -1,16 +1,16 @@
 ---
-title: 给 nautilus_trader 加一个券商：富途适配器怎么做
-description: 适配器在 nautilus_trader 里的接口边界，为什么富途应当参照 Interactive Brokers 适配器，富途 OpenD 协议要点，两边概念的对照，以及从协议层到实盘节点的实现里程碑。
+title: "第 2 章：增加一个券商：以富途为例"
+description: 适配器在 NautilusTrader 里的接口边界，为什么富途应当参照 Interactive Brokers 适配器，富途 OpenD 协议要点，两边概念的对照，以及从协议层到实盘节点的实现里程碑。
 ---
 
-# 给 nautilus_trader 加一个券商：富途适配器怎么做
+# 第 2 章：增加一个券商：以富途为例
 
-[笔记目录](./index.md)
+[全书目录](./index.md) · [上一章](./architecture.md) · [下一章](./core-topics.md)
 
-::: tip 本篇要回答的问题
-在 nautilus_trader 里，一个券商要接进来，需要实现哪些 trait、放在哪些文件里；富途这种“本地网关 + 私有 TCP 协议”的券商，应该照着哪个现有适配器写；富途的协议有哪些地方会影响设计；第一步做什么、怎样验收。
+::: tip 本章要回答的问题
+在 NautilusTrader 里，一个券商要接进来，需要实现哪些 trait、放在哪些文件里；富途这种“本地网关 + 私有 TCP 协议”的券商，应该照着哪个现有适配器写；富途的协议有哪些地方会影响设计；第一步做什么、怎样验收。
 
-**源码版本：** nautilus_trader `develop` 分支，2026-11-13 核对。**富途文档：** OpenAPI v10.12。
+**源码版本：** NautilusTrader `develop` 分支，2026-11-13 核对。**富途文档：** OpenAPI v10.12。
 :::
 
 ## 结论先行
@@ -24,9 +24,9 @@ description: 适配器在 nautilus_trader 里的接口边界，为什么富途�
 1. **一个独立的 Rust 版 OpenD 客户端**（暂且叫 `futu-opend`），负责连接、包头编解码、加密、心跳、请求和回包的对应，地位相当于 IB 里的 `ibapi`；
 2. **适配器 crate `crates/adapters/futu`**，把富途的概念翻译成 Nautilus 的概念：标的、行情、订单、成交、账户和对账。
 
-## 1. 适配器在 nautilus_trader 里的边界
+## 1. 适配器在 NautilusTrader 里的边界
 
-一个适配器对平台只暴露几个 trait，全部定义在 `nautilus_common` 里：
+[第 1 章](./architecture.md)讲了整体架构：适配器位于最外层，通过 channel 把数据和事件送进单线程的核心。一个适配器对平台只暴露几个 trait，全部定义在 `nautilus_common` 里：
 
 | trait | 文件 | 作用 |
 | --- | --- | --- |
@@ -200,6 +200,8 @@ struct Header {
 
 ## 参考资料
 
-- nautilus_trader：[仓库（develop 分支）](https://github.com/nautechsystems/nautilus_trader) · [适配器开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md) · [树外适配器指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/python_adapters.md) · [IB 适配器源码](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/adapters/interactive_brokers)
+- NautilusTrader：[仓库（develop 分支）](https://github.com/nautechsystems/nautilus_trader) · [适配器开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md) · [树外适配器指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/python_adapters.md) · [IB 适配器源码](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/adapters/interactive_brokers)
 - 富途 OpenAPI：[底层协议介绍](https://openapi.futunn.com/futu-api-doc/ftapi/protocol.html) · [OpenD 概述](https://openapi.futunn.com/futu-api-doc/opend/opend-intro.html) · [OpenD 命令行参数](https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html) · [权限与额度](https://openapi.futunn.com/futu-api-doc/intro/authority.html) · [订阅规则](https://openapi.futunn.com/futu-api-doc/quote/sub.html) · [交易接口总览](https://openapi.futunn.com/futu-api-doc/trade/trade.html)
 - [py-futu-api](https://github.com/FutunnOpen/py-futu-api)：`futu/common/constant.py`（协议号）、`utils.py`（包头）、`conn_mng.py`（加密）、`pb/*.proto`
+
+适配器只是 Rust 核心的一个入口。下一章把读源码、写适配器时反复遇到的其他主题集中讲一遍：定点数、时钟、订单状态机、缓存、并发模型、风控、对账等。[第 3 章：其他需要重点理解的主题](./core-topics.md)。

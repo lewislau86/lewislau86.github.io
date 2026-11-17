@@ -3,6 +3,10 @@
     "text": "思考与行动之间",
     "items": [
       {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
         "text": "全书总览",
         "link": "/thinking-and-acting/"
       }

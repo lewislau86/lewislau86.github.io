@@ -1,27 +1,28 @@
 ---
-title: nautilus_trader 源码笔记
-description: 从 Rust 源码读 nautilus_trader：适配器边界、数据与执行引擎、实盘节点，以及为它接入富途券商的实践记录。
+title: 深入理解 NautilusTrader
+description: 从源码读开源量化交易平台 NautilusTrader：先看全景架构（分层、源码目录、核心数据结构），再读 Rust 核心（运行时、增加一个券商、其他需要重点理解的主题），最后读 Python 层。
 ---
 
-# nautilus_trader 源码笔记
+# 深入理解 NautilusTrader
 
-**从 Rust 源码读一个量化交易平台**
+**从源码读一个量化交易平台**
 
-[nautilus_trader](https://github.com/nautechsystems/nautilus_trader) 是一个开源的事件驱动交易平台：同一套策略代码既能回测，也能接实盘。它的核心已经大部分用 Rust 重写，Python 层通过 PyO3 调用 Rust。本笔记先读 Rust 源码，以“给它接入一个新券商（富途）”为主线：要接一个券商，就得弄清楚平台和外部世界之间的那条边界在哪里、边界两侧各自负责什么。
+[NautilusTrader](https://github.com/nautechsystems/nautilus_trader) 是一个开源的事件驱动交易平台：同一套策略代码既能回测，也能接实盘。它的核心已经全部用 Rust 实现，Python 层通过 PyO3 调用 Rust。本书先读 Rust 部分，再读 Python 部分。Rust 部分以“给它接入一个新券商（富途）”为主线：要接一个券商，就得弄清楚平台和外部世界之间的边界在哪里、边界两侧各自负责什么。
 
 ::: tip 阅读约定
-源码以 GitHub 上 `develop` 分支为准，文中引用的文件路径、trait 和函数名都在 2026-11-13 核对过。项目更新很快，读到时如有出入，以仓库为准。
+源码以 GitHub 上 `develop` 分支为准，文中引用的文件路径、trait 和函数名都在 2026-11 核对过。项目更新很快，读到时如有出入，以仓库为准。网上很多资料讲的是旧的 Cython 版本（v1，现在在 `develop_v1` 分支），读的时候要分清。
 :::
 
-## 笔记目录
+## 导读
 
-- [给 nautilus_trader 加一个券商：富途适配器怎么做](./futu-adapter.md)（已成文）：适配器的接口边界、应该参照哪个现有适配器、富途 OpenD 协议要点、两边概念的对照表，以及从协议层到实盘节点的里程碑
+- [第 0 章 · NautilusTrader 架构](./nautilus-architecture.md)：一个节点的四层（Python、PyO3、节点外壳、内核）和两种线程；Rust 24 个 crate 的七层分层与每个 crate 的目录；Python 包怎样从 `_libnautilus` 转出、哪些是纯 Python；Rust 核心数据结构（定点数、标识符、行情、订单簿、订单、仓位、`Cache`、`MessageBus`）；这些结构投影到 Python 后的三种关系和快照语义
 
-规划中（顺序可能调整）：
+## 第一部分 · Rust 核心
 
-- `DataClient` 与 `ExecutionClient`：适配器 trait 逐个方法读
-- 从命令到事件：一笔订单在 `ExecutionEngine`、`ExecutionClientCore` 和适配器之间怎样流转
-- 对账：`generate_mass_status` 与重启后的状态恢复
-- `LiveNode`：工厂、配置与运行时任务（`TaskGroup`）
-- `nautilus_network`：HTTP、WebSocket、Socket 客户端与限流、重连
-- 富途适配器实现记录：协议层（M0）、标的（M1）、行情（M2）、模拟盘交易（M3）
+- [第 1 章 · 整体架构](./architecture.md)：设计理念（单线程核心、回测实盘同构、crash-only），crate 分层，`NautilusKernel`，线程局部的消息总线，一条报价和一笔订单的完整路径，组件与策略，回测和实盘的异同
+- [第 2 章 · 增加一个券商：以富途为例](./futu-adapter.md)：适配器要实现的 trait，为什么参照 IB 适配器，富途 OpenD 协议要点，两边概念对照，五个实现里程碑
+- [第 3 章 · 其他需要重点理解的主题](./core-topics.md)：定点数值类型、时钟与两种时间戳、订单状态机与事件溯源、缓存、并发模型、风控与订单仿真、对账、数据与持久化、PyO3 边界、测试与错误处理
+
+## 第二部分 · Python 层
+
+待定。

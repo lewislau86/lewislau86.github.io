@@ -1,14 +1,48 @@
 [
   {
-    "text": "nautilus_trader 源码笔记",
+    "text": "深入理解 NautilusTrader",
     "items": [
       {
-        "text": "笔记目录",
-        "link": "/nautilus-trader/"
+        "text": "返回知识库",
+        "link": "/"
       },
       {
-        "text": "给 nautilus_trader 加一个券商：富途适配器怎么做",
+        "text": "全书目录",
+        "link": "/nautilus-trader/"
+      }
+    ]
+  },
+  {
+    "text": "导读",
+    "items": [
+      {
+        "text": "第 0 章 · NautilusTrader 架构",
+        "link": "/nautilus-trader/nautilus-architecture"
+      }
+    ]
+  },
+  {
+    "text": "第一部分 · Rust 核心",
+    "items": [
+      {
+        "text": "第 1 章 · 整体架构",
+        "link": "/nautilus-trader/architecture"
+      },
+      {
+        "text": "第 2 章 · 增加一个券商：以富途为例",
         "link": "/nautilus-trader/futu-adapter"
+      },
+      {
+        "text": "第 3 章 · 其他需要重点理解的主题",
+        "link": "/nautilus-trader/core-topics"
+      }
+    ]
+  },
+  {
+    "text": "第二部分 · Python 层",
+    "items": [
+      {
+        "text": "待定"
       }
     ]
   }
