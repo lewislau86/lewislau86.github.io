@@ -655,6 +655,99 @@ def futu_python_binding():
         664, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 0 章 · PyO3 绑定：构建时怎样拼成一个模块，运行时一次调用怎样往返
+# ---------------------------------------------------------------------------
+def pyo3_binding():
+    b = text(480, 36, "PyO3 绑定：左边是模块怎样拼起来，右边是一次调用怎样在两种语言之间往返", 19, INK, "bold", limit=920)
+    # 左：构建时
+    b += rect(24, 58, 436, 600, "orange", ORANGE, rx=14)
+    b += text(40, 84, "构建时（make build-debug）", 16, ORANGE, "bold", "start")
+    left = [
+        ("① 各 crate 的 src/python/", "#[pyclass] / #[pymethods] / #[pyfunction]", "只在 python feature 下编译"),
+        ("② #[pymodule] fn model(…)", "m.add_class::<Price>()", "m.add_function(wrap_pyfunction!(…))"),
+        ("③ crates/pyo3/src/lib.rs", "#[pymodule] fn _libnautilus", "wrap_pymodule! + 写入 sys.modules"),
+        ("④ maturin → 一个 .so", "_libnautilus.cpython-314-….so", "放在 python/nautilus_trader/ 下"),
+        ("⑤ python/nautilus_trader/model/", "from …_libnautilus.model import *", "fixup_module_names；.pyi 由存根生成器写"),
+    ]
+    y = 100
+    for i, (h, l1, l2) in enumerate(left):
+        b += rect(40, y, 404, 92, "white", ORANGE, rx=9, width=1.3)
+        b += text(56, y + 28, h, 15, INK, "bold", "start", mono=h.isascii(), limit=380)
+        b += text(56, y + 52, l1, 14, GRAY, anchor="start", mono=l1.isascii(), limit=380)
+        b += text(56, y + 74, l2, 14, GRAY, anchor="start", mono=l2.isascii(), limit=380)
+        if i < len(left) - 1:
+            b += arrow(242, y + 94, 242, y + 108, ORANGE, 1.5)
+        y += 110
+    # 右：运行时
+    b += rect(480, 58, 456, 600, "blue", BLUE, rx=14)
+    b += text(496, 84, "运行时：engine.add_data(quotes) 与 on_quote 回调", 16, BLUE, "bold", "start", limit=430)
+    b += box(500, 100, 416, 56, ["Python：engine.add_data([QuoteTick, …])", "参数是 Python 对象的列表"], "white", BLUE, size=14)
+    b += box(500, 180, 416, 74, ["PyO3 包装：PyBacktestEngine.py_add_data", "逐个 extract：QuoteTick? TradeTick? Bar? …", "→ Vec<Data>（每个元素复制一份）"], "white", BLUE, size=14)
+    b += box(500, 278, 416, 56, ["Rust：BacktestEngine::add_data", "数据进入内核，之后全在 Rust 里流动"], "white", BLUE, size=14)
+    b += arrow(708, 158, 708, 178, BLUE, 1.5)
+    b += arrow(708, 256, 708, 276, BLUE, 1.5)
+    b += rect(500, 356, 416, 2, "#94a3b8", "#94a3b8", rx=0, width=0)
+    b += box(500, 374, 416, 56, ["Rust：engine.run() 主循环", "DataEngine 发布报价 → 策略的 handler"], "white", BLUE, size=14)
+    b += box(500, 454, 416, 74, ["PyStrategyInner.dispatch_on_quote", "Python::attach（拿 GIL）", "quote.into_py_any → 新的 Python 对象"], "white", TEAL, size=14)
+    b += box(500, 552, 416, 56, ["Python：MyStrategy.on_quote(quote)", "经 weakref 找到实例，按名字调用"], "white", TEAL, size=14)
+    b += arrow(708, 432, 708, 452, TEAL, 1.5)
+    b += arrow(708, 530, 708, 550, TEAL, 1.5)
+    b += text(708, 636, "上半：Python → Rust 提取参数；下半：Rust → Python 回调", 14, GRAY, limit=430)
+    svg("pyo3-binding.svg", "PyO3 绑定的构建与调用",
+        "左边是构建时：各 crate 的 src/python 用 pyclass、pymethods、pyfunction 标注，再在 pymodule 函数里登记，crates/pyo3 的 _libnautilus 把这些子模块挂上去并写入 sys.modules，"
+        "maturin 编成一个 .so，python/nautilus_trader 下的各模块再星号导入并修正模块名。右边是运行时：engine.add_data 把 Python 对象逐个提取成 Rust 的 Data，"
+        "进入内核后全在 Rust 里流动；回测主循环里报价到达策略时，PyStrategyInner 拿 GIL、把报价转成新的 Python 对象，经弱引用调用 Python 子类的 on_quote。",
+        680, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 4 章 · 回调流程：一条报价到 on_quote，一笔成交到 on_order_filled / on_position_opened
+# ---------------------------------------------------------------------------
+def callback_flow():
+    b = text(480, 36, "回调是怎样被调用的：都从总线发布开始，经订阅时登记的闭包，回到组件", 19, INK, "bold", limit=920)
+
+    def column(x0, title, color, fill, steps, h=64, gap=18):
+        out = rect(x0, 58, 448, 40 + len(steps) * (h + gap), fill, color, rx=14)
+        out += text(x0 + 16, 84, title, 16, color, "bold", "start", limit=420)
+        y = 100
+        for i, (head, detail, hl) in enumerate(steps):
+            stroke = ORANGE if hl else color
+            out += rect(x0 + 14, y, 420, h, "#fde68a" if hl else "white", stroke, rx=9, width=1.4)
+            out += text(x0 + 30, y + 26, head, 15, INK, "bold", "start", mono=head.isascii(), limit=396)
+            out += text(x0 + 30, y + 50, detail, 14, GRAY, anchor="start", limit=396)
+            if i < len(steps) - 1:
+                out += arrow(x0 + 224, y + h + 2, x0 + 224, y + h + gap - 2, color, 1.5)
+            y += h + gap
+        return out
+
+    left = [
+        ("DataEngine.handle_quote", "先写缓存，再发布到 data.quotes.{venue}.{symbol}", False),
+        ("MessageBus：TopicRouter<QuoteTick>", "按优先级派发：Portfolio（10）先于策略（0）", False),
+        ("订阅时登记的闭包", "按 actor_id 从注册表取出组件", False),
+        ("handle_quote（框架代码）", "先更新已注册的指标；组件不在 RUNNING 就丢弃", False),
+        ("on_quote（你的代码）", "Rust 直接调用；Python 拿 GIL、转成新对象、按名字调用", True),
+        ("出错时", "返回错误或抛异常只记日志，派发继续，节点不停", False),
+    ]
+    right = [
+        ("ExecEngine.process(OrderFilled)", "执行客户端经 channel 送来的成交事件", False),
+        ("更新缓存里的订单", "订单 apply 这笔成交，状态、已成交量、均价随之变化", False),
+        ("handle_order_fill", "通知 Portfolio；开仓或更新仓位写进缓存", False),
+        ("发布 events.order.{strategy_id}", "Portfolio（10）先收到；再到 Trader 注册时订阅的策略", False),
+        ("on_order_filled → on_order_event", "先具体回调，再通用回调；此时缓存里的仓位已更新", True),
+        ("发布 events.position.{strategy_id}", "on_position_opened 等 → on_position_event", True),
+    ]
+    b += column(24, "一条报价 → on_quote", BLUE, "blue", left)
+    b += column(488, "一笔成交 → on_order_filled、on_position_opened", TEAL, "teal", right)
+    b += text(480, 620, "橙色框是你写的回调；其余都是框架代码。两条路都在核心线程上同步执行，回调返回后派发才继续。", 14, GRAY, limit=920)
+    svg("callback-flow.svg", "回调的调用流程",
+        "左边是报价：DataEngine 先写缓存再发布到行情主题，MessageBus 按优先级派发，Portfolio 先于策略；订阅时登记的闭包从注册表取出组件，"
+        "handle_quote 先更新指标、检查组件是否在运行，再调用 on_quote；Python 策略在这里拿 GIL 并按名字调用；出错只记日志。"
+        "右边是成交：执行引擎更新缓存里的订单，处理仓位，然后发布订单事件，策略先收到 on_order_filled 再收到 on_order_event，"
+        "最后发布仓位事件，触发 on_position_opened 等回调。",
+        640, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -666,6 +759,8 @@ def main():
     futu_in_crates()
     futu_runtime()
     futu_python_binding()
+    pyo3_binding()
+    callback_flow()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

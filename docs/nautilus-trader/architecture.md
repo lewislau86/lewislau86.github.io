@@ -5,7 +5,7 @@ description: NautilusTrader 的 Rust 核心怎样组织：设计理念、crate �
 
 # 第 1 章：整体架构
 
-[全书目录](./index.md) · [上一篇](./build-from-source.md) · [下一章](./futu-adapter.md)
+[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一章](./futu-adapter.md)
 
 ::: tip 本章学习目标
 能画出 NautilusTrader 的组件图：哪些 crate 是地基、哪些是引擎、哪些是外壳；说清 `NautilusKernel` 拥有什么、消息总线怎样把组件连起来；能沿源码走一遍“一条报价从适配器到策略”和“一笔订单从策略到交易所再回来”的路径；能解释回测、沙盒、实盘三种模式为什么能共用同一套策略代码，以及它们各自的时钟和成交来源。

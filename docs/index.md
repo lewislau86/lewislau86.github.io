@@ -50,9 +50,9 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 ### [深入理解 NautilusTrader](./nautilus-trader/index.md)
 
-从源码读开源量化交易平台 NautilusTrader，先 Rust 核心、后 Python 层。第 0 章是全景架构：节点分层、Rust 与 Python 的源码目录、两边的核心数据结构；随后一篇带你从零编译 Rust 和 Python 两部分。Rust 部分三章：整体架构（单线程核心、消息总线、一条报价和一笔订单的完整路径、回测/沙盒/实盘三种模式同构）；以富途为例增加一个券商（适配器要实现的 trait、OpenD 私有协议、实现里程碑）；以及定点数、订单状态机、缓存、并发模型、风控、对账等需要重点理解的主题。Python 部分待定。
+从源码读开源量化交易平台 NautilusTrader，先 Rust 核心、后 Python 层。开篇带你从零编译 Rust 和 Python 两部分（附一次完整编译的实测记录）；第 0 章是全景架构：节点分层、Rust 与 Python 的源码目录、两边的核心数据结构。Rust 部分四章：整体架构（单线程核心、消息总线、一条报价和一笔订单的完整路径、回测/沙盒/实盘三种模式同构）；以富途为例增加一个券商（适配器要实现的 trait、OpenD 私有协议、实现里程碑）；定点数、订单状态机、缓存、并发模型、风控、对账等需要重点理解的主题；以及回调的完整流程（一条报价怎样走到 `on_quote`，一笔成交怎样依次触发订单和仓位回调）。后续规划两部分：逐章拆开 NautilusKernel 的核心组件（总线、缓存、时钟、数据/风控/执行引擎、组合、Trader、回测外壳），以及 Tokio 运行时与实盘外壳（运行时、事件循环、任务管理、实时时钟、网络层、对账、订单簿恢复、外部后端、确定性仿真测试）。Python 部分待定。
 
-[进入全书 →](./nautilus-trader/index.md) · [第 0 章：NautilusTrader 架构 →](./nautilus-trader/nautilus-architecture.md)
+[进入全书 →](./nautilus-trader/index.md) · [从零编译 →](./nautilus-trader/build-from-source.md) · [第 0 章：NautilusTrader 架构 →](./nautilus-trader/nautilus-architecture.md)
 
 ## 从这里开始
 

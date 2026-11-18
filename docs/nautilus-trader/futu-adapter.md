@@ -15,9 +15,9 @@ description: 适配器在 NautilusTrader 里的接口边界；富途适配器放
 
 ## 结论先行
 
-富途应该照着 **Interactive Brokers（IB）适配器**写，而不是照着 Bybit、OKX 这类加密货币交易所的适配器。
+富途应该照着 **Interactive Brokers（IB）适配器**写，而不是照着 Bybit、OKX 这类加密货币交易所的适配器。这是本书按协议形态做的判断：开发指南 `docs/developer_guide/adapters.md` 推荐的参考适配器是 Bybit、OKX、Binance、Kraken、Lighter、Derive，并没有 IB，而且提醒“有选择地参考”。
 
-富途的接口不直接对外：你要先在本机运行它的网关程序 **OpenD**，登录后再通过 TCP（也可以配置成 WebSocket）连上去，每个包是 44 字节的包头加一段 protobuf。IB 的情况几乎一样：它也只能连本地的 TWS 或 IB Gateway。现在的 IB 适配器 `crates/adapters/interactive_brokers` 已经是纯 Rust 实现，底层协议交给第三方的 `ibapi` crate，适配器本身没有 `http/`、`websocket/` 模块，只做领域对象映射、订阅管理、下单和对账。开发指南的原话是 IB 没有这些模块，因为它“does not own a transport”。
+富途的接口不直接对外：你要先在本机运行它的网关程序 **OpenD**，登录后再通过 TCP（也可以配置成 WebSocket）连上去，每个包是 44 字节的包头加一段 protobuf。IB 的情况几乎一样：它也只能连本地的 TWS 或 IB Gateway。现在的 IB 适配器 `crates/adapters/interactive_brokers` 已经是纯 Rust 实现，底层协议交给第三方的 `ibapi` crate，适配器本身没有 `http/`、`websocket/` 模块，只做领域对象映射、订阅管理、下单和对账。IB 的集成文档（`docs/integrations/interactive_brokers.md`）的原话是它“does not own a transport”，所以其他适配器标配的 `http`、`websocket` 模块在这里不存在。
 
 所以富途适配器分两层：
 
@@ -31,7 +31,7 @@ description: 适配器在 NautilusTrader 里的接口边界；富途适配器放
 | trait | 文件 | 作用 |
 | --- | --- | --- |
 | `DataClient` | `crates/common/src/clients/data.rs` | 行情：`subscribe_*` / `unsubscribe_*`（报价、成交、盘口、K 线等），`request_*`（历史数据、标的） |
-| `ExecutionClient` | `crates/common/src/clients/execution.rs` | 交易：`submit_order`、`modify_order`、`cancel_order` 等命令，以及 `generate_order_status_reports`、`generate_fill_reports`、`generate_position_status_reports`、`generate_mass_status` 这几个对账方法 |
+| `ExecutionClient` | `crates/common/src/clients/execution.rs` | 交易：`submit_order`、`modify_order`、`cancel_order` 等命令，以及 `generate_order_status_report`（查单个订单）、`generate_order_status_reports`、`generate_fill_reports`、`generate_position_status_reports`、`generate_mass_status` 这几个对账方法 |
 | `InstrumentProvider` | `crates/common/src/providers.rs` | 加载标的：`load_all`、`load_ids`、`load` |
 | `DataClientFactory`、`ExecutionClientFactory`、`ClientConfig` | `crates/common/src/factories/client.rs` | 由配置构造客户端，供实盘节点注册 |
 
@@ -68,7 +68,7 @@ node.run().await?;
 
 - **和 IB 适配器平级，挂在 `live` 之下。** IB 适配器 `Cargo.toml` 里 nautilus 方面的必选依赖是 `nautilus-common`、`nautilus-core`、`nautilus-live`、`nautilus-model`，另有 `ibapi`、`tokio`、`anyhow`、`async-trait` 等第三方依赖；`nautilus-execution`、`nautilus-network` 是可选的，但默认的 `execution` feature 会打开它们；`nautilus-system` 只在 `python` feature 下打开，因为 Python 用到的工厂注册表 `get_global_pyo3_registry()` 定义在 `crates/system/src/python/registry.rs`。富途照此设计。
 - **trait 来自 `common`。** 适配器真正“插进”平台的接口是第 1 节那几个 trait，它们在 `nautilus-common` 里；`live` 提供的是节点、`TaskGroup`、命令失败分类等运行时设施。
-- **协议库单独成 crate。** `futu-opend` 不依赖任何 nautilus crate，只管和 OpenD 说话，地位等同 IB 适配器下面的 `ibapi`。这样它能单独测试、单独发布，别的 Rust 项目也能用。
+- **协议库单独成 crate。** `futu-opend` 只管和 OpenD 说话，地位等同 IB 适配器下面的 `ibapi`。要注意一个约束：进官方仓库的适配器必须满足确定性仿真测试（DST）的约定，`docs/concepts/dst.md` 要求时间、任务、随机数都经 `nautilus_common::live::dst` 获取，TCP 连接要经 `nautilus_network::net` 建立，不能直接 `tokio::net::TcpStream::connect`。所以如果目标是进官方仓库，`futu-opend` 不能完全不依赖 nautilus，至少要用这两处的替身；只在自己的仓库里维护（第 8 节）时才可以完全独立。这样它能单独测试、单独发布，别的 Rust 项目也能用。
 - **最上面是 `pyo3`。** 它在 `adapters` feature 下可选依赖各个适配器（`blockchain` 例外，挂在 `defi` 下），依赖声明里同时打开适配器的 `python` feature，这是第 6 节 Python 绑定的入口。
 
 两个新 crate 的 `Cargo.toml` 大致如下：
@@ -113,14 +113,15 @@ crates/futu-opend/             # 独立协议库（不依赖 nautilus；也可�
 
 crates/adapters/futu/
   src/lib.rs
-  src/common/                  # FUTU venue 常量、枚举映射、Security{market, code} ↔ InstrumentId
-  src/shared_client.rs         # 数据、执行、标的加载共用一条 OpenD 连接（引用计数）
+  src/common/                  # FUTU venue 常量、枚举映射、Security{market, code} ↔ InstrumentId；
+                               # shared_client.rs：数据、执行、标的加载共用一条 OpenD 连接（同 IB）
   src/config.rs                # FutuDataClientConfig、FutuExecutionClientConfig、FutuInstrumentProviderConfig
   src/providers.rs             # FutuInstrumentProvider：GetStaticInfo → Equity
   src/data/                    # FutuDataClient：订阅额度记账、推送 → QuoteTick / TradeTick / OrderBookDeltas / Bar
   src/execution/               # FutuExecutionClient：下单限流、2208/2218 → 订单事件、对账报告
   src/factories.rs             # FutuDataClientFactory、FutuExecutionClientFactory
   src/python/                  # PyO3 投影（第 6 节）
+  tests/                       # 公开边界的集成测试（开发指南要求有）
   examples/                    # node_data_tester.rs、node_exec_tester.rs
   test_data/                   # 录下来的 OpenD 回包和推送
 ```
@@ -317,9 +318,10 @@ fn extract_futu_data_config(py: Python<'_>, config: Py<PyAny>)
 
 #[pymodule]
 pub fn futu(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    // 开发指南要求客户端相关的 add_class 按导出类型名的字母序排列（IB 自己没遵守）
     m.add_class::<FutuDataClientConfig>()?;
-    m.add_class::<FutuExecutionClientConfig>()?;
     m.add_class::<FutuDataClientFactory>()?;
+    m.add_class::<FutuExecutionClientConfig>()?;
     m.add_class::<FutuExecutionClientFactory>()?;
 
     let registry = nautilus_system::get_global_pyo3_registry();
@@ -421,14 +423,14 @@ builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientCon
 | M3 交易 | 先做账户和对账（`generate_mass_status`），再做下单和撤单 | `ExecTester` 能跑通；重启后对账结果一致 |
 | M4 组装 | 工厂、配置、`LiveNode` 例子；最后才是 PyO3 绑定（第 6.1 节的 ①～④） | Python 侧能用同一个配置启动 |
 
-开发指南把适配器开发分成 0～9 个阶段：范围、协议核心、标的、行情、执行、可选能力、工厂和 PyO3、一致性测试、性能测试和 fuzz、文档。上面的里程碑基本对应前七个阶段。
+开发指南把适配器开发分成 0～9 个阶段：范围、协议核心、标的、行情、执行、可选能力、工厂和 PyO3、一致性测试、性能测试和 fuzz、文档。上面的里程碑大致沿着前七个阶段走，但验收方式不同：开发指南要求阶段 1～4 先用模拟的传输层（mock peer）写确定性测试，阶段 7 才跑 `DataTester`、`ExecTester` 这类连真实环境的验收测试，并明确“确定性测试通过之后才跑验收测试”。表里的验收栏是为了自己调试方便写的，进官方仓库时要按开发指南补齐各阶段的确定性测试。
 
 ## 8. 放进官方仓库，还是自己维护
 
 | | 放进官方仓库（in-tree） | 自己维护（out-of-tree） |
 | --- | --- | --- |
 | 形式 | `crates/adapters/futu`，接入第 2.4 节列出的文件；Python 走第 6.1 节的路线 A | 独立的 Python 包（路线 B），或独立的 Rust/PyO3 包（路线 C） |
-| 门槛 | 高：开发指南要求官方适配器带确定性模拟测试（DST）、fuzz、一致性测试和文档 | 低：按 `docs/developer_guide/python_adapters.md` 写 |
+| 门槛 | 高：开发指南要求维护中的官方适配器满足确定性仿真测试（DST）约定，并有一致性测试和集成文档；fuzz 不是硬性门槛，但富途这种二进制帧编解码正是开发指南建议做 fuzz 的场景 | 低：按 `docs/developer_guide/python_adapters.md` 写 |
 | 限制 | 跟着主仓库的节奏和规范走 | 独立的 Rust 包只能通过已安装 wheel 里的 Python 模型类交换对象，不能和 Nautilus 共享 Rust trait 对象 |
 
 先在自己的仓库里把模拟盘跑通，等结构稳定了再考虑往上游提。

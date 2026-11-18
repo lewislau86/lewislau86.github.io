@@ -5,7 +5,7 @@ description: 在一台干净的 macOS 或 Ubuntu 机器上，从安装工具链�
 
 # 从零编译 NautilusTrader：Rust 与 Python 两部分
 
-[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一章](./architecture.md)
+[全书目录](./index.md) · [下一篇](./nautilus-architecture.md)
 
 ::: tip 本篇目标
 从一台只装了操作系统的机器开始，走完两条路：
@@ -125,7 +125,7 @@ cd nautilus_trader
 rustc --version    # 应当显示 rustc 1.100.0，第一次会先下载工具链
 ```
 
-`--depth 1` 只取最新一个提交，适合只想编译和阅读的场景。克隆下来的目录里，第 0 章讲过的 `crates/`、`python/` 都在，另外还有 Python 示例要用的 `test_data/` 和 `docs/tutorials/`。
+`--depth 1` 只取最新一个提交，适合只想编译和阅读的场景。克隆下来的目录里，第 0 章要讲的 `crates/`、`python/` 都在，另外还有 Python 示例要用的 `test_data/` 和 `docs/tutorials/`。
 
 ## 3. Rust 部分：不经过 Python
 
@@ -199,7 +199,7 @@ PnL (total):                    0.00
 
 两点补充：
 
-- 这样编出来的是**标准精度**（64 位定点数）。想和 Python 包保持一致，用 `--features examples,high-precision`。原因见第 0 章第 4.1 节。
+- 这样编出来的是**标准精度**（64 位定点数）。想和 Python 包保持一致，用 `--features examples,high-precision`。原因见第 0 章第 5.1 节。
 - 加 `--release` 会用 `[profile.release]`：`opt-level = 3`、`lto = "fat"`、`codegen-units = 1`、`panic = "abort"`。运行快，但编译慢、内存占用高，只在需要测性能时再用。
 
 ### 3.5 跑测试
@@ -551,4 +551,4 @@ CARGO_BUILD_JOBS=2 make build-debug
 - 示例：[`crates/backtest/examples/engine_ema_cross.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/backtest/examples/engine_ema_cross.rs) · [`examples/backtest/crypto_ema_cross_ethusdt_trade_ticks.py`](https://github.com/nautechsystems/nautilus_trader/blob/develop/examples/backtest/crypto_ema_cross_ethusdt_trade_ticks.py)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-两部分都跑通之后，就可以边读边改了。下一章从内核的启动开始，跟着一条报价和一笔订单走一遍运行时：[第 1 章：整体架构](./architecture.md)。
+两部分都跑通之后，就可以边读边改了。下一篇先看全景：一个节点分几层、每层在哪个目录、核心数据结构长什么样：[第 0 章：NautilusTrader 架构](./nautilus-architecture.md)。
