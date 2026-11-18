@@ -38,7 +38,8 @@ def svg(name, title, description, height, body, width=960):
 <title id="title">{escape(title)}</title><desc id="desc">{escape(description)}</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{GRAY}"/></marker>
 <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{BLUE}"/></marker>
-<marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{ORANGE}"/></marker></defs>
+<marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{ORANGE}"/></marker>
+<marker id="arrow-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{TEAL}"/></marker></defs>
 <rect width="{width}" height="{height}" rx="16" fill="#f8fafc"/>
 <g font-family='{FONT}' fill="{INK}" text-anchor="middle">{body}</g></svg>'''
     ET.fromstring(document)
@@ -69,18 +70,26 @@ def box(x, y, w, h, lines, fill="white", stroke=GRAY, size=15, color=INK, mono_f
     gap = size + 6
     top = y + h / 2 - (n - 1) * gap / 2 + size * 0.35
     for i, line in enumerate(lines):
-        mono = i >= mono_from
+        mono = i >= mono_from and line.isascii()
         out += text(x + w / 2, top + i * gap, line, size if i == 0 else size - 1,
                     color if i == 0 else GRAY, "bold" if i == 0 else "normal", mono=mono, limit=w - 12)
     return out
 
 
 def arrow(x1, y1, x2, y2, color=GRAY, width=1.6, dash=False, both=False):
-    marker = {GRAY: "arrow", BLUE: "arrow-blue", ORANGE: "arrow-orange"}[color]
+    marker = {GRAY: "arrow", BLUE: "arrow-blue", ORANGE: "arrow-orange", TEAL: "arrow-teal"}[color]
     extra = ' stroke-dasharray="6 5"' if dash else ""
     start = f' marker-start="url(#{marker})"' if both else ""
     return (f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" '
             f'stroke-width="{width}"{extra} marker-end="url(#{marker})"{start}/>')
+
+
+def poly_arrow(points, color=GRAY, width=1.5, dash=False):
+    marker = {GRAY: "arrow", BLUE: "arrow-blue", ORANGE: "arrow-orange", TEAL: "arrow-teal"}[color]
+    extra = ' stroke-dasharray="6 5"' if dash else ""
+    pts = " ".join(f"{x:.1f},{y:.1f}" for x, y in points)
+    return (f'<polyline points="{pts}" fill="none" stroke="{color}" stroke-width="{width}"{extra} '
+            f'marker-end="url(#{marker})"/>')
 
 
 # ---------------------------------------------------------------------------
@@ -450,6 +459,202 @@ def build_pipeline():
         590, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 2 章 · 富途适配器：在 crate 图里的位置、运行时位置、Python 绑定链
+# （futu-opend、adapters/futu 是本书提议的新 crate，其余名字取自 develop 5997d82）
+# ---------------------------------------------------------------------------
+def crate_box(x, y, name, fill="white", color=GRAY, w=None, h=38, dash=False, size=15, mono=True):
+    w = w or max(112, text_width(name, size, mono) + 22)
+    out = rect(x - w / 2, y - h / 2, w, h, fill, color, rx=8, width=1.8 if dash else 1.4, dash=dash)
+    out += text(x, y + 5, name, size, INK, "bold" if dash else "normal", mono=mono, limit=w - 8)
+    return out, w
+
+
+def futu_in_crates():
+    b = text(480, 36, "富途适配器放在 crate 图的哪里：和 IB 适配器平级，挂在 live 之下", 19, INK, "bold", limit=920)
+    nodes = {}
+
+    def put(name, x, y, **kw):
+        nonlocal b
+        out, w = crate_box(x, y, name, **kw)
+        b += out
+        nodes[name] = (x, y, w)
+
+    def link(a, c, color=GRAY, dash=False, label=None, lx=None, ly=None):
+        nonlocal b
+        xa, ya, _ = nodes[a]
+        xc, yc, wc = nodes[c]
+        if abs(ya - yc) < 1:
+            x1 = xa + nodes[a][2] / 2 if xc > xa else xa - nodes[a][2] / 2
+            x2 = xc - wc / 2 - 3 if xc > xa else xc + wc / 2 + 3
+            b += arrow(x1, ya, x2, yc, color, 1.5, dash=dash)
+        else:
+            b += arrow(xa, ya + 19, xc, yc - 21, color, 1.5, dash=dash)
+        if label:
+            b += text(lx, ly, label, 14, color, anchor="start")
+
+    put("pyo3", 330, 80, fill="orange", color=ORANGE)
+    put("adapters/interactive_brokers", 170, 170, fill="blue", color=BLUE)
+    put("adapters/futu", 470, 170, fill="#fde68a", color=ORANGE, dash=True)
+    put("futu-opend", 720, 170, fill="#fde68a", color=ORANGE, dash=True)
+    put("ibapi", 90, 260, fill="gray", color=GRAY)
+    put("live", 330, 260, fill="blue", color=BLUE)
+    put("system", 330, 345)
+    b += rect(150, 412, 300, 38, "blue", BLUE, rx=8)
+    b += text(300, 437, "data · execution · risk · portfolio · trading", 14, INK, mono=True, limit=290)
+    nodes["engines"] = (300, 431, 300)
+    put("common", 330, 515, fill="gray", color=INK)
+    put("model · core", 330, 595, fill="gray", color=INK)
+    link("pyo3", "adapters/interactive_brokers")
+    link("pyo3", "adapters/futu", ORANGE, label="adapters feature", lx=420, ly=112)
+    link("adapters/interactive_brokers", "ibapi")
+    link("adapters/interactive_brokers", "live")
+    link("adapters/futu", "live", ORANGE)
+    link("adapters/futu", "futu-opend", ORANGE)
+    link("live", "system")
+    b += arrow(330, 364, 330, 410, GRAY, 1.5)
+    b += arrow(330, 452, 330, 494, GRAY, 1.5)
+    link("common", "model · core")
+    b += poly_arrow([(520, 189), (540, 230), (540, 515), (394, 515)], ORANGE, 1.4, dash=True)
+    b += text(548, 470, "实现 trait", 14, ORANGE, anchor="start")
+    # 右侧说明
+    b += rect(630, 236, 300, 440, "white", ORANGE, rx=12)
+    b += text(646, 262, "要新增的两个 crate", 16, ORANGE, "bold", "start")
+    lines = [
+        ("futu-opend（独立协议库）", True),
+        ("· 不依赖任何 nautilus crate", False),
+        ("· tokio + prost：包头、SHA1、", False),
+        ("　RSA/AES、心跳、请求与回包对应", False),
+        ("· 地位等同 IB 适配器依赖的 ibapi", False),
+        ("adapters/futu（nautilus-futu）", True),
+        ("· 依赖 live、common、model、", False),
+        ("　core 和 futu-opend", False),
+        ("· 实现 common 里的 DataClient、", False),
+        ("　ExecutionClient trait", False),
+        ("· python feature 下才依赖 system", False),
+        ("要改的现有文件", True),
+        ("· 根 Cargo.toml；Makefile 的", False),
+        ("　ADAPTER_CRATES", False),
+        ("· crates/pyo3：Cargo.toml、lib.rs", False),
+    ]
+    y = 292
+    for line, head in lines:
+        if head and y > 300:
+            y += 6
+        b += text(646, y, line, 15 if head else 14, INK if head else GRAY, "bold" if head else "normal", "start", limit=276)
+        y += 26
+    b += text(480, 704, "橙色虚线框是新增的部分；箭头从使用方指向被依赖方。IB 适配器的依赖取自它的 Cargo.toml，富途照此设计。", 14, GRAY, limit=900)
+    svg("futu-in-crates.svg", "富途适配器在 crate 依赖图中的位置",
+        "富途适配器 adapters/futu 和 adapters/interactive_brokers 平级，被 pyo3 在 adapters feature 下依赖，自己依赖 live，"
+        "并实现 common 里的 DataClient 和 ExecutionClient trait。它下面另有一个新增的独立协议库 futu-opend，对应 IB 适配器依赖的第三方 ibapi。"
+        "live 依赖 system，system 依赖各引擎，引擎依赖 common，common 依赖 model 和 core。",
+        724, b)
+
+
+def futu_runtime():
+    b = text(480, 36, "运行时：trait 方法在核心线程上立刻返回，网络活交给 Tokio，结果经 channel 回来", 19, INK, "bold", limit=920)
+    # 核心线程
+    b += rect(14, 58, 432, 520, "blue", BLUE, rx=14)
+    b += text(30, 84, "核心线程（单线程）", 16, BLUE, "bold", "start")
+    L, R, W = 40, 242, 190
+    b += box(L, 100, W, 50, ["DataEngine"], "white", BLUE, size=15)
+    b += box(R, 100, W, 50, ["ExecutionEngine"], "white", BLUE, size=15)
+    b += box(L, 176, W, 56, ["DataClientAdapter", "data/src/client.rs"], "white", BLUE, size=14)
+    b += box(R, 176, W, 56, ["ExecutionClientAdapter", "execution/src/client/"], "white", BLUE, size=14)
+    b += box(L, 258, W, 64, ["FutuDataClient", "subscribe_quotes(…)", "同步，立刻返回"], "#fde68a", ORANGE, size=14, dash=True)
+    b += box(R, 258, W, 64, ["FutuExecutionClient", "submit_order(…)", "同步，立刻返回"], "#fde68a", ORANGE, size=14, dash=True)
+    for x in (L + W / 2, R + W / 2):
+        b += arrow(x, 152, x, 174, BLUE, 1.5)
+        b += arrow(x, 234, x, 256, BLUE, 1.5)
+    b += box(L, 470, 392, 56, ["AsyncRunner（crates/live/src/runner.rs）", "从 channel 取事件，派发到引擎的端点"], "white", BLUE, size=14)
+    b += poly_arrow([(L + 20, 468), (L + 20, 440), (26, 440), (26, 125), (L - 2, 125)], BLUE, 1.3, dash=True)
+    b += poly_arrow([(R + W - 20, 468), (R + W - 20, 440), (438, 440), (438, 125), (R + W + 2, 125)], BLUE, 1.3, dash=True)
+    b += text(236, 418, "DataEngine.process_data · ExecEngine.process", 14, BLUE, mono=True, limit=400)
+    b += text(230, 556, "适配器只读缓存（CacheView），不写", 14, GRAY)
+    # Tokio
+    b += rect(470, 58, 300, 520, "teal", TEAL, rx=14, dash=True)
+    b += text(486, 84, "Tokio 运行时", 16, TEAL, "bold", "start")
+    b += box(484, 100, 272, 70, ["TaskGroup 里的任务", "订阅、下单、查询各起任务", "（不允许直接 tokio::spawn）"], "white", TEAL, size=14)
+    b += box(484, 206, 272, 182, ["FutuSharedClient（共享连接）", "长度前缀编解码：包头 + protobuf", "serial_no → 等待中的请求", "定时发 KeepAlive（1004）", "推送按 proto_id 分发", "限流：下单 15 次 / 30 秒"],
+             "#fde68a", ORANGE, size=14, dash=True)
+    b += box(484, 420, 272, 104, ["推送解析", "行情推送 → QuoteTick 等", "2208 / 2218 → 订单事件或报告", "→ get_*_event_sender()"], "white", TEAL, size=14)
+    b += poly_arrow([(L + W / 2, 324), (L + W / 2, 346), (456, 346), (456, 150), (482, 150)], ORANGE, 1.5)
+    b += f'<line x1="{R + W:.1f}" y1="290" x2="456" y2="290" stroke="{ORANGE}" stroke-width="1.5"/>'
+    b += text(330, 340, "spawn 到 TaskGroup", 14, ORANGE)
+    b += arrow(620, 172, 620, 204, TEAL, 1.5, both=True)
+    b += arrow(620, 390, 620, 418, TEAL, 1.5)
+    b += arrow(482, 498, 434, 498, ORANGE, 1.8)
+    # OpenD
+    b += box(796, 200, 150, 96, ["OpenD", "127.0.0.1:11111", "本机网关进程"], "gray", INK, size=15)
+    b += box(796, 380, 150, 60, ["富途服务器", "行情 · 交易"], "gray", INK, size=15)
+    b += arrow(758, 248, 794, 248, GRAY, 1.8, both=True)
+    b += text(776, 238, "TCP", 14, GRAY, mono=True)
+    b += arrow(871, 298, 871, 378, GRAY, 1.6, both=True)
+    b += text(480, 604, "橙色虚线框是富途要写的部分，其余都是现成的。", 14, GRAY)
+    b += text(480, 626, "命令：引擎 → 适配器方法 → Tokio 任务 → 共享连接；事件：推送 → 解析 → channel → AsyncRunner → 引擎。", 14, GRAY, limit=920)
+    svg("futu-runtime.svg", "富途适配器的运行时位置",
+        "核心线程上，DataEngine 和 ExecutionEngine 经 DataClientAdapter、ExecutionClientAdapter 调用 FutuDataClient 和 FutuExecutionClient 的同步 trait 方法，"
+        "这些方法把网络工作交给 Tokio 上 TaskGroup 里的任务后立刻返回。任务通过共享连接 FutuSharedClient 与本机 OpenD 通信，OpenD 再连富途服务器。"
+        "推送被解析成 QuoteTick、订单事件或报告，经 channel 交给 AsyncRunner，再派发回引擎。",
+        646, b)
+
+
+def futu_python_binding():
+    b = text(480, 36, "Python 怎么用上富途适配器：官方路线走 PyO3 注册表，另一条路是纯 Python 客户端", 19, INK, "bold", limit=920)
+    b += rect(30, 58, 560, 586, "orange", ORANGE, rx=14)
+    b += text(46, 84, "路线 A：Rust 适配器 + PyO3 绑定（和 IB 一样）", 16, ORANGE, "bold", "start")
+    steps = [
+        ("① 配置和工厂类型加 #[pyclass]", "config.rs、factories.rs：FutuDataClientConfig、FutuDataClientFactory…"),
+        ("② src/python/mod.rs：#[pymodule] fn futu", "add_class；注册表登记工厂名 \"FUTU\" 和配置类名的提取函数"),
+        ("③ crates/pyo3", "Cargo.toml 加可选依赖；lib.rs 挂成 _libnautilus.futu"),
+        ("④ python/nautilus_trader/adapters/futu/", "__init__.py 转出；make py-stubs 生成 __init__.pyi"),
+        ("⑤ 用户脚本", "builder.add_data_client(None, FutuDataClientFactory(), 配置)"),
+        ("⑥ LiveNodeBuilder.add_data_client（现成）", "按工厂名和配置类名查注册表，取出 Rust 的工厂和配置"),
+    ]
+    y = 100
+    for i, (head, detail) in enumerate(steps):
+        b += rect(46, y, 528, 72, "white", ORANGE, rx=9, width=1.3)
+        mono = not any(ord(ch) > 0x2E80 for ch in head[1:])
+        b += text(60, y + 30, head, 15, INK, "bold", "start", mono=False, limit=500)
+        b += text(60, y + 56, detail, 14, GRAY, anchor="start", limit=506)
+        if i < len(steps) - 1:
+            b += arrow(310, y + 74, 310, y + 84, ORANGE, 1.5)
+        y += 86
+    b += text(310, 626, "①②在适配器 crate 里；③改两个现有文件；④⑤是 Python；⑥是现成的", 14, GRAY, limit=540)
+    b += rect(610, 58, 320, 586, "teal", TEAL, rx=14)
+    b += text(626, 84, "路线 B：纯 Python 适配器", 16, TEAL, "bold", "start")
+    right = [
+        ("继承 nautilus_trader.live.clients", True),
+        ("DataClient / ExecutionClient", False),
+        ("DataClientFactory /", False),
+        ("ExecutionClientFactory", False),
+        ("注册时必须给名字", True),
+        ("add_data_client(\"FUTU\", Factory,", False),
+        ("  DataClientConfig(…))", False),
+        ("节点用 PythonDataFactory 包一层", True),
+        ("订阅和命令钩子是 async，跑在节点的", False),
+        ("asyncio 循环上；拿到只读缓存，", False),
+        ("输出经队列交给 Rust 引擎", False),
+        ("可以直接用富途官方的 futu-api", True),
+        ("Python SDK 连 OpenD，最快跑通；", False),
+        ("代价是协议处理留在 Python 里", False),
+        ("路线 C：独立的 Rust/PyO3 包", True),
+        ("外观仍继承上面的 Python 基类，", False),
+        ("只能和已安装 wheel 里的模型类", False),
+        ("交换对象，不能共享 Rust trait 对象", False),
+    ]
+    y = 118
+    for line, head in right:
+        b += text(626, y, line, 15 if head else 14, INK if head else GRAY, "bold" if head else "normal", "start",
+                  mono=(not head and line.isascii()), limit=296)
+        y += 31 if head else 27
+    svg("futu-python-binding.svg", "富途适配器的 Python 绑定",
+        "路线 A 和 IB 适配器一样：在富途适配器的配置和工厂类型上加 pyclass，在 src/python/mod.rs 的 pymodule 里登记类并向全局注册表登记工厂和配置的提取函数，"
+        "在 crates/pyo3 里加可选依赖并用 wrap_pymodule 挂成 _libnautilus.futu，再由 python/nautilus_trader/adapters/futu 转出；用户在 Python 里把工厂和配置交给 LiveNode.builder 的 add_data_client，"
+        "节点按工厂名和配置类名查注册表，得到 Rust 的工厂和配置对象。路线 B 是继承 nautilus_trader.live.clients 里的 Python 基类写纯 Python 客户端；路线 C 是独立的 Rust/PyO3 包。",
+        664, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -458,6 +663,9 @@ def main():
     order_book_layout()
     crate_dependencies()
     build_pipeline()
+    futu_in_crates()
+    futu_runtime()
+    futu_python_binding()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

@@ -1,6 +1,6 @@
 ---
 title: "第 2 章：增加一个券商：以富途为例"
-description: 适配器在 NautilusTrader 里的接口边界，为什么富途应当参照 Interactive Brokers 适配器，富途 OpenD 协议要点，两边概念的对照，以及从协议层到实盘节点的实现里程碑。
+description: 适配器在 NautilusTrader 里的接口边界；富途适配器放在 Rust 架构的哪一层、运行时在哪个线程；为什么照着 Interactive Brokers 适配器写；富途 OpenD 协议要点和概念对照；Python 怎么绑定；以及从协议层到实盘节点的实现里程碑。
 ---
 
 # 第 2 章：增加一个券商：以富途为例
@@ -8,9 +8,9 @@ description: 适配器在 NautilusTrader 里的接口边界，为什么富途应
 [全书目录](./index.md) · [上一章](./architecture.md) · [下一章](./core-topics.md)
 
 ::: tip 本章要回答的问题
-在 NautilusTrader 里，一个券商要接进来，需要实现哪些 trait、放在哪些文件里；富途这种“本地网关 + 私有 TCP 协议”的券商，应该照着哪个现有适配器写；富途的协议有哪些地方会影响设计；第一步做什么、怎样验收。
+在 NautilusTrader 里，一个券商要接进来，需要实现哪些 trait、放在 Rust 架构的哪一层、运行时跑在哪个线程上；富途这种“本地网关 + 私有 TCP 协议”的券商，应该照着哪个现有适配器写；富途的协议有哪些地方会影响设计；写好的 Rust 适配器怎样暴露给 Python；第一步做什么、怎样验收。
 
-**源码版本：** NautilusTrader `develop` 分支，2026-11-13 核对。**富途文档：** OpenAPI v10.12。
+**源码版本：** NautilusTrader `develop` 分支，2026-11-13 核对，第 2 节和第 6 节按提交 `5997d82`（2026-11-17）补充。**富途文档：** OpenAPI v10.12。文中的 `futu-opend`、`adapters/futu` 及其文件和类型名都是本书的设计建议，仓库里还没有。
 :::
 
 ## 结论先行
@@ -58,7 +58,98 @@ node.run().await?;
 
 `LiveNodeBuilder` 在 `crates/live/src/node/builder.rs`，除了上面两个方法还有带路由的 `add_data_client_with_routing`、`add_exec_client_with_routing`，以及 `with_reconciliation` 等设置。
 
-## 2. 照着 IB 适配器写什么
+## 2. 富途适配器放在 Rust 架构的哪里
+
+### 2.1 在 crate 依赖图里
+
+![富途适配器在 crate 依赖图中的位置：adapters/futu 与 adapters/interactive_brokers 平级，被 pyo3 在 adapters feature 下依赖，自己依赖 live 并实现 common 里的 DataClient、ExecutionClient trait；下面另有一个新增的独立协议库 futu-opend，对应 IB 依赖的第三方 ibapi](/nautilus-trader/figures/futu-in-crates.svg)
+
+怎么读这张图：橙色虚线框是要新增的，其余都是仓库里现有的（依赖关系见[第 1 章](./architecture.md)第 2 节的完整依赖图）。
+
+- **和 IB 适配器平级，挂在 `live` 之下。** IB 适配器 `Cargo.toml` 里 nautilus 方面的必选依赖是 `nautilus-common`、`nautilus-core`、`nautilus-live`、`nautilus-model`，另有 `ibapi`、`tokio`、`anyhow`、`async-trait` 等第三方依赖；`nautilus-execution`、`nautilus-network` 是可选的，但默认的 `execution` feature 会打开它们；`nautilus-system` 只在 `python` feature 下打开，因为 Python 用到的工厂注册表 `get_global_pyo3_registry()` 定义在 `crates/system/src/python/registry.rs`。富途照此设计。
+- **trait 来自 `common`。** 适配器真正“插进”平台的接口是第 1 节那几个 trait，它们在 `nautilus-common` 里；`live` 提供的是节点、`TaskGroup`、命令失败分类等运行时设施。
+- **协议库单独成 crate。** `futu-opend` 不依赖任何 nautilus crate，只管和 OpenD 说话，地位等同 IB 适配器下面的 `ibapi`。这样它能单独测试、单独发布，别的 Rust 项目也能用。
+- **最上面是 `pyo3`。** 它在 `adapters` feature 下可选依赖各个适配器（`blockchain` 例外，挂在 `defi` 下），依赖声明里同时打开适配器的 `python` feature，这是第 6 节 Python 绑定的入口。
+
+两个新 crate 的 `Cargo.toml` 大致如下：
+
+```toml
+# 示意：crates/adapters/futu/Cargo.toml（依赖照 interactive_brokers，feature 参考 okx）
+[package]
+name = "nautilus-futu"
+
+[dependencies]
+nautilus-common = { workspace = true }
+nautilus-core = { workspace = true }
+nautilus-live = { workspace = true }
+nautilus-model = { workspace = true }
+nautilus-system = { workspace = true, optional = true }
+futu-opend = { path = "../../futu-opend" }      # 即 crates/futu-opend；或独立仓库、crates.io
+tokio = { workspace = true }
+anyhow = { workspace = true }
+async-trait = { workspace = true }              # 客户端 trait 用 #[async_trait(?Send)]
+pyo3 = { workspace = true, optional = true }
+pyo3-stub-gen = { workspace = true, optional = true }
+
+[features]
+default = ["high-precision"]                    # IB 没有这个 feature；这里照 OKX、Bybit 等多数适配器
+high-precision = ["nautilus-model/high-precision"]
+python = ["dep:nautilus-system", "nautilus-system/python", "nautilus-live/python",
+          "nautilus-model/python", "nautilus-common/python", "pyo3", "pyo3-stub-gen"]
+extension-module = ["python", "pyo3/extension-module", "nautilus-model/extension-module" /* … */]
+```
+
+### 2.2 建议的目录
+
+按开发指南的推荐结构（见[第 0 章](./nautilus-architecture.md)第 2.5 节）和 IB 适配器的实际目录，富途适配器可以这样组织：
+
+```text
+crates/futu-opend/             # 独立协议库（不依赖 nautilus；也可以放在单独的仓库）
+  build.rs                     # prost-build 从 .proto 生成代码
+  proto/                       # 从 PyPI futu-api 包里取的 .proto
+  src/codec.rs                 # 44 字节包头 + 包体的 tokio_util 编解码器
+  src/crypto.rs                # RSA（InitConnect）、FTAES_ECB
+  src/client.rs                # 连接、InitConnect、KeepAlive、serial_no → 等待中的请求、推送分发
+
+crates/adapters/futu/
+  src/lib.rs
+  src/common/                  # FUTU venue 常量、枚举映射、Security{market, code} ↔ InstrumentId
+  src/shared_client.rs         # 数据、执行、标的加载共用一条 OpenD 连接（引用计数）
+  src/config.rs                # FutuDataClientConfig、FutuExecutionClientConfig、FutuInstrumentProviderConfig
+  src/providers.rs             # FutuInstrumentProvider：GetStaticInfo → Equity
+  src/data/                    # FutuDataClient：订阅额度记账、推送 → QuoteTick / TradeTick / OrderBookDeltas / Bar
+  src/execution/               # FutuExecutionClient：下单限流、2208/2218 → 订单事件、对账报告
+  src/factories.rs             # FutuDataClientFactory、FutuExecutionClientFactory
+  src/python/                  # PyO3 投影（第 6 节）
+  examples/                    # node_data_tester.rs、node_exec_tester.rs
+  test_data/                   # 录下来的 OpenD 回包和推送
+```
+
+### 2.3 运行时：在哪个线程上做什么
+
+![富途适配器的运行时位置：核心线程上 DataEngine、ExecutionEngine 经适配器包装调用 FutuDataClient、FutuExecutionClient 的同步方法，方法把网络工作交给 Tokio 上 TaskGroup 的任务后立刻返回；任务经共享连接 FutuSharedClient 和本机 OpenD 通信；推送解析后经 channel 交给 AsyncRunner，再派发回引擎](/nautilus-trader/figures/futu-runtime.svg)
+
+怎么读这张图：左边是核心线程，中间是 Tokio，右边是外部进程。命令从左往右走，事件从右往左回来。
+
+- **trait 方法是同步的，要立刻返回。** `DataClient::subscribe_quotes(&mut self, cmd) -> anyhow::Result<()>`、`ExecutionClient::submit_order(&self, cmd) -> anyhow::Result<()>` 都是普通函数，在核心线程上被引擎经 `DataClientAdapter`（`crates/data/src/client.rs`）和 `ExecutionClientAdapter`（`crates/execution/src/client/mod.rs`）调用。它们只能做校验和记账，然后把真正的网络请求交给后台任务。只有 `connect`、`disconnect` 和几个 `generate_*` 对账方法是 `async` 的（trait 用 `#[async_trait(?Send)]` 声明）。
+- **后台任务放进 `TaskGroup`。** `nautilus_live::task::TaskGroup` 负责任务的启动、取消和收尾；IB 的数据客户端就持有 `session_tasks`、`command_tasks` 两个 `TaskGroup`。开发指南不允许在适配器代码里直接 `tokio::spawn`（预提交钩子会拦下），确实需要时用 `nautilus_common::live::get_runtime().spawn()`。
+- **一条共享连接。** 订阅、下单、查询都经过同一个 `FutuSharedClient`：它持有编解码器、`serial_no` 到等待中请求的映射、KeepAlive 定时器、按 `proto_id` 的推送分发和限流器。
+- **事件只能经 channel 回来。** 推送解析成 Nautilus 对象后，用 `get_data_event_sender()`、`get_exec_event_sender()`（`crates/common/src/live/runner.rs`）发出去；核心线程上的 `AsyncRunner` 取出来，送到 `DataEngine.process_data`、`ExecEngine.process` 这些端点。适配器能拿到的缓存是只读的 `CacheView`。
+
+### 2.4 放进仓库时要改的现有文件
+
+开发指南 “Repository and Python wiring” 一节列了新适配器必须接入的地方：
+
+| 位置 | 改什么 |
+| --- | --- |
+| 根 `Cargo.toml` | `members` 加 `crates/adapters/futu`，`[workspace.dependencies]` 加 `nautilus-futu` |
+| `Makefile` | `ADAPTER_CRATES` 加 `nautilus-futu`（工作区测试清单会检查） |
+| `crates/pyo3/Cargo.toml` | 可选依赖 `nautilus-futu`（`features = ["python"]`），加进 `adapters` feature，并在 `extension-module`、`high-precision` 等 feature 里传递 |
+| `crates/pyo3/src/lib.rs` | 注册 `_libnautilus.futu` 子模块（第 6 节） |
+| 适配器自己的 `src/python/` | 向全局注册表登记工厂和配置的提取函数 |
+| Python 包、示例、文档 | `python/nautilus_trader/adapters/futu/`、`examples/live/futu/`、`python/tests/unit/adapters/futu/`、`docs/integrations/futu.md` |
+
+## 3. 照着 IB 适配器写什么
 
 IB 适配器的目录结构（只列 `src/`）：
 
@@ -90,7 +181,7 @@ src/
 
 还有一个基础设施上的坑：`nautilus_network::socket::SocketClient` 只支持“按结尾分隔符切包”（Betfair 的流用 `\r\n`），文档写明空的分隔符会被拒绝。富途的包是“固定包头 + 包体长度”，用不上它，要自己写编解码器（比如基于 `tokio_util::codec`）。
 
-## 3. 富途 OpenD 协议要点
+## 4. 富途 OpenD 协议要点
 
 OpenD 是运行在你电脑或服务器上的网关程序，登录富途账号以后在本地开放 Socket 服务（默认 `127.0.0.1:11111`），客户端只连 OpenD。官方 SDK 有 Python、Java、C#、C++、JavaScript 五种，没有 Rust；文档里专门有一页“底层协议介绍”，就是给自己实现协议的人看的。
 
@@ -110,7 +201,7 @@ struct Header {
 }
 ```
 
-**包体**是 proto2 语法的 protobuf，每个协议都是 `Request{ c2s }` / `Response{ retType, retMsg, errCode, s2c }`，推送只有 `Response`。`retType` 里 -100 是超时、-200 是断开，对应上一节的 `Ambiguous`。Rust 侧可以用 `prost` 从 `.proto` 生成代码。
+**包体**是 proto2 语法的 protobuf，每个协议都是 `Request{ c2s }` / `Response{ retType, retMsg, errCode, s2c }`，推送只有 `Response`。`retType` 里 -100 是超时、-200 是断开，对应第 1 节的 `Ambiguous`。Rust 侧可以用 `prost` 从 `.proto` 生成代码。
 
 **`.proto` 要从最新版 PyPI 包 `futu-api` 里取**，不要用 GitHub 上 `py-futu-api` 仓库 master 分支的，那里比文档旧，比如 `TimeInForce` 只有 DAY 和 GTC，缺了文档里已有的 IOC 和 GTD。
 
@@ -145,7 +236,7 @@ struct Header {
 - **实盘下单前要 `Trd_UnlockTrade`**（交易密码的 MD5），模拟盘不用；解锁作用于整个 OpenD；图形界面版 OpenD 不支持用接口解锁。
 - **代码格式**：港股必须 5 位数字（`00700`），A 股 6 位，美股不限；协议里证券是 `{market, code}`，`HK.00700` 只是 SDK 的字符串写法。
 
-## 4. 两边的概念对照
+## 5. 两边的概念对照
 
 | 富途 | Nautilus |
 | --- | --- |
@@ -161,7 +252,164 @@ struct Header {
 | `retType` -100（超时）、-200（断开） | `CommandFailure::Ambiguous` |
 | `OrderStatus`（Submitted、Filled_Part、Cancelled_All……） | Nautilus 的 `OrderStatus`，逐个写映射和测试 |
 
-## 5. 从哪里开始：五个里程碑
+## 6. Python 怎么绑定
+
+![富途适配器的 Python 绑定：路线 A 和 IB 一样，在 Rust 类型上加 pyclass、在 pymodule 里登记、由 crates/pyo3 挂成 _libnautilus.futu、再由 Python 包转出，用户把工厂和配置交给 LiveNode.builder 的 add_data_client，节点按名字查注册表取出 Rust 对象；路线 B 是继承 nautilus_trader.live.clients 的纯 Python 客户端；路线 C 是独立的 Rust/PyO3 包](/nautilus-trader/figures/futu-python-binding.svg)
+
+怎么读这张图：左边是官方适配器的路线，每一步对应一个文件；右边是不改 NautilusTrader 仓库也能走的两条路。
+
+### 6.1 路线 A：Rust 适配器 + PyO3 绑定
+
+这是 IB、OKX 等官方适配器的做法。适配器全部逻辑在 Rust 里，Python 只拿到**配置类和工厂类**，用来告诉节点“建一个富途客户端”。客户端本身不出现在 Python 里，跑起来以后和纯 Rust 节点完全一样。
+
+**① 配置和工厂类型加 `#[pyclass]`。** 和第 0 章讲的模型类型一样，在 `python` feature 下给 Rust 结构体加属性，Python 侧的模块名写公开路径：
+
+```rust
+// 示意：crates/adapters/futu/src/factories.rs（照 interactive_brokers/src/factories.rs）
+#[derive(Clone, Debug)]
+#[cfg_attr(feature = "python",
+    pyo3::pyclass(module = "nautilus_trader.adapters.futu", from_py_object))]
+#[cfg_attr(feature = "python",
+    pyo3_stub_gen::derive::gen_stub_pyclass(module = "nautilus_trader.adapters.futu"))]
+pub struct FutuDataClientFactory;
+
+impl DataClientFactory for FutuDataClientFactory {
+    fn create(&self, name: &str, config: &dyn ClientConfig, cache: CacheView,
+              _clock: Rc<RefCell<dyn Clock>>) -> anyhow::Result<Box<dyn DataClient>> {
+        let config = config.as_any().downcast_ref::<FutuDataClientConfig>()
+            .ok_or_else(|| anyhow::anyhow!("expected FutuDataClientConfig"))?.clone();
+        Ok(Box::new(FutuDataClient::new(ClientId::from(name), config, cache)?))
+    }
+    fn name(&self) -> &str { "FUTU" }          // 注册表靠这个名字找提取函数
+    fn config_type(&self) -> &str { "FutuDataClientConfig" }
+}
+
+// 示意：crates/adapters/futu/src/python/factories.rs（照 IB 的同名文件）
+#[pymethods]
+#[pyo3_stub_gen::derive::gen_stub_pymethods]
+impl FutuDataClientFactory {
+    #[new]
+    fn py_new() -> Self { Self }
+    #[pyo3(name = "name")]
+    fn py_name(&self) -> &str { "FUTU" }      // Python 侧也要能调用 name()
+}
+```
+
+工厂必须在 `#[pymethods]` 里把 `name()` 暴露给 Python（IB 的 `src/python/factories.rs` 就有 `py_name`），因为节点的 Rust 代码会通过 PyO3 调用这个 Python 对象的 `name()` 方法，拿返回值去查注册表。每个 `#[pymethods]` 下面都要紧跟 `gen_stub_pymethods`，否则生成的 `.pyi` 里没有这些方法。配置类在 `src/python/config.rs` 里再写一个 `#[new]`，参数全部可选，这样 Python 可以用关键字参数构造（IB 的 `InteractiveBrokersDataClientConfig` 就是这样，有十几个可选参数）。
+
+**② `#[pymodule] fn futu`。** 在 `src/python/mod.rs` 里把类登记到模块，并向**全局工厂注册表**登记两类提取函数：
+
+```rust
+// 示意：crates/adapters/futu/src/python/mod.rs（照 interactive_brokers/src/python/mod.rs）
+fn extract_futu_data_factory(py: Python<'_>, factory: Py<PyAny>)
+    -> PyResult<Box<dyn DataClientFactory>> {
+    factory.extract::<FutuDataClientFactory>(py)
+        .map(|f| Box::new(f) as Box<dyn DataClientFactory>)
+        .map_err(|e| to_pyvalue_err(format!("Failed to extract FutuDataClientFactory: {e}")))
+}
+
+fn extract_futu_data_config(py: Python<'_>, config: Py<PyAny>)
+    -> PyResult<Box<dyn ClientConfig>> {
+    config.extract::<FutuDataClientConfig>(py)
+        .map(|c| Box::new(c) as Box<dyn ClientConfig>)
+        .map_err(|e| to_pyvalue_err(format!("Failed to extract FutuDataClientConfig: {e}")))
+}
+
+#[pymodule]
+pub fn futu(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<FutuDataClientConfig>()?;
+    m.add_class::<FutuExecutionClientConfig>()?;
+    m.add_class::<FutuDataClientFactory>()?;
+    m.add_class::<FutuExecutionClientFactory>()?;
+
+    let registry = nautilus_system::get_global_pyo3_registry();
+    registry.register_factory_extractor("FUTU".to_string(), extract_futu_data_factory)
+        .map_err(|e| to_pyruntime_err(format!("{e}")))?;
+    registry.register_config_extractor("FutuDataClientConfig".to_string(), extract_futu_data_config)
+        .map_err(|e| to_pyruntime_err(format!("{e}")))?;
+    // 执行客户端用 register_exec_factory_extractor，配置同上
+    Ok(())
+}
+```
+
+**③ 挂到 `_libnautilus`。** 在 `crates/pyo3/src/lib.rs` 里照其他适配器加一段：
+
+```rust
+// 示意：crates/pyo3/src/lib.rs
+#[cfg(feature = "adapters")]
+{
+    let n = "futu";
+    let submodule = pyo3::wrap_pymodule!(nautilus_futu::python::futu);
+    m.add_wrapped(submodule)?;
+    sys_modules.set_item(format!("{module_name}.{n}"), m.getattr(n)?)?;
+}
+```
+
+`crates/pyo3/Cargo.toml` 同时加上 `nautilus-futu = { workspace = true, optional = true, features = ["python"] }`，并把 `dep:nautilus-futu` 写进 `adapters` feature、把 `nautilus-futu?/extension-module` 写进 `extension-module` feature。
+
+**④ Python 包转出。** 新建 `python/nautilus_trader/adapters/futu/__init__.py`，照 IB 的写：导入 `fixup_module_names`，`from nautilus_trader._libnautilus.futu import *`，**手写一个 `__all__` 列表**列出公开的类，最后调用 `fixup_module_names(globals(), __name__)`。`__init__.pyi` 由 `make py-stubs` 生成，不手写；生成脚本会把 `__init__.py` 里的 `__all__` 抄进存根，适配器的外观模块没有 `__all__` 会直接报错。
+
+**⑤⑥ 用户脚本和节点。** Python 里的用法和 IB 的 `examples/live/interactive_brokers/data_tester.py` 一样：
+
+```python
+# 示意：examples/live/futu/data_tester.py
+from nautilus_trader.adapters.futu import FutuDataClientConfig, FutuDataClientFactory
+from nautilus_trader.common import Environment
+from nautilus_trader.live import LiveNode
+from nautilus_trader.model import TraderId
+
+node = (
+    LiveNode.builder("FUTU-DATA-TESTER-001", TraderId.from_str("TESTER-001"), Environment.LIVE)
+    .add_data_client(None, FutuDataClientFactory(), FutuDataClientConfig(host="127.0.0.1", port=11111))
+    .build()
+)
+node.run()
+```
+
+`add_data_client` 是 `crates/live/src/python/node.rs` 里的现成代码。它先判断工厂是不是 Python 写的（路线 B）；不是的话，调用工厂的 `name()` 得到 `"FUTU"`，在注册表里找到 ② 登记的提取函数，把 Python 对象提取成 `Box<dyn DataClientFactory>`；再用配置对象的**类名** `"FutuDataClientConfig"` 找到配置提取函数，得到 `Box<dyn ClientConfig>`；最后交给 Rust 的 `LiveNodeBuilder`。因为是 `from_py_object` 提取，Rust 拿到的是配置的一份拷贝，之后在 Python 里改配置对象不会影响已经建好的节点。
+
+这条路线的注册表是一张“名字 → 函数指针”的表，这就是为什么 PyO3 能把一个 Python 对象变回 Rust 的 trait 对象：每个适配器在自己的模块初始化时把“怎样从 Python 对象还原出我的工厂”登记进去，节点按名字查表即可，`live` crate 不需要认识任何具体的适配器。
+
+### 6.2 路线 B：纯 Python 适配器
+
+不改 NautilusTrader 仓库，直接在 Python 里写客户端。`nautilus_trader/live/clients.py` 提供了基类，用法见开发指南 `docs/developer_guide/python_adapters.md` 和 `examples/live/_template/`：
+
+```python
+# 示意：一个自己维护的 Python 包
+from nautilus_trader.config import DataClientConfig
+from nautilus_trader.live.clients import DataClientFactory, MarketDataClient
+from nautilus_trader.model import QuoteTick
+
+class FutuPyDataClient(MarketDataClient):
+    async def _connect(self) -> None:
+        ...  # 连 OpenD，加载标的后逐个 self._handle_instrument(instrument)
+
+    async def _subscribe_quotes(self, command) -> None:
+        for instrument_id in command.instrument_ids:
+            ...  # Qot_Sub；收到 3005 推送后构造 QuoteTick，调用 self._handle_data(quote)
+
+class FutuPyDataClientFactory(DataClientFactory):
+    @staticmethod
+    def create(*, name, config, cache, clock):
+        return FutuPyDataClient(name=name, config=config, cache=cache, clock=clock, venue=FUTU_VENUE)
+
+builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientConfig())
+```
+
+和路线 A 的区别：
+
+- 注册时**必须给名字**，配置要是 `DataClientConfig` 或它的子类；节点把工厂包成 `PythonDataFactory`。
+- 订阅和命令钩子都是 `async`，跑在节点绑定的 asyncio 事件循环上；拿到的缓存是只读的 `ClientCache`，返回的都是快照；`_handle_data`、`_handle_instrument`、`_handle_report` 等输出方法把对象**排队**交给 Rust 引擎。
+- 可以直接用富途官方的 `futu-api` Python SDK 连 OpenD，省掉第 4 节的协议实现，是最快跑通的路。要注意那个 SDK 用自己的线程回调推送，回调里不要直接调 `_handle_data`，应先用 `self.loop.call_soon_threadsafe(...)` 切回节点的事件循环（开发指南写明缓存和输出能力都只能在节点所属的线程和事件循环上使用，持有 GIL 也不算）。
+- 代价是协议处理和对象转换都在 Python 里，高频行情下 CPU 开销比路线 A 大；也进不了官方仓库。
+
+### 6.3 路线 C：独立的 Rust/PyO3 包
+
+协议和解析用 Rust 写，但编成一个**独立的** Python 扩展（自己的 `Cargo.toml` 和 `pyproject.toml`），外观仍然继承路线 B 的 Python 基类。开发指南对这条路有一个硬性限制：这个扩展只能通过已安装 wheel 里的模型类交换对象（在 Rust 里 `import nautilus_trader.model` 再构造 `QuoteTick`），不能链接第二套 Nautilus 模型类，也不能跨扩展模块传 Rust trait 对象。也就是说它和 NautilusTrader 的边界是 Python 协议，不是 Rust ABI。
+
+三条路线怎么选：先用路线 B（加官方 SDK）把模拟盘的行情和下单跑通，验证概念映射；性能或可靠性需要时，把协议层换成 Rust（路线 C）；要进官方仓库再走路线 A，届时 `futu-opend` 可以原样复用。
+
+## 7. 从哪里开始：五个里程碑
 
 全程先连**模拟盘**（`TrdEnv = SIMULATE`），不用解锁交易密码。注意美股模拟盘不支持盘前盘后。
 
@@ -171,15 +419,15 @@ struct Header {
 | M1 标的 | GetStaticInfo → `Equity`；代码与 `InstrumentId` 互转 | 往返测试；港股每手股数正确 |
 | M2 行情 | 先只订阅 00700 的报价，推送转成 `QuoteTick` | 官方的 `DataTester` 例子能跑通 |
 | M3 交易 | 先做账户和对账（`generate_mass_status`），再做下单和撤单 | `ExecTester` 能跑通；重启后对账结果一致 |
-| M4 组装 | 工厂、配置、`LiveNode` 例子；最后才是 PyO3 绑定 | Python 侧能用同一个配置启动 |
+| M4 组装 | 工厂、配置、`LiveNode` 例子；最后才是 PyO3 绑定（第 6.1 节的 ①～④） | Python 侧能用同一个配置启动 |
 
 开发指南把适配器开发分成 0～9 个阶段：范围、协议核心、标的、行情、执行、可选能力、工厂和 PyO3、一致性测试、性能测试和 fuzz、文档。上面的里程碑基本对应前七个阶段。
 
-## 6. 放进官方仓库，还是自己维护
+## 8. 放进官方仓库，还是自己维护
 
 | | 放进官方仓库（in-tree） | 自己维护（out-of-tree） |
 | --- | --- | --- |
-| 形式 | `crates/adapters/futu`，接入根 `Cargo.toml`、`Makefile` 的 `ADAPTER_CRATES`、`crates/pyo3` | 独立的 Python 包，或独立的 Rust/PyO3 包 |
+| 形式 | `crates/adapters/futu`，接入第 2.4 节列出的文件；Python 走第 6.1 节的路线 A | 独立的 Python 包（路线 B），或独立的 Rust/PyO3 包（路线 C） |
 | 门槛 | 高：开发指南要求官方适配器带确定性模拟测试（DST）、fuzz、一致性测试和文档 | 低：按 `docs/developer_guide/python_adapters.md` 写 |
 | 限制 | 跟着主仓库的节奏和规范走 | 独立的 Rust 包只能通过已安装 wheel 里的 Python 模型类交换对象，不能和 Nautilus 共享 Rust trait 对象 |
 
@@ -191,6 +439,8 @@ struct Header {
 - **用 GitHub master 上的 `.proto`。** 比文档旧，生成的代码缺字段。
 - **每手股数写死。** 港股每只不同。
 - **超时当拒单。** 超时和断线是“结果未知”，要等对账查清楚。
+- **在 trait 方法里等网络。** `subscribe_*`、`submit_order` 在核心线程上同步执行，里面阻塞会卡住整个节点；网络活交给 `TaskGroup`。
+- **在 SDK 回调线程里直接产出数据。** 路线 B 用官方 Python SDK 时，推送回调在 SDK 自己的线程上，要先切回节点的事件循环。
 - **把订阅额度当成无限。** 额度用完后订阅会失败，退订还要等 1 分钟才生效。
 :::
 
@@ -200,7 +450,8 @@ struct Header {
 
 ## 参考资料
 
-- NautilusTrader：[仓库（develop 分支）](https://github.com/nautechsystems/nautilus_trader) · [适配器开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md) · [树外适配器指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/python_adapters.md) · [IB 适配器源码](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/adapters/interactive_brokers)
+- NautilusTrader：[仓库（develop 分支）](https://github.com/nautechsystems/nautilus_trader) · [适配器开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md) · [树外适配器指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/python_adapters.md) · [IB 适配器源码](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/adapters/interactive_brokers) · [IB 的 PyO3 模块](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/adapters/interactive_brokers/src/python/mod.rs) · [工厂注册表](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/system/src/python/registry.rs) · [Python 版 LiveNode 构建器](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/python/node.rs) · [Python 适配器模板](https://github.com/nautechsystems/nautilus_trader/tree/develop/examples/live/_template)
+- 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 - 富途 OpenAPI：[底层协议介绍](https://openapi.futunn.com/futu-api-doc/ftapi/protocol.html) · [OpenD 概述](https://openapi.futunn.com/futu-api-doc/opend/opend-intro.html) · [OpenD 命令行参数](https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html) · [权限与额度](https://openapi.futunn.com/futu-api-doc/intro/authority.html) · [订阅规则](https://openapi.futunn.com/futu-api-doc/quote/sub.html) · [交易接口总览](https://openapi.futunn.com/futu-api-doc/trade/trade.html)
 - [py-futu-api](https://github.com/FutunnOpen/py-futu-api)：`futu/common/constant.py`（协议号）、`utils.py`（包头）、`conn_mng.py`（加密）、`pb/*.proto`
 
