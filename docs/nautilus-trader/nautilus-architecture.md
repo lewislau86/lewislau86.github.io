@@ -5,7 +5,7 @@ description: NautilusTrader 的全景图：一个节点由哪几层组成，Rust
 
 # 第 0 章：NautilusTrader 架构
 
-[全书目录](./index.md) · [下一章](./architecture.md)
+[全书目录](./index.md) · [下一篇](./build-from-source.md)
 
 ::: tip 本章学习目标
 看完这一章，你应该能：画出一个节点的分层图，说清每一层在哪个目录里；拿到 `crates/` 下任意一个 crate 名，说出它在哪一层、负责什么、该先读哪几个文件；说清 `python/nautilus_trader/` 里哪些是 Rust 的转出口、哪些是纯 Python 代码；认出 `Price`、`QuoteTick`、`OrderAny`、`OrderBook`、`Cache`、`MessageBus` 这几个核心结构的字段和所有权；知道在 Python 里拿到的订单为什么不会“自己更新”。
@@ -39,7 +39,7 @@ NautilusTrader 正在从 v1 换到 v2，两代的架构差别很大，读资料�
 - **Python 应用层**（`python/nautilus_trader/`）是控制面：写策略子类、组装配置、启动节点、看报表。包的文档字符串原话是“Python serving as the control plane for strategy logic, configuration, and orchestration”。
 - **PyO3 绑定**是语言边界。整个 Rust 实现编成一个扩展模块 `nautilus_trader._libnautilus`，第 3 节细讲。
 - **节点**是一个运行单位，一个进程只能同时跑一个。节点外壳有两种：回测用 `BacktestEngine`/`BacktestNode`，实盘和沙盒用 `LiveNode`。两种外壳里装的是同一个 `NautilusKernel`。
-- **内核**里的东西全部在**核心线程**上串行执行：消息派发、策略回调、风控检查、执行协调、缓存读写。网络连接、日志、写数据库跑在右边的 Tokio 运行时上，只能通过 channel 把数据和事件送回核心线程。
+- **内核**里的东西全部在**核心线程**上串行执行：消息派发、策略回调、风控检查、执行协调、缓存读写。网络连接和写数据库跑在右边的 Tokio 运行时上，日志由一个单独的后台线程写出；它们只能通过 channel 把数据和事件送回核心线程。
 
 最下面是外部世界。回测时，成交由节点内部的 `SimulatedExchange` 撮合；实盘时，适配器连到真实的交易所或券商。
 
@@ -65,10 +65,10 @@ NautilusTrader 正在从 v1 换到 v2，两代的架构差别很大，读资料�
 | 环境 | 行情 | 成交 | 时钟 |
 | --- | --- | --- | --- |
 | Backtest | 历史数据 | `SimulatedExchange` 模拟撮合 | `VirtualClock`，跟着数据时间走 |
-| Sandbox | 实时行情 | 模拟成交 | `LiveClock` |
+| Sandbox | 实时行情 | `SandboxExecutionClient` 用同一个撮合引擎模拟成交（纸面交易） | `LiveClock` |
 | Live | 实时行情 | 真实交易所或券商（含模拟盘账户） | `LiveClock` |
 
-三种环境共用 `NautilusKernel`。差别只在“时间从哪里来”和“成交由谁决定”，所以同一个策略不改代码就能从回测切到实盘。具体机制见[第 1 章](./architecture.md)第 7 节。
+三种环境共用 `NautilusKernel`。差别只在“时间从哪里来”和“成交由谁决定”，所以同一个策略不改代码就能从回测切到沙盒、再切到实盘。三种模式的逐项对比见[第 1 章](./architecture.md)第 7 节。
 
 ## 2. Rust 部分：crate 与源码目录 {#rust-layout}
 
@@ -76,7 +76,7 @@ NautilusTrader 正在从 v1 换到 v2，两代的架构差别很大，读资料�
 
 根目录的 `Cargo.toml` 是一个工作区，成员有三类：
 
-- `crates/` 下的 24 个 crate，包名统一是 `nautilus-<目录名>`，比如 `crates/model` 是 `nautilus-model`；
+- `crates/` 下的 24 个 crate，包名是 `nautilus-<目录名>`（下划线换成连字符），比如 `crates/model` 是 `nautilus-model`，`crates/event_store` 是 `nautilus-event-store`；
 - `crates/adapters/` 下的 21 个适配器：architect_ax、betfair、binance、blockchain、bybit、coinapi、coinbase、databento、deribit、derive、dydx、finfeed、hyperliquid、interactive_brokers、kalshi、kraken、lighter、okx、polymarket、sandbox、tardis；
 - `crates/` 本身是一个伞形 crate `nautilus-trader`（入口 `crates/lib.rs`），只重导出 `core`、`common`、`model` 三个；另外还有 `examples/tutorials`。
 
@@ -86,7 +86,7 @@ NautilusTrader 正在从 v1 换到 v2，两代的架构差别很大，读资料�
 
 ![Rust crate 分层图：从下到上依次是地基 core、macros、model；工具库 network、cryptography、serialization、indicators、analysis；公共服务 common；后端 persistence、infrastructure；引擎 data、execution、portfolio、risk、trading；外壳 system、backtest、live、event_store；外围 21 个适配器以及 pyo3、testkit、plugin、cli](/nautilus-trader/figures/rust-crates.svg)
 
-怎么读这张图：分层是按各 crate 的 `Cargo.toml` 里 `[dependencies]` 排的，上层只依赖下层。几处容易看错的地方：
+怎么读这张图：分层是按各 crate 的 `Cargo.toml` 里 `[dependencies]` 排的，上层只依赖同层或下层（同层之间也有依赖，比如 `risk` 依赖 `execution` 和 `portfolio`，`backtest` 依赖 `system`）。几处容易看错的地方：
 
 - `common` 单独占一层。它依赖 `model`，又被所有引擎依赖；`indicators` 和 `serialization` 是它的可选依赖，所以这两个画在它下面。
 - `persistence` 在引擎下面：`data` 引擎可选依赖它（流式读写数据目录）。`infrastructure` 只依赖 `common` 和 `cryptography`。
@@ -235,7 +235,7 @@ from nautilus_trader._libnautilus.trading import *
 fixup_module_names(globals(), __name__)
 ```
 
-`_libnautilus` 是编译出来的扩展模块，它由 `crates/pyo3/src/lib.rs` 里的 `#[pymodule] fn _libnautilus` 组装：对每个 crate 调用 `wrap_pymodule!(nautilus_<crate>::python::<crate>)` 挂上一个子模块，同时把它登记到 `sys.modules["nautilus_trader._libnautilus.<crate>"]`，这样 `from nautilus_trader._libnautilus.trading import *` 才能工作。适配器的子模块在 `adapters` feature 下同样挂上去。
+`_libnautilus` 是编译出来的扩展模块，它由 `crates/pyo3/src/lib.rs` 里的 `#[pymodule] fn _libnautilus` 组装：对每个 crate 调用 `wrap_pymodule!(nautilus_<crate>::python::<crate>)` 挂上一个子模块，同时把它登记到 `sys.modules["nautilus_trader._libnautilus.<crate>"]`，这样 `from nautilus_trader._libnautilus.trading import *` 才能工作。适配器的子模块在 `adapters` feature 下同样挂上去（`blockchain` 例外，挂在 `defi` feature 下）。
 
 `fixup_module_names` 的作用是把这些类的 `__module__` 从内部路径 `nautilus_trader._libnautilus.trading` 改成公开路径 `nautilus_trader.trading`。不改的话 `pickle` 会按内部路径去导入，失败。
 
@@ -257,7 +257,7 @@ fixup_module_names(globals(), __name__)
 | `nautilus_trader.indicators`、`.network`、`.serialization`、`.infrastructure` | 同名子模块 | 对应 crate 的 `src/python/` | — |
 | `nautilus_trader.testkit` | `_libnautilus.testkit` | `crates/testkit/src/python/` | `providers.py`：测试用的标的和数据 |
 | `nautilus_trader.config` | 没有对应子模块 | — | 从其他模块收集配置类，方便一处导入 |
-| `nautilus_trader.adapters.<venue>` | `_libnautilus.<venue>` | `crates/adapters/<venue>/src/python/` | 大多只有 `__init__.py`；`binance/instruments.py` 是少数例外 |
+| `nautilus_trader.adapters.<venue>` | `_libnautilus.<venue>` | `crates/adapters/<venue>/src/python/` | 大多只有 `__init__.py`；`binance/instruments.py` 是唯一的例外 |
 
 两个例外要留意：`config` 不对应任何 Rust 模块，只是一个汇总入口；`system` crate 没有单独的 Python 子模块，它的 `Controller` 被挂进了 `trading`，因为 `system` 依赖 `trading`，`trading` 自己没法注册它。
 
@@ -265,7 +265,7 @@ fixup_module_names(globals(), __name__)
 
 ### 3.3 类型存根是公开接口
 
-`.pyi` 不是手写的。各 crate 在类型上加 `#[pyo3_stub_gen::derive::gen_stub_pyclass(module = "nautilus_trader.model")]` 一类的标注，`make py-stubs` 运行 `generate_stubs.py` 生成存根，`generate_docstrings.py` 再把 Rust 的文档注释复制过去。官方文档（`docs/concepts/python.md`）的约定是：**存根里有的才是受支持的 API**，运行时能访问到、存根里没有的属性不算公开接口。所以查 Python API，最快的办法是打开对应模块的 `__init__.pyi`，`model/__init__.pyi` 有 8749 行、188 个类。
+`.pyi` 不是手写的。各 crate 在类型上加 `#[pyo3_stub_gen::derive::gen_stub_pyclass(module = "nautilus_trader.model")]` 一类的标注；`generate_docstrings.py` 先把 Rust 的 `///` 文档注释复制到 PyO3 包装代码上，`generate_stubs.py`（`make py-stubs`）再据此生成 `.pyi`。官方文档（`docs/concepts/python.md`）的约定是：**存根里有的才是受支持的 API**，运行时能访问到、存根里没有的属性不算公开接口。所以查 Python API，最快的办法是打开对应模块的 `__init__.pyi`，`model/__init__.pyi` 有 8749 行、188 个类。
 
 ### 3.4 Python 代码在哪里运行
 
@@ -273,7 +273,7 @@ v2 里 Python 代码只出现在三个位置：
 
 1. **用户组件。** 继承 PyO3 基类 `DataActor`、`Strategy`、`ExecutionAlgorithm`、`Controller`，覆盖 `on_start`、`on_quote`、`on_bar`、`on_order_filled` 等回调。这些回调在核心线程上同步执行，回调里做阻塞 I/O 或重计算会拖住整个节点。
 2. **编排与分析。** 构造配置、`BacktestNode`/`BacktestEngine`/`LiveNode`，跑完后读缓存、组合和报表。`LiveNode.run()` 阻塞当前线程；`LiveNode.run_async()` 让节点跑在宿主的 asyncio 事件循环上（比如 ASGI 应用里）。
-3. **Python 写的适配器。** 官方适配器全部是 Rust 实现、Python 只拿到配置和工厂；自己用 Python 写适配器时，继承 `nautilus_trader/live/clients.py` 里的 `DataClient`、`ExecutionClient`。它们跑在节点绑定的 asyncio 循环上，拿到的是只读的缓存视图，产出的数据、事件、报告经队列交给 Rust。
+3. **Python 写的适配器。** 官方适配器全部是 Rust 实现，Python 拿到的是它们的配置、工厂、客户端和数据类型；自己用 Python 写适配器时，继承 `nautilus_trader/live/clients.py` 里的 `DataClient`、`ExecutionClient`。它们跑在节点绑定的 asyncio 循环上，拿到的是只读的缓存视图，产出的数据、事件、报告经队列交给 Rust。
 
 除此之外，路由、引擎状态、订单管理、记账、交易所连接都在 Rust 里。
 
@@ -298,9 +298,9 @@ pub struct Currency { pub code: Ustr, pub precision: u8, pub iso4217: u16,
                       pub name: Ustr, pub currency_type: CurrencyType }
 ```
 
-`PriceRaw` 在标准模式下是 `i64`、高精度模式下是 `i128`；`QuantityRaw` 对应 `u64`/`u128`（数量不能为负）。`raw` 等于数值乘以 `FIXED_SCALAR`：标准模式 10⁹，高精度模式 10¹⁶。`raw` 的两个极值被留作哨兵：`PRICE_UNDEF = PriceRaw::MAX` 表示“没有价格”，`PRICE_ERROR = PriceRaw::MIN` 表示出错。
+`PriceRaw` 在标准模式下是 `i64`、高精度模式下是 `i128`；`QuantityRaw` 对应 `u64`/`u128`（数量不能为负）。`raw` 等于数值乘以 `FIXED_SCALAR`：标准模式 10⁹，高精度模式 10¹⁶（DeFi 里精度超过 16 的值以自身精度为倍数）。`raw` 的两个极值被留作哨兵：`PRICE_UNDEF = PriceRaw::MAX` 表示“没有价格”，`PRICE_ERROR = PriceRaw::MIN` 表示出错。
 
-一个容易忽略的事实：**Rust crate 默认是 64 位模式，Python wheel 是 128 位模式**（`pyproject.toml` 的 maturin feature 里有 `high-precision`）。所以同一个价格，在 Python 里 `Price.raw` 的放大倍数是 10¹⁶，在默认编译的 Rust 程序里是 10⁹，两边的 Parquet 数据也不能混用。
+一个容易忽略的事实：`nautilus-model` 等核心 crate 默认是 64 位模式，但 **Python wheel 是 128 位模式**（`pyproject.toml` 的 maturin feature 里有 `high-precision`），而且大多数适配器 crate 的默认 feature 也打开了 `high-precision`，Cargo 会把它统一到整个依赖图上。所以依赖了这些适配器的 Rust 程序同样是 128 位；只依赖核心 crate 的 Rust 程序才是 64 位，`Price.raw` 的放大倍数是 10⁹ 而不是 10¹⁶。两种模式的 Parquet 数据不能混用，写 Rust 程序时要明确自己在哪种模式下。
 
 这些类型都是 `Copy`，传值和传引用一样便宜。需要更高精度的累计量用 `rust_decimal::Decimal`：订单的 `avg_px`、仓位的 `signed_qty`、`avg_px_open` 都是 `Decimal`。
 
@@ -359,7 +359,7 @@ pub struct OrderBookDepth  { pub instrument_id: InstrumentId,
                              pub bid_counts: SmallVec<[u32; 10]>, pub ask_counts: SmallVec<[u32; 10]>, /* … */ }
 ```
 
-`OrderBookDelta` 是一条增、改、删或清空，`OrderBookDeltas` 是一批，`flags` 里的 `F_LAST`、`F_SNAPSHOT` 等位标出一批的结尾和快照。`OrderBookDepth` 是前 10 档快照，用 `SmallVec` 让 10 档以内不上堆。
+`OrderBookDelta` 是一条增、改、删或清空，`OrderBookDeltas` 是一批，`flags` 里的 `F_LAST`、`F_SNAPSHOT` 等位标出一批的结尾和快照。`OrderBookDepth` 是一次聚合的深度快照，每边档数不固定（可以为空，两边也可以不等）；`SmallVec` 让每边 10 档以内内联存放，更深的档位自动转到堆上。v1 的 `OrderBookDepth10` 在 v2 里已经没有了。
 
 所有行情最后都装进一个枚举在系统里流动：
 
@@ -433,9 +433,9 @@ pub enum InstrumentAny {
 }
 ```
 
-这里能看到整个代码库的一个习惯：**用枚举而不是 trait 对象表示“若干种之一”**。`InstrumentAny`、`OrderAny`、`AccountAny`、`OrderEventAny` 都是这样：每个具体类型是一个普通 struct，再用一个 `…Any` 枚举把它们收拢起来，并为枚举实现同一个 trait（订单用 `enum_dispatch` 宏自动生成分派代码）。这样容器里可以直接存值，`match` 能被编译器检查是否穷尽，也省掉了动态分派。
+这里能看到整个代码库的一个习惯：**用枚举而不是 trait 对象表示“若干种之一”**。`InstrumentAny`、`OrderAny`、`AccountAny`、`OrderEventAny` 都是这样：每个具体类型是一个普通 struct，再用一个 `…Any` 枚举把它们收拢起来，并为枚举实现同一个 trait（标的、订单、账户都用 `enum_dispatch` 宏自动生成分派代码）。这样容器里可以直接存值，`match` 能被编译器检查是否穷尽，也省掉了动态分派。
 
-以股票为例，`Equity` 的字段有 `id`、`raw_symbol`、`isin`、`currency`、`price_precision`、`price_increment`、`lot_size`（每手股数，港股适配器要用到）、`max_quantity`、`min_quantity`、`max_price`、`min_price`、`margin_init`、`margin_maint`、`info` 和两个时间戳。合成标的 `SyntheticInstrument` 不在 `InstrumentAny` 里，`Cache` 单独存它。
+以股票为例，`Equity` 的主要字段有 `id`、`raw_symbol`、`isin`、`currency`、`price_precision`、`price_increment`、`lot_size`（每手股数，港股适配器要用到）、`max_quantity`、`min_quantity`、`max_price`、`min_price`、`margin_init`、`margin_maint`、`info` 和两个时间戳。合成标的 `SyntheticInstrument` 不在 `InstrumentAny` 里，`Cache` 单独存它。
 
 ### 4.6 订单与订单事件
 
@@ -536,9 +536,9 @@ pub struct MarginAccount { pub base: BaseAccount, pub leverages: AHashMap<Instru
 怎么读这张图：左边存“东西”，右下存“关系”。`Cache` 有 35 个字段，归成四组：
 
 - **静态数据：** `currencies`、`instruments: AHashMap<InstrumentId, InstrumentAny>`、`synthetics`。
-- **行情：** `books: AHashMap<InstrumentId, OrderBook>`，以及 `quotes`、`trades`、`bars`、`mark_prices` 等，每个标的一个 `BoundedVecDeque`（定长环形队列，默认容量 10,000，可在 `CacheConfig` 里改），满了就丢最旧的。
+- **行情：** `books: AHashMap<InstrumentId, OrderBook>`，以及 `quotes`、`trades`、`bars`、`mark_prices` 等，按标的（K 线按 `BarType`）各一个 `BoundedVecDeque`（定长环形队列，默认容量 10,000，可在 `CacheConfig` 里改），满了就丢最旧的。
 - **交易状态：** `orders: AHashMap<ClientOrderId, SharedCell<OrderAny>>`、`positions`、`accounts`，三者都包在 `SharedCell` 里。`SharedCell<T>` 是 `core` 里对 `Rc<RefCell<T>>` 的一层包装，能在单线程里共享和就地修改。
-- **索引：** `index: CacheIndex`，31 个 `AHashMap`/`AHashSet`，只存 ID。例如 `venue_order_ids: VenueOrderId → ClientOrderId`（收到交易所回报时反查本地订单）、`orders_open`、`orders_inflight`（已发出、未确认）、`strategy_orders`、`instrument_positions`。查“某策略的所有未成交订单”就是两个集合求交，再去主表取对象。
+- **索引：** `index: CacheIndex`，31 个 `AHashMap`/`AHashSet`，几乎只存 ID（例外是 `position_oms` 记每个仓位的 OMS 类型）。例如 `venue_order_ids: VenueOrderId → ClientOrderId`（收到交易所回报时反查本地订单）、`orders_open`、`orders_inflight`（已发出、未确认）、`strategy_orders`、`instrument_positions`。查“某策略的所有未成交订单”就是两个集合求交，再去主表取对象。
 
 另外 `database: Option<Box<dyn CacheDatabaseAdapter>>` 是可选的持久化后端（`infrastructure` 里的 Redis、PostgreSQL 实现）。
 
@@ -640,7 +640,7 @@ NautilusKernel
 MessageBus：不在内核里，放在核心线程的 thread_local 中，所有组件用 get_message_bus() 取
 ```
 
-整个内核是一张 `Rc` 图，没有 `Arc`、没有锁，代价是它只能待在一个线程上；这正是“核心单线程”在类型层面的体现。
+整个内核靠 `Rc`/`RefCell` 共享状态，没有 `Arc<Mutex<…>>` 一类的跨线程共享和锁（`BaseAccount.events` 里的 `Arc` 只用来廉价地共享一份不可变历史），代价是它只能待在一个线程上；这正是“核心单线程”在类型层面的体现。
 
 ## 5. Python 实现中的核心数据结构 {#python-structures}
 
@@ -732,7 +732,7 @@ fn py_order(&self, py: Python, client_order_id: ClientOrderId) -> PyResult<Optio
 
 | 表达式 | 结果 |
 | --- | --- |
-| `Price + Price`、`Price - Price` | `Price`（两者精度必须一致） |
+| `Price + Price`、`Price - Price` | `Price`（精度可以不同，结果取较大的精度；只有超过 16 位的 DeFi 精度要求一致） |
 | `Price + float` | `float` |
 | `Price * Price`、`Price * Decimal` | `Decimal` |
 | `float(price)`、`price.as_double()` | `float` |
@@ -758,13 +758,13 @@ fn py_order(&self, py: Python, client_order_id: ClientOrderId) -> PyResult<Optio
 
 ### 5.5 序列化与 pickle
 
-值对象都实现了 `__reduce__`，行情类型还有 `__getstate__`/`__setstate__`，以及 `to_dict`、`from_dict`、`to_json_bytes`、`to_msgpack_bytes`。pickle 能工作依赖第 3.2 节的 `fixup_module_names`：pickle 记下的是 `nautilus_trader.model.QuoteTick`，而不是内部的 `_libnautilus` 路径。v2 的 pickle 数据和 v1 不通用，`OrderBook` 的快照要用 v2 重新生成。
+值对象都实现了 `__reduce__`，行情类型还有 `__getstate__`/`__setstate__`，以及 `to_dict`、`from_dict`、`to_json_bytes`、`to_msgpack_bytes`。pickle 能工作依赖第 3.2 节的 `fixup_module_names`：pickle 记下的是 `nautilus_trader.model.QuoteTick`，而不是内部的 `_libnautilus` 路径。迁移指南明确指出 v2 的 `OrderBook` pickle 数据和 v1 不通用，要从原始行情重新生成快照；其他类型也不要指望跨版本兼容。
 
 ::: warning 常见误区
 - **把 v1 的目录和文档当成现在的代码。** `pip install nautilus_trader` 装到的是 v1（1.231.0）；v2 在 `develop` 分支，PyPI 上是 `--pre` 的 2.0.0rc 版本。v1 的核心在仓库根目录的 `.pyx` 里，v2 在 `crates/`。
 - **在 Python 包里找实现。** `python/nautilus_trader/` 下大多数模块只是转出 `_libnautilus`，逻辑要去对应 crate 的 `src/` 里找，`src/python/` 只是包装。
 - **以为 Python 拿到的订单是活的。** 缓存返回的是快照，提交订单时也是复制进去的；要最新状态就重新向缓存要。
-- **混用 64 位和 128 位数据。** Python wheel 是 `high-precision`，默认编译的 Rust 程序不是；两边的 `raw` 放大倍数和 Parquet 数据都不同。
+- **混用 64 位和 128 位数据。** Python wheel 和大多数适配器默认是 `high-precision`，只依赖核心 crate 的 Rust 程序不是；两种模式的 `raw` 放大倍数和 Parquet 数据都不同。
 - **以为 `Ustr` 标识符不占内存。** 字符串表永不释放，订单 ID 一类不断增长的标识符会让长期运行的节点内存缓慢上涨。
 - **在策略注册前访问 `cache`、`clock`。** 这些字段在注册到 `Trader` 时才接上，之前访问会报错。
 :::
@@ -795,7 +795,7 @@ NautilusTrader v2 是“一个 Rust 内核，两种外壳，一层 Python 外观
 
    <details><summary>参考答案</summary>
 
-   枚举的大小由最大的变体决定。`OrderBookDepth` 带 10 档买卖盘，比 `QuoteTick` 大得多，如果直接放进枚举，所有 `Data` 值（包括数量最多的报价和成交）都得按它的大小分配和复制。把少见的大变体放到堆上，枚举就保持小，热路径上的报价在 channel 和总线里搬运更便宜。
+   枚举的大小由最大的变体决定。`OrderBookDepth` 每边内联存放最多 10 档 `BookOrder` 和计数，比 `QuoteTick` 大得多，如果直接放进枚举，所有 `Data` 值（包括数量最多的报价和成交）都得按它的大小分配和复制。把少见的大变体放到堆上，枚举就保持小，热路径上的报价在 channel 和总线里搬运更便宜。
 
    </details>
 
@@ -815,4 +815,4 @@ NautilusTrader v2 是“一个 Rust 内核，两种外壳，一层 Python 外观
 - 源码：[`Cargo.toml`](https://github.com/nautechsystems/nautilus_trader/blob/develop/Cargo.toml) · [`crates/pyo3/src/lib.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/pyo3/src/lib.rs) · [`python/pyproject.toml`](https://github.com/nautechsystems/nautilus_trader/blob/develop/python/pyproject.toml) · [`crates/model/src/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src) · [`crates/common/src/cache/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/cache) · [`crates/common/src/msgbus/core.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/msgbus/core.rs) · [`crates/trading/src/python/strategy.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/python/strategy.rs)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-有了这张静态的地图，下一章让系统动起来：内核怎样启动，一条报价和一笔订单怎样在这些结构之间流动。[第 1 章：整体架构](./architecture.md)。
+有了这张静态的地图，下一篇先把源码编译出来，Rust 和 Python 两部分都跑通：[从零编译：Rust 与 Python 两部分](./build-from-source.md)。之后的第 1 章再让系统动起来：内核怎样启动，一条报价和一笔订单怎样在这些结构之间流动。

@@ -22,6 +22,15 @@
     ]
   },
   {
+    "text": "动手准备",
+    "items": [
+      {
+        "text": "从零编译：Rust 与 Python",
+        "link": "/nautilus-trader/build-from-source"
+      }
+    ]
+  },
+  {
     "text": "第一部分 · Rust 核心",
     "items": [
       {

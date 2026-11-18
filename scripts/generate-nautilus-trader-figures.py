@@ -125,7 +125,7 @@ def system_overview():
     b += box(676, 246, 208, 58, ["DataClient", "crates/adapters/<venue>"], "white", TEAL, size=14)
     b += box(676, 316, 208, 58, ["ExecutionClient", "crates/adapters/<venue>"], "white", TEAL, size=14)
     b += box(676, 386, 208, 50, ["网络：HTTP / WebSocket", "crates/network"], "white", TEAL, size=14)
-    b += box(676, 448, 208, 50, ["日志 · 写库 · 写数据目录", "后台写入任务"], "white", TEAL, size=14, mono_from=9)
+    b += box(676, 448, 208, 50, ["写库 · 写数据目录", "持久化后台任务"], "white", TEAL, size=14, mono_from=9)
     b += text(780, 528, "只通过 channel 把事件送回核心", 14, TEAL)
     b += arrow(676, 290, 642, 380, ORANGE, 1.8)
     b += arrow(676, 350, 642, 386, ORANGE, 1.8)
@@ -136,7 +136,7 @@ def system_overview():
     svg("system-overview.svg", "NautilusTrader 节点全貌",
         "最上层是 Python 应用，经 PyO3 扩展模块进入 Rust。一个进程一个节点，节点外壳是 BacktestEngine 或 LiveNode，"
         "内部的 NautilusKernel 在单一核心线程上运行 Trader、MessageBus、各引擎、Cache、Portfolio 和 Clock；"
-        "适配器客户端、网络、日志和持久化写入跑在 Tokio 后台线程，只通过 channel 把事件送回核心线程。",
+        "适配器客户端、网络和持久化写入跑在 Tokio 后台线程，只通过 channel 把事件送回核心线程。",
         636, b)
 
 
@@ -313,12 +313,151 @@ def order_book_layout():
         526, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 1 章 · crate 依赖图（各 crate Cargo.toml 的 [dependencies]，默认 feature，做过传递约简）
+# ---------------------------------------------------------------------------
+DEP_ROWS = [70, 155, 240, 325, 410, 495, 580, 665]
+DEP_NODES = {
+    # 名字: (中心 x, 行, 配色)
+    "pyo3": (300, 0, "orange"), "adapters/*": (640, 0, "orange"),
+    "backtest": (300, 1, "blue"), "live": (640, 1, "blue"), "event_store": (850, 1, "blue"),
+    "system": (470, 2, "blue"),
+    "data": (130, 3, "blue"), "risk": (360, 3, "blue"), "trading": (580, 3, "blue"),
+    "persistence": (130, 4, "teal"), "execution": (360, 4, "blue"), "portfolio": (580, 4, "blue"),
+    "infrastructure": (720, 4, "teal"), "network": (870, 4, "teal"),
+    "serialization": (130, 5, "teal"), "common": (360, 5, "gray"), "analysis": (560, 5, "teal"),
+    "indicators": (690, 5, "teal"), "cryptography": (820, 5, "teal"),
+    "model": (360, 6, "gray"), "macros": (580, 6, "gray"),
+}
+DEP_EDGES = [
+    ("pyo3", "backtest"), ("pyo3", "live"), ("adapters/*", "live"),
+    ("backtest", "system"), ("live", "system"), ("live", "network"), ("event_store", "system"),
+    ("system", "data"), ("system", "risk"), ("system", "trading"),
+    ("data", "common"), ("risk", "execution"), ("risk", "portfolio"),
+    ("trading", "execution"), ("trading", "portfolio"),
+    ("persistence", "common"), ("persistence", "serialization"),
+    ("execution", "common"), ("portfolio", "common"), ("portfolio", "analysis"),
+    ("infrastructure", "common"), ("infrastructure", "cryptography"), ("network", "cryptography"),
+    ("common", "model"), ("analysis", "model"), ("indicators", "model"),
+]
+DEP_OPTIONAL = [("data", "persistence")]
+DEP_TO_CORE = ["serialization", "model", "network"]
+
+
+def node_width(name):
+    return max(112, text_width(name, 15, True) + 18)
+
+
+def crate_dependencies():
+    h = 38
+    stroke = {"orange": ORANGE, "blue": BLUE, "teal": TEAL, "gray": INK}
+    b = text(480, 36, "crate 依赖图：箭头从使用方指向被依赖方（默认 feature，省略能经由其他箭头推出的边）", 18, INK, "bold", limit=920)
+
+    def anchor(name, top):
+        x, row, _ = DEP_NODES[name]
+        y = DEP_ROWS[row]
+        return x, (y - h / 2 if top else y + h / 2)
+
+    def edge(src, dst, color=GRAY, dash=False):
+        x1, y1 = anchor(src, False)
+        x2, y2 = anchor(dst, True)
+        return arrow(x1, y1, x2, y2 - 2, color, 1.4, dash=dash)
+
+    for src, dst in DEP_EDGES:
+        b += edge(src, dst)
+    for src, dst in DEP_OPTIONAL:
+        b += edge(src, dst, ORANGE, dash=True)
+    b += arrow(DEP_NODES["model"][0] + node_width("model") / 2 + 2, DEP_ROWS[6],
+               DEP_NODES["macros"][0] - node_width("macros") / 2 - 4, DEP_ROWS[6], GRAY, 1.4)
+    core_top = DEP_ROWS[7] - h / 2
+    for name in DEP_TO_CORE:
+        x, row, _ = DEP_NODES[name]
+        if name == "network":
+            x += node_width(name) / 2 - 10      # 绕开左下方的 cryptography
+            b += arrow(x, DEP_ROWS[row] + h / 2, x, core_top - 2, GRAY, 1.4)
+        else:
+            b += arrow(x, DEP_ROWS[row] + h / 2, x, core_top - 2, GRAY, 1.4)
+    for name, (x, row, fill) in DEP_NODES.items():
+        y = DEP_ROWS[row]
+        w = node_width(name)
+        b += rect(x - w / 2, y - h / 2, w, h, fill, stroke[fill], rx=8, width=1.5)
+        b += text(x, y + 5, name, 15, INK, mono=True, limit=w - 8)
+    b += rect(80, core_top, 840, h, "gray", INK, rx=8, width=1.5)
+    b += text(480, DEP_ROWS[7] + 5, "core（时间戳、UUID、正确性检查；几乎所有 crate 都直接依赖它）", 15, INK, limit=820)
+    ly = DEP_ROWS[7] + 46
+    b += arrow(90, ly, 140, ly, ORANGE, 1.4, dash=True)
+    b += text(150, ly + 5, "可选依赖（streaming feature）", 14, GRAY, anchor="start")
+    b += text(420, ly + 5, "pyo3 实际依赖几乎所有 crate，图中只画两条；testkit、plugin、cli 未画出", 14, GRAY, anchor="start", limit=520)
+    svg("crate-dependencies.svg", "NautilusTrader crate 依赖图",
+        "按各 crate 的 Cargo.toml 画出的依赖图，箭头从使用方指向被依赖方。最上面的 pyo3 和适配器依赖 backtest 或 live；"
+        "backtest、live、event_store 依赖 system；system 依赖 data、risk、trading；risk 和 trading 依赖 execution 与 portfolio；"
+        "data、execution、portfolio、persistence、infrastructure 都依赖 common；common、analysis、indicators 依赖 model；"
+        "model 依赖 core 和 macros；network 依赖 cryptography 和 core。data 对 persistence 的依赖是可选的。",
+        DEP_ROWS[7] + 70, b)
+
+
+# ---------------------------------------------------------------------------
+# 从零编译 · 图：两条构建流水线（依据 Makefile、python/pyproject.toml、python/generate_stubs.py）
+# ---------------------------------------------------------------------------
+def build_pipeline():
+    b = text(480, 36, "从源码到能运行：Rust 一条路，Python 一条路，共用同一个 Cargo 工作区", 19, INK, "bold", limit=920)
+    # 共用的底座
+    b += rect(40, 56, 880, 64, "gray", INK, rx=12)
+    b += text(60, 82, "共用", 16, INK, "bold", "start")
+    b += text(130, 82, "rustup：rust-toolchain.toml 锁定 1.100.0", 15, INK, anchor="start", limit=330)
+    b += text(520, 82, "Cargo.lock：937 个包，构建一律加 --locked", 15, INK, anchor="start", limit=390)
+    b += text(130, 106, "make 的编译目标先跑 check-cargo-cooldown：拒绝发布不足冷却期的依赖版本", 14, GRAY, anchor="start", limit=780)
+    # Rust 线
+    b += rect(40, 136, 330, 404, "blue", BLUE, rx=14)
+    b += text(205, 162, "Rust 部分（不需要 Python）", 16, BLUE, "bold")
+    steps_r = [
+        ("cargo build -p nautilus-model", "只编一个 crate，先验证工具链"),
+        ("cargo run -p nautilus-backtest", "--example engine-ema-cross"),
+        ("target/debug/examples/…", "一个独立的可执行文件，跑完一次回测"),
+        ("cargo test / cargo nextest", "或 make cargo-test-core-local"),
+    ]
+    y = 178
+    for i, (a, c) in enumerate(steps_r):
+        b += rect(56, y, 298, 72, "white", BLUE, rx=9, width=1.3)
+        b += text(205, y + 28, a, 14, INK, "bold", mono=True, limit=286)
+        b += text(205, y + 52, c, 14, GRAY, limit=286)
+        if i < len(steps_r) - 1:
+            b += arrow(205, y + 74, 205, y + 88, BLUE, 1.5)
+        y += 90
+    # Python 线
+    b += rect(390, 136, 530, 404, "orange", ORANGE, rx=14)
+    b += text(655, 162, "Python 部分：make build-debug 依次做四件事", 16, ORANGE, "bold")
+    steps_p = [
+        ("① make sync", "uv sync：把 uv.lock 里的 72 个依赖装进 python/.venv（不装本包）"),
+        ("② make py-stubs", "cargo run --bin python-stub-gen（maturin 那组 feature）→ 生成 .pyi"),
+        ("③ maturin develop --profile nextest", "编译 crates/pyo3 → _libnautilus.*.so，放进包目录"),
+        ("④ 在 python/.venv 里运行", "uv run --project python --no-sync python examples/backtest/…"),
+    ]
+    y = 178
+    for i, (a, c) in enumerate(steps_p):
+        b += rect(406, y, 498, 72, "white", ORANGE, rx=9, width=1.3)
+        b += text(655, y + 28, a, 14, INK, "bold", mono=not any(ord(ch) > 0x2E80 for ch in a[1:]), limit=486)
+        b += text(655, y + 52, c, 14, GRAY, limit=486)
+        if i < len(steps_p) - 1:
+            b += arrow(655, y + 74, 655, y + 88, ORANGE, 1.5)
+        y += 90
+    b += text(480, 566, "②和③都是完整的 Rust 编译，feature 取自 pyproject.toml 的 [tool.maturin]，含全部适配器；首次构建最耗时的是这两步。",
+              14, GRAY, limit=900)
+    svg("build-pipeline.svg", "从零编译的两条流水线",
+        "上面是两条路共用的底座：rustup 按 rust-toolchain.toml 安装 1.100.0，Cargo.lock 锁定 937 个包，make 的编译目标先做依赖冷却期检查。"
+        "左边是 Rust 部分：不需要 Python，直接用 cargo 编译某个 crate、运行 nautilus-backtest 的 engine-ema-cross 示例、跑测试。"
+        "右边是 Python 部分，make build-debug 依次执行 make sync、生成类型存根、maturin develop 编译扩展模块，最后装进 python/.venv。",
+        590, b)
+
+
 def main():
     system_overview()
     rust_crates()
     python_projection()
     cache_layout()
     order_book_layout()
+    crate_dependencies()
+    build_pipeline()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 
