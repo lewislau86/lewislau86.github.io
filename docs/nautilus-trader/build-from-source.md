@@ -18,6 +18,12 @@ description: 在一台干净的 macOS 或 Ubuntu 机器上，从安装工具链�
 **源码版本：** `develop` 分支，提交 `5997d82`（2026-11-17）。命令取自同一提交的 `Makefile`、`docs/getting_started/installation.md`、`docs/developer_guide/environment_setup.md` 和 `python/README.md`。项目的构建脚本改动很频繁，命令跑不通时先对照这几个文件。
 :::
 
+::: info 实测记录（2026-11-18）
+本篇的 Linux 路线在一台 Ubuntu 22.04（aarch64，4 核，3.9 GB 内存，glibc 2.35）上按顺序走了一遍，源码是当天 `develop` 的 `364254f`，和 `5997d82` 相比构建相关的文件只有几个依赖版本号不同。实际跑通的有：工具链自动安装、`make check-cargo-cooldown`、第 3.3～3.5 节的三条 `cargo` 命令、`make sync`、第 4.2 节的环境变量、`make build-debug`、第 4.4 节的两条验证命令。各步的实际输出写在对应小节里，过程中真实遇到的错误和处理办法集中在第 5 节。
+
+没有实测的有：macOS 路线、`make install-tools` 和 `make cargo-test-core-local`、`make build`、`make build-wheel`、`make pytest`、Windows。那台机器没有 root 权限，`clang`、`lld`、`patchelf` 都装不上，下文在对应位置说明了当时的替代做法和观察到的结果。
+:::
+
 本篇以 macOS（Apple Silicon）和 Ubuntu 22.04 及以上为主，这也是官方 CI 覆盖的平台（另有 Windows Server 2022 及以上，见第 6 节）。Linux 上先用 `ldd --version` 确认 glibc 不低于 2.35。
 
 ## 1. 先看全貌：要装什么，编出什么
@@ -44,6 +50,8 @@ description: 在一台干净的 macOS 或 Ubuntu 机器上，从安装工具链�
 
 依赖的规模：`Cargo.lock` 里有 937 个包，其中 48 个是工作区自己的 crate，889 个来自 crates.io（锁文件覆盖所有平台，有些只在别的平台用到）；`python/uv.lock` 里有 72 个包。第一次构建的大部分时间花在下载和编译当前平台、当前 feature 用到的那几百个 Rust 依赖上。
 
+**磁盘要留足。** 实测（Linux aarch64）下载缓存和工具链约 7 GB（rustup 4.2 GB、Cargo 缓存 1.1 GB、uv 和 Python 1.4 GB）；Rust 部分的 `target/debug` 约 5 GB；`make build-debug` 用的 `target/nextest` 约 23 GB，编出来的扩展模块单个文件就有 860 MB。只做 Python 部分也建议预留 35 GB 以上。
+
 ## 2. 准备机器
 
 ### 2.1 系统工具
@@ -61,7 +69,14 @@ sudo apt-get install -y build-essential clang lld curl git make pkg-config patch
 
 :::
 
-Ubuntu 上的 `lld` 不能省。仓库的 `.cargo/config.toml` 给 Linux 目标写死了 `-C link-arg=-fuse-ld=lld`，这组参数对依赖的构建脚本和过程宏同样生效，所以没装 `lld` 时，第一个需要链接的东西就会失败，构建几乎一开始就报错。`patchelf` 是 `python/README.md` 列出的 Linux 前置依赖，maturin 用它给编出的扩展模块设置 rpath；官方的快速安装命令里没有它，这里一并装上。
+Ubuntu 上的 `lld` 不能省。仓库的 `.cargo/config.toml` 给 Linux 目标写死了 `-C link-arg=-fuse-ld=lld`，这组参数对依赖的构建脚本和过程宏同样生效，所以没装 `lld` 时，第一个需要链接的东西就会失败。实测的报错见第 5.4 节。没有 root 权限装不了 `lld` 时，可以借用 Rust 工具链自带的 `rust-lld`：在 `PATH` 靠前的目录里建一个名叫 `ld.lld` 的符号链接指向它。实测这样能正常完成本篇的所有构建：
+
+```bash
+# 第 2.2、2.4 节之后在仓库目录里执行（这样 rustc 指向锁定的 1.100.0）；~/bin 要在 PATH 里
+ln -s "$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's/host: //p')/bin/rust-lld" ~/bin/ld.lld
+```
+
+`patchelf` 是 `python/README.md` 列出的 Linux 前置依赖，maturin 在需要给扩展模块设置 rpath 时用它；官方的快速安装命令里没有它，这里一并装上。实测没装它时 `make build-debug` 也成功了，没有出现 rpath 相关的警告。同样，实测机器上没有 `clang`，用系统的 `gcc` 编依赖里的 C 代码也没有出问题；不过官方文档要求装 `clang`，照装即可。
 
 ### 2.2 Rust
 
@@ -89,6 +104,8 @@ rustflags = ["-Dwarnings"]
 ```
 
 所有警告都当成错误。换一个更新的编译器，新增的 lint 就可能让整个工作区编不过。所以不要用 `cargo +stable` 之类的方式绕开锁定的版本。
+
+实测：在仓库里第一次运行 `rustc --version` 时，rustup 打印 `syncing channel updates for 1.100.0-aarch64-unknown-linux-gnu` 并开始下载。这次下载如果被打断，后面会报 `missing manifest`，处理办法见第 5.2 节。
 
 ### 2.3 uv
 
@@ -136,7 +153,7 @@ export CARGO_BUILD_WARNINGS=warn   # 只在 macOS 上需要
 make check-cargo-cooldown
 ```
 
-它会对照 `origin/develop` 这个引用做校验。按上面 `--depth 1 --branch develop` 克隆，`origin/develop` 是存在的，检查会正常对照它。完整克隆却缺少 `origin/develop` 时检查会失败，需要先 fetch；浅克隆里解析不到它时，脚本会打印一条 NOTE，改为信任 `.supply-chain/crate-dates.json` 里记录的日期。
+它会对照 `origin/develop` 这个引用做校验。按上面 `--depth 1 --branch develop` 克隆，`origin/develop` 是存在的，检查会正常对照它。实测几秒钟就结束，最后一行是 `OK: all 892 bumped crate(s) are at least 3 days old.`，发布日期全部来自仓库里的数据库，不需要联网查询。完整克隆却缺少 `origin/develop` 时检查会失败，需要先 fetch；浅克隆里解析不到它时，脚本会打印一条 NOTE，改为信任 `.supply-chain/crate-dates.json` 里记录的日期。
 
 ### 3.3 编一个 crate，验证工具链
 
@@ -144,7 +161,7 @@ make check-cargo-cooldown
 cargo build --locked -p nautilus-model
 ```
 
-产物在 `target/debug/`。这一步只编 `nautilus-model` 和它依赖的 `nautilus-core`、`nautilus-macros` 以及第三方包，很快就能确认编译器、链接器都正常。
+产物在 `target/debug/`。这一步只编 `nautilus-model` 和它依赖的 `nautilus-core`、`nautilus-macros` 以及第三方包（实测共 94 个包，4 核机器上一分钟左右），很快就能确认编译器、链接器都正常。
 
 开发构建用的是 `Cargo.toml` 里的 `[profile.dev]`：工作区自己的 crate 用 `opt-level = 0`，第三方依赖用 `opt-level = 1`（依赖很少重编，多花一点编译时间换来更快的测试和运行），并且关掉了调试信息来加快编译。
 
@@ -165,7 +182,20 @@ cargo run --locked -p nautilus-backtest --example engine-ema-cross --features ex
 5. 自己生成 745 条报价：先是 25 条平价报价，让两条均线收敛，然后重复 6 轮“40 步上涨、80 步下跌”，制造多次交叉；
 6. `engine.run(...)` 跑完。
 
-终端里会看到引擎和策略的日志，程序正常退出就说明 Rust 部分从编译到运行都通了。可执行文件留在 `target/debug/examples/` 下。
+注意它编译的东西比想象的多：示例可以用 `nautilus-backtest` 的 dev-dependencies，其中包括数据目录相关的 crate，所以 `arrow`、`parquet`、`datafusion` 也会被编进来。实测这一步要下载两百多个 crate、编译约四百个，`target/debug` 涨到 5 GB 左右。
+
+终端里会看到引擎和策略的日志，程序正常退出就说明 Rust 部分从编译到运行都通了。可执行文件留在 `target/debug/examples/` 下。实测日志最后的 `BACKTEST POST-RUN` 汇总是：
+
+```text
+Iterations: 745
+Total events: 24
+Total orders: 12
+Total positions: 12
+...
+PnL (total):                    0.00
+```
+
+745 条报价对得上第 5 步的计算。12 笔订单开出了 12 个仓位、总盈亏为 0，原因是第 2 步选了对冲式仓位（`OmsType::Hedging`）：每一笔成交都开一个新仓位，卖单不会去平之前的买单，所以没有任何仓位被平掉，也就没有已实现盈亏。这个示例只演示流程，不是一个能赚钱的策略。
 
 两点补充：
 
@@ -179,6 +209,8 @@ cargo run --locked -p nautilus-backtest --example engine-ema-cross --features ex
 ```bash
 cargo test --locked -p nautilus-model --lib
 ```
+
+实测结果是 `test result: ok. 4362 passed; 0 failed; 1 ignored`。有几个测试在编译期读取 `crates/model/test_data/` 下的 JSON，所以要用完整的克隆，否则见第 5.5 节。
 
 仓库自己的测试目标用的是 [cargo-nextest](https://nexte.st/)。先装开发工具（`make install-tools` 第一次运行前要先装 `cargo-binstall`，命令见 `docs/developer_guide/environment_setup.md` 的 “One-off prerequisite”），再用 Make 目标：
 
@@ -221,7 +253,7 @@ cd python && VIRTUAL_ENV= uv sync --all-groups --all-extras --no-install-package
 
 几个参数的含义：所有依赖组（`dev` 里有 maturin、ruff、ty，`test` 里有 pytest、pyarrow 等，`docs` 是文档工具）和所有 extras 都装；`--no-install-package nautilus-trader` 表示**不装这个包本身**，因为它要等 Rust 编完才有；虚拟环境放在 `python/.venv`，和 `python/pyproject.toml` 放在一起。
 
-如果机器上没有 3.13 到 3.15 之间的 Python，uv 会自己下载一个独立构建的 CPython。想指定版本，在同一个终端里先设置 `UV_PYTHON`。用 3.15 时要多一步，因为 `docs` 依赖组还不支持 3.15（PyYAML 没有发布 3.15 的 wheel）：
+如果机器上没有 3.13 到 3.15 之间的 Python，uv 会自己下载一个独立构建的 CPython（实测下载的是 `cpython-3.14.10`，约 30 MB），然后输出 `Resolved 72 packages`，装好其中适用于本平台的 69 个。想指定版本，在同一个终端里先设置 `UV_PYTHON`。用 3.15 时要多一步，因为 `docs` 依赖组还不支持 3.15（PyYAML 没有发布 3.15 的 wheel）：
 
 ```bash
 export UV_PYTHON=3.15
@@ -269,6 +301,18 @@ make build-debug
 2. **生成类型存根。** `python/generate_stubs.py` 先运行 `generate_docstrings.py` 把 Rust 文档注释同步到绑定代码上，再读取 `pyproject.toml` 里 maturin 的 feature 列表，去掉 `extension-module`、加上 `nautilus-interactive-brokers/gateway`，然后在 `crates/pyo3` 下运行 `cargo run --locked --bin python-stub-gen --profile nextest --features …`（程序在 `crates/pyo3/bin/stub_gen.rs`，profile 由 Makefile 通过 `NAUTILUS_STUB_PROFILE` 传入，和第 3 步一致，所以能共用 `target/` 里的产物）。这个程序根据各 crate 里的 `#[gen_stub_pyclass]` 标注写出 `.pyi`，脚本再做一轮后处理。输入没变时这一步会被跳过。
 3. **编译并安装扩展模块。** 在 `python/` 目录下运行 `uv run --no-sync maturin develop --profile nextest --locked`：maturin 按 `[tool.maturin]` 的 `manifest-path = "../crates/pyo3/Cargo.toml"` 和整组 feature 编译 `nautilus-pyo3`，产出名为 `nautilus_trader._libnautilus` 的扩展模块，文件是 `python/nautilus_trader/_libnautilus.<abi>.so`（Windows 上是 `.pyd`），和只放类型存根的 `_libnautilus/` 目录并列（`Makefile` 里的 `PYTHON_EXTENSION_PATH` 就按这个路径找它），再把包装进 `python/.venv`。
 
+实测的输出依次是 `Generating Python type stubs...`、一长串 `Compiling`、`Stub generation completed successfully`，然后是 `Building the Python extension in debug mode...`，最后：
+
+```text
+📦 Built wheel for CPython 3.14 to …/nautilus_trader-2.0.0-cp314-cp314-linux_aarch64.whl
+✏️ Setting installed package as editable
+🛠 Installed nautilus-trader-2.0.0
+```
+
+也就是说，maturin 先在临时目录打出一个 wheel，再以**可编辑方式**装进 `python/.venv`：包指向源码目录，扩展模块文件 `_libnautilus.cpython-314-aarch64-linux-gnu.so` 实测出现在 `python/nautilus_trader/` 下，大小约 860 MB。生成存根之后 `git status` 是干净的，说明生成的 `.pyi` 和仓库里提交的一致。
+
+实测机器只有 3.9 GB 内存，整个过程没有出现内存不足。中途遇到过一次 `Too many open files`，原因和处理见第 5.7 节。
+
 两个容易忽略的细节：
 
 - 第 2 步和第 3 步的 feature 不完全相同（差一个 `extension-module`），一部分 crate 要按两组 feature 各编一次。这就是第一次 `make build-debug` 特别慢的原因。
@@ -285,7 +329,7 @@ uv run --project python --no-sync python -c \
   'import nautilus_trader; print(nautilus_trader.__version__)'
 ```
 
-应当输出 `2.0.0`。如果输出的是 `1.2xx`，说明当前环境里装的是 PyPI 上的 v1，要换一个干净的虚拟环境：两代都以 `nautilus_trader` 为包名，不能装在一起。
+应当输出 `2.0.0`（实测如此，不需要先设置第 4.2 节的环境变量）。如果输出的是 `1.2xx`，说明当前环境里装的是 PyPI 上的 v1，要换一个干净的虚拟环境：两代都以 `nautilus_trader` 为包名，不能装在一起。
 
 再跑一个完整的回测示例：
 
@@ -293,7 +337,7 @@ uv run --project python --no-sync python -c \
 uv run --project python --no-sync python examples/backtest/crypto_ema_cross_ethusdt_trade_ticks.py
 ```
 
-这个脚本用 Python 版的 `BacktestEngine` 搭了一个币安现货的模拟交易所（现金账户、净头寸、万分之一手续费），从 `test_data/binance/ethusdt-trades.csv` 读入 ETHUSDT 的逐笔成交，用 `docs/tutorials/ema_cross.py` 里的 `EMACross` 策略在 250 笔成交聚合的 K 线上做均线交叉，最后用 pandas 打印账户报告、成交报告和仓位报告。能看到这三张表，Python 部分就通了。
+这个脚本用 Python 版的 `BacktestEngine` 搭了一个币安现货的模拟交易所（现金账户、净头寸、万分之一手续费），从 `test_data/binance/ethusdt-trades.csv` 读入 ETHUSDT 的逐笔成交，用 `docs/tutorials/ema_cross.py` 里的 `EMACross` 策略在 250 笔成交聚合的 K 线上做均线交叉，最后用 pandas 打印账户报告、成交报告和仓位报告。能看到这三张表，Python 部分就通了。实测几秒钟跑完，汇总是 `Iterations: 69_806`、`Total orders: 30`、`Total positions: 15`，总盈亏 `-1.07`（USDT），胜率 0.2。
 
 测试数据的查找规则在 `nautilus_trader/testkit/providers.py`：先找仓库根目录的 `test_data/`，找不到才从 GitHub 下载。所以在源码目录里运行不需要联网。
 
@@ -325,13 +369,136 @@ ThinLTO 只适合本地用，测性能时仍以默认的 fat LTO 为准。
 
 Python 测试用 `make pytest`，它会先执行 `make build-debug`，再在 `python/tests/` 上跑 pytest。
 
-## 5. 出错时先查什么
+## 5. 编译中实际遇到的错误
+
+下面是本篇开头“实测记录”那次完整编译里真实出现过的错误，按出现的先后排列。每条给出原样的报错、原因和处理办法。有几条和网络、磁盘、共享目录有关，在开发机上未必会遇到，但遇到时报错信息不太直观，所以一并记下。
+
+### 5.1 克隆时连接被断开
+
+```text
+fatal: unable to access 'https://github.com/nautechsystems/nautilus_trader/': GnuTLS recv error (-110): The TLS connection was non-properly terminated.
+fatal: unable to access 'https://github.com/nautechsystems/nautilus_trader/': Failed to connect to github.com port 443 after 30003 ms: Connection refused
+```
+
+**原因：** 到 GitHub 的网络不稳定，`git clone` 中途失败就要整个重来。
+
+**处理：** 重试；改用 HTTP/1.1 往往更稳。网络很差时可以先只拿提交和目录树，再检出文件，这样失败后重试的代价小：
+
+```bash
+git -c http.version=HTTP/1.1 clone --branch develop --depth 1 --filter=blob:none \
+    https://github.com/nautechsystems/nautilus_trader
+```
+
+检出过程被打断（Ctrl+C、断网）后，已经写了一半的文件会留在工作区里，`git status` 会显示它们被修改或删除。先 `git checkout -- .` 恢复，再继续。
+
+### 5.2 工具链下载被打断：`missing manifest`
+
+```text
+error: missing manifest in toolchain '1.100.0-aarch64-unknown-linux-gnu'
+help: this may happen if the toolchain installation was interrupted
+```
+
+**原因：** 第 2.2 节说过，在仓库里第一次运行 `rustc` 或 `cargo` 会按 `rust-toolchain.toml` 自动下载 1.100.0。这次下载如果中途断开，留下的是一个不完整的工具链目录，之后的自动安装不会再重试。
+
+**处理：** 手动装一次。rustup 会接着已下载的部分继续：
+
+```bash
+rustup toolchain install 1.100.0
+```
+
+### 5.3 长时间停在 `Updating crates.io index`
+
+**原因：** 不是卡死。第一次构建时 Cargo 要为 `Cargo.lock` 里的近九百个包逐个拉取索引文件（sparse 协议，每个包一个小请求），网络慢时要好几分钟。中断后已拉到的索引会保留，重新运行会接着做。
+
+**处理：** 等待，或中断后重跑。
+
+### 5.4 Linux 上一开始就链接失败：`cannot find 'ld'`
+
+```text
+error: linking with `cc` failed: exit status: 1
+  = note:  "cc" … "-fuse-ld=lld" "-Wl,--gc-sections" "-Wl,--as-needed" "-Wl,-z,norelro"
+  = note: collect2: fatal error: cannot find 'ld'
+error: could not compile `serde_core` (build script) due to 1 previous error
+error: could not compile `proc-macro2` (build script) due to 1 previous error
+```
+
+**原因：** `.cargo/config.toml` 要求 Linux 上用 `lld` 链接（命令行里的 `-fuse-ld=lld`），机器上没有 `ld.lld`。第一个需要链接的是依赖的构建脚本，所以构建刚开始就失败。
+
+**处理：** `sudo apt-get install lld`。没有 root 权限时，用第 2.1 节的办法把 Rust 工具链自带的 `rust-lld` 链接成 `ld.lld`。
+
+### 5.5 测试编译失败：找不到 `test_data` 里的文件
+
+```text
+error: couldn't read `crates/model/src/accounts/../../test_data/account_legacy_cash.json`: No such file or directory (os error 2)
+error: could not compile `nautilus-model` (lib test) due to 3 previous errors
+```
+
+**原因：** `nautilus-model` 的部分测试在编译期用 `include_str!` 读取 `crates/model/test_data/` 下的文件。克隆不完整（稀疏检出、或 5.1 节那样检出被打断）时，这些文件不存在。`cargo build` 不受影响，只有 `cargo test` 会失败。
+
+**处理：** 恢复完整的工作区：`git sparse-checkout disable`（如果用过稀疏检出），再 `git checkout -- .`。
+
+### 5.6 `make sync` 停在下载大文件上
+
+```text
+>  Syncing Python dependencies...
+Downloading cpython-3.14.10-linux-aarch64-gnu (download) (29.4MiB)
+…
+Downloading pyarrow (48.6MiB)
+Downloading polars-runtime-32 (48.1MiB)
+```
+
+**原因：** uv 默认同时下载很多文件，网络慢时每个文件都分到很少的带宽，大文件迟迟下不完；中断后，没下完的文件下次要从头再下（已经下完的会留在 uv 的缓存里）。
+
+**处理：** 先减少并发再重跑，让文件一个个下完、进缓存：
+
+```bash
+UV_CONCURRENT_DOWNLOADS=2 make sync
+```
+
+网络实在太差时，可以用支持断点续传的 `curl -C -` 先把大文件下到本地：
+
+- **Python 解释器：** 把 `uv python list 3.14 --output-format json` 里给出的 `url` 下载到 `<目录>/<发布日期>/` 下，再用 `UV_PYTHON_INSTALL_MIRROR=file://<目录> uv python install 3.14` 安装。
+- **wheel：** 从 `python/uv.lock` 里找到对应平台的 URL 下载到一个目录，用 `uv pip install --python python/.venv/bin/python --no-deps --no-index --find-links <目录> pyarrow==26.0.0 …` 装进环境，然后再跑 `make sync`。
+
+这里有个细节：必须用 `--find-links` 按包名和版本安装。如果直接写 wheel 的文件路径（`uv pip install ./pyarrow-….whl`），uv 会把来源记成本地文件，下一次 `make sync` 认为它和锁文件里的来源不一致，又会重新下载一遍。
+
+### 5.7 并行编译时 `Too many open files`，接着报找不到 crate
+
+```text
+error: failed to build archive at `…/target/nextest/build/nautilus-analysis/…/libnautilus_analysis-….rlib`: failed to open object file …rcgu.o: Too many open files (os error 24)
+error: error writing dependencies to `…/nautilus_analysis-….d`: Too many open files (os error 24)
+error[E0463]: can't find crate for `tracing_subscriber`
+error[E0463]: can't find crate for `tokio`
+error[E0463]: can't find crate for `futures`
+error: could not compile `nautilus-common` (lib) due to 3 previous errors
+Build failed: Command '['cargo', 'run', '--locked', '--bin', 'python-stub-gen', '--profile', 'nextest', '--features', 'arrow,high-precision,mimalloc,redis,postgres,defi,hypersync,tracing-bridge,nautilus-interactive-brokers/gateway']' returned non-zero exit status 101.
+make: *** [Makefile:370: …/target/.py-stubs.stamp] Error 1
+```
+
+**原因：** 出现在 `make build-debug` 的存根生成阶段。`nextest` profile 打开了增量编译，每个 crate 会产生两百多个目标文件；几个 `rustc` 并行写这些文件，超过了打开文件数的上限。后面几条 `can't find crate` 是连锁反应：依赖的库文件没能打开，并不是真的缺少依赖。最后那行 `Build failed: Command [...]` 是 `generate_stubs.py` 打出来的，只说明存根生成器编译失败，**真正的错误要往上翻**。
+
+这次的 `target` 目录放在虚拟机挂载的共享目录上，把本进程的 `ulimit -n` 提到 65536 也没用，限制来自共享目录那一侧；`target` 在本地磁盘上时一般碰不到。macOS 终端默认的 `ulimit -n` 只有 256，比 Linux 常见的 1024 低得多，如果遇到同样的报错，先试试调高它。
+
+**处理：** 降低并行数后重跑，已经编好的 crate 不会重编：
+
+```bash
+CARGO_BUILD_JOBS=2 make build-debug
+```
+
+另外两个办法：把产物放到本地磁盘（`TARGET_DIR=/本地/路径 make build-debug`），或者 `ulimit -n 10240`。
+
+### 5.8 磁盘空间
+
+这次没有真的写满磁盘，但第 1 节列的数字值得再强调一次：完整走完本篇，`target` 目录约 28 GB（`target/debug` 5 GB，`target/nextest` 23 GB），工具链和下载缓存另有约 7 GB。空间不足时报 `No space left on device`，可以用 `TARGET_DIR` 把产物放到大盘上。
+
+### 5.9 其他可能遇到的问题
+
+下面几种这次没有遇到，来自官方文档和仓库配置：
 
 | 现象 | 多半是 | 处理 |
 | --- | --- | --- |
 | `make sync` 报 uv 版本不符 | 本机 uv 不在 `>=0.13,<0.14` | `make install-uv` |
 | 编译报一堆 `warning` 然后失败 | 没有用 1.100.0（警告被当成错误） | 在仓库目录里看 `rustc --version`，去掉 `RUSTUP_TOOLCHAIN` 一类的覆盖 |
-| Linux 上一开始就报 `linking with cc failed`，常见 `cannot find 'ld'` | 没装 `lld`（配置要求用它链接） | `sudo apt-get install lld` |
 | macOS 上直接用 `cargo` 时，链接器警告导致失败 | `warnings = "deny"` 把 Apple ld 的警告也当成失败 | `export CARGO_BUILD_WARNINGS=warn`，或改用 Make 目标 |
 | `check-cargo-cooldown` 失败 | 没有 `origin/develop`，或 `Cargo.lock` 被改过 | 按 `--branch develop` 重新克隆；不要手改锁文件 |
 | Rust 测试找不到 Python 或 `libpython` | 没设 `PYTHONHOME`（Linux 还有 `LD_LIBRARY_PATH`） | 按第 4.2 节设置 |
