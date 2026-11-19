@@ -1,16 +1,16 @@
 ---
-title: "第 4 章：回调：一条消息怎样变成 on_xxx"
+title: "第 5 章：回调：一条消息怎样变成 on_xxx"
 description: NautilusTrader 里策略和 actor 的回调从哪里来：订阅时登记了什么，一条报价怎样走到 on_quote，一笔成交怎样依次触发 on_order_filled、on_order_event、on_position_opened，计时器和生命周期回调怎样触发，Python 回调和 Rust 回调有什么不同，回调里能做什么、不能做什么。
 ---
 
-# 第 4 章：回调：一条消息怎样变成 on_xxx
+# 第 5 章：回调：一条消息怎样变成 on_xxx
 
-[全书目录](./index.md) · [上一章](./core-topics.md)
+[全书目录](./index.md) · [上一章](./rust-strategy.md) · [下一章](./bar-aggregation.md)
 
 ::: tip 本章学习目标
 能说清 `on_quote`、`on_order_filled`、`on_position_opened`、`on_time_event`、`on_start` 这些回调分别由谁、在什么时候、以什么顺序调用；知道订阅时框架替你登记了什么；知道回调在 `RUNNING` 之外为什么收不到数据；知道 Python 回调比 Rust 回调多做了哪几步、抛异常会怎样；能判断一段代码放在回调里是否安全。
 
-**源码版本：** `develop` 分支，提交 `364254f`（2026-11-18）。读完[第 1 章](./architecture.md)就可以读本章。
+**源码版本：** `develop` 分支，提交 `364254f`（2026-11-18）。读完[第 1 章](./architecture.md)就可以读本章；策略框架本身（怎样写、怎样注册、下单 API）见[第 4 章](./rust-strategy.md)。
 :::
 
 第 0 章第 3.4 节说，Python 代码在 v2 里只出现在三处，第一处就是用户组件的回调。回调是你写的代码和框架之间唯一的接口：框架在 Rust 里处理行情、订单和仓位，到了需要你做决定的时候，就调用一个 `on_xxx` 方法。所以弄清回调的来龙去脉，等于弄清你的代码在什么时机、看到什么状态。
@@ -120,7 +120,7 @@ on_position_event(event)
 时间事件从哪里来，回测和实盘不同，但到达组件之后的路径相同：
 
 - **回测：** `VirtualClock` 把计时器放在一个按到期时间排序的堆里，回测主循环每处理一条数据之前，先把时钟推进到这条数据的时间，依次触发期间到点的计时器。所以计时器和数据在同一条时间线上严格排序。
-- **实盘：** 计时器由 Tokio 调度，到点后把 `TimeEvent` 经时间事件的 channel 送回核心线程，`AsyncRunner` 取出后派发（`crates/live/src/runner.rs`，第 17 章细讲）。
+- **实盘：** 计时器由 Tokio 调度，到点后把 `TimeEvent` 经时间事件的 channel 送回核心线程，`AsyncRunner` 取出后派发（`crates/live/src/runner.rs`，第 20 章细讲）。
 
 ## 6. 生命周期回调
 
@@ -197,4 +197,4 @@ on_position_event(event)
 - 源码：[`crates/common/src/actor/data_actor.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/actor/data_actor.rs) · [`crates/trading/src/strategy/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/strategy/mod.rs) · [`crates/system/src/trader.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/system/src/trader.rs) · [`crates/execution/src/engine/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/execution/src/engine/mod.rs) · [`crates/trading/src/python/strategy.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/python/strategy.rs)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-后面的第二部分会逐个拆开本章提到的组件：总线、缓存、时钟、数据和执行引擎、组合、Trader。回到[全书目录](./index.md)查看规划。
+下一章看回调最常见的数据来源之一：K 线是怎样在 Rust 里合成、再送到 `on_bar` 的，见[第 6 章：K 线聚合器](./bar-aggregation.md)。后面的第二部分会逐个拆开本章提到的组件：总线、缓存、时钟、数据和执行引擎、组合、Trader，回到[全书目录](./index.md)查看规划。

@@ -5,7 +5,7 @@ description: 读 NautilusTrader Rust 核心时绕不开的十个主题：定点�
 
 # 第 3 章：其他需要重点理解的主题
 
-[全书目录](./index.md) · [上一章](./futu-adapter.md) · [下一章](./callbacks.md)
+[全书目录](./index.md) · [上一章](./futu-adapter.md) · [下一章](./rust-strategy.md)
 
 ::: tip 本章学习目标
 第 1 章是地图，第 2 章是一条具体的路线。这一章把读源码、写适配器、写策略时反复遇到的十个主题集中讲一遍。每个主题回答四个问题：它是什么、代码在哪里、为什么这样设计、扩展时容易踩什么坑。可以按需跳读。
@@ -191,4 +191,4 @@ Python 包用 maturin 构建（`python/pyproject.toml` 指向 `crates/pyo3/Cargo
 - 官方文档：[architecture](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/architecture.md) · [value_types](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/value_types.md) · [positions](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/positions.md) · [reconciliation](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/execution/reconciliation.md) · [dst](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/dst.md) · [rust 开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/rust.md) · [ffi](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/ffi.md)
 - 源码：[`crates/model/src/types/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src/types) · [`crates/model/src/orders/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src/orders) · [`crates/common/src/cache/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/cache) · [`crates/risk/src/engine/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/risk/src/engine) · [`crates/live/src/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/live/src)
 
-这些主题里反复出现的“回调在什么时候被调用”，下一章单独讲清楚：[第 4 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。
+接下来两章从写策略的人的角度看：[第 4 章：Rust 策略的框架与运行机制](./rust-strategy.md)，以及[第 5 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。

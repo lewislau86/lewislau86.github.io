@@ -46,8 +46,19 @@
         "link": "/nautilus-trader/core-topics"
       },
       {
-        "text": "第 4 章 · 回调：一条消息怎样变成 on_xxx",
+        "text": "第 4 章 · Rust 策略的框架与运行机制",
+        "link": "/nautilus-trader/rust-strategy"
+      },
+      {
+        "text": "第 5 章 · 回调：一条消息怎样变成 on_xxx",
         "link": "/nautilus-trader/callbacks"
+      },
+      {
+        "text": "第 6 章 · K 线聚合器",
+        "link": "/nautilus-trader/bar-aggregation"
+      },
+      {
+        "text": "第 7 章 · 指标（规划中）"
       }
     ]
   },
@@ -56,37 +67,37 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 5 章 · NautilusKernel：组装、启动与关闭"
+        "text": "第 8 章 · NautilusKernel：组装、启动与关闭"
       },
       {
-        "text": "第 6 章 · MessageBus：端点、主题与类型化路由"
+        "text": "第 9 章 · MessageBus：端点、主题与类型化路由"
       },
       {
-        "text": "第 7 章 · Cache：状态、索引与持久化接口"
+        "text": "第 10 章 · Cache：状态、索引与持久化接口"
       },
       {
-        "text": "第 8 章 · Clock 与计时器：时间从哪里来"
+        "text": "第 11 章 · Clock 与计时器：时间从哪里来"
       },
       {
-        "text": "第 9 章 · DataEngine：订阅、聚合与回放"
+        "text": "第 12 章 · DataEngine：订阅、聚合与回放"
       },
       {
-        "text": "第 10 章 · RiskEngine：下单前检查与限流"
+        "text": "第 13 章 · RiskEngine：下单前检查与限流"
       },
       {
-        "text": "第 11 章 · ExecutionEngine：命令路由、订单与仓位"
+        "text": "第 14 章 · ExecutionEngine：命令路由、订单与仓位"
       },
       {
-        "text": "第 12 章 · OrderEmulator 与 OrderManager：本地条件单与关联订单"
+        "text": "第 15 章 · OrderEmulator 与 OrderManager：本地条件单与关联订单"
       },
       {
-        "text": "第 13 章 · Portfolio：净头寸、盈亏与账户状态"
+        "text": "第 16 章 · Portfolio：净头寸、盈亏与账户状态"
       },
       {
-        "text": "第 14 章 · Trader：Actor、Strategy、执行算法与 Controller"
+        "text": "第 17 章 · Trader：Actor、Strategy、执行算法与 Controller"
       },
       {
-        "text": "第 15 章 · 回测外壳：BacktestEngine 与模拟撮合"
+        "text": "第 18 章 · 回测外壳：BacktestEngine 与模拟撮合"
       }
     ]
   },
@@ -95,31 +106,31 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 16 章 · 全局 Tokio 运行时"
+        "text": "第 19 章 · 全局 Tokio 运行时"
       },
       {
-        "text": "第 17 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环"
+        "text": "第 20 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环"
       },
       {
-        "text": "第 18 章 · 任务管理：TaskGroup 与有界关闭"
+        "text": "第 21 章 · 任务管理：TaskGroup 与有界关闭"
       },
       {
-        "text": "第 19 章 · LiveClock 与实时计时器"
+        "text": "第 22 章 · LiveClock 与实时计时器"
       },
       {
-        "text": "第 20 章 · 网络层：HTTP、WebSocket 与 Socket 客户端"
+        "text": "第 23 章 · 网络层：HTTP、WebSocket 与 Socket 客户端"
       },
       {
-        "text": "第 21 章 · ExecutionManager：实盘执行管理与对账"
+        "text": "第 24 章 · ExecutionManager：实盘执行管理与对账"
       },
       {
-        "text": "第 22 章 · 订单簿同步与恢复"
+        "text": "第 25 章 · 订单簿同步与恢复"
       },
       {
-        "text": "第 23 章 · 外部后端：Redis、PostgreSQL 与外部消息流"
+        "text": "第 26 章 · 外部后端：Redis、PostgreSQL 与外部消息流"
       },
       {
-        "text": "第 24 章 · 确定性仿真测试：让异步代码可重放"
+        "text": "第 27 章 · 确定性仿真测试：让异步代码可重放"
       }
     ]
   },
@@ -127,7 +138,10 @@
     "text": "规划中 · 第四部分 · Python 层",
     "items": [
       {
-        "text": "待定"
+        "text": "第 28 章 · Python 策略：Rust 策略框架的绑定"
+      },
+      {
+        "text": "其余待定"
       }
     ]
   }

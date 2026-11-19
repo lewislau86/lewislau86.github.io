@@ -24,9 +24,12 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 ## 第一部分 · Rust 核心
 
 - [第 1 章 · 整体架构](./architecture.md)：设计理念（单线程核心、回测实盘同构、crash-only），crate 分层与依赖图，`NautilusKernel`，线程局部的消息总线，一条报价和一笔订单的完整路径，组件与策略，回测、沙盒、实盘三种模式的异同
-- [第 2 章 · 增加一个券商：以富途为例](./futu-adapter.md)：适配器要实现的 trait，富途适配器在 crate 依赖图和运行时里的位置，为什么参照 IB 适配器，富途 OpenD 协议要点，两边概念对照，Python 绑定的三条路线（PyO3 注册表、纯 Python 客户端、独立扩展），五个实现里程碑
+- [第 2 章 · 增加一个券商：以富途为例](./futu-adapter.md)：官方开发指南《Adapters》的中文全译（一致性清单、适配器结构、0～9 实现阶段、Rust 适配器模式、执行与对账、HTTP / WebSocket 客户端模式、任务管理、测试、性能与文档），每一节后附“富途怎么做”；附录给出富途 OpenD 协议要点、两边的概念对照和 Python 绑定的三条路线
 - [第 3 章 · 其他需要重点理解的主题](./core-topics.md)：定点数值类型、时钟与两种时间戳、订单状态机与事件溯源、缓存、并发模型、风控与订单仿真、对账、数据与持久化、PyO3 边界、测试与错误处理
-- [第 4 章 · 回调：一条消息怎样变成 on_xxx](./callbacks.md)：回调的六类来源；订阅时登记了什么（按 ID 取组件的闭包、总线订阅、数据引擎的引用计数）；一条报价怎样走到 `on_quote`；一笔成交怎样依次触发 `on_order_filled`、`on_order_event`、`on_position_opened`；计时器和生命周期回调；回调里能做什么、不能做什么；Python 回调和 Rust 回调的差别
+- [第 4 章 · Rust 策略的框架与运行机制](./rust-strategy.md)：一个最小策略要写什么；你写的、`nautilus_strategy!` 宏生成的、框架默认实现的三部分怎样拼成一个策略；`StrategyCore` 与 `StrategyConfig`；注册到 `Trader` 时接上了什么；生命周期；下单 API 与路由；关联订单、GTD、市场退出等托管功能；在回测和实盘里跑起来
+- [第 5 章 · 回调：一条消息怎样变成 on_xxx](./callbacks.md)：回调的六类来源；订阅时登记了什么（按 ID 取组件的闭包、总线订阅、数据引擎的引用计数）；一条报价怎样走到 `on_quote`；一笔成交怎样依次触发 `on_order_filled`、`on_order_event`、`on_position_opened`；计时器和生命周期回调；回调里能做什么、不能做什么；Python 回调和 Rust 回调的差别
+- [第 6 章 · K 线聚合器](./bar-aggregation.md)：`BarType` 字符串怎样决定 K 线从成交、报价还是更小的 K 线合成；`subscribe_bars` 之后 `DataEngine` 建了哪个聚合器、订了什么；`BarBuilder` 怎样累计；按笔数、成交量、成交额、失衡、连续、Renko、时间七种关闭规则；时间 K 线的定时器、时间戳与配置；组合 K 线与历史聚合；用 69,806 笔真实成交跑出来的实验
+- 第 7 章 · 指标（规划中）：Rust 指标怎样挂在策略上、在 `on_bar` 之前更新；`register_indicator_for_*` 做了什么；Python 策略注册的指标怎样穿过语言边界；自己写一个指标
 
 ## 规划中的章节
 
@@ -36,33 +39,37 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 
 | 章 | 主题 | 要回答的问题 | 主要源码 |
 | --- | --- | --- | --- |
-| 5 | NautilusKernel：组装、启动与关闭 | 构造顺序为什么是这样；`start`、`start_trader`、`stop`、`dispose` 各做什么；事件存储怎样在启动时恢复；crash-only 下重启走哪条路径 | `crates/system/src/{kernel,builder,clock_factory,event_store,config}.rs` |
-| 6 | MessageBus：端点、主题与类型化路由 | 点对点、发布/订阅、请求/响应各怎样实现；类型化路由和 `topic_cache` 怎样省掉动态分派和模式匹配；订阅优先级；重入时的派发顺序 | `crates/common/src/msgbus/` |
-| 7 | Cache：状态、索引与持久化接口 | 35 个字段和 31 张索引分别服务哪些查询；谁能写、谁只能读；`CacheApi` 为什么返回快照；`CacheDatabaseAdapter` 的写入语义 | `crates/common/src/cache/` |
-| 8 | Clock 与计时器：时间从哪里来 | `Clock` trait；`VirtualClock` 的计时器堆怎样和数据时间线对齐；`TimeEvent` 怎样回到组件；两个时间戳 `ts_event`、`ts_init` | `crates/common/src/clock/`、`crates/common/src/timer.rs` |
-| 9 | DataEngine：订阅、聚合与回放 | 订阅的引用计数和“最后一个持有者才退订”；K 线聚合；订单簿维护；历史数据请求；期权链 | `crates/data/src/engine/`、`aggregation.rs`、`option_chains/` |
-| 10 | RiskEngine：下单前检查与限流 | 价格、数量、名义金额、余额、只减仓检查；`Throttler` 限流；交易状态 Active / Halted / Reducing；头寸规模计算 | `crates/risk/src/{engine,sizing.rs}`、`crates/common/src/throttler.rs` |
-| 11 | ExecutionEngine：命令路由、订单与仓位 | 命令怎样路由到执行客户端；订单事件怎样驱动状态机；成交怎样开仓、加仓、平仓、反手；Netting 和 Hedging 的仓位 ID | `crates/execution/src/engine/` |
-| 12 | OrderEmulator 与 OrderManager：本地条件单与关联订单 | 交易所不支持的条件单怎样在本地仿真、触发后释放；OCO / OTO / OUO 关联订单的联动；跟踪止损价的计算 | `crates/execution/src/{order_emulator,order_manager,trailing.rs}` |
-| 13 | Portfolio：净头寸、盈亏与账户状态 | 净头寸和敞口怎样随报价更新；已实现、未实现盈亏；`AccountsManager` 怎样算冻结资金和保证金；权益曲线与统计 | `crates/portfolio/src/{portfolio,manager}.rs` |
-| 14 | Trader：Actor、Strategy、执行算法与 Controller | 组件生命周期状态机；`DataActorCore`、`StrategyCore` 的组成；注册时接上了什么；执行算法和 TWAP；`Controller` 动态增删组件 | `crates/system/src/trader.rs`、`crates/common/src/actor/`、`crates/trading/src/` |
-| 15 | 回测外壳：BacktestEngine 与模拟撮合 | 主循环一次迭代做什么；`SimulatedExchange` 和 `OrderMatchingEngine` 怎样撮合；手续费、成交、延迟模型；回测结果怎样产出 | `crates/backtest/src/{engine,exchange}.rs`、`crates/execution/src/matching_engine/` |
+| 8 | NautilusKernel：组装、启动与关闭 | 构造顺序为什么是这样；`start`、`start_trader`、`stop`、`dispose` 各做什么；事件存储怎样在启动时恢复；crash-only 下重启走哪条路径 | `crates/system/src/{kernel,builder,clock_factory,event_store,config}.rs` |
+| 9 | MessageBus：端点、主题与类型化路由 | 点对点、发布/订阅、请求/响应各怎样实现；类型化路由和 `topic_cache` 怎样省掉动态分派和模式匹配；订阅优先级；重入时的派发顺序 | `crates/common/src/msgbus/` |
+| 10 | Cache：状态、索引与持久化接口 | 35 个字段和 31 张索引分别服务哪些查询；谁能写、谁只能读；`CacheApi` 为什么返回快照；`CacheDatabaseAdapter` 的写入语义 | `crates/common/src/cache/` |
+| 11 | Clock 与计时器：时间从哪里来 | `Clock` trait；`VirtualClock` 的计时器堆怎样和数据时间线对齐；`TimeEvent` 怎样回到组件；两个时间戳 `ts_event`、`ts_init` | `crates/common/src/clock/`、`crates/common/src/timer.rs` |
+| 12 | DataEngine：订阅、聚合与回放 | 订阅的引用计数和“最后一个持有者才退订”；K 线聚合的引擎侧接线（聚合器本身见第 6 章）；订单簿维护；历史数据请求；期权链 | `crates/data/src/engine/`、`aggregation.rs`、`option_chains/` |
+| 13 | RiskEngine：下单前检查与限流 | 价格、数量、名义金额、余额、只减仓检查；`Throttler` 限流；交易状态 Active / Halted / Reducing；头寸规模计算 | `crates/risk/src/{engine,sizing.rs}`、`crates/common/src/throttler.rs` |
+| 14 | ExecutionEngine：命令路由、订单与仓位 | 命令怎样路由到执行客户端；订单事件怎样驱动状态机；成交怎样开仓、加仓、平仓、反手；Netting 和 Hedging 的仓位 ID | `crates/execution/src/engine/` |
+| 15 | OrderEmulator 与 OrderManager：本地条件单与关联订单 | 交易所不支持的条件单怎样在本地仿真、触发后释放；OCO / OTO / OUO 关联订单的联动；跟踪止损价的计算 | `crates/execution/src/{order_emulator,order_manager,trailing.rs}` |
+| 16 | Portfolio：净头寸、盈亏与账户状态 | 净头寸和敞口怎样随报价更新；已实现、未实现盈亏；`AccountsManager` 怎样算冻结资金和保证金；权益曲线与统计 | `crates/portfolio/src/{portfolio,manager}.rs` |
+| 17 | Trader：Actor、Strategy、执行算法与 Controller | 组件生命周期状态机；`DataActorCore`、`StrategyCore` 的组成；注册时接上了什么；执行算法和 TWAP；`Controller` 动态增删组件 | `crates/system/src/trader.rs`、`crates/common/src/actor/`、`crates/trading/src/` |
+| 18 | 回测外壳：BacktestEngine 与模拟撮合 | 主循环一次迭代做什么；`SimulatedExchange` 和 `OrderMatchingEngine` 怎样撮合；手续费、成交、延迟模型；回测结果怎样产出 | `crates/backtest/src/{engine,exchange}.rs`、`crates/execution/src/matching_engine/` |
 
 ### 第三部分 · Tokio 运行时与实盘外壳
 
 | 章 | 主题 | 要回答的问题 | 主要源码 |
 | --- | --- | --- | --- |
-| 16 | 全局 Tokio 运行时 | 为什么全进程只有一个运行时；`get_runtime()` 的懒初始化、`NAUTILUS_WORKER_THREADS`、`set_runtime` 注入；Python 下的初始化与退出；哪些后台工作不在 Tokio 上（日志线程） | `crates/common/src/live/runtime.rs` |
-| 17 | LiveNode 与 AsyncRunner：核心线程上的事件循环 | 7 对 channel 和它们的优先级；发送端怎样存在线程局部里；`run` 与 `run_async`；启动和关闭的顺序 | `crates/live/src/{node,runner.rs}`、`crates/common/src/live/{runner,sender}.rs` |
-| 18 | 任务管理：TaskGroup 与有界关闭 | 为什么不准直接 `tokio::spawn`；`TaskGroup`、`TaskSlot` 怎样把任务挂在所有者上；关闭时怎样在期限内收尾 | `crates/live/src/task.rs`、`crates/common/src/live/task.rs` |
-| 19 | LiveClock 与实时计时器 | 实时计时器怎样由 Tokio 调度、到点后经 channel 回到核心线程；`AtomicTime` 的严格单调 | `crates/common/src/live/{clock,timer}.rs` |
-| 20 | 网络层：HTTP、WebSocket 与 Socket 客户端 | 重连、退避、心跳；GCRA 限流；Socket 状态怎样发布、重连命令怎样下达；适配器怎样复用这一层 | `crates/network/src/`、`crates/live/src/socket.rs` |
-| 21 | ExecutionManager：实盘执行管理与对账 | 启动对账和持续对账；订单、成交、持仓三类报告怎样合成本地事件；“结果未知”的命令怎样收尾 | `crates/live/src/execution/`、`crates/live/src/node/reconciliation.rs` |
-| 22 | 订单簿同步与恢复 | 增量流断档时怎样发现、怎样用快照恢复；一致性检查 | `crates/live/src/book/` |
-| 23 | 外部后端：Redis、PostgreSQL 与外部消息流 | 缓存怎样异步落盘、重启时怎样恢复；消息总线怎样把指定主题发布到 Redis 流、再从外部流收回 | `crates/infrastructure/src/{redis,sql}/`、`crates/common/src/msgbus/external/`、`crates/common/src/live/listener.rs` |
-| 24 | 确定性仿真测试：让异步代码可重放 | DST 怎样替换 Tokio 的时间、任务和网络原语；`make cargo-test-sim` 跑什么；为什么官方适配器要求它 | `crates/common/src/live/dst.rs`、`crates/network/src/dst/` |
+| 19 | 全局 Tokio 运行时 | 为什么全进程只有一个运行时；`get_runtime()` 的懒初始化、`NAUTILUS_WORKER_THREADS`、`set_runtime` 注入；Python 下的初始化与退出；哪些后台工作不在 Tokio 上（日志线程） | `crates/common/src/live/runtime.rs` |
+| 20 | LiveNode 与 AsyncRunner：核心线程上的事件循环 | 7 对 channel 和它们的优先级；发送端怎样存在线程局部里；`run` 与 `run_async`；启动和关闭的顺序 | `crates/live/src/{node,runner.rs}`、`crates/common/src/live/{runner,sender}.rs` |
+| 21 | 任务管理：TaskGroup 与有界关闭 | 为什么不准直接 `tokio::spawn`；`TaskGroup`、`TaskSlot` 怎样把任务挂在所有者上；关闭时怎样在期限内收尾 | `crates/live/src/task.rs`、`crates/common/src/live/task.rs` |
+| 22 | LiveClock 与实时计时器 | 实时计时器怎样由 Tokio 调度、到点后经 channel 回到核心线程；`AtomicTime` 的严格单调 | `crates/common/src/live/{clock,timer}.rs` |
+| 23 | 网络层：HTTP、WebSocket 与 Socket 客户端 | 重连、退避、心跳；GCRA 限流；Socket 状态怎样发布、重连命令怎样下达；适配器怎样复用这一层 | `crates/network/src/`、`crates/live/src/socket.rs` |
+| 24 | ExecutionManager：实盘执行管理与对账 | 启动对账和持续对账；订单、成交、持仓三类报告怎样合成本地事件；“结果未知”的命令怎样收尾 | `crates/live/src/execution/`、`crates/live/src/node/reconciliation.rs` |
+| 25 | 订单簿同步与恢复 | 增量流断档时怎样发现、怎样用快照恢复；一致性检查 | `crates/live/src/book/` |
+| 26 | 外部后端：Redis、PostgreSQL 与外部消息流 | 缓存怎样异步落盘、重启时怎样恢复；消息总线怎样把指定主题发布到 Redis 流、再从外部流收回 | `crates/infrastructure/src/{redis,sql}/`、`crates/common/src/msgbus/external/`、`crates/common/src/live/listener.rs` |
+| 27 | 确定性仿真测试：让异步代码可重放 | DST 怎样替换 Tokio 的时间、任务和网络原语；`make cargo-test-sim` 跑什么；为什么官方适配器要求它 | `crates/common/src/live/dst.rs`、`crates/network/src/dst/` |
 
 ### 第四部分 · Python 层
 
-待定。
+| 章 | 主题 | 要回答的问题 | 主要源码 |
+| --- | --- | --- | --- |
+| 28 | Python 策略：Rust 策略框架的绑定 | Python 的 `Strategy` 怎样包住第 4 章的 Rust 框架：`PyStrategy` 与 `PyStrategyInner`、配置类的取值、注册时做了什么、每个回调怎样转发到 Python、下单参数怎样转成 Rust 值；和 Rust 策略相比多了哪些开销、少了哪些能力 | `crates/trading/src/python/strategy.rs`、`crates/system/src/python/registration.rs` |
+
+其余章节待定。
 

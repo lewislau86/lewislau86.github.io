@@ -748,6 +748,157 @@ def callback_flow():
         640, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 4 章 · Rust 策略的组成：你写的、宏生成的、框架提供的
+# ---------------------------------------------------------------------------
+def rust_strategy():
+    b = text(480, 36, "一个 Rust 策略由三部分拼成：你写的结构体和回调、宏生成的样板、框架的默认实现", 19, INK, "bold", limit=920)
+    cols = [
+        (24, "你写的", ORANGE, "orange", [
+            ("struct EmaCross", "core: StrategyCore", "+ 指标、参数、自己的状态"),
+            ("impl DataActor for EmaCross", "on_start / on_quote / on_stop …", "只覆盖需要的回调"),
+            ("（可选）宏的花括号里", "覆盖 Strategy 的方法", "如 on_order_filled"),
+        ]),
+        (334, "nautilus_strategy! 宏生成", BLUE, "blue", [
+            ("impl DataActorNative", "core() / core_mut()", "启动时先跑框架的 on_start"),
+            ("impl StrategyNative", "strategy_core() / _mut()", "由此拿到下单工厂、组合"),
+            ("impl Strategy {}", "空实现，全用默认方法", "外加 config() 访问器"),
+        ]),
+        (644, "框架提供（默认方法与通用实现）", TEAL, "teal", [
+            ("impl<T> Component for T", "任何 DataActor 自动获得", "生命周期状态机"),
+            ("DataActor 的默认方法", "subscribe_* / request_*", "以及派发前检查 handle_*"),
+            ("Strategy 的默认方法", "submit_order / cancel_order …", "handle_order_event 等"),
+        ]),
+    ]
+    for x, title, color, fill, items in cols:
+        b += rect(x, 58, 292, 352, fill, color, rx=14)
+        b += text(x + 146, 86, title, 16, color, "bold", limit=270)
+        y = 104
+        for h, l1, l2 in items:
+            b += rect(x + 14, y, 264, 92, "white", color, rx=9, width=1.3)
+            b += text(x + 146, y + 28, h, 15, INK, "bold", mono=h.isascii(), limit=252)
+            b += text(x + 146, y + 52, l1, 14, GRAY, mono=l1.isascii(), limit=252)
+            b += text(x + 146, y + 74, l2, 14, GRAY, mono=l2.isascii(), limit=252)
+            y += 100
+    # StrategyCore 组成
+    b += rect(24, 430, 912, 150, "gray", INK, rx=14)
+    b += text(44, 458, "StrategyCore（crates/trading/src/strategy/core.rs）注册之后才完整", 16, INK, "bold", "start", limit=880)
+    parts = [("DataActorCore", "状态、时钟、订阅表"), ("OrderFactory", "生成订单和订单号"),
+             ("OrderManager", "关联订单 OCO / OTO"), ("Portfolio", "净头寸、盈亏查询"), ("计时器", "GTD 过期、市场退出")]
+    x = 40
+    for name, desc in parts:
+        b += rect(x, 476, 168, 84, "white", INK, rx=9, width=1.2)
+        b += text(x + 84, 508, name, 15, INK, "bold", mono=name.isascii(), limit=156)
+        b += text(x + 84, 534, desc, 14, GRAY, limit=156)
+        x += 178
+    svg("rust-strategy.svg", "Rust 策略的组成",
+        "左边是你写的部分：持有 StrategyCore 的结构体、覆盖回调的 impl DataActor，以及可选地在宏里覆盖 Strategy 的方法。"
+        "中间是 nautilus_strategy! 宏生成的 DataActorNative、StrategyNative 和空的 impl Strategy。右边是框架提供的通用实现和默认方法："
+        "任何 DataActor 自动实现 Component，DataActor 和 Strategy 的订阅、下单、派发方法都有默认实现。下方是 StrategyCore 的组成，"
+        "DataActorCore、OrderFactory、OrderManager、Portfolio 和计时器在注册到 Trader 时才接上。",
+        600, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 6 章 · 图 1：一次 subscribe_bars 和一笔成交怎样变成 on_bar
+# ---------------------------------------------------------------------------
+def bar_aggregation_flow():
+    b = text(480, 36, "K 线在 Rust 的 DataEngine 里合成：订阅时建聚合器，运行时逐笔喂进去", 19, INK, "bold", limit=920)
+    # 上半：订阅时
+    b += rect(24, 58, 912, 150, "gray", GRAY, rx=14)
+    b += text(44, 84, "订阅时：一次 subscribe_bars(…-1-MINUTE-LAST-INTERNAL)", 16, INK, "bold", "start", limit=880)
+    sub = [
+        ("策略 subscribe_bars", "Rust 或 Python 都一样", "发 SubscribeBars 命令"),
+        ("DataEngine", "来源是 INTERNAL", "不转给数据客户端"),
+        ("建聚合器", "按标准 BarType 只建一份", "多个订阅者共享"),
+        ("向客户端订阅源数据", "LAST 订成交", "BID/ASK/MID 订报价"),
+    ]
+    x = 40
+    for i, (h, l1, l2) in enumerate(sub):
+        b += box(x, 100, 204, 92, [h, l1, l2], "white", GRAY, 15, mono_from=9)
+        if i < 3:
+            b += arrow(x + 206, 146, x + 226, 146, GRAY)
+        x += 224
+    # 下半：运行时
+    b += rect(24, 226, 912, 376, "blue", BLUE, rx=14)
+    b += text(44, 252, "运行时：一笔成交怎样变成 on_bar（全程在核心线程上同步执行）", 16, BLUE, "bold", "start", limit=880)
+    row1 = [
+        ("DataEngine 收到成交", "来自客户端或回测数据流", "先写 Cache，再发布"),
+        ("总线 data.trades.*", "按优先级从高到低派发", "聚合器 5 先于策略 0"),
+        ("BarTradeHandler", "订阅时登记的处理器", "弱引用找到聚合器"),
+        ("BarAggregator", "BarBuilder 累计 OHLCV", "满足关闭条件就 build"),
+    ]
+    x = 40
+    for i, (h, l1, l2) in enumerate(row1):
+        hl = i == 3
+        b += box(x, 300, 204, 92, [h, l1, l2], "#dbeafe" if hl else "white", BLUE, 15, mono_from=9)
+        if i < 3:
+            b += arrow(x + 206, 346, x + 226, 346, BLUE)
+        x += 224
+    # 时间 K 线的定时器
+    b += box(712, 410, 204, 56, ["时钟定时器 TIME_BAR_…", "到点调用 build_bar"], "white", TEAL, 14, mono_from=9, dash=True)
+    b += arrow(814, 410, 814, 394, TEAL, dash=True)
+    row2 = [
+        ("on_bar（你的代码）", "Rust 直接调用", "Python 拿 GIL 按名字调用"),
+        ("handle_bar（框架）", "先更新注册的指标", "组件不在 RUNNING 就丢弃"),
+        ("总线 data.bars.{类型}", "主题用标准 BarType", "组合 K 线也去掉 @ 部分"),
+        ("process_engine_bar", "可选的时间戳顺序检查", "写 Cache，再发布"),
+    ]
+    x = 40
+    for i, (h, l1, l2) in enumerate(row2):
+        hl = i == 0
+        b += box(x, 486, 204, 92, [h, l1, l2], "#fde68a" if hl else "white", ORANGE if hl else BLUE, 15, mono_from=9)
+        if i < 3:
+            b += arrow(x + 226, 532, x + 206, 532, BLUE)
+        x += 224
+    b += poly_arrow([(712 + 102 + 120, 346), (926, 346), (926, 532), (918, 532)], BLUE)
+    b += text(480, 628, "聚合器的优先级（5）高于策略（0）：凑满一根 K 线的那笔成交，策略先收到 on_bar，再收到这笔成交的 on_trade_tick。", 14, GRAY, limit=920)
+    svg("bar-aggregation-flow.svg", "K 线聚合的订阅与数据流",
+        "上半部分是订阅时：策略调用 subscribe_bars 订阅一个 INTERNAL 的 K 线类型，DataEngine 不把它转给数据客户端，而是按标准 BarType 建一个共享的聚合器，"
+        "再向客户端订阅源数据：LAST 订阅成交，BID、ASK、MID 订阅报价，组合 K 线订阅 @ 后面的源 K 线。"
+        "下半部分是运行时：成交发布到 data.trades 主题，按优先级先到 Portfolio、再到聚合器的处理器、最后到策略；聚合器用 BarBuilder 累计开高低收和成交量，"
+        "满足关闭条件或时间 K 线的定时器到点时生成 K 线，process_engine_bar 写入缓存并发布到 data.bars 主题，策略的 handle_bar 先更新指标，再调用 on_bar。",
+        650, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 6 章 · 图 2：一个 BarBuilder，七种关闭规则
+# ---------------------------------------------------------------------------
+def bar_aggregators():
+    b = text(480, 36, "所有聚合器共用一个 BarBuilder，区别只在“什么时候关闭这根 K 线”", 19, INK, "bold", limit=920)
+    b += rect(300, 58, 360, 92, "gray", INK, rx=12)
+    b += text(480, 86, "BarBuilder（每根 K 线的累加器）", 16, INK, "bold", limit=340)
+    b += text(480, 112, "open/high/low/close · volume · count", 14, GRAY, mono=True, limit=340)
+    b += text(480, 136, "ts_init 比上一笔早就忽略；空 K 线用上一收盘价补", 14, GRAY, limit=340)
+    b += text(480, 174, "下面每个聚合器的 BarAggregatorCore 里都有一个 BarBuilder，加上各自的关闭规则", 14, GRAY, limit=920)
+    cards = [
+        ("TickBarAggregator", "成交笔数 count ≥ step", "250-TICK → 279 根", BLUE),
+        ("VolumeBarAggregator", "成交量凑满 step，大单拆进两根", "100-VOLUME → 1912 根", BLUE),
+        ("ValueBarAggregator", "成交额 价×量 累计到 step", "50000-VALUE → 1627 根", BLUE),
+        ("…ImbalanceBarAggregator", "买 +1、卖 −1，|和| ≥ step", "100-TICK_IMBALANCE → 65 根", TEAL),
+        ("…RunsBarAggregator", "同方向连续 step 笔，换向重来", "20-TICK_RUNS → 247 根", TEAL),
+        ("RenkoBarAggregator", "价格离上一块收盘 ≥ 砖块大小", "50-RENKO → 158 根", ORANGE),
+        ("TimeBarAggregator", "时钟定时器到点，不看数据", "1-MINUTE → 299 根", ORANGE),
+        ("组合：…@1-MINUTE-INTERNAL", "源是更小的 K 线", "5-MINUTE → 59 根", ORANGE),
+    ]
+    for i, (name, rule, run, color) in enumerate(cards):
+        col, row = i % 4, i // 4
+        x = 24 + col * 230
+        y = 186 + row * 150
+        b += rect(x, y, 220, 132, "white", color, rx=10, width=1.4)
+        b += text(x + 110, y + 30, name, 14, color, "bold", mono=name.isascii(), limit=208)
+        b += text(x + 110, y + 62, rule, 14, INK, limit=208)
+        b += text(x + 110, y + 100, run, 14, GRAY, limit=208)
+    b += text(480, 506, "蓝：阈值类　青：信息驱动类（需要成交的主动方向）　橙：按价格或按时间", 14, GRAY, limit=920)
+    b += text(480, 530, "根数是本章实验：ETHUSDT.BINANCE 69,806 笔成交，2020-08-14 10:00–15:00 UTC", 14, GRAY, limit=920)
+    svg("bar-aggregators.svg", "BarBuilder 与七种聚合器",
+        "上面是所有聚合器共用的 BarBuilder，记录开高低收、成交量和笔数。下面八张卡片是不同的关闭规则："
+        "按笔数、按成交量（大单会被拆进两根）、按成交额、按主动买卖的净失衡、按同方向连续成交、按价格移动的 Renko 砖块、按时钟的时间 K 线，"
+        "以及用更小的 K 线合成大 K 线的组合方式。每张卡片下面写着本章实验得到的根数。",
+        560, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -761,6 +912,9 @@ def main():
     futu_python_binding()
     pyo3_binding()
     callback_flow()
+    rust_strategy()
+    bar_aggregation_flow()
+    bar_aggregators()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

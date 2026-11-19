@@ -273,7 +273,7 @@ nautilus_trader.<模块>  ←  nautilus_trader._libnautilus.<模块>  ←  crate
 
 v2 里 Python 代码只出现在三个位置：
 
-1. **用户组件。** 继承 PyO3 基类 `DataActor`、`Strategy`、`ExecutionAlgorithm`、`Controller`，覆盖 `on_start`、`on_quote`、`on_bar`、`on_order_filled` 等回调。这些回调在核心线程上同步执行，回调里做阻塞 I/O 或重计算会拖住整个节点。回调由谁调用、按什么顺序、出错会怎样，见[第 4 章](./callbacks.md)。
+1. **用户组件。** 继承 PyO3 基类 `DataActor`、`Strategy`、`ExecutionAlgorithm`、`Controller`，覆盖 `on_start`、`on_quote`、`on_bar`、`on_order_filled` 等回调。这些回调在核心线程上同步执行，回调里做阻塞 I/O 或重计算会拖住整个节点。策略怎样写、怎样注册见[第 4 章](./rust-strategy.md)；回调由谁调用、按什么顺序、出错会怎样，见[第 5 章](./callbacks.md)。
 2. **编排与分析。** 构造配置、`BacktestNode`/`BacktestEngine`/`LiveNode`，跑完后读缓存、组合和报表。`LiveNode.run()` 阻塞当前线程；`LiveNode.run_async()` 让节点跑在宿主的 asyncio 事件循环上（比如 ASGI 应用里）。
 3. **Python 写的适配器。** 官方适配器全部是 Rust 实现，Python 拿到的是它们的配置、工厂、客户端和数据类型；自己用 Python 写适配器时，继承 `nautilus_trader/live/clients.py` 里的 `DataClient`、`ExecutionClient`。它们跑在节点绑定的 asyncio 循环上，拿到的是只读的缓存视图，产出的数据、事件、报告经队列交给 Rust。
 
@@ -380,7 +380,7 @@ engine.dispose()                                                                
 
 ### 4.4 实盘：LiveNode 多出的两件事
 
-**客户端经注册表组装。** 实盘要接交易所，`LiveNode.builder(…).add_data_client(None, 工厂, 配置)` 把工厂和配置交给 Rust。Rust 调用工厂的 `name()`、读配置的类名，到全局注册表里找到适配器在模块初始化时登记的提取函数，把它们还原成 Rust 的 trait 对象。完整过程见[第 2 章](./futu-adapter.md)第 6.1 节。
+**客户端经注册表组装。** 实盘要接交易所，`LiveNode.builder(…).add_data_client(None, 工厂, 配置)` 把工厂和配置交给 Rust。Rust 调用工厂的 `name()`、读配置的类名，到全局注册表里找到适配器在模块初始化时登记的提取函数，把它们还原成 Rust 的 trait 对象。完整过程见[第 2 章](./futu-adapter.md)附录 C.1。
 
 **事件循环在 Rust 里跑。** `LiveNode.run()`（`crates/live/src/python/node.rs`）在没有 Python 写的客户端时，先释放 GIL（`py.detach`），再在当前线程上 `get_runtime().block_on(node.run())`；Python 回调发生时再临时拿回 GIL。有 Python 客户端时，`run()` 会新建一个 asyncio 事件循环来驱动 `run_async()`，并在主线程上接管 `SIGINT`、`SIGTERM`。已经有事件循环的程序（比如 ASGI 应用）直接 `await node.run_async()`。
 
