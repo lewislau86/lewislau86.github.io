@@ -26,17 +26,15 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 0 章 · NautilusTrader 架构](./nautilus-architecture.md)：一个节点的四层（Python、PyO3、节点外壳、内核）和两种线程；Rust 24 个 crate 的七层分层与每个 crate 的目录；Python 包怎样从 `_libnautilus` 转出、哪些是纯 Python；Rust 核心数据结构（定点数、标识符、行情、订单簿、订单、仓位、`Cache`、`MessageBus`）；这些结构投影到 Python 后的三种关系和快照语义
 - [第 1 章 · 运行全景](./architecture.md)：设计理念（单线程核心、回测实盘同构、crash-only），crate 分层与依赖图，`NautilusKernel`，线程局部的消息总线，一条报价和一笔订单的完整路径，组件与策略，回测、沙盒、实盘三种模式的异同
 
-## 第一部分 · 交易领域模型（规划中）
+## 第一部分 · 交易领域模型
 
-| 章 | 主题 | 要回答的问题 | 主要源码 |
-| --- | --- | --- | --- |
-| 2 | 数值类型、标识符与时间戳 | `Price`、`Quantity`、`Money` 为什么是定点数，64 位和 128 位两种精度模式；各种标识符的格式和约束；`UnixNanos`、`ts_event` 与 `ts_init`、`UUID4` | `crates/model/src/{types,identifiers}/`、`crates/core/src/{nanos,uuid}.rs` |
-| 3 | 品种：从现货到期权、合成品种与连续期货 | 十几种品种类型各有哪些字段；价格精度、最小变动价位、乘数怎样影响下单和盈亏；合成品种怎样由表达式算价；连续期货怎样换月 | `crates/model/src/instruments/`、`crates/data/src/engine/{synthetic,futures}.rs` |
-| 4 | 行情数据与订单簿 | 报价、成交、K 线、订单簿增量与快照、标记价、资金费率各是什么结构；增量的标志位和事件边界；`OrderBook` 怎样维护、自有订单怎样跟踪；自定义数据怎样注册 | `crates/model/src/{data,orderbook}/`、`crates/common/src/custom.rs` |
-| 5 | 订单：类型、有效期、状态机与条件单 | 九种订单类型和七种有效期；只挂单、只减仓、冰山；订单状态机的十几个状态和十九种事件；OCO / OTO / OUO；本地仿真单 | `crates/model/src/orders/`、`crates/model/src/enums.rs` |
-| 6 | 成交、仓位与盈亏 | 成交怎样开仓、加仓、减仓、反手；Netting 和 Hedging 两种订单管理模式下仓位 ID 怎样分配；已实现和未实现盈亏、手续费怎样计 | `crates/model/src/position.rs`、`crates/model/src/events/position/` |
-| 7 | 账户与保证金 | 现金、保证金、博彩、钱包四类账户；余额与冻结；逐品种和全账户两种保证金口径；保证金模型 | `crates/model/src/accounts/` |
-| 8 | 事件与事件溯源 | 订单、仓位、账户、时间四类事件；从成交到仓位事件的因果链；事件存储怎样记录、怎样回放和恢复 | `crates/model/src/events/`、`crates/system/src/event_store.rs` |
+- [第 2 章 · 数值类型、标识符与时间戳](./value-types.md)：一行成交在内存里是什么；`Price`、`Quantity`、`Money` 的定点表示和两种精度模式；`Price::new` 与 `from_str` 怎样决定精度、何时悄悄舍入；运算、比较与会 panic 的情形；92 种内置币种；标识符的格式、校验与订单号、仓位号的生成；`UnixNanos`、`ts_event` 与 `ts_init`、`UUID4`
+- [第 3 章 · 品种：从现货到期权、合成品种与连续期货](./instruments.md)：18 种品种与 `Instrument` trait；`make_price`、`make_qty` 的银行家舍入，以及它们和风控之间“不对齐最小变动价位”的缝隙；价位表、名义金额与反向合约；品种从哪里来；合成品种的公式计算；连续期货的换月表
+- [第 4 章 · 行情数据与订单簿](./market-data.md)：`Data` 枚举里的内置行情类型；订单簿增量的四种动作和 `F_LAST`、`F_SNAPSHOT` 标志；一步一步维护一本二档簿；乱序、缺单与交叉；托管的簿与三种订阅；自有订单簿与过滤视图；自定义数据
+- [第 5 章 · 订单：类型、有效期、状态机与条件单](./orders.md)：九种订单类型和七种有效期；15 个状态、19 种事件的转移表，以及它照着真实交易所写的几条规则；部分成交、重复成交与价格更正；一张括号单的一生；OTO、OCO、OUO；本地仿真单
+- [第 6 章 · 成交、仓位与盈亏](./positions.md)：`Position` 的字段；NETTING 与 HEDGING 下仓位 ID 怎样分配；一串成交逐步算出均价、已实现盈亏与手续费；反手时成交怎样拆分；平仓后再开仓的快照；反向合约与盈亏币种
+- [第 7 章 · 账户与保证金](./accounts.md)：四类账户；`total`、`locked`、`free` 与不变式；现金账户为挂单冻结什么、成交怎样改变余额；保证金账户的两种模型与两种口径；`AccountState` 的本地计算与交易所上报
+- [第 8 章 · 事件与事件溯源](./events.md)：四类事件与 19 种订单事件；事件主题；一张平仓单的完整事件链；订单、仓位、账户怎样由事件重建；事件存储的抓取、写入、封存与回放，以及它目前的边界
 
 ## 第二部分 · 写策略
 
@@ -44,26 +42,29 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 10 章 · 回调：一条消息怎样变成 on_xxx](./callbacks.md)：回调的六类来源；订阅时登记了什么（按 ID 取组件的闭包、总线订阅、数据引擎的引用计数）；一条报价怎样走到 `on_quote`；一笔成交怎样依次触发 `on_order_filled`、`on_order_event`、`on_position_opened`；计时器和生命周期回调；回调里能做什么、不能做什么；Python 回调和 Rust 回调的差别
 - [第 11 章 · K 线聚合器](./bar-aggregation.md)：`BarType` 字符串怎样决定 K 线从成交、报价还是更小的 K 线合成；`subscribe_bars` 之后 `DataEngine` 建了哪个聚合器、订了什么；`BarBuilder` 怎样累计；按笔数、成交量、成交额、失衡、连续、Renko、时间七种关闭规则；时间 K 线的定时器、时间戳与配置；组合 K 线与历史聚合；用 69,806 笔真实成交跑出来的实验
 - [第 12 章 · 指标](./indicators.md)：内置指标在哪、按什么分类、为什么用 `f64`；`Indicator` trait 和 EMA、SMA、MACD、ATR 的实现细节；自己喂和注册给框架两种用法；`Indicators` 注册表怎样在 `on_bar` 之前更新指标、出错和停止时怎样处理；Rust 注册要打开的特性；Python 注册的指标每次更新怎样穿过语言边界；怎样预热；怎样自己写一个指标
-- 第 13 章 · Actor、执行算法与配置（规划中）：不下单的 `Actor` 能做什么；执行算法（如 TWAP）怎样拆单、怎样被策略调用；配置结构体在 Rust 和 Python 两侧怎样定义、默认值怎样解析；日志怎样配置
+- [第 13 章 · Actor、执行算法与配置](./actors-and-config.md)：`DataActor`、`Strategy`、`ExecutionAlgorithm` 三种组件的能力边界；写一个 Rust Actor；用信号和自定义数据在组件之间通信；TWAP 怎样把一张主单拆成 `-E1`、`-E2`…子单；配置结构体的默认值与两条构造路径；日志线程与 `NAUTILUS_LOG`
 
-## 规划中的章节
+## 第三部分 · 内核组件
 
-下面几部分尚未成文，先列出每章要回答的问题和对应的源码，写作时按这个顺序推进。内核组件的每章都按同一个顺序展开：它持有什么数据、对外暴露哪些入口（总线端点、主题、trait 方法）、一条典型消息怎样流过它、回测和实盘下有什么不同、扩展时容易踩的坑。
+- [第 14 章 · NautilusKernel：组装、启动与关闭](./kernel.md)：九步构造与依赖顺序；`start` 与 `start_trader` 为什么分两步、实盘节点在中间做什么；`stop_trader`、`finalize_stop`、`reset`、`dispose`；`save_state`、`load_state` 与 `shutdown_on_error`
+- [第 15 章 · MessageBus：端点、主题与类型化路由](./message-bus.md)：点对点、发布订阅、请求响应；主题、模式与端点的类型；类型化路由与通用路由；发布一条报价时的匹配缓存、优先级与可重入派发；`queue_execute` 为什么存在；消息不可变
+- [第 16 章 · Cache：状态、索引与持久化接口](./cache.md)：35 个字段与 31 张索引；一张限价单在索引里的足迹；`CacheApi`、`CacheView` 与带生命周期的借用；行情历史容量；尽力持久化与启动恢复；长时间运行的清理
+- [第 17 章 · Clock 与计时器：时间从哪里来](./clock.md)：`Clock` trait 与计时器参数；回调的三级查找；`VirtualClock` 的最小堆；回测里同一时刻的数据与计时器谁先执行；严格单调的实时原子时钟与 `LiveClock`
 
-### 第三部分 · 内核组件
+以下几章尚在规划中：
 
 | 章 | 主题 | 要回答的问题 | 主要源码 |
 | --- | --- | --- | --- |
-| 14 | NautilusKernel：组装、启动与关闭 | 构造顺序为什么是这样；`start`、`start_trader`、`stop`、`dispose` 各做什么；事件存储怎样在启动时恢复；crash-only 下重启走哪条路径 | `crates/system/src/{kernel,builder,clock_factory,event_store,config}.rs` |
-| 15 | MessageBus：端点、主题与类型化路由 | 点对点、发布/订阅、请求/响应各怎样实现；类型化路由和 `topic_cache` 怎样省掉动态分派和模式匹配；订阅优先级；重入时的派发顺序 | `crates/common/src/msgbus/` |
-| 16 | Cache：状态、索引与持久化接口 | 35 个字段和 31 张索引分别服务哪些查询；谁能写、谁只能读；`CacheApi` 为什么返回快照；`CacheDatabaseAdapter` 的写入语义 | `crates/common/src/cache/` |
-| 17 | Clock 与计时器：时间从哪里来 | `Clock` trait；`VirtualClock` 的计时器堆怎样和数据时间线对齐；`TimeEvent` 怎样回到组件；两个时间戳 `ts_event`、`ts_init` | `crates/common/src/clock/`、`crates/common/src/timer.rs` |
 | 18 | DataEngine：订阅、路由与历史请求 | 订阅的引用计数和“最后一个持有者才退订”；数据怎样写缓存再发布；K 线聚合的引擎侧接线（聚合器本身见第 11 章）；订单簿维护；历史数据请求；期权链 | `crates/data/src/engine/`、`aggregation.rs`、`option_chains/` |
 | 19 | RiskEngine：下单前检查与限流 | 价格、数量、名义金额、余额、只减仓检查；`Throttler` 限流；交易状态 Active / Halted / Reducing；头寸规模计算 | `crates/risk/src/{engine,sizing.rs}`、`crates/common/src/throttler.rs` |
 | 20 | ExecutionEngine：命令路由、订单与仓位 | 命令怎样路由到执行客户端；订单事件怎样驱动状态机；成交怎样开仓、加仓、平仓、反手；Netting 和 Hedging 的仓位 ID | `crates/execution/src/engine/` |
 | 21 | OrderEmulator 与 OrderManager：本地条件单与关联订单 | 交易所不支持的条件单怎样在本地仿真、触发后释放；OCO / OTO / OUO 关联订单的联动；跟踪止损价的计算 | `crates/execution/src/{order_emulator,order_manager,trailing.rs}` |
 | 22 | Portfolio：净头寸、盈亏与账户状态 | 净头寸和敞口怎样随报价更新；已实现、未实现盈亏；`AccountsManager` 怎样算冻结资金和保证金；权益曲线与统计 | `crates/portfolio/src/{portfolio,manager}.rs` |
 | 23 | Trader：组件的生命周期与动态管理 | 组件生命周期状态机；`Trader` 怎样登记、启动、停止各类组件；`Controller` 动态增删组件；和第 9、13 章的分工 | `crates/system/src/trader.rs`、`crates/common/src/actor/`、`crates/trading/src/` |
+
+## 规划中的章节
+
+下面几部分尚未成文，先列出每章要回答的问题和对应的源码，写作时按这个顺序推进。内核组件的每章都按同一个顺序展开：它持有什么数据、对外暴露哪些入口（总线端点、主题、trait 方法）、一条典型消息怎样流过它、回测和实盘下有什么不同、扩展时容易踩的坑。
 
 ### 第四部分 · 回测
 

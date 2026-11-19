@@ -951,6 +951,534 @@ def indicator_flow():
         670, b)
 
 
+
+# ---------------------------------------------------------------------------
+# 第 2 章 · 一行成交拆成六个值
+# ---------------------------------------------------------------------------
+def value_types_trade():
+    b = text(480, 36, "一行成交记录在内存里是什么：定点整数、驻留字符串、栈上字符串和 u64 纳秒", 19, INK, "bold", limit=920)
+    b += rect(24, 58, 912, 70, "gray", GRAY, rx=12)
+    b += text(44, 84, "CSV 原文（test_data/binance/ethusdt-trades.csv 第 1 行）", 15, INK, "bold", "start", limit=880)
+    b += text(44, 112, "2020-08-14 10:00:00.223000+00:00,148568980,423.76,2.67900,True", 15, GRAY, anchor="start", mono=True, limit=880)
+    b += arrow(480, 130, 480, 156, BLUE)
+    b += text(492, 150, "TradeTick", 15, BLUE, "bold", "start", mono=True)
+    cells = [
+        ("InstrumentId", "ETHUSDT.BINANCE", "Symbol + Venue", "两个 Ustr 句柄", BLUE),
+        ("Price", "423.76（precision 2）", "HP raw 4237600000000000000", "std raw 423760000000", ORANGE),
+        ("Quantity", "2.67900（precision 5）", "HP raw 26790000000000000", "std raw 2679000000", ORANGE),
+        ("AggressorSide", "SELL", "buyer_maker = True", "主动方是卖方", BLUE),
+        ("TradeId", "148568980", "StackStr，最多 36 字符", "不进全局字符串表", TEAL),
+        ("UnixNanos", "1597399200223000000", "2020-08-14T10:00:00.223Z", "ts_event = ts_init", TEAL),
+    ]
+    for i, (t, v, l1, l2, c) in enumerate(cells):
+        col, row = i % 3, i // 3
+        x = 24 + col * 308
+        y = 166 + row * 150
+        b += rect(x, y, 296, 132, "white", c, rx=10, width=1.4)
+        b += text(x + 148, y + 30, t, 16, c, "bold", mono=True, limit=280)
+        b += text(x + 148, y + 60, v, 15, INK, mono=v.isascii(), limit=280)
+        b += text(x + 148, y + 88, l1, 14, GRAY, mono=l1.isascii(), limit=280)
+        b += text(x + 148, y + 114, l2, 14, GRAY, mono=l2.isascii(), limit=280)
+    b += rect(24, 470, 912, 74, "orange", ORANGE, rx=12)
+    b += text(480, 498, "名义金额 Money：423.76 × 2.679 = 1135.25304000 USDT", 16, INK, "bold", limit=880)
+    b += text(480, 526, "Money 没有自己的精度字段，跟着币种 USDT 的精度 8 显示", 14, GRAY, limit=880)
+    b += text(480, 574, "HP = 高精度模式，raw = 数值 × 10^16；std = 标准模式，raw = 数值 × 10^9。放大倍数是全局的，和这个值自己的精度无关。", 14, GRAY, limit=920)
+    svg("value-types-trade.svg", "一行成交拆成六个值",
+        "上面是测试数据 CSV 的第一行，下面是它变成的 TradeTick 的六个字段：品种 ID 由两个驻留字符串组成；价格 423.76 和数量 2.679 都存成全局倍数放大的整数，"
+        "高精度模式下分别是 4237600000000000000 和 26790000000000000，标准模式下是 423760000000 和 2679000000；主动方是卖方；成交 ID 是栈上定长字符串；"
+        "时间是 u64 纳秒。最下面是这笔成交的名义金额 1135.25304000 USDT，精度来自币种。",
+        600, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 3 章 · 一个价格从策略走到交易所
+# ---------------------------------------------------------------------------
+def instrument_price_path():
+    b = text(480, 36, "一个价格从策略走到交易所：每一站检查什么、不检查什么", 19, INK, "bold", limit=920)
+    stations = [
+        ("策略算出 f64", ["1.03", "（增量 0.05 的期权）"], ORANGE, "orange"),
+        ("make_price", ["转十进制，银行家舍入", "只舍到 2 位小数 → 1.03"], BLUE, "blue"),
+        ("RiskEngine", ["精度 ≤ 2 ✓", "min/max 价格 ✓"], BLUE, "blue"),
+        ("交易所", ["1.03 不是 0.05 的倍数", "拒单"], RED, "#fee2e2"),
+    ]
+    x = 24
+    for i, (h, lines, c, fill) in enumerate(stations):
+        b += rect(x, 70, 210, 120, fill, c, rx=12, width=1.5)
+        b += text(x + 105, 102, h, 16, c, "bold", mono=h.isascii(), limit=196)
+        b += text(x + 105, 134, lines[0], 14, INK, mono=lines[0].isascii(), limit=196)
+        b += text(x + 105, 162, lines[1], 14, GRAY, mono=lines[1].isascii(), limit=196)
+        if i < 3:
+            b += arrow(x + 212, 130, x + 232, 130, BLUE)
+        x += 234
+    b += rect(258, 206, 444, 64, "#fee2e2", RED, rx=10, width=1.3, dash=True)
+    b += text(480, 232, "缝隙：风控不检查增量的整数倍，也不检查 lot_size", 15, RED, "bold", limit=430)
+    b += text(480, 256, "make_price 的结果可以过风控、却被交易所拒绝", 14, INK, limit=430)
+    b += rect(24, 290, 912, 150, "teal", TEAL, rx=14)
+    b += text(44, 318, "要严格对齐，用这两个方法", 16, TEAL, "bold", "start", limit=880)
+    b += box(44, 336, 420, 88, ["next_bid_price(1.03, 0) → 1.00", "next_ask_price(1.03, 0) → 1.05", "有价位表按价位表，没有就按增量对齐"], "white", TEAL, 15, mono_from=1)
+    b += box(496, 336, 420, 88, ["try_normalize_price(1.03)", "→ 错误：not aligned to price increment", "适合在适配器边界做最后检查"], "white", TEAL, 15, mono_from=1)
+    b += text(480, 470, "make_qty 同理：只舍到 size_increment 的小数位；正数舍成 0 时报错；round_down=true 时向零截断。", 14, GRAY, limit=920)
+    svg("instrument-price-path.svg", "一个价格从策略走到交易所",
+        "上面一行是一个期权价格 1.03 的路径：策略算出浮点数，make_price 按两位小数舍入后仍是 1.03，RiskEngine 只检查精度和价格上下限所以放行，"
+        "交易所因为 1.03 不是最小变动价位 0.05 的倍数而拒单。中间的红框标出风控不检查增量整数倍和整手的缝隙。"
+        "下面是两种严格对齐的办法：next_bid_price 和 next_ask_price 分别得到 1.00 和 1.05，try_normalize_price 对未对齐的价格直接报错。",
+        500, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 4 章 · 二档订单簿的四个状态
+# ---------------------------------------------------------------------------
+def book_deltas():
+    b = text(480, 36, "一本 L2_MBP 簿依次应用四组增量：每一步之后的盘口", 19, INK, "bold", limit=920)
+    states = [
+        ("① 快照", "CLEAR + 4×ADD",
+         [("423.90", "4.0", ""), ("423.80", "2.0", "")],
+         [("423.70", "5.0", ""), ("423.60", "3.0", "")],
+         "价差 0.10　中间价 423.75"),
+        ("② UPDATE", "BUY 423.70 × 1.5",
+         [("423.90", "4.0", ""), ("423.80", "2.0", "")],
+         [("423.70", "1.5", "hl"), ("423.60", "3.0", "")],
+         "价差 0.10　买一量 1.5"),
+        ("③ DELETE", "SELL 423.80",
+         [("423.90", "4.0", ""), ("423.80", "—", "del")],
+         [("423.70", "1.5", ""), ("423.60", "3.0", "")],
+         "价差 0.20　中间价 423.80"),
+        ("④ UPDATE", "BUY 423.65 × 2.0",
+         [("423.90", "4.0", "")],
+         [("423.70", "1.5", ""), ("423.65", "2.0", "hl"), ("423.60", "3.0", "")],
+         "不存在的价位：等于新增"),
+    ]
+    for i, (title, sub, asks, bids, note) in enumerate(states):
+        x = 24 + i * 230
+        b += rect(x, 58, 218, 420, "white", GRAY, rx=12)
+        b += text(x + 109, 86, title, 16, INK, "bold", limit=200)
+        b += text(x + 109, 110, sub, 14, BLUE, mono=True, limit=204)
+        b += text(x + 20, 140, "卖盘", 14, RED, "bold", "start")
+        y = 152
+        for px, qty, st in asks:
+            fill = "#fde68a" if st == "hl" else ("#f1f5f9" if st == "del" else "#fef2f2")
+            stroke = ORANGE if st else RED
+            b += rect(x + 16, y, 186, 34, fill, stroke, rx=6, width=1.2, dash=(st == "del"))
+            b += text(x + 30, y + 23, px, 15, GRAY if st == "del" else INK, anchor="start", mono=True)
+            b += text(x + 188, y + 23, qty if st != "del" else "删除", 15, GRAY if st == "del" else INK, anchor="end", mono=(st != "del"))
+            y += 40
+        y = max(y, 232) + 8
+        b += text(x + 20, y + 4, "买盘", 14, TEAL, "bold", "start")
+        y += 16
+        for px, qty, st in bids:
+            fill = "#fde68a" if st == "hl" else "#f0fdfa"
+            stroke = ORANGE if st else TEAL
+            b += rect(x + 16, y, 186, 34, fill, stroke, rx=6, width=1.2)
+            b += text(x + 30, y + 23, px, 15, INK, anchor="start", mono=True)
+            b += text(x + 188, y + 23, qty, 15, INK, anchor="end", mono=True)
+            y += 40
+        b += text(x + 109, 456, note, 14, GRAY, limit=204)
+        if i < 3:
+            b += arrow(x + 219, 270, x + 229, 270, BLUE)
+    b += text(480, 510, "橙色是这一步动过的档位。L2_MBP 簿按价格改写订单号，所以“更新一个不存在的订单”会落到新增分支；数量为 0 的更新等于删除。", 14, GRAY, limit=920)
+    svg("book-deltas.svg", "二档订单簿的四个状态",
+        "四列分别是一本 ETHUSDT 二档簿在快照、更新买一数量、删除卖一、更新一个不存在的买价之后的状态。快照后最优买卖价是 423.70 和 423.80，价差 0.10；"
+        "更新后买一数量变成 1.5；删除 423.80 后最优卖价变成 423.90，价差扩大到 0.20；最后一条更新在簿里新增了 423.65 这一档。",
+        540, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 5 章 · 订单状态机
+# ---------------------------------------------------------------------------
+def order_state_machine():
+    b = text(480, 36, "订单状态机：15 个状态，颜色说明订单在哪里", 19, INK, "bold", limit=920)
+    W, H = 168, 50
+    xs = [24, 210, 396, 582, 768]
+    def st(x, y, name, kind):
+        color, fill = {"local": (BLUE, "blue"), "open": (TEAL, "teal"), "closed": (GRAY, "gray")}[kind]
+        out = rect(x, y, W, H, fill, color, rx=10, width=1.6)
+        out += text(x + W / 2, y + 31, name, 14, color, "bold", mono=True, limit=W - 8)
+        return out
+    y1, y2, y3 = 80, 210, 360
+    row1 = [("INITIALIZED", "local"), ("SUBMITTED", "local"), ("ACCEPTED", "open"), ("PARTIALLY_FILLED", "open"), ("FILLED", "closed")]
+    for x, (n, k) in zip(xs, row1):
+        b += st(x, y1, n, k)
+    for i in range(4):
+        b += arrow(xs[i] + W + 2, y1 + 25, xs[i + 1] - 2, y1 + 25, BLUE, 2)
+    labels = ["Submitted", "Accepted", "Filled（部分）", "Filled（满）"]
+    for i, l in enumerate(labels):
+        b += text((xs[i] + W + xs[i + 1]) / 2, y1 - 8, l, 14, BLUE, limit=120)
+    row2 = [("EMULATED", "local"), ("RELEASED", "local"), ("TRIGGERED", "open"), ("PENDING_UPDATE", "open"), ("PENDING_CANCEL", "open")]
+    for x, (n, k) in zip(xs, row2):
+        b += st(x, y2, n, k)
+    b += arrow(xs[0] + W / 2, y1 + H + 2, xs[0] + W / 2, y2 - 2, BLUE)
+    b += text(xs[0] + W / 2 + 8, (y1 + H + y2) / 2 + 5, "Emulated", 14, BLUE, anchor="start")
+    b += arrow(xs[0] + W + 2, y2 + 25, xs[1] - 2, y2 + 25, BLUE)
+    b += arrow(xs[1] + W / 2, y2 - 2, xs[1] + W / 2, y1 + H + 2, BLUE)
+    b += text(xs[1] + W / 2 + 8, (y1 + H + y2) / 2 + 5, "Submitted", 14, BLUE, anchor="start")
+    b += arrow(xs[2] + W / 2, y1 + H + 2, xs[2] + W / 2, y2 - 2, TEAL)
+    b += text(xs[2] + W / 2 + 8, (y1 + H + y2) / 2 + 5, "Triggered", 14, TEAL, anchor="start")
+    b += arrow(xs[3] + W / 2, y1 + H + 2, xs[3] + W / 2, y2 - 2, TEAL, both=True)
+    b += text(xs[3] + W / 2 - 8, (y1 + H + y2) / 2 + 5, "改单", 14, TEAL, anchor="end")
+    b += arrow(xs[3] + W - 16, y1 + H + 2, xs[4] + 24, y2 - 2, TEAL, both=True)
+    b += text(xs[4] + 40, (y1 + H + y2) / 2 + 5, "撤单", 14, TEAL, anchor="start")
+    b += rect(24, 290, 912, 46, "white", GRAY, rx=8, width=1, dash=True)
+    b += text(480, 319, "下面五个终态（加上 FILLED 共六个）可以从多个非终态到达；箭头太多，这里只列主要来源", 14, GRAY, limit=880)
+    row3 = [("DENIED", "INITIALIZED、RELEASED", "风控拒绝"), ("REJECTED", "SUBMITTED、ACCEPTED…", "交易所拒绝"),
+            ("CANCELED", "多数在途和挂单状态", "IOC/FOK 也走这里"), ("EXPIRED", "ACCEPTED、TRIGGERED…", "GTD 到期等"),
+            ("VOIDED", "FILLED", "成交被撤销")]
+    for x, (n, src, why) in zip(xs, row3):
+        b += st(x, y3, n, "closed")
+        b += text(x + W / 2, y3 + H + 24, src, 14, INK, limit=W + 10)
+        b += text(x + W / 2, y3 + H + 46, why, 14, GRAY, limit=W + 10)
+    b += rect(24, 488, 912, 56, "orange", ORANGE, rx=10)
+    b += text(480, 512, "照着真实交易所写的几条：外部订单可从 INITIALIZED 直接到 ACCEPTED；CANCELED、EXPIRED 之后仍可 FILLED；", 14, INK, limit=890)
+    b += text(480, 534, "改撤单被拒时回到 previous_status；ModifyDenied、CancelDenied 在任何状态下都不改变状态。", 14, INK, limit=890)
+    b += text(480, 572, "蓝：在本地或在路上（既不 open 也不 closed）　青：挂在交易所（is_open）　灰：已结束（is_closed）", 14, GRAY, limit=920)
+    svg("order-state-machine.svg", "订单状态机",
+        "最上面一行是主路径：INITIALIZED、SUBMITTED、ACCEPTED、PARTIALLY_FILLED、FILLED。第二行是分支：本地仿真单从 INITIALIZED 进入 EMULATED、"
+        "再经 RELEASED 回到 SUBMITTED；触发类订单从 ACCEPTED 进入 TRIGGERED；改单和撤单请求进入 PENDING_UPDATE、PENDING_CANCEL 并可能回到原状态。"
+        "第三行是终态 DENIED、REJECTED、CANCELED、EXPIRED、VOIDED 及其主要来源。底部注明几条照着真实交易所行为设计的转移。",
+        600, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 6 章 · 同一串成交在 NETTING 和 HEDGING 下的去向
+# ---------------------------------------------------------------------------
+def positions_oms():
+    b = text(480, 36, "三笔成交在两种订单管理模式下的去向", 19, INK, "bold", limit=920)
+    fills = ["F1  BUY 1 @ 420", "F2  BUY 1 @ 430", "F3  SELL 3 @ 440"]
+    for i, f in enumerate(fills):
+        b += box(24 + i * 304, 58, 288, 44, [f], "white", GRAY, 15, mono_from=9)
+    # NETTING lane
+    b += rect(24, 120, 912, 210, "blue", BLUE, rx=14)
+    b += text(44, 146, "NETTING：一个仓位，ID = ETHUSDT.BINANCE-EMACross-001", 16, BLUE, "bold", "start", limit=880)
+    b += box(44, 164, 260, 70, ["多 1　均价 420", "已实现 -0.42"], "white", BLUE, 15, mono_from=9)
+    b += arrow(306, 199, 334, 199, BLUE)
+    b += box(336, 164, 260, 70, ["多 2　均价 425", "已实现 -0.85"], "white", BLUE, 15, mono_from=9)
+    b += arrow(598, 199, 626, 199, BLUE)
+    b += rect(628, 160, 292, 158, "white", ORANGE, rx=10, width=1.5)
+    b += text(774, 184, "F3 被拆成两笔", 15, ORANGE, "bold", limit=280)
+    b += text(774, 210, "平 2 @ 440，手续费 0.88", 14, INK, limit=280)
+    b += text(774, 232, "→ FLAT，已实现 28.27，存快照", 14, INK, limit=280)
+    b += text(774, 262, "开 1 @ 440，手续费 0.44", 14, INK, limit=280)
+    b += text(774, 284, "→ 同一 ID 新一轮：空 1", 14, INK, limit=280)
+    b += text(774, 306, "已实现重置为 -0.44", 14, GRAY, limit=280)
+    b += text(44, 268, "加仓：成本相加、加权平均", 14, GRAY, anchor="start", limit=560)
+    b += text(44, 292, "减仓：按比例分摊成本，440 × 2 - 850 = 30，再减手续费", 14, GRAY, anchor="start", limit=560)
+    # HEDGING lane
+    b += rect(24, 348, 912, 160, "teal", TEAL, rx=14)
+    b += text(44, 374, "HEDGING（三张单都不指定仓位）：三个仓位，互不轧差", 16, TEAL, "bold", "start", limit=880)
+    hs = [("P-…-1", "多 1　均价 420"), ("P-…-2", "多 1　均价 430"), ("P-…-3", "空 3　均价 440")]
+    for i, (pid, l) in enumerate(hs):
+        b += box(44 + i * 296, 392, 276, 70, [pid, l], "white", TEAL, 15, mono_from=9)
+    b += text(480, 490, "净敞口同样是空 1，但没有任何仓位被平掉，也没有已实现的价差盈亏", 14, INK, limit=880)
+    b += text(480, 540, "手续费 0.1%，以 USDT 收取，直接计入已实现盈亏；数字单位 USDT。", 14, GRAY, limit=920)
+    svg("positions-oms.svg", "同一串成交在 NETTING 和 HEDGING 下的去向",
+        "上面是三笔成交：买 1 @ 420、买 1 @ 430、卖 3 @ 440。NETTING 泳道里只有一个固定 ID 的仓位，前两笔成交后是多 2、均价 425、已实现 -0.85；"
+        "第三笔被拆成平 2 和开 1，平仓后已实现 28.27 并存入快照，同一 ID 开始新一轮空 1，已实现重置为 -0.44。HEDGING 泳道里三笔成交各自成为一个仓位，"
+        "两个多 1、一个空 3，净敞口相同但互不轧差。",
+        570, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 7 章 · 现金账户的四个时刻
+# ---------------------------------------------------------------------------
+def account_balances():
+    b = text(480, 36, "现金账户（多币种）在四个时刻的余额：总额 / 冻结 / 可用", 19, INK, "bold", limit=920)
+    cols = [
+        ("① 初始", "", [("1,000,000", "0", "1,000,000", ""), ("10", "0", "10", "")]),
+        ("② 挂买单", "BUY 1 @ 423.50", [("1,000,000", "423.50", "999,576.50", "hl"), ("10", "0", "10", "")]),
+        ("③ 买单成交", "手续费 0.4235", [("999,576.0765", "0", "999,576.0765", "hl"), ("11", "0", "11", "hl")]),
+        ("④ 挂卖单", "SELL 5 @ 430.00", [("999,576.0765", "0", "999,576.0765", ""), ("11", "5", "6", "hl")]),
+    ]
+    b += text(60, 150, "USDT", 16, BLUE, "bold", "start", mono=True)
+    b += text(60, 300, "ETH", 16, TEAL, "bold", "start", mono=True)
+    for i, (title, sub, rows) in enumerate(cols):
+        x = 130 + i * 205
+        b += text(x + 95, 72, title, 16, INK, "bold", limit=190)
+        b += text(x + 95, 96, sub, 14, ORANGE, mono=sub.isascii(), limit=190)
+        for r, (tot, lck, fre, st) in enumerate(rows):
+            y = 112 + r * 150
+            color = BLUE if r == 0 else TEAL
+            fill = "#fde68a" if st else ("blue" if r == 0 else "teal")
+            b += rect(x, y, 190, 126, fill, ORANGE if st else color, rx=10, width=1.4)
+            b += text(x + 14, y + 32, "总额", 14, GRAY, anchor="start")
+            b += text(x + 178, y + 32, tot, 14, INK, anchor="end", mono=True)
+            b += text(x + 14, y + 70, "冻结", 14, GRAY, anchor="start")
+            b += text(x + 178, y + 70, lck, 14, INK, anchor="end", mono=True)
+            b += text(x + 14, y + 108, "可用", 14, GRAY, anchor="start")
+            b += text(x + 178, y + 108, fre, 14, INK, anchor="end", mono=True)
+        if i < 3:
+            b += arrow(x + 192, 250, x + 203, 250, BLUE)
+    b += text(480, 420, "买单冻结报价币的名义金额（剩余数量 × 价格），卖单冻结要交付的基础币；冻结不含手续费。", 14, INK, limit=920)
+    b += text(480, 446, "成交时：USDT 减少名义金额 423.50 和手续费 0.4235，ETH 增加 1；订单结束后冻结重算为 0。", 14, INK, limit=920)
+    b += text(480, 480, "橙色格是这一步变化的余额。每一格都满足 冻结 + 可用 = 总额。", 14, GRAY, limit=920)
+    svg("account-balances.svg", "现金账户的四个时刻",
+        "四列是同一个多币种现金账户在初始、挂出买单、买单成交、挂出卖单之后的余额，上一行 USDT、下一行 ETH，每格是总额、冻结、可用。"
+        "挂买单后 USDT 冻结 423.50；成交后 USDT 总额变成 999,576.0765、ETH 变成 11，冻结归零；挂卖单后 ETH 冻结 5、可用 6。",
+        510, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 8 章 · 事件链与事件存储
+# ---------------------------------------------------------------------------
+def event_chain():
+    b = text(480, 36, "一笔成交的事件链，以及事件存储怎样把它记下来", 19, INK, "bold", limit=920)
+    b += rect(24, 58, 912, 196, "blue", BLUE, rx=14)
+    b += text(44, 84, "产生与传播（执行引擎 handle_order_fill）", 16, BLUE, "bold", "start", limit=880)
+    steps = [
+        ("适配器", ["OrderFilled", "交易所成交回报"]),
+        ("更新订单", ["apply(event)", "写回缓存"]),
+        ("更新仓位", ["定 position_id", "Position.apply"]),
+        ("发布订单事件", ["events.order.{S}", "组合先、策略后"]),
+        ("发布仓位事件", ["events.position.{S}", "Changed / Closed"]),
+    ]
+    x = 40
+    for i, (h, lines) in enumerate(steps):
+        b += box(x, 100, 166, 84, [h] + lines, "white", BLUE, 15, mono_from=1)
+        if i < 4:
+            b += arrow(x + 168, 142, x + 180, 142, BLUE)
+        x += 180
+    b += box(580, 196, 340, 46, ["随后：AccountState → events.account.{A}"], "white", TEAL, 14, mono_from=9)
+    b += text(44, 224, "S = 策略 ID，A = 账户 ID", 14, GRAY, anchor="start", limit=500)
+    # bus line
+    b += rect(24, 272, 912, 40, "gray", GRAY, rx=10)
+    b += text(480, 298, "消息总线派发：下游处理器和抓取点看到同一个消息", 15, INK, "bold", limit=880)
+    b += arrow(480, 256, 480, 270, BLUE)
+    # capture lane
+    b += rect(24, 330, 912, 220, "orange", ORANGE, rx=14)
+    b += text(44, 356, "记录（可选：内核构建时传入 EventStoreFactory 才打开）", 16, ORANGE, "bold", "start", limit=880)
+    b += arrow(480, 314, 480, 368, ORANGE)
+    cap = [
+        ("BusCaptureAdapter", ["按事件 ID、命令 ID", "去重：同一消息只记一次"]),
+        ("EventStoreWriter", ["有界通道 10,000", "分配 seq，每批 100 条或 5 ms"]),
+        ("redb 运行文件", ["<base>/<instance>/<run>.redb", "记录 + 索引 + 清单 + 锚点"]),
+    ]
+    x = 44
+    for i, (h, lines) in enumerate(cap):
+        b += box(x, 380, 280, 84, [h] + lines, "white", ORANGE, 15, mono_from=1)
+        if i < 2:
+            b += arrow(x + 282, 422, x + 300, 422, ORANGE)
+        x += 300
+    b += text(480, 494, "阻塞超过 250 ms 或提交失败：停止记录，交易照常继续", 14, RED, "bold", limit=880)
+    b += text(480, 522, "下次启动封存：Ended / CrashedRecovered / Quarantined；回放按 seq 恢复缓存", 14, INK, limit=880)
+    svg("event-chain.svg", "事件链与事件存储",
+        "上半是一笔成交的处理：适配器发来 OrderFilled，执行引擎先更新订单、再确定仓位 ID 并更新仓位，然后发布订单事件和仓位事件，账户状态随后更新。"
+        "中间是消息总线，下游处理器和抓取点看到同一个消息。下半是可选的事件存储：抓取适配器按事件和命令 ID 去重，写入线程分配序号并按批提交，"
+        "写进按运行划分的 redb 文件；写入失败只停止记录、不打断交易，下次启动时封存这个运行。",
+        580, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 13 章 · Actor、策略与 TWAP 的三件套
+# ---------------------------------------------------------------------------
+def actor_twap_flow():
+    b = text(480, 36, "三件套：Actor 发信号，策略下单，TWAP 拆单", 19, INK, "bold", limit=920)
+    b += box(24, 66, 260, 96, ["SpreadMonitor（Actor）", "on_quote 算价差", "publish_signal(\"spread\")"], "teal", TEAL, 15, mono_from=2)
+    b += arrow(286, 114, 336, 114, TEAL)
+    b += text(311, 104, "信号", 14, TEAL)
+    b += box(338, 66, 280, 96, ["策略 EMACross-001", "on_signal → 决定买 6 ETH", "exec_algorithm_id = TWAP"], "orange", ORANGE, 15, mono_from=9)
+    b += arrow(620, 114, 670, 114, BLUE)
+    b += text(645, 104, "下单", 14, BLUE)
+    b += box(672, 66, 264, 96, ["TWAP.execute 端点", "on_order：只收市价主单", "60 s ÷ 10 s = 6 份"], "blue", BLUE, 15, mono_from=9)
+    b += text(480, 186, "Strategy::submit_order 看到 exec_algorithm_id，就把命令发往 {id}.execute，而不是风控", 14, GRAY, limit=900)
+    # slices
+    b += rect(24, 204, 912, 176, "white", BLUE, rx=14)
+    b += text(44, 230, "TWAP 每 10 秒提交一份（计时器名 = 主单号）", 16, BLUE, "bold", "start", limit=880)
+    names = ["…-1-E1", "…-1-E2", "…-1-E3", "…-1-E4", "…-1-E5", "主单 …-1"]
+    for i, n in enumerate(names):
+        x = 44 + i * 148
+        last = i == 5
+        b += box(x, 248, 136, 70, [n, "1 ETH" if not last else "剩余 1 ETH"], "#fde68a" if last else "blue", ORANGE if last else BLUE, 14, mono_from=9)
+        b += text(x + 68, 340, f"t = {i * 10} s", 14, GRAY, mono=True)
+    b += text(480, 366, "前五份由 spawn_market 派生（主单数量随之减少），最后一份提交主单本身", 14, INK, limit=880)
+    b += arrow(480, 382, 480, 404, BLUE)
+    b += box(250, 406, 460, 52, ["RiskEngine → ExecutionEngine → 交易所"], "white", BLUE, 15, mono_from=9)
+    b += text(480, 484, "成交事件带着策略 ID EMACross-001 回到策略，仓位记在策略名下，不属于 TWAP", 14, ORANGE, limit=880)
+    svg("actor-twap-flow.svg", "Actor、策略与 TWAP 的三件套",
+        "左上的价差监控 Actor 在 on_quote 里计算价差并发布名为 spread 的信号；策略在 on_signal 里决定买入 6 ETH，下一张带 exec_algorithm_id=TWAP 的市价单，"
+        "命令被发往 TWAP.execute 端点；TWAP 按 60 秒、每 10 秒一份拆成 6 份，前五份是派生的子单 E1 到 E5，最后一份是主单本身，"
+        "都经风控和执行引擎提交到交易所；成交事件带着策略的 ID 回到策略。",
+        500, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 14 章 · 内核的构造顺序和一生
+# ---------------------------------------------------------------------------
+def kernel_lifecycle():
+    b = text(480, 36, "NautilusKernel：九步构造，两步启动，分步关闭", 19, INK, "bold", limit=920)
+    b += rect(24, 58, 912, 196, "gray", GRAY, rx=14)
+    b += text(44, 84, "构造（new_with_dependencies）", 16, INK, "bold", "start", limit=880)
+    steps = ["① 日志", "② 时钟", "③ 事件存储（可选）", "④ Cache", "⑤ MessageBus → 线程局部",
+             "⑥ Portfolio、三大引擎、仿真器", "⑦ 注册总线处理器", "⑧ 关停处理器", "⑨ Trader"]
+    pos = [(44, 100, 120), (176, 100, 120), (308, 100, 190), (510, 100, 120), (642, 100, 274),
+           (44, 168, 300), (356, 168, 200), (568, 168, 160), (740, 168, 176)]
+    for (x, y, w), t in zip(pos, steps):
+        b += box(x, y, w, 50, [t], "white", GRAY, 14, mono_from=9)
+    for (x1, y1, w1), (x2, y2, w2) in zip(pos[:4], pos[1:5]):
+        b += arrow(x1 + w1 + 1, y1 + 25, x2 - 1, y2 + 25, GRAY)
+    b += poly_arrow([(779, 152), (779, 160), (194, 160), (194, 166)], GRAY)
+    for (x1, y1, w1), (x2, y2, w2) in zip(pos[5:8], pos[6:9]):
+        b += arrow(x1 + w1 + 1, y1 + 25, x2 - 1, y2 + 25, GRAY)
+    # lifecycle
+    b += rect(24, 272, 912, 250, "white", BLUE, rx=14)
+    b += text(44, 298, "一次实盘运行（LiveNode::start / run / stop）", 16, BLUE, "bold", "start", limit=880)
+    tl = [
+        ("start()", "启动引擎和客户端", "Trader → READY", BLUE),
+        ("连接数据客户端", "品种冲进缓存", "flush_pending_data", TEAL),
+        ("连接执行客户端", "启动对账", "timeout_connection", TEAL),
+        ("start_trader()", "on_load（load_state）", "仿真器、组件 on_start", BLUE),
+        ("运行", "select! 循环", "ShutdownSystem → 停", ORANGE),
+    ]
+    x = 40
+    for i, (h, l1, l2, c) in enumerate(tl):
+        b += box(x, 316, 168, 86, [h, l1, l2], "white", c, 14, mono_from=9)
+        if i < 4:
+            b += arrow(x + 170, 359, x + 182, 359, BLUE)
+        x += 182
+    stop = [("stop_trader()", "组件 on_stop"), ("断开客户端", ""), ("finalize_stop()", "存状态、停引擎、封存"), ("dispose()", "释放引擎、缓存、总线")]
+    x = 40
+    for i, (h, l1) in enumerate(stop):
+        lines = [h] + ([l1] if l1 else [])
+        b += box(x, 424, 210, 70, lines, "white", RED if i == 0 else GRAY, 14, mono_from=9)
+        if i < 3:
+            b += arrow(x + 212, 459, x + 226, 459, GRAY)
+        x += 228
+    b += text(480, 552, "蓝：内核方法　青：实盘节点在 start 与 start_trader 之间插入的步骤　回测由 BacktestEngine 直接依次调用两步", 14, GRAY, limit=920)
+    svg("kernel-lifecycle.svg", "内核的构造顺序和一生",
+        "上半是九步构造：日志、时钟、可选的事件存储、缓存、放进线程局部存储的消息总线、组合和三大引擎及订单仿真器、注册总线处理器、关停处理器、Trader。"
+        "下半是一次实盘运行：start 启动引擎和客户端，实盘节点接着连接数据客户端并把品种冲进缓存、连接执行客户端并对账，然后 start_trader 恢复状态并启动组件，"
+        "运行到收到关停命令后依次 stop_trader、断开客户端、finalize_stop 保存状态停止引擎封存事件存储、dispose 释放一切。",
+        580, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 15 章 · 一条报价在总线里的路径
+# ---------------------------------------------------------------------------
+def msgbus_publish():
+    b = text(480, 36, "publish_quote(\"data.quotes.BINANCE.ETHUSDT\", &quote) 在总线里的路径", 19, INK, "bold", limit=920)
+    left = [
+        ("① 抓取点", "dispatch_tap_publish", "事件存储（第 8 章）", ORANGE, "white"),
+        ("② 取缓冲区", "std::mem::take(TLS)", "嵌套发布拿到新缓冲区", BLUE, "white"),
+        ("③ 短暂借用总线", "topic_cache 命中？", "否：匹配全部订阅并排序", GRAY, "gray"),
+        ("④ 放开借用", "依次调用处理器", "⑤ 归还缓冲区", BLUE, "white"),
+    ]
+    y = 64
+    for i, (h, l1, l2, c, fill) in enumerate(left):
+        b += box(24, y, 300, 86, [h, l1, l2], fill, c, 15, mono_from=1)
+        if i < 3:
+            b += arrow(174, y + 88, 174, y + 104, BLUE)
+        y += 106
+    b += rect(352, 64, 584, 400, "white", BLUE, rx=14)
+    b += text(372, 92, "匹配结果（已缓存，按优先级从高到低）", 16, BLUE, "bold", "start", limit=560)
+    subs = [
+        ("Portfolio", "data.quotes.*", "10", "更新未实现盈亏"),
+        ("BarQuoteHandler", "data.quotes.BINANCE.ETHUSDT", "5", "聚合器：可能 publish_bar"),
+        ("策略 handle_quote", "data.quotes.BINANCE.ETHUSDT", "0", "on_quote：可能下单"),
+    ]
+    y = 112
+    for name, pat, pri, note in subs:
+        b += rect(372, y, 544, 96, "blue", BLUE, rx=10, width=1.3)
+        b += text(392, y + 30, name, 15, INK, "bold", "start", mono=name.isascii(), limit=300)
+        b += text(896, y + 30, "优先级 " + pri, 14, BLUE, anchor="end")
+        b += text(392, y + 56, pat, 14, GRAY, anchor="start", mono=True, limit=500)
+        b += text(392, y + 82, note, 14, ORANGE, anchor="start", limit=500)
+        y += 110
+    b += arrow(326, 386, 350, 386, BLUE)
+    b += text(480, 500, "③ 是唯一借用总线的一段；处理器运行时总线已放开，所以它们内部可以再发布、再发送命令。", 14, INK, limit=920)
+    b += text(480, 526, "订阅或退订会清空 topic_cache；派发中新增的订阅从下一次发布开始生效。", 14, GRAY, limit=920)
+    svg("msgbus-publish.svg", "一条报价在总线里的路径",
+        "左边是 publish_typed 的五步：经过事件存储的抓取点；从线程局部存储取出处理器缓冲区；短暂借用总线，从匹配缓存取出处理器，未命中就匹配全部订阅并排序；"
+        "放开借用后依次调用处理器；最后归还缓冲区。右边是这个主题的匹配结果：组合（优先级 10）、K 线聚合器（5）、策略（0），聚合器和策略在处理时还可能再发布或下单。",
+        550, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 16 章 · 一张限价单在缓存索引里的足迹
+# ---------------------------------------------------------------------------
+def cache_order_footprint():
+    b = text(480, 36, "一张限价单在缓存索引里的足迹：每一步属于哪些集合", 19, INK, "bold", limit=920)
+    cols = ["add_order\nINITIALIZED", "提交后\nSUBMITTED", "交易所接受\nACCEPTED", "全部成交\nFILLED"]
+    rows = [
+        ("orders", [1, 1, 1, 1]),
+        ("orders_active_local", [1, 0, 0, 0]),
+        ("orders_inflight", [0, 1, 0, 0]),
+        ("orders_open", [0, 0, 1, 0]),
+        ("orders_closed", [0, 0, 0, 1]),
+        ("venue_order_ids", [0, 0, 1, 1]),
+        ("account_orders", [0, 1, 1, 1]),
+        ("order_position 等", [0, 0, 0, 1]),
+    ]
+    x0, w = 270, 160
+    for j, c in enumerate(cols):
+        a, bb = c.split("\n")
+        b += text(x0 + j * (w + 8) + w / 2, 70, a, 15, INK, "bold", limit=w)
+        b += text(x0 + j * (w + 8) + w / 2, 92, bb, 14, BLUE, mono=True, limit=w)
+    y = 106
+    for name, flags in rows:
+        b += text(254, y + 26, name, 14, INK, anchor="end", mono=name.isascii(), limit=230)
+        for j, f in enumerate(flags):
+            x = x0 + j * (w + 8)
+            b += rect(x, y + 4, w, 34, "#fde68a" if f else "white", ORANGE if f else "#cbd5e1", rx=6, width=1.2)
+        y += 42
+    b += text(480, y + 24, "归属索引（strategy_orders、instrument_orders、venue_orders）在 add_order 时一次写入，之后不变。", 14, GRAY, limit=920)
+    b += text(480, y + 50, "每个订单事件经 update_order：先在副本上 apply，成功后替换缓存里的订单，再由 refresh_order 按新状态维护这些集合。", 14, INK, limit=920)
+    svg("cache-order-footprint.svg", "一张限价单在缓存索引里的足迹",
+        "表格的行是缓存的索引集合，列是订单的四个时刻：创建时属于总表和本地集合，提交后属于在途集合并登记账户，交易所接受后属于挂单集合并登记交易所订单号，"
+        "全部成交后属于已结束集合并建立仓位索引。总表那一行始终有它。",
+        y + 80, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 17 章 · 回测时间线：数据与计时器的执行顺序
+# ---------------------------------------------------------------------------
+def clock_timeline():
+    b = text(480, 36, "回测时间线：先执行更早的计时器，再处理这一时刻的数据，最后执行同一时刻的计时器", 18, INK, "bold", limit=930)
+    x0, x1 = 150, 880
+    t0, t1 = 0.0, 70.0
+    def X(t):
+        return x0 + (x1 - x0) * (t - t0) / (t1 - t0)
+    ay = 230
+    b += f'<line x1="{x0-20}" y1="{ay}" x2="{x1+20}" y2="{ay}" stroke="{INK}" stroke-width="2" marker-end="url(#arrow)"/>'
+    for t, lab in [(0, "10:00:00"), (30, "10:00:30"), (45, "10:00:45"), (60, "10:01:00")]:
+        b += f'<line x1="{X(t):.1f}" y1="{ay-6}" x2="{X(t):.1f}" y2="{ay+6}" stroke="{INK}" stroke-width="1.5"/>'
+        b += text(X(t), ay + 26, lab, 14, GRAY, mono=True)
+    b += text(30, 146, "数据", 15, BLUE, "bold", "start")
+    b += text(30, 326, "计时器", 15, ORANGE, "bold", "start")
+    data = [(0.223, "①", "成交 10:00:00.223", 0), (45, "③", "成交 10:00:45", 0), (60, "④", "成交 10:01:00.000", -1), (66, "⑥", "成交 10:01:06", 0)]
+    for t, n, lab, side in data:
+        x = X(t)
+        b += f'<line x1="{x:.1f}" y1="{ay}" x2="{x:.1f}" y2="150" stroke="{BLUE}" stroke-width="1.5"/>'
+        b += f'<circle cx="{x:.1f}" cy="140" r="13" fill="#eff6ff" stroke="{BLUE}" stroke-width="1.5"/>'
+        b += text(x, 146, n, 14, BLUE, "bold")
+        ly = {"①": 108, "③": 108, "④": 82, "⑥": 108}[n]
+        lx = {"①": 0, "③": -30, "④": -10, "⑥": 30}[n]
+        b += text(x + lx, ly, lab, 14, INK, limit=200)
+    timers = [(30, "②", "heartbeat 10:00:30", 0), (60, "⑤", "heartbeat、TIME_BAR 10:01:00", 0)]
+    for t, n, lab, side in timers:
+        x = X(t)
+        b += f'<line x1="{x:.1f}" y1="{ay}" x2="{x:.1f}" y2="310" stroke="{ORANGE}" stroke-width="1.5" stroke-dasharray="5 4"/>'
+        b += f'<circle cx="{x:.1f}" cy="320" r="13" fill="#fff7ed" stroke="{ORANGE}" stroke-width="1.5"/>'
+        b += text(x, 326, n, 14, ORANGE, "bold")
+        b += text(x - (40 if t == 60 else 0), 362, lab, 14, INK, limit=260)
+    b += rect(24, 392, 912, 112, "gray", GRAY, rx=12)
+    b += text(44, 418, "规则（crates/backtest/src/engine.rs）", 15, INK, "bold", "start", limit=880)
+    b += text(44, 444, "对每个数据时间戳 T：advance_time_impl(T) 执行所有 ≤ T−1 的计时器 → replay_data_row 处理 T 的全部数据", 14, INK, anchor="start", limit=880)
+    b += text(44, 468, "→ flush_accumulator_events(T) 执行恰好在 T 到点的计时器。执行每个计时器前，所有组件时钟被设到它的时刻。", 14, INK, anchor="start", limit=880)
+    b += text(44, 492, "所以 10:01:00.000 的成交先进入 K 线聚合器，再由 10:01:00 的 TIME_BAR 计时器生成 K 线（左开右闭）。", 14, ORANGE, anchor="start", limit=880)
+    svg("clock-timeline.svg", "回测时间线：数据与计时器的执行顺序",
+        "横轴是回测时间。上方蓝色圆圈是数据，下方橙色圆圈是计时器，数字是执行顺序：10:00:00.223 的成交、10:00:30 的心跳计时器、10:00:45 的成交、"
+        "10:01:00.000 的成交、10:01:00 到点的心跳和 K 线计时器、10:01:06 的成交。同一时刻的数据先于计时器执行。",
+        530, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -968,6 +1496,18 @@ def main():
     bar_aggregation_flow()
     bar_aggregators()
     indicator_flow()
+    value_types_trade()
+    instrument_price_path()
+    book_deltas()
+    order_state_machine()
+    positions_oms()
+    account_balances()
+    event_chain()
+    actor_twap_flow()
+    kernel_lifecycle()
+    msgbus_publish()
+    cache_order_footprint()
+    clock_timeline()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

@@ -5,7 +5,7 @@ description: NautilusTrader 的技术指标在哪里、长什么样、怎样被�
 
 # 第 12 章：指标
 
-[全书目录](./index.md) · [上一章](./bar-aggregation.md) · [下一篇](./futu-adapter.md)
+[全书目录](./index.md) · [上一章](./bar-aggregation.md) · [下一章](./actors-and-config.md)
 
 ::: tip 本章学习目标
 知道内置指标在哪个 crate、按什么分类、数值用什么类型；能读懂一个指标的实现（以 EMA 为例），说清它什么时候算“已初始化”；分得清手动喂数据和注册到组件两种用法，知道注册之后框架在什么时候、按什么顺序更新指标；知道 Rust 注册和 Python 注册各自要付出什么；能正确地用历史数据预热指标，能自己写一个指标。
@@ -458,4 +458,4 @@ class AverageBarRange:
 - 源码：[`crates/indicators/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/indicators) · [`crates/common/src/actor/indicators.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/actor/indicators.rs) · [`crates/common/src/python/indicators.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/python/indicators.rs) · [`crates/trading/src/python/strategy.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/python/strategy.rs) · [`docs/tutorials/ema_cross.py`](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/tutorials/ema_cross.py)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-写策略这一部分已成文的四章到这里结束，第 13 章（Actor、执行算法与配置）在规划中。领域模型、内核组件、回测、实盘几部分的规划见[全书目录](./index.md)；想先看怎样接入一个券商，可以读[第 38 章：增加一个券商：以富途为例](./futu-adapter.md)。
+策略之外，系统里还有只收数据的 Actor 和负责拆单的执行算法，下一章讲它们以及所有组件共用的配置和日志：[第 13 章：Actor、执行算法与配置](./actors-and-config.md)。

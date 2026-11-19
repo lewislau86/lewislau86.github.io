@@ -35,29 +35,35 @@
     ]
   },
   {
-    "text": "规划中 · 第一部分 · 交易领域模型",
-    "collapsed": true,
+    "text": "第一部分 · 交易领域模型",
     "items": [
       {
-        "text": "第 2 章 · 数值类型、标识符与时间戳"
+        "text": "第 2 章 · 数值类型、标识符与时间戳",
+        "link": "/nautilus-trader/value-types"
       },
       {
-        "text": "第 3 章 · 品种：从现货到期权、合成品种与连续期货"
+        "text": "第 3 章 · 品种：从现货到期权、合成品种与连续期货",
+        "link": "/nautilus-trader/instruments"
       },
       {
-        "text": "第 4 章 · 行情数据与订单簿"
+        "text": "第 4 章 · 行情数据与订单簿",
+        "link": "/nautilus-trader/market-data"
       },
       {
-        "text": "第 5 章 · 订单：类型、有效期、状态机与条件单"
+        "text": "第 5 章 · 订单：类型、有效期、状态机与条件单",
+        "link": "/nautilus-trader/orders"
       },
       {
-        "text": "第 6 章 · 成交、仓位与盈亏"
+        "text": "第 6 章 · 成交、仓位与盈亏",
+        "link": "/nautilus-trader/positions"
       },
       {
-        "text": "第 7 章 · 账户与保证金"
+        "text": "第 7 章 · 账户与保证金",
+        "link": "/nautilus-trader/accounts"
       },
       {
-        "text": "第 8 章 · 事件与事件溯源"
+        "text": "第 8 章 · 事件与事件溯源",
+        "link": "/nautilus-trader/events"
       }
     ]
   },
@@ -81,43 +87,47 @@
         "link": "/nautilus-trader/indicators"
       },
       {
-        "text": "第 13 章 · Actor、执行算法与配置（规划中）"
+        "text": "第 13 章 · Actor、执行算法与配置",
+        "link": "/nautilus-trader/actors-and-config"
       }
     ]
   },
   {
-    "text": "规划中 · 第三部分 · 内核组件",
-    "collapsed": true,
+    "text": "第三部分 · 内核组件",
     "items": [
       {
-        "text": "第 14 章 · NautilusKernel：组装、启动与关闭"
+        "text": "第 14 章 · NautilusKernel：组装、启动与关闭",
+        "link": "/nautilus-trader/kernel"
       },
       {
-        "text": "第 15 章 · MessageBus：端点、主题与类型化路由"
+        "text": "第 15 章 · MessageBus：端点、主题与类型化路由",
+        "link": "/nautilus-trader/message-bus"
       },
       {
-        "text": "第 16 章 · Cache：状态、索引与持久化接口"
+        "text": "第 16 章 · Cache：状态、索引与持久化接口",
+        "link": "/nautilus-trader/cache"
       },
       {
-        "text": "第 17 章 · Clock 与计时器：时间从哪里来"
+        "text": "第 17 章 · Clock 与计时器：时间从哪里来",
+        "link": "/nautilus-trader/clock"
       },
       {
-        "text": "第 18 章 · DataEngine：订阅、路由与历史请求"
+        "text": "第 18 章 · DataEngine：订阅、路由与历史请求（规划中）"
       },
       {
-        "text": "第 19 章 · RiskEngine：下单前检查与限流"
+        "text": "第 19 章 · RiskEngine：下单前检查与限流（规划中）"
       },
       {
-        "text": "第 20 章 · ExecutionEngine：命令路由、订单与仓位"
+        "text": "第 20 章 · ExecutionEngine：命令路由、订单与仓位（规划中）"
       },
       {
-        "text": "第 21 章 · OrderEmulator 与 OrderManager：本地条件单与关联订单"
+        "text": "第 21 章 · OrderEmulator 与 OrderManager：本地条件单与关联订单（规划中）"
       },
       {
-        "text": "第 22 章 · Portfolio：净头寸、盈亏与账户状态"
+        "text": "第 22 章 · Portfolio：净头寸、盈亏与账户状态（规划中）"
       },
       {
-        "text": "第 23 章 · Trader：组件的生命周期与动态管理"
+        "text": "第 23 章 · Trader：组件的生命周期与动态管理（规划中）"
       }
     ]
   },

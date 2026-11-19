@@ -5,7 +5,7 @@ description: NautilusTrader 的 Rust 核心怎样组织：设计理念、crate �
 
 # 第 1 章：运行全景
 
-[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一篇](./rust-strategy.md)
+[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一章](./value-types.md)
 
 ::: tip 本章学习目标
 能画出 NautilusTrader 的组件图：哪些 crate 是地基、哪些是引擎、哪些是外壳；说清 `NautilusKernel` 拥有什么、消息总线怎样把组件连起来；能沿源码走一遍“一条报价从适配器到策略”和“一笔订单从策略到交易所再回来”的路径；能解释回测、沙盒、实盘三种模式为什么能共用同一套策略代码，以及它们各自的时钟和成交来源。
@@ -257,4 +257,4 @@ Strategy.submit_order
 - 源码：[`crates/system/src/kernel.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/system/src/kernel.rs) · [`crates/common/src/msgbus/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/msgbus) · [`crates/trading/src/strategy/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/strategy/mod.rs) · [`crates/live/src/runner.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/runner.rs) · [`crates/backtest/src/engine.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/backtest/src/engine.rs)
 - [LMAX 架构（Martin Fowler）](https://martinfowler.com/articles/lmax.html)
 
-有了这张地图，接下来的第一部分把交易领域模型（品种、数据、订单、仓位、账户、事件）逐个讲清楚，目前在规划中。已成文的下一篇是写策略这条线的开头：[第 9 章：Rust 策略的框架与运行机制](./rust-strategy.md)。想先看怎样接入一个新券商，可以直接跳到[第 38 章：增加一个券商：以富途为例](./futu-adapter.md)。
+有了这张地图，接下来的第一部分把交易领域模型（数值与标识符、品种、行情、订单、仓位、账户、事件）逐个讲清楚，从最基础的值开始：[第 2 章：数值类型、标识符与时间戳](./value-types.md)。想先看怎样写策略，可以跳到[第 9 章：Rust 策略的框架与运行机制](./rust-strategy.md)；想先看怎样接入一个新券商，可以跳到[第 38 章：增加一个券商：以富途为例](./futu-adapter.md)。

@@ -5,7 +5,7 @@ description: 用 Rust 写一个 NautilusTrader 策略需要写什么、框架替
 
 # 第 9 章：Rust 策略的框架与运行机制
 
-[全书目录](./index.md) · [上一篇](./architecture.md) · [下一章](./callbacks.md)
+[全书目录](./index.md) · [上一章](./events.md) · [下一章](./callbacks.md)
 
 ::: tip 本章学习目标
 能从零写出一个 Rust 策略并把它放进回测或实盘节点；说清一个策略由哪几部分拼成，哪些是你写的、哪些是宏生成的、哪些是框架的默认实现；知道 `StrategyCore` 在注册前后有什么区别，注册时 `Trader` 替你接上了什么；知道下单、改单、撤单、平仓的 API 和它们背后的路由；知道关联订单、GTD 过期、市场退出这些托管功能怎样打开。

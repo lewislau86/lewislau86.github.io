@@ -395,7 +395,7 @@ engine.dispose()                                                                
 
 ## 5. Rust 实现中的核心数据结构 {#rust-structures}
 
-这一节从小到大：值 → 标识 → 行情 → 订单簿 → 标的 → 订单 → 仓位与账户 → 消息 → 两个状态容器（`Cache`、`MessageBus`）→ 组件。只讲结构和所有权；它们的行为，比如定点数为什么不用浮点、订单状态机怎样迁移，见[附录：重点主题速览](./core-topics.md)，第一部分领域模型会逐个展开。
+这一节从小到大：值 → 标识 → 行情 → 订单簿 → 标的 → 订单 → 仓位与账户 → 消息 → 两个状态容器（`Cache`、`MessageBus`）→ 组件。只讲结构和所有权；它们的行为，比如定点数为什么不用浮点、订单状态机怎样迁移，见第一部分：[第 2 章](./value-types.md)讲定点数，[第 5 章](./orders.md)讲订单状态机。
 
 ### 5.1 值类型：定点数
 
@@ -581,7 +581,7 @@ pub struct OrderCore {
 }
 ```
 
-“具体类型 = `OrderCore` + 自己特有的几个字段”是订单的统一形状：限价单多了价格和过期时间，止损单多了触发价，跟踪止损多了偏移量。`OrderCore` 里最重要的字段是 `events`：订单的当前状态（`status`、`filled_qty`、`avg_px`…）都是把事件一个个 `apply` 上去得到的，`events` 保留了全部历史。`OrderStatus` 有 15 个取值，`OrderEventAny` 有 19 种事件；状态机细节见[附录](./core-topics.md)第 3 节（第 5 章将展开）。
+“具体类型 = `OrderCore` + 自己特有的几个字段”是订单的统一形状：限价单多了价格和过期时间，止损单多了触发价，跟踪止损多了偏移量。`OrderCore` 里最重要的字段是 `events`：订单的当前状态（`status`、`filled_qty`、`avg_px`…）都是把事件一个个 `apply` 上去得到的，`events` 保留了全部历史。`OrderStatus` 有 15 个取值，`OrderEventAny` 有 19 种事件；状态机细节见[第 5 章](./orders.md)第 3 节。
 
 最常用的事件是成交：
 
