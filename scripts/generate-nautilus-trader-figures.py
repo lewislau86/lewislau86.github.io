@@ -1479,6 +1479,459 @@ def clock_timeline():
         530, b)
 
 
+
+# ---------------------------------------------------------------------------
+# 第 18 章 · 订阅的持有者计数
+# ---------------------------------------------------------------------------
+def data_engine_subscriptions():
+    b = text(480, 36, "两个策略订阅、退订同一品种的报价：只有首次订阅和最后一次退订会下发", 18, INK, "bold", limit=930)
+    steps = [("① A 订阅", "SubscribeQuotes", 1, "subscribe_quotes", True),
+             ("② B 订阅", "SubscribeQuotes", 2, "（不下发）", False),
+             ("③ A 退订", "UnsubscribeQuotes", 1, "（不下发）", False),
+             ("④ B 退订", "UnsubscribeQuotes", 0, "unsubscribe_quotes", True)]
+    b += text(30, 104, "组件命令", 14, GRAY, "bold", "start")
+    b += text(30, 214, "持有者数", 14, GRAY, "bold", "start")
+    b += text(30, 324, "发给适配器", 14, GRAY, "bold", "start")
+    for i, (h, cmd, n, out, real) in enumerate(steps):
+        x = 130 + i * 205
+        b += box(x, 70, 185, 70, [h, cmd], "orange", ORANGE, 15, mono_from=1)
+        b += arrow(x + 92, 142, x + 92, 176, GRAY)
+        b += rect(x, 178, 185, 64, "white", BLUE, rx=10, width=1.4)
+        b += text(x + 92, 206, f"owners = {n}", 16, BLUE, "bold", mono=True)
+        b += text(x + 92, 230, "retain → 新建" if i == 0 else ("retain → 计数" if i == 1 else ("release → Retained" if i == 2 else "release → Final")), 14, GRAY, limit=180)
+        b += arrow(x + 92, 244, x + 92, 288, TEAL if real else GRAY, dash=not real)
+        b += rect(x, 290, 185, 56, "teal" if real else "white", TEAL if real else "#cbd5e1", rx=10, width=1.4, dash=not real)
+        b += text(x + 92, 324, out, 15, TEAL if real else GRAY, "bold" if real else "normal", mono=out.isascii(), limit=180)
+    b += rect(24, 370, 912, 92, "gray", GRAY, rx=12)
+    b += text(44, 396, "SubscriptionRegistry（crates/data/src/subscription.rs）", 15, INK, "bold", "start", limit=880)
+    b += text(44, 422, "键 = 数据类型 + 品种（如 Quotes(ETHUSDT.BINANCE)）；持有者按订阅命令 ID 区分，同一命令重复到达不重复计数。", 14, INK, anchor="start", limit=880)
+    b += text(44, 446, "客户端由 显式 client_id → 交易所路由表 → 默认客户端 找到；注册了 BACKTEST 客户端时，订阅一律交给它。", 14, INK, anchor="start", limit=880)
+    svg("data-engine-subscriptions.svg", "订阅的持有者计数",
+        "四列是四条命令：A 订阅、B 订阅、A 退订、B 退订。中间一行是登记表里同一个键的持有者数，依次是 1、2、1、0。最下面一行是真正发给适配器的命令："
+        "只有第一次订阅和最后一次退订会下发，中间两次只改变计数。",
+        480, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 19 章 · 风控流水线
+# ---------------------------------------------------------------------------
+def risk_engine_pipeline():
+    b = text(480, 36, "一张 SubmitOrder 在 RiskEngine 里的路径", 19, INK, "bold", limit=920)
+    st = [
+        ("① 前置", ["只减仓不增仓", "品种在缓存里"]),
+        ("② check_order", ["价格精度与正负", "数量精度与上下限", "GTD 未过期"]),
+        ("③ 账户层面", ["选定账户", "名义金额上下限", "余额或初始保证金", "扣除预留"]),
+        ("④ 交易状态", ["ACTIVE 放行", "REDUCING 只减仓", "HALTED 拒绝"]),
+        ("⑤ 限流器", ["默认 100 条/秒", "超出即拒绝"]),
+    ]
+    x = 24
+    for i, (h, lines) in enumerate(st):
+        b += rect(x, 70, 166, 170, "blue", BLUE, rx=12, width=1.5)
+        b += text(x + 83, 98, h, 15, BLUE, "bold", mono=h.isascii() and not h.startswith("①"), limit=156)
+        for j, l in enumerate(lines):
+            b += text(x + 83, 130 + j * 26, l, 14, INK, limit=156)
+        b += arrow(x + 83, 242, x + 83, 288, ORANGE)
+        if i < 4:
+            b += arrow(x + 168, 155, x + 184, 155, BLUE)
+        x += 186
+
+    b += rect(24, 290, 912, 56, "#fee2e2", RED, rx=12)
+    b += text(480, 324, "任何一步失败：生成 OrderDenied（改单为 OrderModifyDenied），带标准化原因，策略 on_order_denied 收到", 15, RED, "bold", limit=890)
+    b += rect(24, 366, 912, 96, "white", TEAL, rx=12)
+    b += text(44, 392, "通过 → ExecEngine.queue_execute → 执行引擎 → 执行客户端", 15, TEAL, "bold", "start", limit=880)
+    b += text(44, 418, "不检查：价格是否对齐最小变动价位、每手股数；不经过风控：撤单、查询、持有中的仿真单", 14, INK, anchor="start", limit=880)
+    b += text(44, 442, "bypass = true：直接转发执行引擎，交易状态也不再生效", 14, GRAY, anchor="start", limit=880)
+    svg("risk-engine-pipeline.svg", "风控流水线",
+        "五个阶段从左到右：前置检查只减仓约束和品种；单张订单检查价格和数量的精度、正负与上下限以及 GTD；账户层面选定账户后检查名义金额、余额或初始保证金并扣除预留；"
+        "交易状态决定放行或拒绝；限流器默认每秒 100 条，超出即拒绝。任何一步失败都生成 OrderDenied，通过后交给执行引擎。",
+        490, b)
+
+
+def execution_engine_flow():
+    b = text(480, 36, "ExecutionEngine 的两个方向：命令出去，事件回来", 19, INK, "bold", limit=920)
+    b += text(24, 64, "命令路径 →", 14, BLUE, "bold", "start")
+    top = [
+        ["入口 ExecEngine.execute", "风控放行后经 queue_execute", "撤单、查询直接进来"],
+        ["validate_submission", "过期或重复的提交：跳过", "外部客户端：发到总线"],
+        ["选执行客户端", "client_id → 账户发行方", "→ 品种场所 → 默认客户端"],
+        ["handle_submit_order", "场所匹配、NETTING 仓位 ID", "认领客户端 → submit_order"],
+    ]
+    xs = [24, 256, 488, 720]
+    for i, lines in enumerate(top):
+        b += box(xs[i], 76, 216, 104, lines, "blue", BLUE, 15)
+        if i < 3:
+            b += arrow(xs[i] + 216, 128, xs[i + 1], 128, BLUE)
+    b += text(596, 202, "找不到客户端 → OrderDenied（NoExecutionClient）", 14, ORANGE, anchor="middle", limit=440)
+    b += arrow(828, 180, 828, 232, BLUE)
+    b += rect(24, 234, 912, 48, "teal", TEAL, rx=12)
+    b += text(480, 264, "ExecutionClient：请求发往场所，回报转成订单事件 → ExecEngine.process（实盘经运行器转发）", 15, TEAL, "bold", limit=890)
+    b += arrow(828, 282, 828, 330, ORANGE)
+    b += text(936, 318, "← 事件路径", 14, ORANGE, "bold", "end")
+    bottom = [
+        ["成交：仓位与发布", "Portfolio.update_order", "开仓 / 更新 / 翻转仓位"],
+        ["更新订单", "cache.update_order", "自有订单簿、订单快照"],
+        ["成交前置（仅 Filled）", "OMS 类型 → 仓位 ID", "去重、超额检查"],
+        ["找订单", "按 client_order_id", "找不到再按 venue_order_id"],
+    ]
+    for i, lines in enumerate(bottom):
+        fill = "orange" if i in (0, 2) else "white"
+        b += box(xs[i], 332, 216, 104, lines, fill, ORANGE, 15)
+        if i < 3:
+            b += arrow(xs[i + 1], 384, xs[i] + 216, 384, ORANGE)
+    b += text(480, 462, "非成交事件：更新订单后直接发布到 events.order.{strategy}；被丢弃的成交发到 events.order_fill_declined.{instrument}", 14, GRAY, limit=910)
+    b += rect(24, 480, 912, 52, "white", TEAL, rx=12)
+    b += text(480, 512, "成交的发布顺序：events.order_filled.{instrument} → events.order.{strategy} → events.position.{strategy}", 15, TEAL, "bold", limit=890)
+    svg("execution-engine-flow.svg", "执行引擎的命令路径与事件路径",
+        "上排是命令路径：入口、提交校验与外部客户端、按 client_id、账户发行方、品种场所、默认客户端的顺序选执行客户端、提交前的场所匹配与仓位 ID 检查，交给执行客户端。"
+        "下排是事件路径，从右往左：找订单、成交前置处理（OMS 类型、仓位 ID、去重、超额）、更新缓存里的订单、通知 Portfolio 并更新仓位。"
+        "底部是成交时三类主题的发布顺序。",
+        556, b)
+
+
+def order_emulator_bracket():
+    b = text(480, 36, "一张带仿真止盈止损的括号单：三张订单在四个时刻的状态", 19, INK, "bold", limit=920)
+    cols = ["提交括号单", "入场成交 1 @ 423.50", "bid 跌到 399.90", "止损成交"]
+    rows = ["入场 MARKET", "止损 STOP 400.00", "止盈 LIMIT 450.00"]
+    x0, cw, y0, rh = 184, 188, 70, 92
+    for j, c in enumerate(cols):
+        b += text(x0 + j * cw + cw / 2, y0 + 20, c, 15, INK, "bold", limit=cw - 8)
+    local = ("orange", ORANGE)
+    venue = ("blue", BLUE)
+    done = ("gray", GRAY)
+    cells = [
+        [(venue, ["发往风控", "SubmitOrder"]), (done, ["FILLED", ""]), (done, ["FILLED", ""]), (done, ["FILLED", ""])],
+        [(local, ["INITIALIZED", "等父单成交"]), (local, ["EMULATED", "bid ≤ 400.00 触发"]),
+         (venue, ["RELEASED", "转为 MARKET → 风控"]), (done, ["FILLED", "OUO：撤兄弟单"])],
+        [(local, ["INITIALIZED", "等父单成交"]), (local, ["EMULATED", "bid ≥ 450.00 触发"]),
+         (local, ["EMULATED", "继续持有"]), (done, ["CANCELED", "本地撤销"])],
+    ]
+    for i, r in enumerate(rows):
+        y = y0 + 40 + i * rh
+        b += text(24, y + rh / 2 - 4, r, 15, INK, "bold", "start", limit=150)
+        for j, ((fill, stroke), lines) in enumerate(cells[i]):
+            x = x0 + j * cw + 6
+            lines = [l for l in lines if l]
+            b += box(x, y + 6, cw - 12, rh - 16, lines, fill, stroke, 15, mono_from=9)
+    ly = y0 + 40 + 3 * rh + 18
+    for k, (fill, stroke, label) in enumerate([("orange", ORANGE, "在本地：仿真器持有或等待父单"),
+                                                ("blue", BLUE, "已交给风控与执行引擎"),
+                                                ("gray", GRAY, "已关闭")]):
+        x = 40 + k * 300
+        b += rect(x, ly, 26, 18, fill, stroke, rx=4)
+        b += text(x + 36, ly + 14, label, 14, INK, anchor="start", limit=250)
+    b += text(480, ly + 52, "入场成交后，仿真器里的 OrderManager 按 OTO 为两张退出单生成提交命令；止损成交后按 OUO 撤掉止盈", 14, GRAY, limit=910)
+    svg("order-emulator-bracket.svg", "括号单在仿真器里的生命周期",
+        "四列分别是提交括号单、入场成交、买一价跌到 399.90、止损成交；三行分别是入场单、止损和止盈。"
+        "入场单提交后发往风控并成交；两张退出单先等父单，入场成交后进入本地仿真；止损在买一价跌破 400.00 时释放为市价单并成交；"
+        "止盈一直在本地，最后被本地撤销。",
+        ly + 76, b)
+
+
+def portfolio_flow():
+    b = text(480, 36, "Portfolio 的输入与输出（主题订阅均为优先级 10，先于策略）", 19, INK, "bold", limit=920)
+    b += text(130, 70, "输入", 15, GRAY, "bold")
+    b += text(480, 70, "Portfolio 内部", 15, GRAY, "bold")
+    b += text(830, 70, "输出", 15, GRAY, "bold")
+    inputs = [
+        ("Portfolio.update_account", "交易所上报的账户状态", False),
+        ("Portfolio.update_order", "影响资金的订单事件", False),
+        ("events.order.*", "发布账户状态", True),
+        ("events.position.*", "净头寸、盈亏、保证金", True),
+        ("data.quotes.* 等", "报价、标记价、外部 K 线", True),
+    ]
+    ys = [84, 160, 236, 312, 388]
+    for (name, sub, dashed), y in zip(inputs, ys):
+        b += box(24, y, 212, 60, [name, sub], "white", TEAL if not dashed else BLUE, 14, mono_from=9, dash=dashed)
+    b += rect(318, 84, 324, 364, "teal", TEAL, rx=14)
+    inner = [
+        (102, ["AccountsManager", "余额、冻结、保证金"]),
+        (186, ["盈亏缓存", "unrealized_pnls / realized_pnls"]),
+        (270, ["净头寸", "net_positions（跨策略）"]),
+        (354, ["快照与取价后备", "权益快照、最近有效价"]),
+    ]
+    for y, lines in inner:
+        b += box(338, y, 284, 70, lines, "white", TEAL, 15)
+    # input arrows
+    b += arrow(236, 114, 336, 137, TEAL)
+    b += arrow(236, 190, 336, 137, TEAL)
+    b += arrow(236, 266, 336, 137, BLUE, dash=True)
+    b += arrow(236, 342, 336, 221, BLUE, dash=True)
+    b += arrow(236, 342, 336, 305, BLUE, dash=True)
+    b += arrow(236, 418, 336, 221, BLUE, dash=True)
+    b += text(286, 470, "报价只让盈亏缓存失效，计算推迟到查询", 14, ORANGE, limit=420)
+    outputs = [
+        (96, ["缓存里的账户", "本地重算后写回"]),
+        (180, ["events.account.{id}", "AccountState"]),
+        (264, ["events.portfolio.{id}", "每日权益快照"]),
+        (348, ["PortfolioApi 查询", "策略 self.portfolio()"]),
+    ]
+    for y, lines in outputs:
+        b += box(724, y, 212, 70, lines, "orange", ORANGE, 15, mono_from=9)
+        b += arrow(642, y + 35, 722, y + 35, ORANGE)
+    svg("portfolio-flow.svg", "Portfolio 的输入与输出",
+        "左侧五个输入：两个端点（账户状态、订单事件）和订单主题、仓位主题、行情主题，主题订阅优先级都是 10。"
+        "中间是 Portfolio 内部的账户管理器、盈亏缓存、净头寸、快照与取价后备。"
+        "右侧输出：写回缓存的账户、发布到 events.account 的账户状态、发布到 events.portfolio 的权益快照，以及策略的查询接口。",
+        496, b)
+
+
+def component_lifecycle():
+    b = text(480, 36, "组件生命周期与 Trader 的启停顺序", 19, INK, "bold", limit=920)
+    states = ["PRE_INITIALIZED", "READY", "STARTING", "RUNNING", "STOPPING", "STOPPED"]
+    xs = [24, 179, 334, 489, 644, 799]
+    w, y, h = 136, 120, 52
+    for i, s in enumerate(states):
+        transitional = s in ("STARTING", "STOPPING")
+        fill, stroke = (("white", GRAY) if transitional else ("blue", BLUE))
+        if s == "RUNNING":
+            fill, stroke = "teal", TEAL
+        b += rect(xs[i], y, w, h, fill, stroke, rx=10, dash=transitional)
+        b += text(xs[i] + w / 2, y + 32, s, 14, INK, "bold", limit=w - 8)
+    labels = ["initialize()", "start()", "on_start 成功", "stop()", "on_stop 成功"]
+    for i, lab in enumerate(labels):
+        x1, x2 = xs[i] + w, xs[i + 1]
+        b += arrow(x1, y + h / 2, x2 - 1, y + h / 2, BLUE)
+        b += text((x1 + x2) / 2, y + h + 22, lab, 14, GRAY, limit=150)
+    # reset arc (above): STOPPED -> READY
+    b += poly_arrow([(xs[5] + w / 2, y), (xs[5] + w / 2, 84), (xs[1] + w / 2, 84), (xs[1] + w / 2, y - 2)], ORANGE)
+    b += text(480, 78, "reset()：经 RESETTING 回到 READY（释放订阅）", 14, ORANGE, "bold", limit=440)
+    # resume arc (below): STOPPED -> RUNNING
+    yb = y + h + 44
+    b += poly_arrow([(xs[5] + w / 2 + 20, y + h), (xs[5] + w / 2 + 20, yb), (xs[3] + w / 2, yb), (xs[3] + w / 2, y + h + 2)], TEAL)
+    b += text((xs[3] + xs[5] + w) / 2 + 10, yb + 20, "resume()：经 RESUMING 回到 RUNNING", 14, TEAL, "bold", limit=330)
+    # bottom-left: other ops
+    by = 290
+    b += rect(24, by, 470, 176, "white", GRAY, rx=12)
+    b += text(44, by + 30, "其余操作", 15, INK, "bold", "start")
+    rows = [
+        "degrade()：RUNNING → DEGRADING → DEGRADED",
+        "dispose()：READY / STOPPING / STOPPED → DISPOSED",
+        "fault()：STARTING / RUNNING / STOPPED … → FAULTED",
+        "回调出错：停在过渡状态（虚线框），不自动回退",
+        "只有 RUNNING 的组件会收到回调",
+    ]
+    for i, r in enumerate(rows):
+        b += text(44, by + 62 + i * 24, r, 14, INK if i < 3 else GRAY, anchor="start", limit=440)
+    # bottom-right: trader order
+    b += rect(514, by, 422, 176, "orange", ORANGE, rx=12)
+    b += text(534, by + 30, "Trader 的顺序", 15, ORANGE, "bold", "start")
+    order_rows = [
+        ("启动", "Actor → 策略 → 执行算法"),
+        ("停止", "Actor → 执行算法 → 策略"),
+        ("重置", "Actor → 策略 → 执行算法"),
+    ]
+    for i, (k, v) in enumerate(order_rows):
+        b += text(534, by + 66 + i * 30, k, 14, INK, "bold", "start")
+        b += text(584, by + 66 + i * 30, v, 14, INK, anchor="start", limit=330)
+    b += text(534, by + 158, "manage_stop 的策略：先市场退出，平仓后自行停止", 14, GRAY, anchor="start", limit=390)
+    svg("component-lifecycle.svg", "组件生命周期与 Trader 的启停顺序",
+        "上方是主路径：PRE_INITIALIZED 经 initialize 到 READY，经 start 进入 STARTING，on_start 成功后到 RUNNING，经 stop 进入 STOPPING，on_stop 成功后到 STOPPED。"
+        "上方弧线是 reset，从 STOPPED 经 RESETTING 回到 READY；下方弧线是 resume，从 STOPPED 经 RESUMING 回到 RUNNING。"
+        "左下列出 degrade、dispose、fault 三种操作；右下是 Trader 启动、停止、重置三类组件的顺序。",
+        by + 196, b)
+
+
+def backtest_loop():
+    b = text(480, 36, "回测主循环处理一个时间戳 T", 19, INK, "bold", limit=920)
+    steps = [
+        ("gray", GRAY, ["① 先执行早于 T 的计时器", "advance_time_impl：时钟设到计时器时刻，执行回调并结清"]),
+        ("blue", BLUE, ["② 交易所先看到数据", "route_data_to_exchange：更新订单簿，撮合已挂订单"]),
+        ("blue", BLUE, ["③ 策略再看到数据", "DataEngine 写缓存、发布 → on_quote / on_bar；下单进入命令队列"]),
+        ("orange", ORANGE, ["④ 结清命令（循环直到为空）", "drain_command_queues → settle_venues：风控 → 执行 → 交易所 → 撮合"]),
+        ("teal", TEAL, ["⑤ T 的最后一条数据之后", "恰好在 T 的计时器 → 资金费率 → 模拟模块 → 强平检查"]),
+    ]
+    y = 64
+    for i, (fill, stroke, lines) in enumerate(steps):
+        b += box(40, y, 620, 72, lines, fill, stroke, 15, mono_from=9)
+        if i < len(steps) - 1:
+            b += arrow(350, y + 72, 350, y + 92, GRAY)
+        y += 92
+    # loop for step 4
+    y4 = 64 + 3 * 92
+    b += poly_arrow([(660, y4 + 50), (720, y4 + 50), (720, y4 + 22), (662, y4 + 22)], ORANGE)
+    b += text(732, y4 + 30, "成交回调发出新命令", 14, ORANGE, anchor="start", limit=200)
+    b += text(732, y4 + 52, "→ 再结清一轮", 14, ORANGE, anchor="start", limit=200)
+    # side note for step 3
+    y3 = 64 + 2 * 92
+    b += rect(700, y3 + 6, 236, 60, "white", GRAY, rx=8, dash=True)
+    b += text(818, y3 + 30, "SyncTradingCommandSender", 14, GRAY, mono=True, limit=228)
+    b += text(818, y3 + 52, "命令先入线程局部队列", 14, GRAY, limit=228)
+    # side note for step 2
+    y2 = 64 + 92
+    b += text(700, y2 + 30, "已挂订单先于新订单", 14, BLUE, "bold", "start", limit=236)
+    b += text(700, y2 + 52, "看到这条新行情", 14, BLUE, "bold", "start", limit=236)
+    b += text(480, 64 + 5 * 92 + 8, "相同 ts_init 的数据：先 add_data 的流先播放；同一流内保持原顺序", 14, GRAY, limit=900)
+    svg("backtest-loop.svg", "回测主循环处理一个时间戳",
+        "五个步骤从上到下：先执行早于 T 的计时器；交易所用新数据撮合已挂订单；数据引擎把数据交给策略，策略的命令进入同步队列；"
+        "结清阶段反复处理命令队列、交易所命令和撮合，直到没有新命令；最后在 T 的最后一条数据之后执行恰好在 T 的计时器、资金费率结算、模拟模块和强平检查。",
+        64 + 5 * 92 + 30, b)
+
+
+def data_catalog_flow():
+    b = text(480, 36, "数据目录：文件名就是时间索引", 19, INK, "bold", limit=920)
+    # left: tree
+    b += rect(24, 60, 330, 420, "white", GRAY, rx=12)
+    b += text(44, 88, "目录树", 15, INK, "bold", "start")
+    tree = [
+        (0, "catalog/data/", INK),
+        (1, "currency_pair/", BLUE),
+        (2, "AUDUSD.SIM/", INK),
+        (3, "1970…_1970….parquet", GRAY),
+        (1, "quotes/", BLUE),
+        (2, "AUDUSD.SIM/", INK),
+        (3, "2025-01-01T00-00-00-…Z_", GRAY),
+        (3, "2025-01-01T00-12-24-…Z.parquet", GRAY),
+        (1, "trades/  bars/  …", BLUE),
+        (1, "custom/{类型名}/", BLUE),
+    ]
+    for i, (lvl, name, color) in enumerate(tree):
+        b += text(44 + lvl * 22, 122 + i * 30, name, 14, color, "bold" if lvl < 2 else "normal", "start", mono=name.isascii(), limit=300 - lvl * 22)
+    b += text(44, 440, "类型 / 标识符（/ 删除，^ 换 _）/", 14, GRAY, anchor="start", limit=300)
+    b += text(44, 462, "{起始}_{结束}.parquet", 14, GRAY, anchor="start", limit=300)
+    # right top: write
+    b += text(380, 88, "写入 write_to_parquet", 15, BLUE, "bold", "start")
+    wsteps = [["ts_init", "升序"], ["单一", "标识"], ["Arrow", "编码"], ["目录 +", "文件名"], ["区间", "不重叠"], ["zstd", "写入"]]
+    x = 380
+    for i, s in enumerate(wsteps):
+        b += box(x, 102, 86, 56, s, "blue", BLUE, 14, mono_from=9)
+        if i < len(wsteps) - 1:
+            b += arrow(x + 86, 130, x + 94, 130, BLUE)
+        x += 94
+    b += text(380, 186, "价格、数量 → Decimal128(38, 16)；instrument_id 与精度写在 schema 元数据", 14, INK, anchor="start", limit=556)
+    b += text(380, 210, "标准模式写入乘 10^7、读取除回；超过 9 位小数的值读取报错", 14, GRAY, anchor="start", limit=556)
+    # right bottom: read
+    b += text(380, 262, "查询 query", 15, TEAL, "bold", "start")
+    rsteps = [["列出文件"], ["按标识符", "筛目录"], ["按文件名", "筛时间"], ["DataFusion", "SQL"], ["解码", "排序"]]
+    x = 380
+    for i, s in enumerate(rsteps):
+        b += box(x, 276, 104, 64, s, "teal", TEAL, 14, mono_from=9)
+        if i < len(rsteps) - 1:
+            b += arrow(x + 104, 308, x + 114, 308, TEAL)
+        x += 114
+    b += rect(380, 352, 332, 28, "white", ORANGE, rx=6, dash=True)
+    b += text(546, 371, "前三步只看路径，不打开文件", 14, ORANGE, "bold", limit=320)
+    b += text(380, 410, "SELECT * FROM t WHERE (条件) AND ts_init >= start", 14, INK, anchor="start", limit=556)
+    b += text(380, 432, "AND ts_init <= end ORDER BY ts_init", 14, INK, anchor="start", limit=556)
+    b += text(380, 462, "回测：BacktestDataConfig → 一次性读出，或分页读出后按时间归并、分块播放", 14, GRAY, anchor="start", limit=556)
+    svg("data-catalog-flow.svg", "数据目录的结构、写入与查询",
+        "左边是目录树：按数据类型、标识符分目录，文件名是起止时间。右上是写入一批报价的六步：时间升序检查、单一标识检查、Arrow 编码、确定目录和文件名、区间不重叠检查、zstd 写入。"
+        "右下是查询的五步：列出文件、按标识符筛目录、按文件名筛时间、DataFusion SQL 过滤、解码排序，前三步不打开文件。",
+        500, b)
+
+
+def simulated_exchange():
+    b = text(480, 36, "SimulatedExchange：一个品种的撮合引擎有两个入口", 19, INK, "bold", limit=920)
+    # top: command path
+    b += box(250, 60, 200, 60, ["BacktestExecutionClient", "生成 OrderSubmitted"], "white", BLUE, 14, mono_from=9)
+    b += arrow(450, 90, 500, 90, BLUE)
+    b += box(500, 60, 210, 60, ["命令队列", "普通队列 / 在途队列（延迟）"], "blue", BLUE, 14, mono_from=9)
+    b += arrow(605, 120, 605, 152, BLUE)
+    b += text(615, 142, "settle_venues 处理到期命令", 14, BLUE, anchor="start", limit=300)
+    # left: market data
+    b += box(24, 200, 170, 150, ["行情", "报价、成交", "K 线（开高低收）", "订单簿增量 / 快照"], "teal", TEAL, 14, mono_from=9)
+    b += arrow(194, 275, 238, 275, TEAL)
+    # engine
+    b += rect(240, 154, 500, 240, "white", GRAY, rx=14)
+    b += text(490, 178, "OrderMatchingEngine（每个品种一个）", 15, INK, "bold", limit=480)
+    b += box(258, 194, 220, 80, ["订单簿 book", "由数据维护，只读", "模拟成交不修改它"], "teal", TEAL, 14, mono_from=9)
+    b += box(502, 194, 220, 80, ["撮合核心 core", "本地挂单 + 当前买卖价", "与订单仿真器同一类型"], "blue", BLUE, 14, mono_from=9)
+    b += box(258, 290, 220, 88, ["process_order", "检查 → 按类型：", "成交 / 挂单 / 拒绝"], "white", BLUE, 14, mono_from=9)
+    b += box(502, 290, 220, 88, ["iterate", "过期 GTD → 买单 → 卖单", "成交、触发、追踪止损"], "white", TEAL, 14, mono_from=9)
+    b += arrow(478, 234, 500, 234, GRAY)
+    b += arrow(612, 274, 612, 288, TEAL)
+    # right: events out
+    b += arrow(740, 275, 784, 275, ORANGE)
+    b += box(786, 200, 150, 150, ["订单事件", "Accepted", "Rejected", "Filled …", "→ 执行引擎"], "orange", ORANGE, 14, mono_from=9)
+    # bottom: L1 example
+    b += rect(24, 412, 912, 92, "white", ORANGE, rx=12)
+    b += text(44, 438, "L1 例子：卖一 0.65008 × 10 万，买入市价 15 万", 15, ORANGE, "bold", "start", limit=880)
+    b += text(44, 464, "10 万 @ 0.65008（盘口数量用完）→ 剩余 5 万 @ 0.65009（最后成交价差一个价位）", 14, INK, anchor="start", limit=880)
+    b += text(44, 488, "挂着的买入限价 0.65010 被卖价 0.65008 穿过时，按自己的限价 0.65010 成交（不给价格改善）", 14, INK, anchor="start", limit=880)
+    svg("simulated-exchange.svg", "模拟交易所与撮合引擎",
+        "上方：命令从回测执行客户端进入交易所的普通队列或在途队列，结清时交给撮合引擎。左侧：行情进入撮合引擎，更新只读的订单簿后触发 iterate。"
+        "撮合引擎内有订单簿、撮合核心、process_order 和 iterate，产生的订单事件从右侧经执行客户端回到执行引擎。底部是 L1 上市价买单和挂单限价单的成交价例子。",
+        524, b)
+
+
+def behavioral_models():
+    b = text(480, 36, "一笔模拟成交经过的行为模型", 19, INK, "bold", limit=920)
+    stages = [
+        ["交易命令", "SubmitOrder 等"],
+        ["交易所队列", "在途队列 → 结算点"],
+        ["撮合引擎", "挂单 / 吃单 / 市价"],
+        ["OrderFilled", "成交价、数量、佣金"],
+        ["账户", "余额、冻结、保证金"],
+    ]
+    xs = [24, 210, 396, 582, 768]
+    for i, lines in enumerate(stages):
+        b += box(xs[i], 70, 168, 66, lines, "blue", BLUE, 15, mono_from=9)
+        if i < 4:
+            b += arrow(xs[i] + 168, 103, xs[i + 1], 103, BLUE)
+    models = [
+        (210, ["延迟模型", "到达 = ts_init + 延迟", "提交 / 改单 / 撤单"]),
+        (396, ["成交模型", "碰到限价是否成交", "L1 是否滑一个价位", "或给合成订单簿"]),
+        (582, ["手续费模型", "|名义| × 挂单或吃单费率", "固定 / 按张 / 期权"]),
+        (768, ["保证金模型", "杠杆模型（默认）", "或标准模型"]),
+    ]
+    for x, lines in models:
+        b += arrow(x + 84, 182, x + 84, 138, ORANGE)
+        b += box(x, 184, 168, 112, lines, "orange", ORANGE, 14, mono_from=9)
+    b += text(105, 220, "可替换的插件", 14, ORANGE, "bold", limit=160)
+    b += text(105, 244, "（橙色）", 14, ORANGE, limit=160)
+    b += rect(24, 322, 912, 92, "teal", TEAL, rx=12)
+    b += text(44, 350, "每个时间戳末尾：模拟模块 SimulationModule", 15, TEAL, "bold", "start", limit=880)
+    b += text(44, 376, "pre_process（每条行情前）→ process（结清命令后，读只读快照，返回资金调整）→ 交易所入账 → acknowledge", 14, INK, anchor="start", limit=880)
+    b += text(44, 400, "内置：外汇隔夜利息 FXRolloverInterestModule、差价合约掉期 CfdSwapModule；永续资金费率由交易所自己处理", 14, GRAY, anchor="start", limit=880)
+    svg("behavioral-models.svg", "行为模型在模拟成交路径上的位置",
+        "上排从左到右是交易命令、交易所队列、撮合引擎、成交事件和账户；下排橙色框是对应位置的可替换模型：延迟模型决定到达时间，成交模型决定挂单是否成交、是否滑点或提供合成订单簿，"
+        "手续费模型计算佣金，保证金模型计算保证金。底部是每个时间戳末尾运行的模拟模块。",
+        434, b)
+
+
+def analysis_pipeline():
+    b = text(480, 36, "回测结果怎样算出来：PortfolioAnalyzer 与三类统计", 19, INK, "bold", limit=920)
+    inputs = [
+        ["账户余额", "初始 / 当前"],
+        ["平仓时的已实现盈亏", "按币种、按时间"],
+        ["每日组合快照", "权益曲线"],
+        ["仓位 + 仓位快照", "含 NETTING 历史轮次"],
+    ]
+    ys = [70, 150, 230, 330]
+    for lines, y in zip(inputs, ys):
+        b += box(24, y, 190, 62, lines, "white", GRAY, 14, mono_from=9)
+    # middle lanes
+    lanes = [
+        (101, ["盈亏序列", "calculate_from_realized_pnls"], "stats_pnls"),
+        (241, ["收益序列", "calculate_from_returns"], "stats_returns"),
+        (361, ["仓位列表", "calculate_from_positions"], "stats_general"),
+    ]
+    for y, lines, out in lanes:
+        b += box(300, y - 31, 260, 62, lines, "blue", BLUE, 14, mono_from=9)
+        b += arrow(560, y, 610, y, BLUE)
+        b += box(612, y - 24, 150, 48, [out], "orange", ORANGE, 14, mono_from=0)
+    b += arrow(214, 101, 298, 101, GRAY)
+    b += arrow(214, 181, 298, 106, GRAY)
+    b += arrow(214, 261, 298, 241, GRAY)
+    b += arrow(214, 361, 298, 361, GRAY)
+    b += text(430, 292, "快照跨 ≥ 2 个 UTC 日 → 组合日收益", 14, TEAL, "bold", limit=300)
+    b += text(430, 314, "否则 → 仓位收益（按日复利合并）", 14, TEAL, limit=300)
+    b += arrow(150, 330, 300, 252, TEAL, dash=True)
+    # right outputs
+    b += rect(790, 70, 146, 330, "white", GRAY, rx=12)
+    outs = ["BacktestResult", "运行后日志", "PORTFOLIO", "PERFORMANCE", "Python：", "ReportProvider", "create_tearsheet"]
+    for i, o in enumerate(outs):
+        b += text(863, 104 + i * 38, o, 14, INK if i not in (4,) else GRAY, "bold" if i in (0, 1) else "normal", limit=138)
+    for y, _, _ in lanes:
+        b += arrow(762, y, 788, y, ORANGE)
+    b += text(480, 432, "默认注册 20 个统计；夏普不扣无风险利率、按 √252 年化；Profit Factor 用收益序列；MaxDrawdown 需手动注册", 14, GRAY, limit=910)
+    svg("analysis-pipeline.svg", "回测结果的分析流程",
+        "左边四类输入：账户余额、平仓时的已实现盈亏、每日组合快照、仓位与仓位快照。中间三条：盈亏序列交给 calculate_from_realized_pnls 得到 stats_pnls，"
+        "收益序列（组合快照覆盖两个以上 UTC 日时用组合日收益，否则用仓位收益）交给 calculate_from_returns 得到 stats_returns，仓位列表交给 calculate_from_positions 得到 stats_general。"
+        "右边输出到 BacktestResult、运行后日志，以及 Python 的报表和业绩报告。",
+        452, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -1508,6 +1961,17 @@ def main():
     msgbus_publish()
     cache_order_footprint()
     clock_timeline()
+    data_engine_subscriptions()
+    risk_engine_pipeline()
+    execution_engine_flow()
+    order_emulator_bracket()
+    portfolio_flow()
+    component_lifecycle()
+    backtest_loop()
+    data_catalog_flow()
+    simulated_exchange()
+    behavioral_models()
+    analysis_pipeline()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

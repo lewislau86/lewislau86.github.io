@@ -27,7 +27,7 @@ description: 读 NautilusTrader Rust 核心时绕不开的十个主题：定点�
 | 5. 并发模型 | 第 1 章；第 30 章 LiveNode 与 AsyncRunner |
 | 6. 风控、订单仿真与执行算法 | 第 19 章 RiskEngine；第 21 章 OrderEmulator；第 13 章 执行算法 |
 | 7. 对账 | 第 34 章 ExecutionManager |
-| 8. 数据与持久化 | [第 4 章 行情数据](./market-data.md)；第 25 章 数据目录 |
+| 8. 数据与持久化 | [第 4 章 行情数据](./market-data.md)；[第 25 章 数据目录](./data-catalog.md) |
 | 9. PyO3 边界 | 第 0 章第 4 节；第 39 章 Python 策略 |
 | 10. 测试与错误处理 | 第 37 章 确定性仿真测试 |
 :::

@@ -112,43 +112,53 @@
         "link": "/nautilus-trader/clock"
       },
       {
-        "text": "第 18 章 · DataEngine：订阅、路由与历史请求（规划中）"
+        "text": "第 18 章 · DataEngine：订阅、路由与历史请求",
+        "link": "/nautilus-trader/data-engine"
       },
       {
-        "text": "第 19 章 · RiskEngine：下单前检查与限流（规划中）"
+        "text": "第 19 章 · RiskEngine：下单前检查与限流",
+        "link": "/nautilus-trader/risk-engine"
       },
       {
-        "text": "第 20 章 · ExecutionEngine：命令路由、订单与仓位（规划中）"
+        "text": "第 20 章 · ExecutionEngine：路由命令、处理订单事件与成交",
+        "link": "/nautilus-trader/execution-engine"
       },
       {
-        "text": "第 21 章 · OrderEmulator 与 OrderManager：本地条件单与关联订单（规划中）"
+        "text": "第 21 章 · OrderEmulator 与 OrderManager：本地仿真与订单联动",
+        "link": "/nautilus-trader/order-emulator"
       },
       {
-        "text": "第 22 章 · Portfolio：净头寸、盈亏与账户状态（规划中）"
+        "text": "第 22 章 · Portfolio：净头寸、盈亏与账户状态",
+        "link": "/nautilus-trader/portfolio"
       },
       {
-        "text": "第 23 章 · Trader：组件的生命周期与动态管理（规划中）"
+        "text": "第 23 章 · Trader：组件的生命周期与动态管理",
+        "link": "/nautilus-trader/trader"
       }
     ]
   },
   {
-    "text": "规划中 · 第四部分 · 回测",
-    "collapsed": true,
+    "text": "第四部分 · 回测",
     "items": [
       {
-        "text": "第 24 章 · BacktestEngine 与 BacktestNode"
+        "text": "第 24 章 · BacktestEngine 与 BacktestNode",
+        "link": "/nautilus-trader/backtest-engine"
       },
       {
-        "text": "第 25 章 · 数据目录：Parquet 与 Arrow"
+        "text": "第 25 章 · 数据目录：Parquet 与 Arrow",
+        "link": "/nautilus-trader/data-catalog"
       },
       {
-        "text": "第 26 章 · 模拟交易所与撮合引擎"
+        "text": "第 26 章 · 模拟交易所与撮合引擎",
+        "link": "/nautilus-trader/simulated-exchange"
       },
       {
-        "text": "第 27 章 · 行为模型：成交、手续费、延迟与保证金"
+        "text": "第 27 章 · 行为模型：成交、手续费、延迟与保证金",
+        "link": "/nautilus-trader/behavioral-models"
       },
       {
-        "text": "第 28 章 · 报告、统计与可视化"
+        "text": "第 28 章 · 报告、统计与可视化",
+        "link": "/nautilus-trader/reports-and-statistics"
       }
     ]
   },

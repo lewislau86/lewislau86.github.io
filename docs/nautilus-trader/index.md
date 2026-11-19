@@ -50,31 +50,24 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 15 章 · MessageBus：端点、主题与类型化路由](./message-bus.md)：点对点、发布订阅、请求响应；主题、模式与端点的类型；类型化路由与通用路由；发布一条报价时的匹配缓存、优先级与可重入派发；`queue_execute` 为什么存在；消息不可变
 - [第 16 章 · Cache：状态、索引与持久化接口](./cache.md)：35 个字段与 31 张索引；一张限价单在索引里的足迹；`CacheApi`、`CacheView` 与带生命周期的借用；行情历史容量；尽力持久化与启动恢复；长时间运行的清理
 - [第 17 章 · Clock 与计时器：时间从哪里来](./clock.md)：`Clock` trait 与计时器参数；回调的三级查找；`VirtualClock` 的最小堆；回测里同一时刻的数据与计时器谁先执行；严格单调的实时原子时钟与 `LiveClock`
+- [第 18 章 · DataEngine：订阅、路由与历史请求](./data-engine.md)：订阅命令怎样选数据客户端；按持有者计数、最后一个持有者离开才真正退订；行情先写缓存再发布；订单簿的维护与缓冲；历史请求的登记、分派与响应；外部客户端
+- [第 19 章 · RiskEngine：下单前检查与限流](./risk-engine.md)：一张单经过的检查与顺序；选账户与“预留”；交易状态 ACTIVE、REDUCING、HALTED；提交与改单的限流；头寸规模计算
+- [第 20 章 · ExecutionEngine：路由命令、处理订单事件与成交](./execution-engine.md)：选执行客户端的四步顺序；提交前的场所与仓位 ID 检查；订单事件怎样找订单、更新缓存、发布；成交怎样决定 OMS 类型与仓位 ID、去重、处理超额；仓位翻转
+- [第 21 章 · OrderEmulator 与 OrderManager：本地仿真与订单联动](./order-emulator.md)：仿真单的持有、触发规则与释放；仿真限价单为什么释放成市价单；本地改单、撤单与追踪止损；OTO、OCO、OUO 联动；仿真器和策略各自的订单管理器
+- [第 22 章 · Portfolio：净头寸、盈亏与账户状态](./portfolio.md)：优先级 10 的订阅；订单事件为什么走端点和主题两条路；仓位事件触发的重算；未实现盈亏的取价顺序与延迟计算；查询接口、初始化与权益快照
+- [第 23 章 · Trader：组件的生命周期与动态管理](./trader.md)：14 个状态的生命周期；Trader 为什么只存 ID；加入组件的限制；启动与停止的不同顺序和 `manage_stop`；运行时启停、移除组件与 Controller
 
-以下几章尚在规划中：
+## 第四部分 · 回测
 
-| 章 | 主题 | 要回答的问题 | 主要源码 |
-| --- | --- | --- | --- |
-| 18 | DataEngine：订阅、路由与历史请求 | 订阅的引用计数和“最后一个持有者才退订”；数据怎样写缓存再发布；K 线聚合的引擎侧接线（聚合器本身见第 11 章）；订单簿维护；历史数据请求；期权链 | `crates/data/src/engine/`、`aggregation.rs`、`option_chains/` |
-| 19 | RiskEngine：下单前检查与限流 | 价格、数量、名义金额、余额、只减仓检查；`Throttler` 限流；交易状态 Active / Halted / Reducing；头寸规模计算 | `crates/risk/src/{engine,sizing.rs}`、`crates/common/src/throttler.rs` |
-| 20 | ExecutionEngine：命令路由、订单与仓位 | 命令怎样路由到执行客户端；订单事件怎样驱动状态机；成交怎样开仓、加仓、平仓、反手；Netting 和 Hedging 的仓位 ID | `crates/execution/src/engine/` |
-| 21 | OrderEmulator 与 OrderManager：本地条件单与关联订单 | 交易所不支持的条件单怎样在本地仿真、触发后释放；OCO / OTO / OUO 关联订单的联动；跟踪止损价的计算 | `crates/execution/src/{order_emulator,order_manager,trailing.rs}` |
-| 22 | Portfolio：净头寸、盈亏与账户状态 | 净头寸和敞口怎样随报价更新；已实现、未实现盈亏；`AccountsManager` 怎样算冻结资金和保证金；权益曲线与统计 | `crates/portfolio/src/{portfolio,manager}.rs` |
-| 23 | Trader：组件的生命周期与动态管理 | 组件生命周期状态机；`Trader` 怎样登记、启动、停止各类组件；`Controller` 动态增删组件；和第 9、13 章的分工 | `crates/system/src/trader.rs`、`crates/common/src/actor/`、`crates/trading/src/` |
+- [第 24 章 · BacktestEngine 与 BacktestNode](./backtest-engine.md)：`add_venue` 建了哪些对象；多条数据流按 `ts_init` 和加入顺序合并；主循环处理一条数据的三个阶段与同步命令队列；`end`、`reset`、`dispose`；节点的一次性加载与分块流式运行；参数扫描
+- [第 25 章 · 数据目录：Parquet 与 Arrow](./data-catalog.md)：按类型和标识符分目录、文件名即时间范围；写入时的升序、单一标识与区间不重叠检查；价格统一存成 `Decimal128(38, 16)`；查询先按文件名筛文件再用 DataFusion SQL；合并、删除与 Feather 流式写入
+- [第 26 章 · 模拟交易所与撮合引擎](./simulated-exchange.md)：命令和行情两个入口；订单到达时的检查与按类型处理；L1 上挂单按限价成交、市价单剩余部分差一个价位；哪些数据驱动哪种订单簿；K 线拆成四个价格点与止损的跳空规则；场所配置
+- [第 27 章 · 行为模型：成交、手续费、延迟与保证金](./behavioral-models.md)：成交模型的两个概率参数与合成订单簿；挂单、吃单佣金的计算；延迟模型的到达时间与结算点；模拟模块；Trait、Any 与 Handle 三种形态
+- [第 28 章 · 报告、统计与可视化](./reports-and-statistics.md)：`BacktestResult` 的内容；三类统计各用什么输入；组合收益与仓位收益两条序列；夏普、期望值、盈亏比的公式与细节；自定义统计；Python 报表与业绩报告
 
 ## 规划中的章节
 
 下面几部分尚未成文，先列出每章要回答的问题和对应的源码，写作时按这个顺序推进。内核组件的每章都按同一个顺序展开：它持有什么数据、对外暴露哪些入口（总线端点、主题、trait 方法）、一条典型消息怎样流过它、回测和实盘下有什么不同、扩展时容易踩的坑。
-
-### 第四部分 · 回测
-
-| 章 | 主题 | 要回答的问题 | 主要源码 |
-| --- | --- | --- | --- |
-| 24 | BacktestEngine 与 BacktestNode | 低层 API 和高层 API 各适合什么；主循环一次迭代做什么、数据和计时器怎样交替推进；一次运行怎样配置、怎样重置再跑 | `crates/backtest/src/{engine,node,data_iterator}.rs` |
-| 25 | 数据目录：Parquet 与 Arrow | 数据目录的文件布局和命名；怎样写入、查询、合并；回测怎样从目录流式读数据 | `crates/persistence/src/`、`crates/serialization/` |
-| 26 | 模拟交易所与撮合引擎 | `SimulatedExchange` 持有什么；`OrderMatchingEngine` 怎样用报价、成交、K 线、订单簿撮合；K 线数据下的成交价怎样推断 | `crates/backtest/src/exchange.rs`、`crates/execution/src/matching_engine/` |
-| 27 | 行为模型：成交、手续费、延迟与保证金 | 成交模型、手续费模型、延迟模型、保证金模型各在哪一步起作用；怎样自定义一个模型 | `crates/execution/src/models/`、`crates/model/src/accounts/margin_model.rs` |
-| 28 | 报告、统计与可视化 | 订单、成交、仓位、账户报告怎样生成；收益统计怎样计算；Python 一侧的 tearsheet 怎样画 | `crates/analysis/src/`、`python/nautilus_trader/analysis/` |
 
 ### 第五部分 · 实盘与 Tokio 运行时
 
@@ -118,18 +111,18 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | Rust、Python | 第 0 章第 2～4 节；第 9 章；第七部分 |
 | Instruments、Synthetics、Continuous Futures | 第 3 章 |
 | Value Types | 第 2 章 |
-| Data、Order Book、Custom Data | 第 4 章；第 11 章（K 线聚合）；第 18 章 |
+| Data、Order Book、Custom Data | 第 4 章；第 11 章（K 线聚合）；第 18 章；第 25 章（数据目录） |
 | Options、Greeks | — |
 | Events、Event Sourcing | 第 8 章；第 10 章（回调） |
 | Orders | 第 5 章；第 21 章（仿真单与关联订单） |
-| Execution | 第 20 章；第 13 章（执行算法）；第 34 章（对账） |
+| Execution | 第 19、20 章；第 13 章（执行算法）；第 34 章（对账） |
 | Positions | 第 6 章 |
 | Accounting、Portfolio | 第 7 章；第 22 章 |
 | Reports、Visualization | 第 28 章 |
-| Actors、Strategies | 第 9、10、12、13 章 |
+| Actors、Strategies | 第 9、10、12、13 章；第 23 章（生命周期） |
 | Cache、Message Bus | 第 16 章；第 15 章 |
 | Configuration、Logging | 第 13 章 |
-| Backtesting、Behavioral Models | 第四部分（第 24～28 章） |
+| Backtesting、Behavioral Models | 第 24、26、27 章 |
 | Live Trading | 第五部分（第 29～37 章） |
 | Adapters、Networking | 第 38 章；第 33 章 |
 | DST | 第 37 章 |

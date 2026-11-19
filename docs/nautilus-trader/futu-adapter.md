@@ -5,7 +5,7 @@ description: 严格按 NautilusTrader 官方《Adapters》开发指南的章节�
 
 # 第 38 章：增加一个券商：以富途为例
 
-[全书目录](./index.md) · [上一篇](./clock.md) · [附录](./core-topics.md)
+[全书目录](./index.md) · [上一篇](./reports-and-statistics.md) · [附录](./core-topics.md)
 
 ::: tip 本章怎么读
 本章的正文是 NautilusTrader 官方开发指南《Adapters》（[`docs/developer_guide/adapters.md`](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md)）的中文全译，章节顺序、标题层级和原文一致，每个标题后面的锚点就是原文的英文锚点，方便对照。翻译依据提交 `364254f`（2026-11-18），原文以 LGPL-3.0 发布；译文力求完整，代码块保持原样。
