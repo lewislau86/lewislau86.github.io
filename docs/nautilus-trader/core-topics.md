@@ -1,16 +1,35 @@
 ---
-title: "第 3 章：其他需要重点理解的主题"
-description: 读 NautilusTrader Rust 核心时绕不开的十个主题：定点数值类型、时钟与两种时间戳、订单状态机与事件溯源、缓存、单线程并发模型、风控与订单仿真、对账、数据与持久化、PyO3 边界、测试与错误处理。每个主题说清在哪里、为什么这样设计、扩展时容易踩什么坑。
+title: "附录：重点主题速览"
+description: 读 NautilusTrader Rust 核心时绕不开的十个主题：定点数值类型、时钟与两种时间戳、订单状态机与事件溯源、缓存、单线程并发模型、风控与订单仿真、对账、数据与持久化、PyO3 边界、测试与错误处理。每个主题说清在哪里、为什么这样设计、扩展时容易踩什么坑。本页原是第 3 章，现作为速览保留，各主题在正文对应章节展开。
 ---
 
-# 第 3 章：其他需要重点理解的主题
+# 附录：重点主题速览
 
-[全书目录](./index.md) · [上一章](./futu-adapter.md) · [下一章](./rust-strategy.md)
+[全书目录](./index.md) · [上一篇](./futu-adapter.md)
 
-::: tip 本章学习目标
-第 1 章是地图，第 2 章是一条具体的路线。这一章把读源码、写适配器、写策略时反复遇到的十个主题集中讲一遍。每个主题回答四个问题：它是什么、代码在哪里、为什么这样设计、扩展时容易踩什么坑。可以按需跳读。
+::: tip 本页用途
+第 0、1 章是地图。这一页把读源码、写适配器、写策略时反复遇到的十个主题集中讲一遍。每个主题回答四个问题：它是什么、代码在哪里、为什么这样设计、扩展时容易踩什么坑。可以按需跳读。
 
 **源码版本：** `develop` 分支，2026-11-14 核对。
+
+**对应官方文档：** [Value Types](https://nautilustrader.io/docs/latest/concepts/value_types/) · [Orders](https://nautilustrader.io/docs/latest/concepts/orders/) · [Cache](https://nautilustrader.io/docs/latest/concepts/cache/) · [Execution](https://nautilustrader.io/docs/latest/concepts/execution/) · [DST](https://nautilustrader.io/docs/latest/concepts/dst/)
+:::
+
+::: info 本页的去向
+本页原是第 3 章。全书按官方文档的概念划分调整结构后，这十个主题会在正文对应章节完整展开；那些章节成文之前，本页作为速览保留。
+
+| 本页小节 | 在正文里展开的位置 |
+| :--- | :--- |
+| 1. 定点数 | 第 2 章 数值类型、标识符与时间戳 |
+| 2. 时钟与时间戳 | 第 2 章；第 17 章 Clock 与计时器 |
+| 3. 订单状态机与事件溯源 | 第 5 章 订单；第 8 章 事件与事件溯源 |
+| 4. 缓存 | 第 16 章 Cache |
+| 5. 并发模型 | 第 1 章；第 30 章 LiveNode 与 AsyncRunner |
+| 6. 风控、订单仿真与执行算法 | 第 19 章 RiskEngine；第 21 章 OrderEmulator；第 13 章 执行算法 |
+| 7. 对账 | 第 34 章 ExecutionManager |
+| 8. 数据与持久化 | 第 4 章 行情数据；第 25 章 数据目录 |
+| 9. PyO3 边界 | 第 0 章第 4 节；第 39 章 Python 策略 |
+| 10. 测试与错误处理 | 第 37 章 确定性仿真测试 |
 :::
 
 ## 1. 价格和数量：定点数，不是浮点数
@@ -164,7 +183,7 @@ Python 包用 maturin 构建（`python/pyproject.toml` 指向 `crates/pyo3/Cargo
 
 ## 10. 测试与错误处理
 
-**测试工具。** `crates/testkit` 提供测试数据（带 SHA-256 校验）和两个验收工具 `DataTester`、`ExecTester`，第 2 章的里程碑就是用它们验收的。此外还有 proptest 属性测试（`proptest-regressions/` 目录记录失败用例）、libFuzzer 模糊测试（适配器的 `fuzz` feature，`scripts/fuzz-adapter.sh`）、Criterion 和 iai 基准测试；Rust 测试用 cargo nextest 跑。
+**测试工具。** `crates/testkit` 提供测试数据（带 SHA-256 校验）和两个验收工具 `DataTester`、`ExecTester`，第 38 章的里程碑就是用它们验收的。此外还有 proptest 属性测试（`proptest-regressions/` 目录记录失败用例）、libFuzzer 模糊测试（适配器的 `fuzz` feature，`scripts/fuzz-adapter.sh`）、Criterion 和 iai 基准测试；Rust 测试用 cargo nextest 跑。
 
 **确定性模拟测试（DST）**（`docs/concepts/dst.md`、`crates/common/src/live/dst.rs`）：把 Tokio 的时间、任务、运行时、信号换成 madsim 的确定性实现，同一个随机种子就能重现同一次运行，用来测断线、重连、乱序这类难复现的问题。要同时打开 `nautilus-common` 的 `simulation` feature 和 `RUSTFLAGS="--cfg madsim"`，只开一个会悄悄退回真正的 Tokio。代码要配合：`select!` 加 `biased;`，迭代顺序要确定（用 `IndexMap` 或排序），随机数用 `madsim::rand`，不能用 `spawn_blocking`。这也是“不准直接 `tokio::spawn`”的原因之一。开发指南要求维护中的官方适配器满足 DST 契约，暂时做不到的要有一份按交易所记录的迁移说明跟踪差距；OKX 适配器是参考实现。
 
@@ -191,4 +210,4 @@ Python 包用 maturin 构建（`python/pyproject.toml` 指向 `crates/pyo3/Cargo
 - 官方文档：[architecture](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/architecture.md) · [value_types](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/value_types.md) · [positions](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/positions.md) · [reconciliation](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/execution/reconciliation.md) · [dst](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/concepts/dst.md) · [rust 开发指南](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/rust.md) · [ffi](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/ffi.md)
 - 源码：[`crates/model/src/types/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src/types) · [`crates/model/src/orders/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src/orders) · [`crates/common/src/cache/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/cache) · [`crates/risk/src/engine/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/risk/src/engine) · [`crates/live/src/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/live/src)
 
-接下来两章从写策略的人的角度看：[第 4 章：Rust 策略的框架与运行机制](./rust-strategy.md)，以及[第 5 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。
+这些主题在正文里的完整展开见上面“本页的去向”；从写策略的人的角度看，可以读[第 9 章：Rust 策略的框架与运行机制](./rust-strategy.md)和[第 10 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。回到[全书目录](./index.md)查看规划。

@@ -1,16 +1,18 @@
 ---
-title: "第 1 章：整体架构"
+title: "第 1 章：运行全景"
 description: NautilusTrader 的 Rust 核心怎样组织：设计理念、crate 分层与依赖、NautilusKernel、线程局部的消息总线、行情与订单两条主线、组件与策略，以及回测、沙盒、实盘三种模式共用同一个内核的方式。
 ---
 
-# 第 1 章：整体架构
+# 第 1 章：运行全景
 
-[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一章](./futu-adapter.md)
+[全书目录](./index.md) · [上一章](./nautilus-architecture.md) · [下一篇](./rust-strategy.md)
 
 ::: tip 本章学习目标
 能画出 NautilusTrader 的组件图：哪些 crate 是地基、哪些是引擎、哪些是外壳；说清 `NautilusKernel` 拥有什么、消息总线怎样把组件连起来；能沿源码走一遍“一条报价从适配器到策略”和“一笔订单从策略到交易所再回来”的路径；能解释回测、沙盒、实盘三种模式为什么能共用同一套策略代码，以及它们各自的时钟和成交来源。
 
 **源码版本：** `develop` 分支，2026-11-14 核对。文中的路径都相对仓库根目录。
+
+**对应官方文档：** [Architecture](https://nautilustrader.io/docs/latest/concepts/architecture/) · [Message Bus](https://nautilustrader.io/docs/latest/concepts/message_bus/) · [Live Trading](https://nautilustrader.io/docs/latest/concepts/live/)
 :::
 
 ## 1. 它要解决什么问题
@@ -46,7 +48,7 @@ description: NautilusTrader 的 Rust 核心怎样组织：设计理念、crate �
 | | `backtest` | `BacktestEngine`、`BacktestNode`、`SimulatedExchange` |
 | | `live` | `LiveNode`、`AsyncRunner`、`ExecutionManager`（实盘对账） |
 | | `event_store` | 事件存储：记录、校验、重放（它依赖 `system`，所以算外壳） |
-| 外围 | `adapters/*` | 各交易所和券商的适配器（第 2 章） |
+| 外围 | `adapters/*` | 各交易所和券商的适配器（第 38 章） |
 | | `pyo3` | 把各 crate 的 Python 绑定汇总成一个扩展模块 |
 | | `testkit`、`plugin`、`cli` | 测试工具（`DataTester`、`ExecTester`）、插件接口、命令行 |
 
@@ -164,7 +166,7 @@ Strategy.submit_order
 
 - 路由的核心函数是 `crates/trading/src/strategy/mod.rs` 里的 `submit_order_native`。
 - `queue_execute` 是为了**防止重入**：在策略的回调里下单，命令先排到下一轮事件循环，而不是在当前调用栈里一路执行到底。
-- 适配器只负责“发命令、报事件”，订单和仓位的状态由 `ExecutionEngine` 维护。这就是第 2 章说“适配器不要直接写缓存”的原因。
+- 适配器只负责“发命令、报事件”，订单和仓位的状态由 `ExecutionEngine` 维护。这就是第 38 章说“适配器不要直接写缓存”的原因。
 
 ## 6. 组件、Actor 与策略
 
@@ -214,7 +216,7 @@ Strategy.submit_order
 | `AccountId`、`PositionId` | 账户、仓位 |
 | `ExecAlgorithmId`、`OrderListId` | 执行算法、订单组 |
 
-`ClientOrderId` 和 `VenueOrderId` 是两套 ID，适配器要负责维护它们的对应关系，这是第 2 章富途适配器的工作之一。
+`ClientOrderId` 和 `VenueOrderId` 是两套 ID，适配器要负责维护它们的对应关系，这是第 38 章富途适配器的工作之一。
 
 ::: warning 常见误区
 - **把 v1 的文档当成现在的代码。** `develop` 上已经没有 Cython 核心，Python 层是 PyO3 包装；很多网上资料讲的是 v1。
@@ -255,4 +257,4 @@ Strategy.submit_order
 - 源码：[`crates/system/src/kernel.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/system/src/kernel.rs) · [`crates/common/src/msgbus/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/msgbus) · [`crates/trading/src/strategy/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/strategy/mod.rs) · [`crates/live/src/runner.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/runner.rs) · [`crates/backtest/src/engine.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/backtest/src/engine.rs)
 - [LMAX 架构（Martin Fowler）](https://martinfowler.com/articles/lmax.html)
 
-有了这张地图，下一章从外部世界的入口开始：要接入一个新券商，适配器需要实现哪些接口，以富途为例。[第 2 章：增加一个券商：以富途为例](./futu-adapter.md)。
+有了这张地图，接下来的第一部分把交易领域模型（品种、数据、订单、仓位、账户、事件）逐个讲清楚，目前在规划中。已成文的下一篇是写策略这条线的开头：[第 9 章：Rust 策略的框架与运行机制](./rust-strategy.md)。想先看怎样接入一个新券商，可以直接跳到[第 38 章：增加一个券商：以富途为例](./futu-adapter.md)。

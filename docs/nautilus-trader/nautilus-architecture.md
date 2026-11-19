@@ -11,6 +11,8 @@ description: NautilusTrader 的全景图：一个节点由哪几层组成，Rust
 看完这一章，你应该能：画出一个节点的分层图，说清每一层在哪个目录里；拿到 `crates/` 下任意一个 crate 名，说出它在哪一层、负责什么、该先读哪几个文件；说清 `python/nautilus_trader/` 里哪些是 Rust 的转出口、哪些是纯 Python 代码；认出 `Price`、`QuoteTick`、`OrderAny`、`OrderBook`、`Cache`、`MessageBus` 这几个核心结构的字段和所有权；知道在 Python 里拿到的订单为什么不会“自己更新”。
 
 **源码版本：** `develop` 分支，提交 `5997d82`（2026-11-17）。文中路径都相对仓库根目录。
+
+**对应官方文档：** [Overview](https://nautilustrader.io/docs/latest/concepts/overview/) · [Architecture](https://nautilustrader.io/docs/latest/concepts/architecture/) · [Rust](https://nautilustrader.io/docs/latest/concepts/rust/) · [Python](https://nautilustrader.io/docs/latest/concepts/python/)
 :::
 
 官方的 [Architecture](https://nautilustrader.io/docs/latest/concepts/architecture/) 页面讲了组件、线程模型和 crash-only 设计，但它停在“有哪些组件”这一层：没有把组件对到源码目录，也没有讲数据结构。这一章补上这两块，作为后面各章的地图。第 1 章再沿着这张地图，讲一条报价和一笔订单在运行时怎么走。
@@ -201,7 +203,7 @@ crates/adapters/<venue>/src/
 └── lib.rs
 ```
 
-真实的适配器会按协议调整。OKX 是标准的 REST 加 WebSocket，所以有 `http/`、`websocket/`，另外多了一个 `book/`；Interactive Brokers 封装的是 TWS API，没有 `http/` 和 `websocket/`，取而代之的是 `gateway/`、`historical/`、`providers/`。第 2 章写富途适配器时，会参照后者。
+真实的适配器会按协议调整。OKX 是标准的 REST 加 WebSocket，所以有 `http/`、`websocket/`，另外多了一个 `book/`；Interactive Brokers 封装的是 TWS API，没有 `http/` 和 `websocket/`，取而代之的是 `gateway/`、`historical/`、`providers/`。第 38 章写富途适配器时，会参照后者。
 
 ### 2.6 读 Rust 源码的顺序
 
@@ -273,7 +275,7 @@ nautilus_trader.<模块>  ←  nautilus_trader._libnautilus.<模块>  ←  crate
 
 v2 里 Python 代码只出现在三个位置：
 
-1. **用户组件。** 继承 PyO3 基类 `DataActor`、`Strategy`、`ExecutionAlgorithm`、`Controller`，覆盖 `on_start`、`on_quote`、`on_bar`、`on_order_filled` 等回调。这些回调在核心线程上同步执行，回调里做阻塞 I/O 或重计算会拖住整个节点。策略怎样写、怎样注册见[第 4 章](./rust-strategy.md)；回调由谁调用、按什么顺序、出错会怎样，见[第 5 章](./callbacks.md)。
+1. **用户组件。** 继承 PyO3 基类 `DataActor`、`Strategy`、`ExecutionAlgorithm`、`Controller`，覆盖 `on_start`、`on_quote`、`on_bar`、`on_order_filled` 等回调。这些回调在核心线程上同步执行，回调里做阻塞 I/O 或重计算会拖住整个节点。策略怎样写、怎样注册见[第 9 章](./rust-strategy.md)；回调由谁调用、按什么顺序、出错会怎样，见[第 10 章](./callbacks.md)。
 2. **编排与分析。** 构造配置、`BacktestNode`/`BacktestEngine`/`LiveNode`，跑完后读缓存、组合和报表。`LiveNode.run()` 阻塞当前线程；`LiveNode.run_async()` 让节点跑在宿主的 asyncio 事件循环上（比如 ASGI 应用里）。
 3. **Python 写的适配器。** 官方适配器全部是 Rust 实现，Python 拿到的是它们的配置、工厂、客户端和数据类型；自己用 Python 写适配器时，继承 `nautilus_trader/live/clients.py` 里的 `DataClient`、`ExecutionClient`。它们跑在节点绑定的 asyncio 循环上，拿到的是只读的缓存视图，产出的数据、事件、报告经队列交给 Rust。
 
@@ -380,7 +382,7 @@ engine.dispose()                                                                
 
 ### 4.4 实盘：LiveNode 多出的两件事
 
-**客户端经注册表组装。** 实盘要接交易所，`LiveNode.builder(…).add_data_client(None, 工厂, 配置)` 把工厂和配置交给 Rust。Rust 调用工厂的 `name()`、读配置的类名，到全局注册表里找到适配器在模块初始化时登记的提取函数，把它们还原成 Rust 的 trait 对象。完整过程见[第 2 章](./futu-adapter.md)附录 C.1。
+**客户端经注册表组装。** 实盘要接交易所，`LiveNode.builder(…).add_data_client(None, 工厂, 配置)` 把工厂和配置交给 Rust。Rust 调用工厂的 `name()`、读配置的类名，到全局注册表里找到适配器在模块初始化时登记的提取函数，把它们还原成 Rust 的 trait 对象。完整过程见[第 38 章](./futu-adapter.md)附录 C.1。
 
 **事件循环在 Rust 里跑。** `LiveNode.run()`（`crates/live/src/python/node.rs`）在没有 Python 写的客户端时，先释放 GIL（`py.detach`），再在当前线程上 `get_runtime().block_on(node.run())`；Python 回调发生时再临时拿回 GIL。有 Python 客户端时，`run()` 会新建一个 asyncio 事件循环来驱动 `run_async()`，并在主线程上接管 `SIGINT`、`SIGTERM`。已经有事件循环的程序（比如 ASGI 应用）直接 `await node.run_async()`。
 
@@ -393,7 +395,7 @@ engine.dispose()                                                                
 
 ## 5. Rust 实现中的核心数据结构 {#rust-structures}
 
-这一节从小到大：值 → 标识 → 行情 → 订单簿 → 标的 → 订单 → 仓位与账户 → 消息 → 两个状态容器（`Cache`、`MessageBus`）→ 组件。只讲结构和所有权；它们的行为，比如定点数为什么不用浮点、订单状态机怎样迁移，见[第 3 章](./core-topics.md)。
+这一节从小到大：值 → 标识 → 行情 → 订单簿 → 标的 → 订单 → 仓位与账户 → 消息 → 两个状态容器（`Cache`、`MessageBus`）→ 组件。只讲结构和所有权；它们的行为，比如定点数为什么不用浮点、订单状态机怎样迁移，见[附录：重点主题速览](./core-topics.md)，第一部分领域模型会逐个展开。
 
 ### 5.1 值类型：定点数
 
@@ -579,7 +581,7 @@ pub struct OrderCore {
 }
 ```
 
-“具体类型 = `OrderCore` + 自己特有的几个字段”是订单的统一形状：限价单多了价格和过期时间，止损单多了触发价，跟踪止损多了偏移量。`OrderCore` 里最重要的字段是 `events`：订单的当前状态（`status`、`filled_qty`、`avg_px`…）都是把事件一个个 `apply` 上去得到的，`events` 保留了全部历史。`OrderStatus` 有 15 个取值，`OrderEventAny` 有 19 种事件；状态机细节见[第 3 章](./core-topics.md)第 3 节。
+“具体类型 = `OrderCore` + 自己特有的几个字段”是订单的统一形状：限价单多了价格和过期时间，止损单多了触发价，跟踪止损多了偏移量。`OrderCore` 里最重要的字段是 `events`：订单的当前状态（`status`、`filled_qty`、`avg_px`…）都是把事件一个个 `apply` 上去得到的，`events` 保留了全部历史。`OrderStatus` 有 15 个取值，`OrderEventAny` 有 19 种事件；状态机细节见[附录](./core-topics.md)第 3 节（第 5 章将展开）。
 
 最常用的事件是成交：
 
@@ -942,4 +944,4 @@ NautilusTrader v2 是“一个 Rust 内核，两种外壳，一层 Python 外观
 - 源码：[`Cargo.toml`](https://github.com/nautechsystems/nautilus_trader/blob/develop/Cargo.toml) · [`crates/pyo3/src/lib.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/pyo3/src/lib.rs) · [`python/pyproject.toml`](https://github.com/nautechsystems/nautilus_trader/blob/develop/python/pyproject.toml) · [`crates/model/src/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/model/src) · [`crates/common/src/cache/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/common/src/cache) · [`crates/common/src/msgbus/core.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/msgbus/core.rs) · [`crates/trading/src/python/strategy.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/python/strategy.rs)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-有了这张静态的地图，下一章让系统动起来：内核怎样启动，一条报价和一笔订单怎样在这些结构之间流动。[第 1 章：整体架构](./architecture.md)。还没编译过源码的话，可以先回到[从零编译](./build-from-source.md)把两部分跑通。
+有了这张静态的地图，下一章让系统动起来：内核怎样启动，一条报价和一笔订单怎样在这些结构之间流动。[第 1 章：运行全景](./architecture.md)。还没编译过源码的话，可以先回到[从零编译](./build-from-source.md)把两部分跑通。

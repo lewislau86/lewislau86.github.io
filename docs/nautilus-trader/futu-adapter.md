@@ -1,11 +1,11 @@
 ---
-title: "第 2 章：增加一个券商：以富途为例"
+title: "第 38 章：增加一个券商：以富途为例"
 description: 严格按 NautilusTrader 官方《Adapters》开发指南的章节顺序，给出指南的中文全译，并在每一节后说明富途（Futu OpenD）适配器怎样满足这一节的要求；附富途 OpenD 协议要点、两边的概念对照和 Python 绑定的三条路线。
 ---
 
-# 第 2 章：增加一个券商：以富途为例
+# 第 38 章：增加一个券商：以富途为例
 
-[全书目录](./index.md) · [上一章](./architecture.md) · [下一章](./core-topics.md)
+[全书目录](./index.md) · [上一篇](./indicators.md) · [附录](./core-topics.md)
 
 ::: tip 本章怎么读
 本章的正文是 NautilusTrader 官方开发指南《Adapters》（[`docs/developer_guide/adapters.md`](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md)）的中文全译，章节顺序、标题层级和原文一致，每个标题后面的锚点就是原文的英文锚点，方便对照。翻译依据提交 `364254f`（2026-11-18），原文以 LGPL-3.0 发布；译文力求完整，代码块保持原样。
@@ -15,6 +15,8 @@ description: 严格按 NautilusTrader 官方《Adapters》开发指南的章节�
 富途本身的背景知识放在三个附录里：[附录 A：富途 OpenD 协议要点](#appendix-opend)、[附录 B：两边的概念对照](#appendix-concepts)、[附录 C：Python 绑定的三条路线](#appendix-python)。第一次读，可以先看附录 A，再回到正文。
 
 **富途文档：** OpenAPI v10.12。文中的 `futu-opend`、`crates/adapters/futu` 及其文件和类型名都是本书的设计建议，仓库里还没有。
+
+**对应官方文档：** [Adapters（概念）](https://nautilustrader.io/docs/latest/concepts/adapters/)；开发指南 Adapters 即本章正文
 :::
 
 ## 结论先行 {#futu-summary}
@@ -2405,4 +2407,4 @@ builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientCon
 - 富途 OpenAPI：[底层协议介绍](https://openapi.futunn.com/futu-api-doc/ftapi/protocol.html) · [OpenD 概述](https://openapi.futunn.com/futu-api-doc/opend/opend-intro.html) · [OpenD 命令行参数](https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html) · [权限与额度](https://openapi.futunn.com/futu-api-doc/intro/authority.html) · [订阅规则](https://openapi.futunn.com/futu-api-doc/quote/sub.html) · [交易接口总览](https://openapi.futunn.com/futu-api-doc/trade/trade.html)
 - [py-futu-api](https://github.com/FutunnOpen/py-futu-api)：`futu/common/constant.py`（协议号）、`utils.py`（包头）、`conn_mng.py`（加密）、`pb/*.proto`
 
-适配器只是 Rust 核心的一个入口。下一章把读源码、写适配器时反复遇到的其他主题集中讲一遍：定点数、时钟、订单状态机、缓存、并发模型、风控、对账等。[第 3 章：其他需要重点理解的主题](./core-topics.md)。
+适配器只是 Rust 核心的一个入口。读源码、写适配器时反复遇到的其他主题（定点数、时钟、订单状态机、缓存、并发模型、风控、对账等）在附录里有一份速览：[附录：重点主题速览](./core-topics.md)。

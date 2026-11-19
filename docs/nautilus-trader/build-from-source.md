@@ -16,6 +16,8 @@ description: 在一台干净的 macOS 或 Ubuntu 机器上，从安装工具链�
 每一步都说明它在做什么、产物放在哪里、出错时先查什么。
 
 **源码版本：** `develop` 分支，提交 `5997d82`（2026-11-17）。命令取自同一提交的 `Makefile`、`docs/getting_started/installation.md`、`docs/developer_guide/environment_setup.md` 和 `python/README.md`。项目的构建脚本改动很频繁，命令跑不通时先对照这几个文件。
+
+**对应官方文档：** [Installation](https://nautilustrader.io/docs/latest/getting_started/installation/) · [Environment setup](https://nautilustrader.io/docs/latest/developer_guide/environment_setup/)
 :::
 
 ::: info 实测记录（2026-11-18）

@@ -899,6 +899,58 @@ def bar_aggregators():
         560, b)
 
 
+
+# ---------------------------------------------------------------------------
+# 第 7 章 · 指标：注册表与一根 K 线的更新路径
+# ---------------------------------------------------------------------------
+def indicator_flow():
+    b = text(480, 36, "指标挂在组件的 Indicators 表上，每根 K 线先更新指标、再调用 on_bar", 19, INK, "bold", limit=920)
+    # 注册表
+    b += rect(24, 58, 912, 168, "gray", GRAY, rx=14)
+    b += text(44, 84, "注册：DataActorCore 里的 Indicators（crates/common/src/actor/indicators.rs）", 16, INK, "bold", "start", limit=880)
+    tables = [
+        ("indicators", "全部已注册的指标", "按对象地址去重"),
+        ("indicators_for_quotes", "键：InstrumentId", "register_…_quote_ticks"),
+        ("indicators_for_trades", "键：InstrumentId", "register_…_trade_ticks"),
+        ("indicators_for_bars", "键：(品种, K 线规格)", "不含来源 INTERNAL/EXTERNAL"),
+    ]
+    x = 40
+    for h, l1, l2 in tables:
+        b += box(x, 100, 208, 108, [h, l1, l2], "white", GRAY, 15, mono_from=9)
+        x += 224
+    # 更新路径
+    b += rect(24, 244, 912, 372, "blue", BLUE, rx=14)
+    b += text(44, 270, "一根 K 线到达组件：handle_bar（框架代码）", 16, BLUE, "bold", "start", limit=880)
+    b += box(40, 290, 300, 64, ["Indicators::handle_bar", "按 (品种, 规格) 找出这一组指标"], "white", BLUE, 15, mono_from=9)
+    b += arrow(342, 322, 380, 322, BLUE)
+    # Rust 路
+    b += rect(384, 286, 536, 108, "white", TEAL, rx=10, width=1.4)
+    b += text(400, 310, "Rust 指标：Rc<RefCell<T>>，T 实现 Indicator", 15, TEAL, "bold", "start", limit=510)
+    b += text(400, 338, "borrow_mut().handle_bar(&bar) → 直接改结构体里的 f64", 14, INK, anchor="start", limit=510)
+    b += text(400, 364, "要打开 nautilus-common 的 indicators 特性", 14, GRAY, anchor="start", limit=510)
+    # Python 路
+    b += rect(384, 404, 536, 132, "white", ORANGE, rx=10, width=1.4)
+    b += text(400, 428, "Python 注册的指标：包成 PyActorIndicator", 15, ORANGE, "bold", "start", limit=510)
+    b += text(400, 456, "拿 GIL → Bar 转成新的 Python 对象", 14, INK, anchor="start", limit=510)
+    b += text(400, 482, "→ call_method1(\"handle_bar\") 按名字调用", 14, INK, anchor="start", limit=510)
+    b += text(400, 508, "内置指标再经 PyO3 回到 Rust；纯 Python 类就在 Python 里算", 14, GRAY, anchor="start", limit=510)
+    b += poly_arrow([(360, 322), (360, 470), (382, 470)], BLUE)
+    # 之后
+    b += box(40, 380, 300, 64, ["任一指标出错", "记日志，这根 K 线不再调用 on_bar"], "#fee2e2", RED, 14, mono_from=9)
+    b += box(40, 460, 300, 64, ["组件不在 RUNNING", "指标照样更新，on_bar 不调用"], "white", BLUE, 14, mono_from=9)
+    b += box(40, 540, 300, 60, ["on_bar（你的代码）", "读 indicator.value"], "#fde68a", ORANGE, 15, mono_from=9)
+    for y1, y2 in [(354, 378), (444, 458), (524, 538)]:
+        b += arrow(190, y1, 190, y2, BLUE)
+    b += box(384, 552, 536, 48, ["历史响应 on_historical_bars 之前也先更新指标"], "white", BLUE, 14, mono_from=9)
+    b += text(480, 642, "注册不会订阅数据，也不会在 reset 时清空指标：订阅要另外调用 subscribe_*，清空要在 on_reset 里自己做。", 14, GRAY, limit=920)
+    svg("indicator-flow.svg", "指标的注册表与更新路径",
+        "上半部分是组件里的 Indicators：一个保存全部指标的列表，以及按品种分的报价、成交两张表和按品种加 K 线规格分的 K 线表，K 线表的键不含聚合来源。"
+        "下半部分是一根 K 线到达时：框架先按品种和规格找出指标逐个更新。Rust 指标以 Rc<RefCell<T>> 注册，直接调用 handle_bar；"
+        "Python 注册的指标被包成 PyActorIndicator，每次都要拿 GIL、把 K 线转成 Python 对象、按名字调用 handle_bar。"
+        "任一指标出错就记日志并跳过 on_bar；组件不在运行状态时指标照样更新但不调用 on_bar；最后才调用你的 on_bar。",
+        670, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -915,6 +967,7 @@ def main():
     rust_strategy()
     bar_aggregation_flow()
     bar_aggregators()
+    indicator_flow()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

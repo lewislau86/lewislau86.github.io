@@ -1,21 +1,23 @@
 ---
-title: "第 6 章：K 线聚合器"
+title: "第 11 章：K 线聚合器"
 description: NautilusTrader 怎样把逐笔成交、报价合成 K 线：BarType 字符串怎样决定数据来源，subscribe_bars 之后 DataEngine 建了什么、订了什么，BarBuilder 怎样累计开高低收，按笔数、成交量、成交额、失衡、连续、Renko、时间七种关闭规则各自怎样实现，时间 K 线的定时器、时间戳与配置项，组合 K 线和历史聚合，以及一次用真实成交数据跑出来的实验。
 ---
 
-# 第 6 章：K 线聚合器
+# 第 11 章：K 线聚合器
 
-[全书目录](./index.md) · [上一章](./callbacks.md)
+[全书目录](./index.md) · [上一章](./callbacks.md) · [下一章](./indicators.md)
 
 ::: tip 本章学习目标
 能看懂并写出任意一种 `BarType` 字符串，知道它决定了 K 线从成交、报价还是更小的 K 线合成；能说清 `subscribe_bars` 之后 `DataEngine` 建了哪个聚合器、向数据客户端订了什么、一笔成交怎样一路变成 `on_bar`；知道七种聚合器各自什么时候关闭一根 K 线，时间 K 线的时间戳和空 K 线怎么处理；能用回测验证自己的 K 线配置。
 
 **源码版本：** `develop` 分支，提交 `364254f`（2026-11-18）。聚合器在 `crates/data/src/aggregation.rs`，接线在 `crates/data/src/engine/bar.rs` 和 `engine/handlers.rs`，配置在 `engine/config.rs`。官方说明在 `docs/concepts/data/index.md` 的 “Bars and aggregation” 一节。
+
+**对应官方文档：** [Data](https://nautilustrader.io/docs/latest/concepts/data/) 的 Bars and aggregation 一节
 :::
 
 K 线和指标是策略最常用的两样输入。先回答一个常见的问题：它们是不是在 Rust 里算好、Python 直接调用？前半句对，后半句要改一下。v2 里 K 线完全在 Rust 的 `DataEngine` 里合成，但 Python 并不“调用”聚合器，Python 层甚至没有任何聚合器类（`_libnautilus` 的存根里找不到 `BarAggregator` 或 `BarBuilder`）。不管策略用 Rust 还是 Python 写，你只做一件事：用一个 `BarType` 订阅 K 线。引擎替你建聚合器、订源数据、逐笔累计，合成好的 K 线经消息总线回到你的 `on_bar`。Python 策略只在最后一步拿 GIL 被回调。
 
-指标是另一回事，放在第 7 章：指标挂在策略上，由框架在 `on_bar` 之前更新，Python 策略注册的指标每次更新都要穿过一次语言边界。
+指标是另一回事，放在第 12 章：指标挂在策略上，由框架在 `on_bar` 之前更新，Python 策略注册的指标每次更新都要穿过一次语言边界。
 
 ## 1. BarType：一个字符串决定 K 线从哪来 {#bar-type}
 
@@ -101,7 +103,7 @@ pub(super) fn subscribe_bars(&mut self, cmd: &SubscribeBars) -> anyhow::Result<(
 
 ## 3. 运行时：一笔成交怎样变成 on_bar {#runtime}
 
-图的下半部分是运行时。一笔成交进来，`DataEngine` 先写缓存，再发布到 `data.trades.BINANCE.ETHUSDT`。总线按优先级从高到低派发（第 5 章）：聚合器的处理器是 5，策略是 0，所以聚合器先拿到这笔成交。
+图的下半部分是运行时。一笔成交进来，`DataEngine` 先写缓存，再发布到 `data.trades.BINANCE.ETHUSDT`。总线按优先级从高到低派发（第 10 章）：聚合器的处理器是 5，策略是 0，所以聚合器先拿到这笔成交。
 
 `BarTradeHandler` 调 `handle_trade`，默认实现就是把价格、数量、`ts_init` 交给 `update`；报价走 `handle_quote`，按价格类型取出买价、卖价或中间价和对应的量；组合 K 线走 `handle_bar`，把整根源 K 线交给 `update_bar`。`update` 里各聚合器先让 `BarBuilder` 累计（第 4 节），再判断关闭条件，满足了就生成一根 K 线，交给建聚合器时传进去的处理函数：
 
@@ -117,7 +119,7 @@ pub(super) fn process_engine_bar(cache: &Rc<RefCell<Cache>>, validate_sequence: 
 }
 ```
 
-K 线先写进缓存，再发布到 `data.bars.{标准类型}`。策略订阅时登记的闭包收到它，走第 5 章讲过的那条路：`handle_bar` 先更新注册在这种 K 线上的指标，组件不在 `RUNNING` 就丢弃，然后调用你的 `on_bar`。Python 策略在这一步拿 GIL，把 `Bar` 转成 Python 对象，按名字调用 `on_bar`；前面的累计、判断、生成都在 Rust 里完成，不碰 Python。
+K 线先写进缓存，再发布到 `data.bars.{标准类型}`。策略订阅时登记的闭包收到它，走第 10 章讲过的那条路：`handle_bar` 先更新注册在这种 K 线上的指标，组件不在 `RUNNING` 就丢弃，然后调用你的 `on_bar`。Python 策略在这一步拿 GIL，把 `Bar` 转成 Python 对象，按名字调用 `on_bar`；前面的累计、判断、生成都在 Rust 里完成，不碰 Python。
 
 整条路是同步的，嵌套在那笔成交的派发里面。这带来一个容易忽略的顺序：凑满一根 K 线的那笔成交，策略先在 `on_bar` 里看到包含它的 K 线，然后才在 `on_trade_tick` 里看到这笔成交本身。
 
@@ -404,4 +406,4 @@ K 线在 Rust 的 `DataEngine` 里合成，策略只用一个 `BarType` 声明�
 - 信息驱动 K 线的出处：Marcos López de Prado，《Advances in Financial Machine Learning》第 2 章。
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-下一章（规划中）讲指标：Rust 指标怎样挂在策略上、在 `on_bar` 之前更新，Python 策略注册的指标怎样穿过语言边界。回到[全书目录](./index.md)。
+下一章讲指标：Rust 指标怎样挂在策略上、在 `on_bar` 之前更新，Python 策略注册的指标怎样穿过语言边界，见[第 12 章：指标](./indicators.md)。

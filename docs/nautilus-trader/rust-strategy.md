@@ -1,21 +1,23 @@
 ---
-title: "第 4 章：Rust 策略的框架与运行机制"
+title: "第 9 章：Rust 策略的框架与运行机制"
 description: 用 Rust 写一个 NautilusTrader 策略需要写什么、框架替你做了什么：StrategyCore 与 StrategyConfig，nautilus_strategy! 宏生成的代码，注册到 Trader 时接上了哪些部件，生命周期怎样推进，下单 API 怎样工作，关联订单、GTD、市场退出这些托管功能，以及怎样在回测和实盘里跑起来。
 ---
 
-# 第 4 章：Rust 策略的框架与运行机制
+# 第 9 章：Rust 策略的框架与运行机制
 
-[全书目录](./index.md) · [上一章](./core-topics.md) · [下一章](./callbacks.md)
+[全书目录](./index.md) · [上一篇](./architecture.md) · [下一章](./callbacks.md)
 
 ::: tip 本章学习目标
 能从零写出一个 Rust 策略并把它放进回测或实盘节点；说清一个策略由哪几部分拼成，哪些是你写的、哪些是宏生成的、哪些是框架的默认实现；知道 `StrategyCore` 在注册前后有什么区别，注册时 `Trader` 替你接上了什么；知道下单、改单、撤单、平仓的 API 和它们背后的路由；知道关联订单、GTD 过期、市场退出这些托管功能怎样打开。
 
 **源码版本：** `develop` 分支，提交 `364254f`（2026-11-18）。策略框架在 `crates/trading/src/strategy/`，宏在 `crates/trading/src/macros.rs`，注册在 `crates/system/src/trader.rs`。
+
+**对应官方文档：** [Strategies](https://nautilustrader.io/docs/latest/concepts/strategies/) · [Actors](https://nautilustrader.io/docs/latest/concepts/actors/) · [Rust](https://nautilustrader.io/docs/latest/concepts/rust/)
 :::
 
 前面几章从平台的角度看策略：第 1 章看一笔订单从策略出发走到交易所，第 0 章看 `StrategyCore` 的字段。这一章换到写策略的人的角度：我要写什么，框架会在什么时候调用我，我能调用框架的什么。回调的具体派发过程放在下一章。
 
-Python 也能写策略，但 Python 的 `Strategy` 是这套 Rust 框架的绑定，走的是同一个 `StrategyCore` 和同一套注册、派发流程（第 0 章第 6.1 节）；它的细节放在第四部分 Python 层。
+Python 也能写策略，但 Python 的 `Strategy` 是这套 Rust 框架的绑定，走的是同一个 `StrategyCore` 和同一套注册、派发流程（第 0 章第 6.1 节）；它的细节放在第七部分 Python 层。
 
 ## 1. 一个最小的 Rust 策略
 
@@ -144,7 +146,7 @@ impl Strategy for EmaCross {}          // 宏的花括号里写的方法会放�
 3. **注册 `StrategyCore`**（`StrategyCore::register`）：把交易员 ID、时钟、缓存交给 `DataActorCore`；用交易员 ID、策略 ID 和时钟建一个 `OrderFactory`；建一个 `OrderManager`；挂上 `Portfolio`。
 4. **登记默认的时间事件处理函数**：之后用 `clock.set_timer` 设的计时器，没指定回调时都会走到 `on_time_event`。
 5. **`initialize()`**：组件状态从 `PRE_INITIALIZED` 变成 `READY`。
-6. **放进两个全局注册表**：组件注册表（生命周期管理用）和 actor 注册表（回调派发时按 ID 取组件用，见第 5 章）。
+6. **放进两个全局注册表**：组件注册表（生命周期管理用）和 actor 注册表（回调派发时按 ID 取组件用，见第 10 章）。
 7. **订阅订单和仓位事件**：`events.order.{strategy_id}`、`events.position.{strategy_id}`，以及市场退出之类的控制命令。
 
 策略对象本身在第 6 步被移进了注册表，`add_strategy` 返回后你手里就没有它了。之后想访问它，只能通过回调里的 `self`。实盘节点还有一条限制：只能在 `run()` 之前添加策略，节点运行后再加会直接报错。
@@ -162,7 +164,7 @@ start()
   → 状态 STARTING → RUNNING
 ```
 
-之后的每一次行情、订单事件、计时器，都只在 `RUNNING` 状态下才会送到你的回调（第 5 章）。停止时 `stop()` 调用 `on_stop`，进入 `STOPPED`；`reset()` 调用 `on_reset`，清掉指标和自己的状态，回到 `READY`，可以再次启动（回测引擎跑多轮时就是这样）；`dispose()` 释放资源。任何一个回调返回错误，状态都会停在对应的过渡状态（如 `STARTING`）。
+之后的每一次行情、订单事件、计时器，都只在 `RUNNING` 状态下才会送到你的回调（第 10 章）。停止时 `stop()` 调用 `on_stop`，进入 `STOPPED`；`reset()` 调用 `on_reset`，清掉指标和自己的状态，回到 `READY`，可以再次启动（回测引擎跑多轮时就是这样）；`dispose()` 释放资源。任何一个回调返回错误，状态都会停在对应的过渡状态（如 `STARTING`）。
 
 `on_reset` 是最容易漏的：回测引擎 `reset()` 后再跑一轮，策略对象是同一个，指标里还留着上一轮的数据。`EmaCross` 在 `on_reset` 里把两条均线和 `prev_fast_above` 都清掉了，就是这个原因。
 
@@ -270,4 +272,4 @@ node.run().await?;
 - 源码：[`crates/trading/src/strategy/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/trading/src/strategy) · [`crates/trading/src/macros.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/trading/src/macros.rs) · [`crates/trading/src/examples/strategies/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/trading/src/examples/strategies) · [`crates/system/src/trader.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/system/src/trader.rs)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-框架会在什么时候、以什么顺序调用这些回调，下一章细讲：[第 5 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。
+框架会在什么时候、以什么顺序调用这些回调，下一章细讲：[第 10 章：回调：一条消息怎样变成 on_xxx](./callbacks.md)。
