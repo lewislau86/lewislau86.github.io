@@ -87,15 +87,10 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 
 - [第 39 章 · Python 策略：Rust 策略框架的绑定](./python-strategy.md)：`Strategy` 是一个可子类化的 Rust 类，持有实现了 `DataActor` 和 `Strategy` trait 的 `PyStrategyInner`；配置对象怎样保留、策略 ID 和标签怎样生成；注册时注册表和强引用表各存什么；一次回调的四步（弱引用、GIL、拷贝、按名字调用）；异常在数据回调和 `on_start` 里的不同后果；缓存返回快照；回测与实盘的线程和 GIL；每次回调的实测开销；附可运行实验
 - [第 40 章 · Python 的其他组件：DataActor、ExecutionAlgorithm 与 Controller](./python-components.md)：三种组件和策略共用同一种包装；默认 ID、加入方式与固定的启动顺序；信号的值变成字符串、Python 自定义数据传同一个对象、行情和订单是拷贝；嵌套回调里的借用冲突；用 Python 写执行算法和 Controller；附可运行实验
-
-### 规划中
-
-| 章 | 主题 | 要回答的问题 | 主要源码 |
-| --- | --- | --- | --- |
-| 41 | 在 Python 里跑回测 | `BacktestEngine` 和 `BacktestNode` 怎么选；可导入配置；结果怎样取出；`analysis` 包的报表和业绩报告 | `crates/backtest/src/python/`、`python/nautilus_trader/analysis/` |
-| 42 | 在 Python 里跑实盘 | `run()` 和 `run_async()` 的区别；用 asyncio、uvloop、ASGI 托管节点；`dispose` 与单节点规则；信号处理归谁 | `crates/live/src/python/node.rs`、`runtime.rs` |
-| 43 | 用 Python 写适配器 | `live.clients` 基类、绑定的事件循环、只读缓存、排队输出、工厂注册；第 38 章附录 C 路线 B 的完整实操 | `python/nautilus_trader/live/`、`docs/developer_guide/python_adapters.md` |
-| 44 | 边界与迁移 | 类型存根就是公共 API；精度模式；异常映射；从 v1 迁移时哪些写法失效；什么时候该把 Python 换成 Rust | `python/nautilus_trader/**/*.pyi`、`MIGRATION_V2.md` |
+- [第 41 章 · 在 Python 里跑回测：BacktestEngine 与 BacktestNode](./python-backtest.md)：两条路怎么选；`BacktestEngine` 的手工装配、`reset` 重跑参数和流式分批运行；`BacktestNode` 从 Parquet 数据目录按可导入配置运行、分块；结果、DataFrame 报表和 HTML 业绩报告；`shutdown_on_error` 与“悄悄继续”的回测；附可运行实验
+- [第 42 章 · 在 Python 里跑实盘：run() 与 run_async()](./python-live.md)：用构建器组装节点、加官方适配器和内置 Rust 组件；`run()` 占用线程并接管信号，`run_async()` 托管在宿主的 asyncio 循环上；运行中只能用事先取好的句柄；停止、取消与 `dispose`；一个进程一个节点，换节点要先释放引用；附可运行实验
+- [第 43 章 · 用 Python 写适配器](./python-adapter.md)：`live.clients` 的基类与工厂注册；工厂不能碰事件循环，`_connect` 时才绑定；每个客户端一条 FIFO 命令队列和托管的后台任务；只读的 `ClientCache` 与排队输出；超时的下单交给在途检查和 `_query_order`；v1 迁移对照；附一个对接假 OpenD 的完整适配器
+- [第 44 章 · 边界与迁移：存根、精度、异常与 v1](./python-boundaries.md)：生成的类型存根就是公开接口；数值、错误、对象怎样跨过边界；从 v1 迁移时会立刻报错的和不会报错的改动；用存根检查旧代码；什么时候该把 Python 换成 Rust；附可运行实验
 
 ## 附录
 
@@ -108,9 +103,9 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | 官方页面 | 本书章节 |
 | :--- | :--- |
 | Overview、Architecture | 第 0 章、第 1 章 |
-| Rust、Python | 第 0 章第 2～4 节；第 9 章；第 39 章 |
+| Rust、Python | 第 0 章第 2～4 节；第 9 章；第 39～44 章 |
 | Instruments、Synthetics、Continuous Futures | 第 3 章 |
-| Value Types | 第 2 章 |
+| Value Types | 第 2 章；第 44 章（Python 侧） |
 | Data、Order Book、Custom Data | 第 4 章；第 11 章（K 线聚合）；第 18 章；第 25 章（数据目录） |
 | Options、Greeks | — |
 | Events、Event Sourcing | 第 8 章；第 10 章（回调） |
@@ -118,12 +113,14 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | Execution | 第 19、20 章；第 13 章（执行算法）；第 34 章（对账） |
 | Positions | 第 6 章 |
 | Accounting、Portfolio | 第 7 章；第 22 章 |
-| Reports、Visualization | 第 28 章 |
+| Reports、Visualization | 第 28 章；第 41 章 |
 | Actors、Strategies | 第 9、10、12、13 章；第 23 章（生命周期）；第 39 章（Python 策略） |
 | Cache、Message Bus | 第 16 章；第 15 章；第 36 章（外部后端） |
 | Configuration、Logging | 第 13 章 |
-| Backtesting、Behavioral Models | 第 24、26、27 章 |
-| Live Trading | 第 29～34 章；第 36 章 |
+| Backtesting、Behavioral Models | 第 24、26、27 章；第 41 章（Python） |
+| Live Trading | 第 29～34 章；第 36 章；第 42 章（Python） |
 | Adapters、Networking | 第 38 章；第 33、35 章 |
 | DST | 第 37 章 |
 | 开发指南 Adapters | 第 38 章（全文翻译） |
+| 开发指南 Python Adapter Interface | 第 43 章 |
+| 迁移指南 MIGRATION_V2 | 第 44 章 |

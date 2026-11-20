@@ -224,16 +224,20 @@
         "link": "/nautilus-trader/python-components"
       },
       {
-        "text": "第 41 章 · 在 Python 里跑回测（规划中）"
+        "text": "第 41 章 · 在 Python 里跑回测：BacktestEngine 与 BacktestNode",
+        "link": "/nautilus-trader/python-backtest"
       },
       {
-        "text": "第 42 章 · 在 Python 里跑实盘（规划中）"
+        "text": "第 42 章 · 在 Python 里跑实盘：run() 与 run_async()",
+        "link": "/nautilus-trader/python-live"
       },
       {
-        "text": "第 43 章 · 用 Python 写适配器（规划中）"
+        "text": "第 43 章 · 用 Python 写适配器",
+        "link": "/nautilus-trader/python-adapter"
       },
       {
-        "text": "第 44 章 · 边界与迁移（规划中）"
+        "text": "第 44 章 · 边界与迁移：存根、精度、异常与 v1",
+        "link": "/nautilus-trader/python-boundaries"
       }
     ]
   },

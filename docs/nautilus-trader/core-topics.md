@@ -5,7 +5,7 @@ description: 读 NautilusTrader Rust 核心时绕不开的十个主题：定点�
 
 # 附录：重点主题速览
 
-[全书目录](./index.md) · [上一篇](./python-components.md)
+[全书目录](./index.md) · [上一篇](./python-boundaries.md)
 
 ::: tip 本页用途
 第 0、1 章是地图。这一页把读源码、写适配器、写策略时反复遇到的十个主题集中讲一遍。每个主题回答四个问题：它是什么、代码在哪里、为什么这样设计、扩展时容易踩什么坑。可以按需跳读。

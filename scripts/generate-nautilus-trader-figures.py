@@ -2467,6 +2467,121 @@ def python_backtest_paths():
         620, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 42 章 · run() 与 run_async()
+# ---------------------------------------------------------------------------
+def python_live_modes():
+    b = text(480, 36, "Python 里跑实盘节点：run() 占住线程，run_async() 托管在你的事件循环里", 19, INK, "bold", limit=920)
+    rows = [
+        ("谁占用线程", "调用 run() 的线程，直到关闭完成", "你的 asyncio 循环；节点定期让出"),
+        ("信号", "节点安装 SIGINT / SIGTERM 处理", "节点不装，归宿主应用"),
+        ("怎样停止", "信号，或别的线程里 handle.stop()", "handle.stop() 后 await；或取消任务"),
+        ("运行中读状态", "—", "只能用运行前取好的 cache、portfolio"),
+        ("dispose()", "run() 返回之后", "运行中调用什么也不做；任务结束后再调"),
+        ("数据库后端的缓存", "原生客户端可以", "拒绝：后端会阻塞宿主循环"),
+    ]
+    b += rect(24, 60, 912, 44, "gray", GRAY, rx=10)
+    b += text(44, 88, "", 15, INK, "bold", "start")
+    b += text(330, 88, "run()", 16, BLUE, "bold", "start", mono=True)
+    b += text(640, 88, "run_async()", 16, TEAL, "bold", "start", mono=True)
+    for i, (k, a, c) in enumerate(rows):
+        y = 112 + i * 52
+        b += rect(24, y, 912, 44, "white", GRAY, rx=8, width=1.0)
+        b += text(44, y + 28, k, 15, INK, "bold", "start", limit=260)
+        b += text(330, y + 28, a, 14, INK, "normal", "start", limit=290)
+        b += text(640, y + 28, c, 14, INK, "normal", "start", limit=290)
+    y = 112 + 6 * 52 + 12
+    b += rect(24, y, 912, 108, "orange", ORANGE, rx=12)
+    b += text(44, y + 28, "两种模式共同的规则", 15, ORANGE, "bold", "start", limit=880)
+    b += text(44, y + 56, "同样的启动顺序、维护、对账和关闭（第 30、34 章）；一个进程、一个线程只能有一个节点", 14, INK, "normal", "start", limit=880)
+    b += text(44, y + 84, "换节点：只 dispose() 不够，要 del 旧节点（必要时 gc.collect()）之后才能再 build", 14, INK, "normal", "start", limit=880)
+    svg("python-live-modes.svg", "Python 里跑实盘节点的两种模式",
+        "表格对比 run() 和 run_async()：前者占用调用它的线程并安装 SIGINT、SIGTERM 处理，后者托管在宿主的 asyncio 循环上、信号归宿主；"
+        "托管模式下运行中只能用事先取好的 cache 和 portfolio，dispose 要等任务结束，不支持数据库后端的缓存。"
+        "底部是共同规则：同样的生命周期，一个进程一个节点，换节点要先释放旧节点的引用。",
+        y + 128, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 43 章 · Python 适配器的结构
+# ---------------------------------------------------------------------------
+def python_adapter_flow():
+    b = text(480, 36, "Python 适配器：钩子跑在节点绑定的 asyncio 循环上，输出排队交给 Rust 内核", 19, INK, "bold", limit=920)
+    # core column
+    b += rect(24, 60, 300, 470, "blue", BLUE, rx=14)
+    b += text(174, 88, "Rust 内核（核心线程）", 16, BLUE, "bold", limit=280)
+    b += box(44, 108, 260, 70, ["DataEngine / ExecEngine", "唯一能写交易状态的地方"], "white", BLUE, 14, mono_from=9)
+    b += box(44, 198, 260, 70, ["ClientCache", "只读视图，读取返回快照"], "white", BLUE, 14, mono_from=9)
+    b += box(44, 288, 260, 92, ["对账与在途检查", "启动时：_generate_* 报告", "运行中：_query_order"], "white", BLUE, 14, mono_from=9)
+    b += box(44, 400, 260, 110, ["输出入队", "_handle_data 等", "generate_order_* 等", "由内核按顺序处理"], "white", BLUE, 14, mono_from=9)
+    # adapter column
+    b += rect(344, 60, 300, 470, "orange", ORANGE, rx=14)
+    b += text(494, 88, "你的适配器（同一线程上的 asyncio）", 16, ORANGE, "bold", limit=280)
+    b += box(364, 108, 260, 70, ["工厂 create(...)", "同步返回；不能碰事件循环"], "white", ORANGE, 14, mono_from=9)
+    b += box(364, 198, 260, 70, ["_connect", "循环已绑定：建会话、加载品种"], "white", ORANGE, 14, mono_from=9)
+    b += box(364, 288, 260, 92, ["命令钩子（async）", "每个客户端一条 FIFO 队列", "最多排 1,024 个，按顺序执行"], "white", ORANGE, 14, mono_from=9)
+    b += box(364, 400, 260, 110, ["self.create_task(...)", "后台任务由运行时托管", "_disconnect：关队列、", "取消、收尾"], "white", ORANGE, 14, mono_from=9)
+    # venue column
+    b += rect(664, 60, 272, 470, "gray", GRAY, rx=14)
+    b += text(800, 88, "交易所 / 网关", 16, INK, "bold", limit=250)
+    b += box(684, 198, 232, 70, ["建立会话、登录", "连接要在 _connect 里建立"], "white", GRAY, 14, mono_from=9)
+    b += box(684, 288, 232, 92, ["下单、撤单、查询", "回包可能丢失（超时）", "对账时问“到底成交没有”"], "white", GRAY, 14, mono_from=9)
+    b += box(684, 400, 232, 110, ["行情推送", "后台任务持续读取", "收到后 _handle_data"], "white", GRAY, 14, mono_from=9)
+    # arrows
+    b += arrow(306, 334, 362, 334, BLUE)
+    b += text(334, 300, "命令", 14, BLUE, limit=60)
+    b += arrow(626, 233, 682, 233, GRAY, both=True)
+    b += arrow(626, 334, 682, 334, GRAY, both=True)
+    b += arrow(626, 455, 682, 455, GRAY, both=True)
+    b += arrow(362, 470, 306, 470, ORANGE)
+    b += text(334, 436, "输出", 14, ORANGE, limit=60)
+    b += text(480, 570, "超时不等于拒单：适配器什么都不发，订单留在 SUBMITTED，由在途检查调用 _query_order 查清后用报告补齐。", 14, GRAY, limit=920)
+    svg("python-adapter-flow.svg", "Python 适配器的结构",
+        "左列是 Rust 内核：数据和执行引擎是唯一写交易状态的地方，适配器只拿到只读的 ClientCache，对账在启动时调用报告钩子、运行中调用查询钩子，适配器的输出排队交给内核处理。"
+        "中列是 Python 适配器：工厂同步构造客户端且不能碰事件循环，_connect 时循环才绑定，命令钩子在每个客户端的 FIFO 队列里按顺序执行，后台工作用 create_task 交给运行时托管。"
+        "右列是交易所：会话、下单与查询、行情推送。底部说明超时的下单不发任何事件，由在途检查和查询钩子补齐。",
+        594, b)
+
+
+
+# ---------------------------------------------------------------------------
+# 第 44 章 · Python 层的边界与迁移
+# ---------------------------------------------------------------------------
+def python_boundaries():
+    b = text(480, 36, "Python 与 Rust 的边界：跨过去的是什么，迁移时哪些错误会沉默", 19, INK, "bold", limit=920)
+    rows = [
+        ("接口", "生成的 .pyi 存根", "存根里没有的运行时属性不算公开接口"),
+        ("数值", "定点整数，wheel 为 16 位小数", "同类相加仍是 Price；乘法、配 int 得 Decimal"),
+        ("错误", "参数先校验，失败映射为异常", "ValueError、TypeError、OverflowError"),
+        ("对象", "读到的是拷贝或快照", "改了不影响内核；运行中节点被借出"),
+    ]
+    b += rect(24, 60, 912, 44, "gray", GRAY, rx=10)
+    b += text(250, 88, "边界上发生什么", 16, BLUE, "bold", "start")
+    b += text(560, 88, "Python 这边看到的", 16, TEAL, "bold", "start")
+    for i, (k, a, c) in enumerate(rows):
+        y = 112 + i * 52
+        b += rect(24, y, 912, 44, "white", GRAY, rx=8, width=1.0)
+        b += text(44, y + 28, k, 15, INK, "bold", "start", limit=180)
+        b += text(250, y + 28, a, 14, INK, "normal", "start", limit=290)
+        b += text(560, y + 28, c, 14, INK, "normal", "start", limit=360)
+    y = 112 + 4 * 52 + 12
+    b += rect(24, y, 446, 150, "blue", BLUE, rx=12)
+    b += text(44, y + 30, "v1 → v2：响亮的失败", 15, BLUE, "bold", "start", limit=400)
+    for j, line in enumerate(["旧的导入路径：ImportError", "旧的方法名：AttributeError", "旧的参数类型：TypeError", "启动或调用时立刻发现"]):
+        b += text(44, y + 60 + j * 24, line, 14, INK, "normal", "start", limit=400)
+    b += rect(490, y, 446, 150, "orange", ORANGE, rx=12)
+    b += text(510, y + 30, "v1 → v2：沉默的失败", 15, ORANGE, "bold", "start", limit=400)
+    for j, line in enumerate(["旧回调名（on_quote_tick）：从不被调用", "NO_ORDER_SIDE 等：现在是 None", "avg_px：float 变 Decimal，== 比较变了", "is_initialized 直接换成 is_ready()：含义变了"]):
+        b += text(510, y + 60 + j * 24, line, 14, INK, "normal", "start", limit=400)
+    y2 = y + 188
+    b += text(480, y2, "对策：用类型检查器对照存根，跑一遍回测核对回调次数和结果，再上实盘。", 14, GRAY, limit=920)
+    svg("python-boundaries.svg", "Python 与 Rust 的边界",
+        "上半部分是四行表格：接口以生成的类型存根为准；数值是定点整数，官方 wheel 是 16 位小数的高精度模式，运算结果可能是 Price、Decimal 或 float；"
+        "错误在边界上映射为 ValueError、TypeError、OverflowError；Python 读到的是拷贝或快照。"
+        "下半部分对比 v1 迁移到 v2 时两类失败：导入路径、方法名、参数类型的错误会立刻报出；旧回调名不再被调用、NO_* 常量变成 None、avg_px 变成 Decimal、"
+        "把 is_initialized 直接换成 is_ready 会改变含义，这些不会报错。底部建议用类型检查器和回测核对。",
+        y2 + 24, b)
+
 def main():
     system_overview()
     rust_crates()
@@ -2520,6 +2635,9 @@ def main():
     python_strategy_dispatch()
     python_components()
     python_backtest_paths()
+    python_live_modes()
+    python_adapter_flow()
+    python_boundaries()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

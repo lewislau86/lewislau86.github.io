@@ -5,7 +5,7 @@ description: 除了策略，Python 里还能写三种组件：只收数据的 Da
 
 # 第 40 章：Python 的其他组件：DataActor、ExecutionAlgorithm 与 Controller
 
-[全书目录](./index.md) · [上一章](./python-strategy.md) · [附录](./core-topics.md)
+[全书目录](./index.md) · [上一章](./python-strategy.md) · [下一章](./python-backtest.md)
 
 ::: tip 本章学习目标
 知道 Python 里的 `DataActor`、`ExecutionAlgorithm`、`Controller` 和第 39 章的 `Strategy` 哪些地方一样、哪些地方不一样；能说出四种组件的默认 ID 怎样来、怎样加入引擎、按什么顺序启动和停止；知道信号、自定义数据、行情、订单穿过 PyO3 边界时各是什么待遇；能解释嵌套回调里的 `already borrowed` 错误并避开它；会用 Python 写一个最简单的执行算法和一个 Controller。
@@ -256,4 +256,4 @@ Linux（aarch64，4 核）上的 Python 3.14，nautilus_trader 2.0 的扩展模�
 - 实验代码：[`python-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/python-lab)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-组件写好了，接下来是把它们放进引擎里跑。下一章看在 Python 里跑回测：`BacktestEngine` 和 `BacktestNode` 怎么选，结果怎样取出来。第 41 章还在规划中，暂时可以先读附录：[附录：重点主题速览](./core-topics.md)。
+组件写好了，接下来是把它们放进引擎里跑。下一章看在 Python 里跑回测：`BacktestEngine` 和 `BacktestNode` 怎么选，结果怎样取出来：[第 41 章：在 Python 里跑回测](./python-backtest.md)。
