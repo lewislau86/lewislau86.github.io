@@ -40,7 +40,7 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
 用 `per_second(10)` 手算：T = 100 毫秒，τ = 1 秒。时刻 0 连续来 11 个请求：第 1 个之后 TAT = 200 毫秒，第 k 个之后 TAT = 100 × (k + 1) 毫秒；第 10 个之后 TAT = 1,100 毫秒，第 11 个检查时 `TAT - τ = 100 毫秒 > 0`，要等 100 毫秒。之后每 100 毫秒放行一个。这正是“突发 10 个、之后每秒 10 个”的含义，而且每个键只需要一个 64 位原子整数，并发更新用比较交换完成。
 
-**多个键。** 一个限流器有一个默认额度和若干按键的额度，一个请求可以带多个键，同时等待它们（`await_keys_ready`）。OKX 的 HTTP 客户端给每个请求都带上全局键 `okx:global`（每秒 250 个），再加上接口自己的键，比如查余额 `okx:/api/v5/account/balance`（每秒 5 个）。查余额的请求要两个额度都有名额才发出。多个 HTTP 客户端共享同一个限流器（`Arc`）时，额度是进程级的，而不是每个连接各有一份。
+**多个键。** 一个限流器有一个默认额度和若干按键的额度，一个请求可以带多个键，同时等待它们（`await_keys_ready`）。OKX 的 HTTP 客户端给每个请求都带上全局键 `okx:global`（每秒 250 个），再加上接口自己的键，比如查余额 `okx:/api/v5/account/balance`（每秒 5 个）。查余额的请求要两个额度都有名额才发出。多个 HTTP 客户端共享同一个限流器（`Arc`）时，额度是进程级的，而不是每个连接各有一份。还要注意默认额度的含义：没有单独配置额度的键，每个键各用一份默认额度，各自计数，而不是所有键合用一份（第 8 节实测）；想要一个全局上限，就像 OKX 那样显式地给每个请求带上同一个全局键。
 
 ## 3. WebSocket 客户端的内部 {#websocket}
 
@@ -68,17 +68,26 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
 ## 5. 重连 {#reconnect}
 
-重连等待用指数退避加抖动，默认参数是：初始 2 秒、上限 30 秒、倍数 1.5、抖动 0～100 毫秒，而且**第一次重连立即进行**。所以一次断线之后，各次尝试前的等待大约是：
+重连等待用指数退避加抖动，参数默认是：初始 2 秒、上限 30 秒、倍数 1.5、抖动 0～100 毫秒，而且退避序列的**第一个值是 0**（立即）。单看退避器本身，依次给出的等待是：
 
 ```text
-0 → 2.0 s → 3.0 s → 4.5 s → 6.75 s → 10.1 s → 15.2 s → 22.8 s → 30 s → 30 s …（每次另加 0～100 ms）
+0 → 2.0 s → 3.0 s → 4.5 s → 6.75 s → 10.1 s → 15.2 s → 22.8 s → 约 30 s → 约 30 s …（前几次另加 0～100 ms，封顶后在 29.9～30 s 之间）
 ```
 
-默认不限次数。三条额外的规则：
+但控制器什么时候向退避器要这个值，要分情况看（`websocket/client.rs` 里控制器的重连分支，第 8 节有实测）：
 
-- **稳定阈值**：新连接保持 10 秒以上，退避和次数都重置。所以偶尔断一次总是从“立即重连”开始。
-- **节流**：任意两分钟的滑动窗口内已经有 3 次重连尝试时，此后每次至少等 1 秒，不论退避算出多少。原因是交易所按 IP 限制新建连接的频率（官方文档举例，币安是每 5 分钟 300 个，OKX 是每秒 3 个），一个不加节流的重连循环可能把一次短暂断线变成整个 IP 被封。
-- **次数上限**：配置了 `reconnect_max_attempts` 时，连续失败（或连上不到 10 秒又断）达到这个次数，客户端关闭。设为 0 表示断了就关闭，不重连。
+- **丢的是首次建立的连接，或者是一条已经稳定了 10 秒以上的连接**：不取退避值，等待为 0，立即重连。稳定 10 秒以上时，还会先把退避器和尝试次数重置。
+- **丢的是一条由重连建立、还不到 10 秒的连接**：等待退避器的下一个值。
+- **一次重连尝试失败**（比如连接被拒绝）：先等退避器的下一个值，然后回到循环开头再判断一次，这时按第一条规则等待为 0。
+
+再叠加一条**节流**：控制器在每次尝试之前（循环开头）检查，任意两分钟的滑动窗口内已经有 3 次重连尝试时，把这一次的等待抬到至少 1 秒。原因是交易所按 IP 限制新建连接的频率（官方文档举例，币安是每 5 分钟 300 个，OKX 是每秒 3 个），一个不加节流的重连循环可能把一次短暂断线变成整个 IP 被封。
+
+几条规则合在一起，两种常见情形下的实际节奏是：
+
+- **交易所拒绝连接**，每次尝试都失败：前两次尝试立即进行（一次是第一条规则，一次是退避的 0），之后的间隔是 2.0、3.0 + 1、4.5 + 1、6.75 + 1……秒。节流的 1 秒是在退避等待之后**另加**的，因为失败分支先等退避值，回到循环开头时等待为 0，被节流抬成 1 秒。
+- **每次都能连上，但很快又被断开**：前两次同样立即，之后是 2.0、3.0、4.5……秒，节流只把不到 1 秒的等待抬到 1 秒，不再额外相加。
+
+默认不限次数。配置了 `reconnect_max_attempts` 时，连续的尝试次数（稳定 10 秒以上会清零）达到这个次数，客户端关闭。设为 0 表示断了就关闭，不重连。
 
 重连成功后，交易所那边的订阅和登录状态都没了。网络层提供两个辅助：`AuthTracker` 在断线时把认证状态标记为失效，可以让重连缓冲里的消息等到重新认证后再发；`SubscriptionState` 记录已确认、待订阅、待退订的主题，由适配器据此重新订阅。网络层自己不发任何协议消息。
 
@@ -104,11 +113,161 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
 这意味着“包头里写长度”的二进制协议（比如富途 OpenD：44 字节的包头里带包体长度）不能直接用它，要自己写一个按长度分帧的编解码器，连接本身仍然通过网络层建立，以便沿用 TLS 和套接字选项。第 38 章的富途方案就是这样做的。
 
+## 8. 动手验证 {#lab}
+
+限流器、退避器和 WebSocket 客户端都能脱离交易所单独运行。实验先直接调用限流器和退避器，再在本机起一个 WebSocket 服务，让它反复断开客户端，从服务端和客户端两边记录时间。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch33_network.rs" download><code>ch33_network.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch33_network`。下面的输出原样摘录，毫秒数每次运行略有不同。整个程序要跑约 1 分钟。
+:::
+
+**GCRA。**
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch33_network.rs#gcra
+
+```text
+per_second(10), 12 requests released at (ms): 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 202
+keys [global 10/s, balance 2/s], 5 requests at (ms): 0, 0, 507, 1002, 1512
+default per_second(2): key a allowed [true, true, false], key b allowed [true, true, false]
+```
+
+第一行就是第 2 节的手算：前 10 个请求在 0 毫秒放行，第 11 个约在 100 毫秒，第 12 个约在 200 毫秒。第二行是一个请求同时带两个键：每秒 10 个的全局键不构成约束，每秒 2 个的接口键决定节奏，突发 2 个、之后每 500 毫秒一个。第三行说明默认额度按键各算各的：`a` 和 `b` 都没有单独的额度，各自都能突发 2 个。
+
+**退避序列。** 直接调用 `ExponentialBackoff`，参数取 WebSocket 客户端的默认值：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch33_network.rs#backoff
+
+```text
+backoff (2 s, 30 s, x1.5, jitter 100 ms, immediate first): 0.00 → 2.08 → 3.01 → 4.50 → 6.76 → 10.21 → 15.19 → 22.84 → 29.94 → 29.99 → 29.96
+per_second(10), 12 requests released at (ms): 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 111, 202
+keys [global 10/s, balance 2/s], 5 requests at (ms): 0, 0, 507, 1002, 1512
+default per_second(2): key a allowed [true, true, false], key b allowed [true, true, false]
+-- server accepts, then drops each connection
+       3 ms  server: accepted connection #1
+       5 ms  client state: Connected
+     110 ms  client state: Disconnected
+     110 ms  server: accepted connection #2
+     319 ms  client state: Connected
+     319 ms  client state: Disconnected
+     320 ms  server: accepted connection #3
+     527 ms  client state: Connected
+     528 ms  client state: Disconnected
+    2575 ms  server: accepted connection #4
+    2783 ms  client state: Connected
+    2783 ms  client state: Disconnected
+    5857 ms  server: accepted connection #5
+    6073 ms  client state: Connected
+    6073 ms  client state: Disconnected
+   10609 ms  server: accepted connection #6
+   10817 ms  client state: Connected
+   21614 ms  client state: Disconnected
+   22616 ms  server: accepted connection #7
+   22834 ms  client state: Connected
+   22834 ms  client state: Disconnected
+   23839 ms  server: accepted connection #8
+   24057 ms  client state: Connected
+-- server refuses connections for 20 s
+       1 ms  client state: Connected
+     103 ms  client state: Disconnected
+     103 ms  client log: Reconnect attempt 1 failed
+     104 ms  client log: Reconnect attempt 2 failed
+     104 ms  client log: Backing off for 2.029s...
+    2237 ms  client log: Reconnect attempt 3 failed
+    2238 ms  client log: Backing off for 3.044s...
+    5388 ms  client log: Backing off for 1s...
+    6391 ms  client log: Reconnect attempt 4 failed
+    6391 ms  client log: Backing off for 4.502s...
+   10998 ms  client log: Backing off for 1s...
+   12002 ms  client log: Reconnect attempt 5 failed
+   12002 ms  client log: Backing off for 6.818s...
+   18927 ms  client log: Backing off for 1s...
+   19934 ms  client log: Reconnect attempt 6 failed
+   19934 ms  client log: Backing off for 10.224s...
+   20107 ms  server: listening again
+   30262 ms  client log: Backing off for 1s...
+   31264 ms  server: accepted
+   31474 ms  client state: Connected
+```
+
+第一个值是 0，之后每次乘 1.5 再加 0～100 毫秒的抖动，到上限后在 29.9～30 秒之间。
+
+**连接总是被断开。** 本机的服务端接受连接后，前 5 条只保持 100 毫秒，第 6 条保持 11 秒，之后再来两条：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch33_network.rs#server
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch33_network.rs#reconnect
+
+```text
+       3 ms  server: accepted connection #1
+       5 ms  client state: Connected
+     110 ms  client state: Disconnected
+     110 ms  server: accepted connection #2
+     319 ms  client state: Connected
+     319 ms  client state: Disconnected
+     320 ms  server: accepted connection #3
+     527 ms  client state: Connected
+     528 ms  client state: Disconnected
+    2575 ms  server: accepted connection #4
+    2783 ms  client state: Connected
+    2783 ms  client state: Disconnected
+    5857 ms  server: accepted connection #5
+    6073 ms  client state: Connected
+    6073 ms  client state: Disconnected
+   10609 ms  server: accepted connection #6
+   10817 ms  client state: Connected
+   21614 ms  client state: Disconnected
+   22616 ms  server: accepted connection #7
+   22834 ms  client state: Connected
+   22834 ms  client state: Disconnected
+   23839 ms  server: accepted connection #8
+   24057 ms  client state: Connected
+```
+
+按第 5 节的规则逐条对照：
+
+- 第 1 条是首次建立的连接，断开后立即重连，得到第 2 条。
+- 第 2 条是重连建立的、只活了 0.2 秒，取退避的第一个值 0，又立即重连，得到第 3 条。
+- 第 3、4、5 条之后分别等了约 2.0、3.1、4.5 秒。
+- 第 6 条稳定了 11 秒，断开时退避被重置，等待本该是 0，但两分钟内已有多次尝试，被节流抬到 1 秒，第 7 条在 1.0 秒后连上。
+- 第 7 条又很快断开，重置后的退避第一个值是 0，同样被节流抬到 1 秒。
+
+每次断开只发布一次 `Disconnected`，每次连上发布一次 `Connected`。另外可以看到，重连时服务端接受连接之后约 0.2 秒客户端才报告 `Connected`；首次连接只差 2 毫秒。
+
+**交易所拒绝连接。** 第一条连接 100 毫秒后被断开，端口随即关闭 20 秒，再重新监听。客户端每次失败都会打一条 WARN，实验把这些日志连同时间一起收集起来：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch33_network.rs#refused
+
+```text
+       1 ms  client state: Connected
+     103 ms  client state: Disconnected
+     103 ms  client log: Reconnect attempt 1 failed
+     104 ms  client log: Reconnect attempt 2 failed
+     104 ms  client log: Backing off for 2.029s...
+    2237 ms  client log: Reconnect attempt 3 failed
+    2238 ms  client log: Backing off for 3.044s...
+    5388 ms  client log: Backing off for 1s...
+    6391 ms  client log: Reconnect attempt 4 failed
+    6391 ms  client log: Backing off for 4.502s...
+   10998 ms  client log: Backing off for 1s...
+   12002 ms  client log: Reconnect attempt 5 failed
+   12002 ms  client log: Backing off for 6.818s...
+   18927 ms  client log: Backing off for 1s...
+   19934 ms  client log: Reconnect attempt 6 failed
+   19934 ms  client log: Backing off for 10.224s...
+   20107 ms  server: listening again
+   30262 ms  client log: Backing off for 1s...
+   31264 ms  server: accepted
+   31474 ms  client state: Connected
+```
+
+前两次尝试在断线的同一毫秒里失败，之后每次失败都先“Backing off”退避值（2.0、3.0、4.5、6.8、10.2 秒），从第 4 次起又多一条“Backing off for 1s”，那是节流叠加上去的 1 秒。端口在 20 秒时恢复，但客户端正在等 10.2 秒的退避，直到约 31 秒才连上。`Disconnected` 只在断线时发布了一次，中间 6 次失败都没有产生事件。
+
 ::: warning 常见误区
 - **以为 WebSocket 的 `send` 返回成功就是交易所收到了。** 它只表示进入了写入队列。
 - **对绑定纪元的写入超时后直接重发。** 结果不确定，可能重复下单，要交给对账确认。
 - **只配置心跳，以为能发现行情断流。** 交易所回 Pong 就会重置心跳超时，要发现行情断流得配置空闲超时。
 - **把重连上限设成 0 以为是“无限重连”。** 0 表示不重连；默认（不设置）才是无限。
+- **按退避序列直接推算重连时刻。** 首次断线和稳定连接断线不走退避，失败的尝试还会叠加节流的 1 秒，实际节奏见第 5 节和第 8 节。
 - **每个 HTTP 客户端各建一个限流器。** 额度会成倍放大，应共享同一个限流器。
 - **以为重连后订阅会自动恢复。** 网络层只记录订阅意图，重新订阅由适配器完成。
 - **用 `SocketClient` 接一个按长度分帧的协议。** 它只支持后缀分帧。
@@ -116,7 +275,7 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
 ## 本章结论
 
-网络层为 HTTP、WebSocket 和后缀分帧的 TCP 各提供一个客户端，适配器在其上只做协议翻译。限流用 GCRA，每个键只存一个理论到达时间，额度表示为“突发上限加补充间隔”，一个请求可以同时等待多个键。WebSocket 客户端由控制器、写入、读取、心跳四个任务组成，所有写入经同一个写入任务；心跳超时检测对面沉默，空闲超时检测行情断流。断线后按“立即、2 秒起、1.5 倍、上限 30 秒、加抖动”的退避重连，稳定 10 秒后重置，两分钟内超过 3 次则每次至少等 1 秒。连接状态的变化以 `SocketStateChanged` 事件发布到总线，组件也可以用 `ReconnectSocket` 命令请求重连。
+网络层为 HTTP、WebSocket 和后缀分帧的 TCP 各提供一个客户端，适配器在其上只做协议翻译。限流用 GCRA，每个键只存一个理论到达时间，额度表示为“突发上限加补充间隔”，一个请求可以同时等待多个键。WebSocket 客户端由控制器、写入、读取、心跳四个任务组成，所有写入经同一个写入任务；心跳超时检测对面沉默，空闲超时检测行情断流。断线后先立即重连，之后按“2 秒起、1.5 倍、上限 30 秒、加抖动”的退避等待，稳定 10 秒后重置；两分钟内已有 3 次尝试时，每次等待至少 1 秒，连接被拒绝时这 1 秒还会叠加在退避之后。连接状态的变化以 `SocketStateChanged` 事件发布到总线，组件也可以用 `ReconnectSocket` 命令请求重连。
 
 ## 检查理解
 
@@ -132,7 +291,7 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
    <details><summary>参考答案</summary>
 
-   第一次立即尝试（10:00:00），失败后等 2 秒、3 秒、4.5 秒、6.75 秒（各加不到 0.1 秒的抖动），但两分钟内第 4 次起受节流约束，每次至少等 1 秒，这里退避本来就大于 1 秒，不受影响。第五次尝试大约在 10:00:16.3 前后成功。连上 5 秒后又断，不满 10 秒稳定阈值，退避不重置，下一次等待接着是约 10.1 秒；同时两分钟内已有多次尝试，节流仍然生效。
+   按第 5 节的规则，失败的尝试之间：第 1、2 次立即（10:00:00），之后等 2.0 秒做第 3 次（约 10:00:02.0），再等 3.0 + 1 秒做第 4 次（约 10:00:06.1），再等 4.5 + 1 秒做第 5 次（约 10:00:11.6），这一次成功。第 8 节的实验（端口拒绝连接）测到的正是这个节奏：第 3、4、5 次尝试分别在断线后约 2.1、6.3、11.9 秒。连上 5 秒后又断，这条连接是重连建立的、不满 10 秒，退避不重置，等待退避的下一个值约 6.75 秒（加抖动），节流不再额外相加。
 
    </details>
 
@@ -148,6 +307,7 @@ GCRA 不维护一个“桶里还剩几个令牌”的计数器，而是给每个
 
 - 官方文档：[Networking](https://nautilustrader.io/docs/latest/concepts/networking/)
 - 源码：[`crates/network/src/ratelimiter/gcra.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/ratelimiter/gcra.rs) · [`crates/network/src/backoff.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/backoff.rs) · [`crates/network/src/websocket/client.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/websocket/client.rs) · [`crates/network/src/socket/client.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/socket/client.rs) · [`crates/live/src/socket.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/socket.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch33_network.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 网络会断，请求会超时，交易所的回报会丢。本地状态和交易所的真实状态迟早会不一致。下一章看实盘节点怎样发现并修正这种不一致。[第 34 章：ExecutionManager 与对账](./reconciliation.md)。

@@ -113,6 +113,60 @@ description: 实盘节点怎样把异步 I/O 的消息送回核心线程：7 对
 
 怎么读这张图：中间一列是 `select!` 的分支，从上到下优先级递减；右边是每类消息交给谁。底部一行是启动顺序，注意数据客户端在执行客户端之前，对账在 Trader 之前。
 
+## 6. 动手验证 {#lab}
+
+不接任何交易所，也能把一个 `LiveNode` 跑起来：没有客户端，连接和对账几步瞬间完成，事件循环、Trader、计时器照常工作。实验在节点上挂一个 Actor，启动时设一个 400 毫秒的计时器；另开一个线程，1 秒后调用 `LiveNodeHandle::stop()`；每个回调都记下时间和所在线程的名字。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch30_live_node.rs" download><code>ch30_live_node.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch30_live_node`。下面的输出原样摘录，毫秒数每次运行略有不同。
+:::
+
+Actor 只记录，不做别的事：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch30_live_node.rs#actor
+
+节点用 `get_runtime().block_on(node.run())` 在主线程上运行，这正是 Python 绑定的做法（第 29 章第 4 节）。同一个线程上还试着建第二个节点：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch30_live_node.rs#run
+
+`delay_post_stop` 为 0 时的完整输出：
+
+```text
+== 0
+delay_post_stop = 0ns
+second node on the same thread: A LiveNode already exists or is being built on this thread; drop it before building another
+      32.7 ms  run() called [thread main]
+      33.6 ms  on_start [thread main]
+      33.7 ms  threads now: ch30_live_node ×1, logging ×1, stopper ×1, tokio-rt-worker ×4 [thread main]
+     437.5 ms  on_time_event #1 (tick) [thread main]
+     838.1 ms  on_time_event #2 (tick) [thread main]
+    1041.6 ms  handle.stop() [thread stopper]
+    1043.1 ms  on_stop, timers left = ["tick"] [thread main]
+    1045.0 ms  run() returned, state = Stopped [thread main]
+```
+
+再看宽限期分别是 2 秒和默认值时，停止前后的几行：
+
+```text
+delay_post_stop = 2s
+    1042.1 ms  handle.stop() [thread stopper]
+    1044.1 ms  on_stop, timers left = ["tick"] [thread main]
+    3050.9 ms  run() returned, state = Stopped [thread main]
+delay_post_stop = 10s
+    1033.9 ms  handle.stop() [thread stopper]
+    1132.7 ms  on_stop, timers left = ["tick"] [thread main]
+   11144.6 ms  run() returned, state = Stopped [thread main]
+```
+
+能读出这些事：
+
+- **所有回调都在主线程上。** `on_start`、两次 `on_time_event`、`on_stop` 都标着 `[thread main]`，也就是调用 `run()` 的那个线程。计时器在 Tokio 工作线程上等待，事件经 channel 回到核心线程才执行（第 32 章）。
+- **线程分布和第 29 章一致。** 节点启动后进程里有主线程（线程列表里显示为程序名 `ch30_live_node`）、4 个 `tokio-rt-worker`、名为 `logging` 的日志线程，以及实验自己开的 `stopper` 线程。
+- **一个线程只能有一个节点。** 第二次 `build` 直接返回错误。
+- **停止请求最多等一个检查周期。** `stop()` 只是设置一个标志，由每 100 毫秒一次的停止检查发现，所以 `on_stop` 比 `stop()` 晚几毫秒到 100 毫秒不等。
+- **`run()` 在 `on_stop` 之后再过 `delay_post_stop` 才返回。** 0、2 秒、10 秒三种设置，`run()` 返回的时间分别比 `on_stop` 晚约 0、2、10 秒，状态都是 `Stopped`。
+- **宽限期里组件的计时器已经停了。** `on_stop` 被调用时计时器还在（`timers left = ["tick"]`），但之后 2 秒、10 秒的宽限期里再也没有 `on_time_event`：组件停止时它的计时器随之取消。宽限期是留给订单回报这类“残余事件”的（第 5 节），不是让策略继续跑的。
+
 ::: warning 常见误区
 - **以为风控放行后立即调用执行客户端。** 命令先进交易命令 channel，下一轮循环才处理。
 - **以为高频行情会让订单回报排队。** 执行事件优先于数据事件。
@@ -156,6 +210,7 @@ description: 实盘节点怎样把异步 I/O 的消息送回核心线程：7 对
 
 - 官方文档：[Live Trading](https://nautilustrader.io/docs/latest/concepts/live/) · [Architecture](https://nautilustrader.io/docs/latest/concepts/architecture/)
 - 源码：[`crates/live/src/node/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/node/mod.rs) · [`crates/live/src/runner.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/runner.rs) · [`crates/common/src/runner.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/runner.rs) · [`crates/common/src/live/runner.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/runner.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch30_live_node.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 适配器在 Tokio 上 spawn 的那些后台任务，停止时怎样保证在期限内收尾？下一章看 `TaskGroup`。[第 31 章：任务管理](./task-management.md)。

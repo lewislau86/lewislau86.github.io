@@ -73,7 +73,7 @@ loop {
 - 固定间隔的计时器用的是 Tokio `interval` 的默认行为，会**连续补发**错过的触发，每个事件的 `ts_event` 仍是网格上原来的时间点。心跳计时器卡了 2 分钟之后，会紧接着收到 4 个事件，时间戳分别是被错过的那 4 个 30 秒整点。
 - 日程类计时器**只补发一次**：立即发出被错过的那个时间点（保留它原来的时间戳），然后跳到“现在之后”的第一个时间点。
 
-**开始时间已经过去。** 如果计时器启动时，第一次触发时间已经在过去（比如设了一个开始时间是 5 分钟前的计时器），会记一条警告，把第一次触发调整为“现在”，立即触发一次。例外是第一次触发恰好等于结束时间的情况：这时保留原来的时间，以免越过结束边界。
+**开始时间已经过去。** 如果计时器启动时，第一次触发时间已经在过去（比如设了一个开始时间是 5 分钟前的计时器），要看 `allow_past`：为真（默认值）时记一条警告，把第一次触发调整为“现在”，立即触发一次；为假时 `set_timer` 直接返回错误。例外是第一次触发恰好等于结束时间的情况：这时保留原来的时间，以免越过结束边界。
 
 **结束时间。** 结束时间是闭区间：恰好等于结束时间的那次会触发，并且是最后一次。下一次时间超出 `UnixNanos` 能表示的范围时，也视为最后一次。
 
@@ -108,12 +108,102 @@ loop {
 
 怎么读这张图：左边是核心线程，右边是工作线程，中间的 channel 是唯一的通道。下方的时间轴标出了三个时间：计划时间、事件构造时间、回调执行时间。
 
+## 6. 动手验证 {#lab}
+
+实验不启动节点，直接建一个 `LiveClock`，给它一个自己写的时间事件发送端，把事件转进一个标准库 channel；主线程扮演核心线程，从 channel 里取消息并调用 `dispatch()`，和事件循环做的事一样。回调是一个持有 `Rc` 的线程局部回调（第 4 节表里的第二种），记下事件的两个时间戳、回调时的“现在”和自己在哪个线程上执行。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs" download><code>ch32_live_clock.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `NAUTILUS_WORKER_THREADS=1 cargo run --example ch32_live_clock`。下面的输出原样摘录，毫秒数每次运行略有不同。只开 1 个 Tokio 工作线程，是为了在 C 段能把计时器任务所在的线程整个堵住。
+:::
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#sender
+
+**时间戳不重复。** 4 个线程各读 20 万次 `AtomicTime`：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#atomic
+
+```text
+AtomicTime: 800000 reads on 4 threads, unique = 800000, strictly increasing per thread = true
+```
+
+80 万个值没有一个重复，每个线程读到的序列都严格递增。
+
+**固定间隔计时器的三种情况。** 一个 100 毫秒的计时器，先让核心线程正常收取，再让核心线程忙 500 毫秒，最后把 Tokio 工作线程堵住 500 毫秒：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#fixed
+
+```text
+A. responsive core thread, 100 ms timer:
+  tick   ts_event=+ 200.0 ms  ts_init-ts_event=  2.75 ms  callback-ts_init=  0.24 ms  core thread=true
+  tick   ts_event=+ 300.0 ms  ts_init-ts_event=  9.29 ms  callback-ts_init=  0.08 ms  core thread=true
+  tick   ts_event=+ 400.0 ms  ts_init-ts_event=  9.73 ms  callback-ts_init=  0.07 ms  core thread=true
+  tick   ts_event=+ 500.0 ms  ts_init-ts_event=  6.29 ms  callback-ts_init=  0.07 ms  core thread=true
+B. core thread busy for 500 ms, then drained 5 queued events:
+  tick   ts_event=+ 600.0 ms  ts_init-ts_event=  1.87 ms  callback-ts_init=467.52 ms  core thread=true
+  tick   ts_event=+ 700.0 ms  ts_init-ts_event=  7.32 ms  callback-ts_init=362.08 ms  core thread=true
+  tick   ts_event=+ 800.0 ms  ts_init-ts_event=  3.98 ms  callback-ts_init=265.42 ms  core thread=true
+  tick   ts_event=+ 900.0 ms  ts_init-ts_event=  4.82 ms  callback-ts_init=164.59 ms  core thread=true
+  tick   ts_event=+1000.0 ms  ts_init-ts_event=  7.08 ms  callback-ts_init= 62.32 ms  core thread=true
+C. Tokio worker blocked for 500 ms:
+  tick   ts_event=+1100.0 ms  ts_init-ts_event=477.11 ms  callback-ts_init=  0.09 ms  core thread=true
+  tick   ts_event=+1200.0 ms  ts_init-ts_event=377.17 ms  callback-ts_init=  0.04 ms  core thread=true
+  tick   ts_event=+1300.0 ms  ts_init-ts_event=277.18 ms  callback-ts_init=  0.04 ms  core thread=true
+  tick   ts_event=+1400.0 ms  ts_init-ts_event=177.19 ms  callback-ts_init=  0.03 ms  core thread=true
+  tick   ts_event=+1500.0 ms  ts_init-ts_event= 77.20 ms  callback-ts_init=  0.02 ms  core thread=true
+  tick   ts_event=+1600.0 ms  ts_init-ts_event= 11.37 ms  callback-ts_init=  0.07 ms  core thread=true
+```
+
+时间都相对于建时钟的时刻。三段对应第 3 节和第 5 节的说法：
+
+- **A，正常情况。** `ts_event` 落在 100 毫秒的网格上（开始时间是 +100 毫秒，第一次触发是开始时间再加一个间隔）。`ts_init - ts_event` 是 Tokio 唤醒计时器任务的延迟，这台虚拟机上是 2～10 毫秒；`callback - ts_init` 是事件在 channel 里的排队时间，不到 0.3 毫秒。
+- **B，核心线程忙。** 工作线程照常按时发出事件（`ts_init` 仍然紧跟网格），5 个事件在 channel 里排队，核心线程空下来后一口气处理掉，排队时间从约 470 毫秒依次递减。回调连续执行 5 次，每次拿到的都是各自的 `ts_event`。
+- **C，工作线程被堵。** 这次是计时器任务本身没法运行。恢复后，Tokio 的 `interval` 连续补发了错过的触发：5 个事件的 `ts_event` 仍是网格上的整点，`ts_init` 却挤在同一时刻（`ts_event` 加上约 477、377、277、177、77 毫秒，正好都是恢复的那一刻）。这就是第 3 节说的“连续补发”。
+
+**开始时间已经过去。**
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#past
+
+```text
+D. start time 5 min ago, allow_past=false -> Err("Timer 'late' next event time 2026-11-20T06:41:26.196158166+00:00 would be in the past (current time is 1795157185196159332)")
+    [log WARN] Timer 'late' alert time 2026-11-20T06:41:26.196158166+00:00 was in the past, adjusted to current time for immediate fire
+   start time 5 min ago, allow_past=true  -> Ok(())
+   events within 50 ms:
+  late   ts_event=+   0.3 ms  ts_init-ts_event=  1.28 ms  callback-ts_init=  0.08 ms  core thread=true
+```
+
+`allow_past` 设为假时，`set_timer_ns` 直接返回错误；设为真（也是默认值）时记一条 WARN，第一次触发调整到“现在”，`ts_event` 就是设置计时器之后不到 1 毫秒。
+
+**单次提醒与同名替换。** 先设一个 +300 毫秒的提醒，在 +100 毫秒时用同一个名字再设一个 +500 毫秒的：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#alert
+
+```text
+    [log WARN] Timer 'alert' replaced
+E. alert at +300 ms, replaced at +100 ms by same-name alert at +500 ms:
+  alert  ts_event=+ 500.0 ms  ts_init-ts_event=  2.78 ms  callback-ts_init=  0.18 ms  core thread=true
+   timers left: []
+```
+
+只触发了一次，在 +500 毫秒；旧的那个被替换掉，并记了一条 `Timer 'alert' replaced` 的 WARN。触发之后计时器表是空的：单次提醒就是一个到点即结束的计时器。
+
+**取消之后已经在路上的事件。**
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch32_live_clock.rs#cancel
+
+```text
+F. cancel after one fire: dispatched 1 queued event(s), 0 afterwards
+   callbacks:
+  tick   ts_event=+ 100.0 ms  ts_init-ts_event=  1.56 ms  callback-ts_init= 50.46 ms  core thread=true
+```
+
+计时器触发一次、事件已经进了 channel 之后才取消，这个事件照样被派发，回调照样执行；此后不再有新的事件。和第 4 节的“租约”说法一致。
+
 ::: warning 常见误区
 - **以为实盘的时间戳可能重复。** `AtomicTime` 保证严格递增，系统时间回调时也不会倒退。
 - **以为计时器回调在工作线程上执行。** 除了没有发送端的 Python 回调，都回到核心线程执行。
 - **在回调里用 `timestamp_ns()` 判断是哪一个时间点。** 用事件的 `ts_event`。
 - **以为卡顿之后固定间隔计时器只会触发一次。** 它会连续补发错过的触发；日程类计时器才只补一次。
-- **设一个开始时间在过去的计时器，以为会从下一个整点开始。** 它会立即触发一次，并记警告。
+- **设一个开始时间在过去的计时器，以为会从下一个整点开始。** 默认会立即触发一次并记警告；`allow_past` 为假时直接报错。
 - **以为单次提醒和计时器是两套机制。** 提醒就是一个只触发一次的计时器。
 - **以为取消计时器后不会再收到它的事件。** 已经发进 channel 的事件仍会执行。
 :::
@@ -152,6 +242,7 @@ loop {
 
 - 官方文档：[Live Trading](https://nautilustrader.io/docs/latest/concepts/live/)
 - 源码：[`crates/common/src/live/clock.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/clock.rs) · [`crates/common/src/live/timer.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/timer.rs) · [`crates/common/src/timer.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/timer.rs) · [`crates/core/src/time.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/core/src/time.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch32_live_clock.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 计时器之外，工作线程上最主要的工作是网络 I/O。下一章看网络层的 HTTP、WebSocket 和 Socket 客户端。[第 33 章：网络层](./networking.md)。

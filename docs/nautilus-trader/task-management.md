@@ -127,9 +127,63 @@ pub(crate) async fn terminate_tasks(tasks: &TaskGroup, owner: &str) -> anyhow::R
 
 - **`TaskSlot<T>`**：持有一个任务，保留输出类型 `T`；
 - **`SharedTaskSlot<T>`**：同上，供多个克隆共享同一个任务的客户端使用，并保证并发的收尾请求是串行的；
-- **`finish_task(slot, 优雅期限, 强制期限)`**：和 `finish_shutdown` 同样的两段等待，返回 `TaskJoinOutcome`：`Completed(T)`（正常完成，带结果）、`Aborted`（被所有者取消）、`Failed`（panic 或连接错误）、`Incomplete`（超时，任务仍留在槽里）。
+- **`finish_task(slot, 优雅期限, 强制期限)`**：两段有界等待，但没有优雅取消信号：先等优雅期限，到期直接中止任务，再等强制期限。返回 `TaskJoinOutcome`：`Completed(T)`（正常完成，带结果）、`Aborted`（被强制中止）、`Failed`（panic 或连接错误）、`Incomplete`（中止后仍未结束，任务留在槽里）。第 7 节的实验分别得到了其中三种。
 
 更底层的 `TaskHandles`（`crates/common`）只是一个装 `JoinHandle<()>` 的容器，提供 `abort_all`、`take_all` 等方法，不规定任何关闭策略，给需要自己定义策略的组件用。
+
+## 7. 动手验证 {#lab}
+
+把第 4 节的时间线放到秒表下面看。实验用和 OKX 一样的期限（优雅 1 秒、强制 2 秒），分别关闭三种任务：会听优雅取消的、不听但会在 `.await` 处让出的、卡在同步调用里的。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch31_task_group.rs" download><code>ch31_task_group.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch31_task_group`。下面的输出原样摘录，毫秒数每次运行略有不同。
+:::
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch31_task_group.rs#shutdown
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch31_task_group.rs#cases
+
+```text
+cooperative     finish_shutdown after    206 ms -> Ok(()); task finished = true
+ignores-cancel  finish_shutdown after   1012 ms -> Ok(()); task finished = true
+blocking        finish_shutdown after   3011 ms -> Err("task shutdown timed out with 1 task(s) still owned"); task finished = false
+after timeout: len = 1, start_generation -> Err("prior task group generation has not fully drained")
+second finish_shutdown -> Ok(()); start_generation -> Ok(())
+```
+
+三种任务正好落在时间线的三个位置：
+
+- 会配合的任务收到优雅取消后清理 200 毫秒退出，`finish_shutdown` 在约 0.2 秒返回成功。
+- 不听优雅取消的任务等满 1 秒的优雅期限，被强制取消在 `.await` 处丢弃，约 1.0 秒返回成功。所以强制取消并不算错误，`finish_shutdown` 的结果仍是 `Ok`。
+- 卡在 `std::thread::sleep` 里的任务连强制取消也丢不掉，在 1 + 2 = 3 秒时返回 `Timeout`，组里还留着 1 个任务，`start_generation` 被拒绝。等它自己睡醒（5 秒）后再调用一次 `finish_shutdown`，这一代才排空，新的一代才能打开。
+
+准入、代和 panic：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch31_task_group.rs#admission
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch31_task_group.rs#panic
+
+```text
+finish_shutdown while open -> Err("task group admission is still open")
+spawn after begin_shutdown -> Err("task group admission is closed")
+new generation open = true; old spawner.spawn -> Err("task group admission is closed"); group.spawn -> Ok(())
+panicking task -> Err("task shutdown observed join failures: task 'reader' (4) panicked: bad frame")
+```
+
+没有 `begin_shutdown` 就 `finish_shutdown` 会得到 `StillOpen`；关门之后的 `spawn` 被拒绝；新的一代打开后，旧一代取出的 `TaskSpawner` 仍然进不去，组本身可以正常 `spawn`。panic 被包装层捕获，在关闭时作为 `Join` 错误报告出来，带着任务名 `reader` 和 panic 信息。
+
+最后是 `TaskSlot` 和 `finish_task`：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch31_task_group.rs#slot
+
+```text
+slot, returns 42 -> Completed(42)
+after  112 ms: slot, sleeps 60 s -> Aborted
+slot, blocks 500 ms -> Incomplete
+same slot, asked again -> Completed(0)
+```
+
+`finish_task` 和 `finish_shutdown` 有一点不同：它没有优雅取消信号可发，只是先等优雅期限，到期就直接中止任务，再等强制期限。所以睡 60 秒的任务在约 0.1 秒时得到 `Aborted`。同步阻塞的任务中止不掉，得到 `Incomplete`，任务仍留在槽里；过一会儿再问一次，它已经自己跑完，结果是 `Completed(0)`。中止请求只能在 `.await` 处生效，任务在那之前就返回了，返回值照样交回来。
 
 ::: warning 常见误区
 - **在同步的 `stop()` 里 `await` 任务结束。** 同步方法只调用 `begin_shutdown`，等待放到异步的 `disconnect` 里。
@@ -174,6 +228,7 @@ pub(crate) async fn terminate_tasks(tasks: &TaskGroup, owner: &str) -> anyhow::R
 
 - 官方文档：[Adapters 开发指南](https://nautilustrader.io/docs/latest/developer_guide/adapters/)（Task management）
 - 源码：[`crates/live/src/task.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/task.rs) · [`crates/common/src/live/task.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/task.rs) · [`crates/adapters/okx/src/common/task.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/adapters/okx/src/common/task.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch31_task_group.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 实时计时器也是 Tokio 上的任务，它们到点后怎样把事件送回核心线程？下一章看 `LiveClock`。[第 32 章：LiveClock 与实时计时器](./live-clock.md)。

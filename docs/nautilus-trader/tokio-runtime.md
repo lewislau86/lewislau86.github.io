@@ -94,6 +94,77 @@ pub fn get_runtime() -> &'static tokio::runtime::Runtime {
 
 Python 扩展模块加载时，会用 `atexit` 注册一个退出函数，在解释器退出时调用 `shutdown_runtime(10 秒)`。不过从源码看，这个函数做的事很少：它在运行时上执行一次带 10 秒超时的 `yield_now`，让调度器转一圈就返回。运行时本身是一个静态变量，永远不会被 drop；工作线程随进程结束由操作系统回收。所以真正保证“关闭时任务收尾干净”的，不是这个函数，而是节点的 `stop` 流程和第 31 章的 `TaskGroup`。
 
+## 7. 动手验证 {#lab}
+
+前面几节的说法都能在一个小程序里直接看到。全局运行时一个进程只能建一次，所以实验把每个场景放进一个子进程里跑，主进程只负责依次启动它们、打印输出。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch29_runtime.rs" download><code>ch29_runtime.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch29_runtime`。下面的输出原样摘录，毫秒数每次运行略有不同。
+:::
+
+**懒创建与线程数。** 第一次调用 `get_runtime()` 之前和之后，各列一次进程里的线程名（读 Linux 的 `/proc/self/task`）：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch29_runtime.rs#lazy
+
+```text
+available CPUs: 4
+== lazy 
+before get_runtime: ch29_runtime ×1
+after  get_runtime: ch29_runtime ×1, tokio-rt-worker ×4 (num_workers = 4)
+== lazy NAUTILUS_WORKER_THREADS=2 
+before get_runtime: ch29_runtime ×1
+after  get_runtime: ch29_runtime ×1, tokio-rt-worker ×2 (num_workers = 2)
+== lazy NAUTILUS_WORKER_THREADS=zero 
+before get_runtime: ch29_runtime ×1
+after  get_runtime: ch29_runtime ×1, tokio-rt-worker ×4 (num_workers = 4)
+```
+
+调用之前进程里只有主线程，运行时确实是第一次用到时才建的。机器有 4 个 CPU，默认就是 4 个工作线程；`NAUTILUS_WORKER_THREADS=2` 把它变成 2 个；设成不是数字的值时被忽略，回到默认。工作线程在系统里的名字是 `tokio-rt-worker`，用 `top -H` 或调试器看线程时认的就是它。
+
+**注入的两个限制。**
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch29_runtime.rs#inject
+
+```text
+== inject 
+set_runtime(current_thread) -> Err (runtime handed back)
+set_runtime(multi_thread, 3 workers) -> Ok
+get_runtime().num_workers = 3
+set_runtime again -> Err (runtime handed back)
+== late-inject 
+get_runtime() first, then set_runtime -> Err (runtime handed back)
+```
+
+单线程运行时被拒绝，多线程的被接受，之后 `get_runtime()` 返回的就是注入的那个（3 个工作线程）。全局运行时一旦存在，不论是注入的还是 `get_runtime()` 懒创建的，再注入都会失败，传进去的运行时原样还回来。
+
+**在同步代码里调用异步函数。** 在三种线程上分别试一遍：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch29_runtime.rs#bridge
+
+```text
+== bridge 
+[main thread] block_on_nautilus -> 1
+[main thread] tokio::spawn -> panic: there is no reactor running, must be called from the context of a Tokio 1.x runtime
+[main thread] get_runtime().spawn -> 2
+[nautilus worker] get_runtime().block_on -> panic: Cannot start a runtime from within a runtime. This happens because a function (like `block_on`) attempted to block the current thread while the thread is being used to drive asynchronous tasks. If you are in an async function, use `.await` on the future instead of blocking on it.
+[nautilus worker] block_on_nautilus -> 3
+[other current_thread rt] block_on_nautilus -> panic: block_on_nautilus cannot run inside a current-thread Tokio runtime; use block_on_nautilus_with
+[other current_thread rt] block_on_nautilus_with -> 4
+```
+
+三种情况和第 3 节的表一一对应：在普通线程上 `tokio::spawn` 找不到运行时，`get_runtime().spawn` 可以；在 Nautilus 的工作线程上直接 `block_on` 触发 Tokio 的“运行时里启动运行时”，`block_on_nautilus` 改用 `block_in_place` 后正常返回；在别的单线程运行时里，`block_on_nautilus` 主动 panic 并提示改用 `block_on_nautilus_with`，后者在临时线程上完成。
+
+**两个运行时。** 模拟 `#[tokio::main]`：自己建一个 2 线程的运行时驱动 `main`，里面再碰一下 `get_runtime()`：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch29_runtime.rs#two-runtimes
+
+```text
+== two-runtimes 
+threads: ch29_runtime ×1, main-rt-worker ×2, tokio-rt-worker ×4
+```
+
+两组工作线程同时存在，一共 6 个，这就是第 4 节说的“Rust 节点默认有两个运行时”。
+
 ::: warning 常见误区
 - **在异步上下文里调用 `get_runtime().block_on`。** 会因为“运行时里启动运行时”而 panic，用 `block_on_nautilus` 系列函数。
 - **在适配器里写 `tokio::spawn`。** 从 Python 线程调用时没有 Tokio 上下文，会 panic；要用 `get_runtime().spawn`，或者第 31 章的 `TaskGroup`。
@@ -138,6 +209,7 @@ NautilusTrader 把代码分成同步内核和异步 I/O 两边，13 个核心 cr
 
 - 官方文档：[Rust 开发指南](https://nautilustrader.io/docs/latest/developer_guide/rust/)（Async code 一节） · [Live Trading](https://nautilustrader.io/docs/latest/concepts/live/)
 - 源码：[`crates/common/src/live/runtime.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/runtime.rs) · [`crates/pyo3/src/lib.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/pyo3/src/lib.rs) · [`crates/live/src/python/node.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/python/node.rs) · [`.pre-commit-hooks/check_tokio_usage.sh`](https://github.com/nautechsystems/nautilus_trader/blob/develop/.pre-commit-hooks/check_tokio_usage.sh)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch29_runtime.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 核心线程上的那个事件循环是怎样从 channel 里取消息的？下一章看 `LiveNode` 和 `AsyncRunner`。[第 30 章：LiveNode 与 AsyncRunner](./live-node.md)。

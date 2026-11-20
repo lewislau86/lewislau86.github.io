@@ -1,0 +1,23 @@
+[package]
+name = "live-lab"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100.0"
+
+# All NautilusTrader crates pinned to the commit the book was checked against.
+# With a local clone, `path = "/path/to/nautilus_trader/crates/<name>"` works too.
+[dependencies]
+nautilus-common = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["live"] }
+nautilus-core = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-live = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-model = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-network = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+anyhow = "1"
+futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
+log = "0.4"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
+tokio-tungstenite = "0.30"
+ustr = "1"
+
+[profile.dev]
+debug = false

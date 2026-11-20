@@ -2116,8 +2116,8 @@ def websocket_client():
     b += arrow(394, 303, 472, 303, GRAY)
     b += text(204, 346, "失败 / Close / 超时 / 请求", 14, ORANGE, limit=240)
     b += text(530, 346, "达到次数上限", 14, GRAY, limit=160)
-    b += text(44, 378, "等待：0 → 2 → 3 → 4.5 → 6.75 → … → 30 秒（+0～100 ms 抖动）", 14, INK, anchor="start", limit=570)
-    b += text(44, 402, "连上满 10 秒重置；两分钟内 ≥ 3 次则每次至少 1 秒", 14, GRAY, anchor="start", limit=570)
+    b += text(44, 378, "实测等待：0 → 0 → 2 → 3 → 4.5 → … → 30 秒（+0～100 ms 抖动）", 14, INK, anchor="start", limit=570)
+    b += text(44, 402, "连上满 10 秒重置；两分钟内 ≥ 3 次后每次至少 1 秒（失败时另加）", 14, GRAY, anchor="start", limit=570)
     b += text(44, 424, "心跳超时：任何帧重置；空闲超时：只有应用数据重置", 14, GRAY, anchor="start", limit=570)
     # right: state edges
     b += rect(652, 236, 284, 200, "white", BLUE, rx=12)
@@ -2126,7 +2126,7 @@ def websocket_client():
         b += text(794, 290 + i * 22, l, 14, INK if i not in (5, 6) else ORANGE, limit=270)
     svg("websocket-client.svg", "WebSocket 客户端的结构与重连",
         "上半部分：适配器的发送经限流器交给唯一的写入任务，心跳也经写入任务，读取任务把消息交回适配器并丢弃旧纪元的帧，传输层可选 tungstenite 或 sockudo-ws。"
-        "左下是控制器的状态：Active、Reconnecting、Closed，以及默认的重连等待序列、稳定阈值和节流。右下是状态边沿经节点变成总线事件，以及反向的重连命令。",
+        "左下是控制器的状态：Active、Reconnecting、Closed，以及实测的重连等待序列、稳定阈值和节流。右下是状态边沿经节点变成总线事件，以及反向的重连命令。",
         456, b)
 
 
