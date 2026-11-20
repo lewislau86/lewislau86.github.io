@@ -41,7 +41,7 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 9 章 · Rust 策略的框架与运行机制](./rust-strategy.md)：一个最小策略要写什么；你写的、`nautilus_strategy!` 宏生成的、框架默认实现的三部分怎样拼成一个策略；`StrategyCore` 与 `StrategyConfig`；注册到 `Trader` 时接上了什么；生命周期；下单 API 与路由；关联订单、GTD、市场退出等托管功能；在回测和实盘里跑起来
 - [第 10 章 · 回调：一条消息怎样变成 on_xxx](./callbacks.md)：回调的六类来源；订阅时登记了什么（按 ID 取组件的闭包、总线订阅、数据引擎的引用计数）；一条报价怎样走到 `on_quote`；一笔成交怎样依次触发 `on_order_filled`、`on_order_event`、`on_position_opened`；计时器和生命周期回调；回调里能做什么、不能做什么；Python 回调和 Rust 回调的差别
 - [第 11 章 · K 线聚合器](./bar-aggregation.md)：`BarType` 字符串怎样决定 K 线从成交、报价还是更小的 K 线合成；`subscribe_bars` 之后 `DataEngine` 建了哪个聚合器、订了什么；`BarBuilder` 怎样累计；按笔数、成交量、成交额、失衡、连续、Renko、时间七种关闭规则；时间 K 线的定时器、时间戳与配置；组合 K 线与历史聚合；用 69,806 笔真实成交跑出来的实验
-- [第 12 章 · 指标](./indicators.md)：内置指标在哪、按什么分类、为什么用 `f64`；`Indicator` trait 和 EMA、SMA、MACD、ATR 的实现细节；自己喂和注册给框架两种用法；`Indicators` 注册表怎样在 `on_bar` 之前更新指标、出错和停止时怎样处理；Rust 注册要打开的特性；Python 注册的指标每次更新怎样穿过语言边界；怎样预热；怎样自己写一个指标
+- [第 12 章 · 指标](./indicators.md)：内置指标在哪、按什么分类、为什么用 `f64`；`Indicator` trait 和 EMA、SMA、MACD、ATR 的实现细节；自己喂和注册给框架两种用法；`Indicators` 注册表怎样在 `on_bar` 之前更新指标、出错和停止时怎样处理；Rust 注册要打开的特性；Python 注册的指标每次更新怎样穿过语言边界；怎样预热；动手从零写一个指标：定规格、实现、rstest 与 proptest 单元测试、在回测里和独立算法逐根对账，Rust 和纯 Python 各做一遍
 - [第 13 章 · Actor、执行算法与配置](./actors-and-config.md)：`DataActor`、`Strategy`、`ExecutionAlgorithm` 三种组件的能力边界；写一个 Rust Actor；用信号和自定义数据在组件之间通信；TWAP 怎样把一张主单拆成 `-E1`、`-E2`…子单；配置结构体的默认值与两条构造路径；日志线程与 `NAUTILUS_LOG`
 
 ## 第三部分 · 内核组件
@@ -65,23 +65,17 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 27 章 · 行为模型：成交、手续费、延迟与保证金](./behavioral-models.md)：成交模型的两个概率参数与合成订单簿；挂单、吃单佣金的计算；延迟模型的到达时间与结算点；模拟模块；Trait、Any 与 Handle 三种形态
 - [第 28 章 · 报告、统计与可视化](./reports-and-statistics.md)：`BacktestResult` 的内容；三类统计各用什么输入；组合收益与仓位收益两条序列；夏普、期望值、盈亏比的公式与细节；自定义统计；Python 报表与业绩报告
 
-## 规划中的章节
+## 第五部分 · 实盘与 Tokio 运行时
 
-下面几部分尚未成文，先列出每章要回答的问题和对应的源码，写作时按这个顺序推进。内核组件的每章都按同一个顺序展开：它持有什么数据、对外暴露哪些入口（总线端点、主题、trait 方法）、一条典型消息怎样流过它、回测和实盘下有什么不同、扩展时容易踩的坑。
-
-### 第五部分 · 实盘与 Tokio 运行时
-
-| 章 | 主题 | 要回答的问题 | 主要源码 |
-| --- | --- | --- | --- |
-| 29 | 全局 Tokio 运行时 | 为什么全进程只有一个运行时；`get_runtime()` 的懒初始化、`NAUTILUS_WORKER_THREADS`、`set_runtime` 注入；Python 下的初始化与退出；哪些后台工作不在 Tokio 上（日志线程） | `crates/common/src/live/runtime.rs` |
-| 30 | LiveNode 与 AsyncRunner：核心线程上的事件循环 | 7 对 channel 和它们的优先级；发送端怎样存在线程局部里；`run` 与 `run_async`；启动和关闭的顺序 | `crates/live/src/{node,runner.rs}`、`crates/common/src/live/{runner,sender}.rs` |
-| 31 | 任务管理：TaskGroup 与有界关闭 | 为什么不准直接 `tokio::spawn`；`TaskGroup`、`TaskSlot` 怎样把任务挂在所有者上；关闭时怎样在期限内收尾 | `crates/live/src/task.rs`、`crates/common/src/live/task.rs` |
-| 32 | LiveClock 与实时计时器 | 实时计时器怎样由 Tokio 调度、到点后经 channel 回到核心线程；`AtomicTime` 的严格单调 | `crates/common/src/live/{clock,timer}.rs` |
-| 33 | 网络层：HTTP、WebSocket 与 Socket 客户端 | 重连、退避、心跳；GCRA 限流；Socket 状态怎样发布、重连命令怎样下达；适配器怎样复用这一层 | `crates/network/src/`、`crates/live/src/socket.rs` |
-| 34 | ExecutionManager：实盘执行管理与对账 | 启动对账和持续对账；订单、成交、持仓三类报告怎样合成本地事件；“结果未知”的命令怎样收尾 | `crates/live/src/execution/`、`crates/live/src/node/reconciliation.rs` |
-| 35 | 订单簿同步与恢复 | 增量流断档时怎样发现、怎样用快照恢复；一致性检查 | `crates/live/src/book/` |
-| 36 | 外部后端：Redis、PostgreSQL 与外部消息流 | 缓存怎样异步落盘、重启时怎样恢复；消息总线怎样把指定主题发布到 Redis 流、再从外部流收回 | `crates/infrastructure/src/{redis,sql}/`、`crates/common/src/msgbus/external/`、`crates/common/src/live/listener.rs` |
-| 37 | 确定性仿真测试：让异步代码可重放 | DST 怎样替换 Tokio 的时间、任务和网络原语；`make cargo-test-sim` 跑什么；为什么官方适配器要求它 | `crates/common/src/live/dst.rs`、`crates/network/src/dst/` |
+- [第 29 章 · 全局 Tokio 运行时](./tokio-runtime.md)：同步内核与异步 I/O 的界线；懒初始化的全局运行时、`NAUTILUS_WORKER_THREADS` 与 `set_runtime`；`block_on_nautilus` 系列桥接函数；Rust 和 Python 节点的线程分布；不准直接 `tokio::spawn` 的约定
+- [第 30 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环](./live-node.md)：7 对 channel 与 biased select 的优先级；防饿死的两个标记；线程局部的发送端；先连数据、再连执行、对账、再启动 Trader；维护计时器；宽限期与断开顺序
+- [第 31 章 · 任务管理：TaskGroup 与有界关闭](./task-management.md)：先登记后运行；按“代”隔离连接；`begin_shutdown` 与 `finish_shutdown` 的两段取消、两个期限；超时后仍持有任务；`TaskSlot` 与 `finish_task`
+- [第 32 章 · LiveClock 与实时计时器](./live-clock.md)：`AtomicTime` 的比较交换；每个计时器一个任务；固定间隔与日程两种节奏、错过时的补发；回调与令牌怎样回到核心线程；`ts_event`、`ts_init` 与回调时间
+- [第 33 章 · 网络层：HTTP、WebSocket 与 Socket 客户端](./networking.md)：GCRA 限流与多键等待；WebSocket 的四个任务与连接纪元；心跳超时与空闲超时；重连退避、稳定阈值与节流；`SocketStateChanged` 与重连命令；TCP 的后缀分帧
+- [第 34 章 · ExecutionManager：实盘执行管理与对账](./reconciliation.md)：四种执行报告；启动对账的五步与拒绝启动；缺少报告不等于空仓；外部订单的归属；在途、未结订单、仓位三种检查；`RetainUnresolved` 与 `ResolveLocally`
+- [第 35 章 · 订单簿同步与恢复](./book-sync.md)：用序号发现断档；`BookSync` 的三个阶段与“必须有负责者”；标记、请求、认领、运行；快照闸门；180 秒 8 次再到 15 分钟的重试；输出契约
+- [第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流](./external-backends.md)：不阻塞的成批写入；Redis 的键与事件列表；两种后端的持久化范围；消息总线的出站 `XADD` 与入站 `XREAD`；采集节点加策略节点的例子
+- [第 37 章 · 确定性仿真测试：让异步代码可重放](./dst.md)：madsim 替换时间、任务、运行时和信号；时钟、随机数、迭代顺序、`biased;` 等接缝；确定性契约；提交前钩子的七条规则；`MADSIM_TEST_SEED` 重放；DST 的边界
 
 ## 第六部分 · 接入券商
 
@@ -89,7 +83,7 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 
 这一章会用到前面所有部分：数据和执行引擎、对账、网络层、任务管理和确定性仿真测试。放在最后，是把它当作综合实战；只想先接入券商的读者，读完导读也可以直接读，遇到没讲过的组件再回头查。
 
-### 第七部分 · Python 层（规划中）
+## 第七部分 · Python 层（规划中）
 
 | 章 | 主题 | 要回答的问题 | 主要源码 |
 | --- | --- | --- | --- |
@@ -120,10 +114,10 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | Accounting、Portfolio | 第 7 章；第 22 章 |
 | Reports、Visualization | 第 28 章 |
 | Actors、Strategies | 第 9、10、12、13 章；第 23 章（生命周期） |
-| Cache、Message Bus | 第 16 章；第 15 章 |
+| Cache、Message Bus | 第 16 章；第 15 章；第 36 章（外部后端） |
 | Configuration、Logging | 第 13 章 |
 | Backtesting、Behavioral Models | 第 24、26、27 章 |
-| Live Trading | 第五部分（第 29～37 章） |
-| Adapters、Networking | 第 38 章；第 33 章 |
+| Live Trading | 第 29～34 章；第 36 章 |
+| Adapters、Networking | 第 38 章；第 33、35 章 |
 | DST | 第 37 章 |
 | 开发指南 Adapters | 第 38 章（全文翻译） |

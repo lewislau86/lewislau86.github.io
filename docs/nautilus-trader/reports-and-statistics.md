@@ -5,7 +5,7 @@ description: 回测结束后 BacktestResult 里有什么；Portfolio 的统计�
 
 # 第 28 章：报告、统计与可视化
 
-[全书目录](./index.md) · [上一章](./behavioral-models.md) · [下一篇](./futu-adapter.md)
+[全书目录](./index.md) · [上一章](./behavioral-models.md) · [下一章](./tokio-runtime.md)
 
 ::: tip 本章学习目标
 能说出一次回测结束后有哪些结果可看、各自从哪里来；能解释三类统计（盈亏、收益、一般）分别用什么数据计算；知道统计用的收益序列在什么条件下是“组合日收益”、什么条件下退回“仓位收益”；能手算胜率、期望值、夏普比率，知道 NautilusTrader 的夏普比率不扣无风险利率、盈亏比是用收益而不是盈亏算的；会注册一个自定义统计；知道报表和业绩报告目前只在 Python 里有。
@@ -201,4 +201,4 @@ create_tearsheet(engine=engine, output_path="backtest_results.html")
 - 源码：[`crates/analysis/src/analyzer.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/analysis/src/analyzer.rs) · [`crates/analysis/src/statistic.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/analysis/src/statistic.rs) · [`crates/analysis/src/statistics/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/analysis/src/statistics) · [`crates/backtest/src/result.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/backtest/src/result.rs) · [`python/nautilus_trader/analysis/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/python/nautilus_trader/analysis)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
-第四部分到这里结束。第五部分（实盘与 Tokio 运行时）还在规划中，下一篇已成文的章节是第六部分的综合实战：[第 38 章：增加一个券商：以富途为例](./futu-adapter.md)。
+第四部分到这里结束。第五部分离开历史数据，进入实盘：网络、真实时间和并发。先看所有异步工作共用的那个 Tokio 运行时。[第 29 章：全局 Tokio 运行时](./tokio-runtime.md)。

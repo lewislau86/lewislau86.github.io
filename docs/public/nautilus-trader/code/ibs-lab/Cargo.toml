@@ -1,0 +1,25 @@
+[package]
+name = "ibs-lab"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100.0"
+
+# All NautilusTrader crates pinned to the commit the book was checked against.
+# With a local clone, `path = "/path/to/nautilus_trader/crates/<name>"` works too.
+[dependencies]
+nautilus-backtest = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-common = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["indicators"] }
+nautilus-core = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-execution = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-indicators = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-model = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["test-support"] }
+anyhow = "1"
+jiff = "0.2"
+
+[dev-dependencies]
+proptest = "1"
+rstest = "0.28"
+
+# No debug info: keeps target/ at about 1.6 GB instead of several times that.
+[profile.dev]
+debug = false

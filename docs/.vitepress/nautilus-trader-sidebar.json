@@ -163,35 +163,43 @@
     ]
   },
   {
-    "text": "规划中 · 第五部分 · 实盘与 Tokio 运行时",
-    "collapsed": true,
+    "text": "第五部分 · 实盘与 Tokio 运行时",
     "items": [
       {
-        "text": "第 29 章 · 全局 Tokio 运行时"
+        "text": "第 29 章 · 全局 Tokio 运行时",
+        "link": "/nautilus-trader/tokio-runtime"
       },
       {
-        "text": "第 30 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环"
+        "text": "第 30 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环",
+        "link": "/nautilus-trader/live-node"
       },
       {
-        "text": "第 31 章 · 任务管理：TaskGroup 与有界关闭"
+        "text": "第 31 章 · 任务管理：TaskGroup 与有界关闭",
+        "link": "/nautilus-trader/task-management"
       },
       {
-        "text": "第 32 章 · LiveClock 与实时计时器"
+        "text": "第 32 章 · LiveClock 与实时计时器",
+        "link": "/nautilus-trader/live-clock"
       },
       {
-        "text": "第 33 章 · 网络层：HTTP、WebSocket 与 Socket 客户端"
+        "text": "第 33 章 · 网络层：HTTP、WebSocket 与 Socket 客户端",
+        "link": "/nautilus-trader/networking"
       },
       {
-        "text": "第 34 章 · ExecutionManager：实盘执行管理与对账"
+        "text": "第 34 章 · ExecutionManager：实盘执行管理与对账",
+        "link": "/nautilus-trader/reconciliation"
       },
       {
-        "text": "第 35 章 · 订单簿同步与恢复"
+        "text": "第 35 章 · 订单簿同步与恢复",
+        "link": "/nautilus-trader/book-sync"
       },
       {
-        "text": "第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流"
+        "text": "第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流",
+        "link": "/nautilus-trader/external-backends"
       },
       {
-        "text": "第 37 章 · 确定性仿真测试：让异步代码可重放"
+        "text": "第 37 章 · 确定性仿真测试：让异步代码可重放",
+        "link": "/nautilus-trader/dst"
       }
     ]
   },

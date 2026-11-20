@@ -1932,6 +1932,409 @@ def analysis_pipeline():
         452, b)
 
 
+def tokio_runtime_threads():
+    b = text(480, 36, "一个实盘节点的线程分布", 19, INK, "bold", limit=920)
+    # left: tokio workers
+    b += rect(24, 64, 290, 360, "teal", TEAL, rx=14)
+    b += text(169, 92, "全局 Tokio 运行时", 16, TEAL, "bold", limit=270)
+    b += text(169, 116, "get_runtime()，工作线程 × N", 14, GRAY, limit=270)
+    for i, (t, d) in enumerate([("WebSocket 读写", "行情、订单回报"), ("HTTP 请求", "下单、查询、对账"),
+                                 ("重连与心跳", "网络层后台任务"), ("实时计时器", "等待到点")]):
+        b += box(44, 134 + i * 70, 250, 58, [t, d], "white", TEAL, 14, mono_from=9)
+    # middle: core thread
+    b += rect(352, 64, 290, 360, "blue", BLUE, rx=14)
+    b += text(497, 92, "核心线程", 16, BLUE, "bold", limit=270)
+    b += text(497, 116, "Python：调用 run() 的线程", 14, GRAY, limit=270)
+    b += text(497, 138, "Rust：驱动 main 的线程", 14, GRAY, limit=270)
+    for i, (t, d) in enumerate([("LiveNode 事件循环", "AsyncRunner 从 channel 取消息"), ("引擎、缓存、组合", "Rc<RefCell<…>>，只在此线程"),
+                                 ("策略、Actor 回调", "Python 策略回调时取 GIL")]):
+        b += box(372, 160 + i * 84, 250, 66, [t, d], "white", BLUE, 14, mono_from=9)
+    # right: logging
+    b += rect(680, 64, 256, 160, "white", GRAY, rx=14)
+    b += text(808, 92, "日志线程 logging", 16, INK, "bold", limit=236)
+    b += text(808, 120, "普通操作系统线程", 14, GRAY, limit=236)
+    b += text(808, 144, "不属于 Tokio", 14, GRAY, limit=236)
+    b += text(808, 176, "写终端和文件", 14, INK, limit=236)
+    b += text(808, 200, "磁盘 I/O 不阻塞核心线程", 14, INK, limit=236)
+    b += rect(680, 244, 256, 180, "white", ORANGE, rx=14, dash=True)
+    b += text(808, 272, "通信方式", 16, ORANGE, "bold", limit=236)
+    for i, l in enumerate(["行情、订单事件 → channel", "命令 → 客户端的发送通道", "日志事件 → std mpsc", "没有跨线程共享的", "可变状态"]):
+        b += text(808, 302 + i * 24, l, 14, INK, limit=236)
+    # arrows
+    b += arrow(314, 220, 350, 220, ORANGE, both=True)
+    b += arrow(642, 150, 678, 150, ORANGE)
+    b += text(480, 450, "13 个同步核心 crate 不依赖 Tokio（提交前钩子检查）；适配器用 get_runtime().spawn，不用 tokio::spawn", 14, GRAY, limit=910)
+    svg("tokio-runtime-threads.svg", "实盘节点的线程分布",
+        "左边是全局 Tokio 运行时的工作线程，运行 WebSocket、HTTP、重连心跳和实时计时器；中间是核心线程，运行节点事件循环、引擎、缓存、组合和策略回调；"
+        "右边是独立的日志线程。三者之间只通过 channel 通信。",
+        470, b)
+
+
+def live_node_loop():
+    b = text(480, 36, "LiveNode 的事件循环：biased select 从上到下取消息", 19, INK, "bold", limit=920)
+    # left: producers
+    b += rect(24, 62, 220, 396, "teal", TEAL, rx=14)
+    b += text(134, 88, "Tokio 工作线程", 15, TEAL, "bold", limit=200)
+    prods = [("实时计时器", 150), ("网络层", 196), ("执行客户端", 252), ("策略 / 风控", 298), ("外部消息流", 330), ("数据客户端", 372)]
+    for t, y in prods:
+        b += text(134, y + 5, t, 14, INK, limit=200)
+    # middle: select branches
+    branches = [
+        ("信号 SIGINT / SIGTERM", GRAY), ("停止检查（100 ms）", GRAY), ("关闭截止时间", GRAY), ("待派发回调", GRAY),
+        ("维护计时器（100 ms）", ORANGE), ("时间事件", BLUE), ("系统事件 / 系统命令", BLUE), ("执行事件", BLUE),
+        ("交易命令", BLUE), ("外部消息总线入站", BLUE), ("数据事件", BLUE), ("数据命令", BLUE),
+    ]
+    y0 = 66
+    for i, (t, c) in enumerate(branches):
+        y = y0 + i * 32
+        b += rect(300, y, 300, 28, "white" if c == GRAY else ("orange" if c == ORANGE else "blue"), c, rx=6)
+        b += text(450, y + 19, f"{i + 1}. {t}", 14, INK, limit=290)
+    b += arrow(280, 70, 280, 440, GRAY)
+    b += text(268, 456, "优先", 14, GRAY, anchor="end")
+    b += arrow(244, 155, 298, 245, TEAL)
+    b += arrow(244, 201, 298, 277, TEAL)
+    b += arrow(244, 257, 298, 309, TEAL)
+    b += arrow(244, 303, 298, 341, TEAL)
+    b += arrow(244, 335, 298, 373, TEAL)
+    b += arrow(244, 377, 298, 405, TEAL)
+    # right: consumers
+    b += rect(650, 62, 286, 396, "white", BLUE, rx=14)
+    b += text(793, 88, "核心线程上的去向", 15, BLUE, "bold", limit=266)
+    outs = ["维护：对账、清理、审计、队列监控", "时间事件 → 组件回调", "系统 → 套接字状态 / 重连",
+            "执行事件 → ExecEngine.process", "交易命令 → 风控 / 执行引擎", "外部消息 → 本地总线", "数据事件 → DataEngine",
+            "数据命令 → DataEngine"]
+    for i, o in enumerate(outs):
+        b += text(793, 124 + i * 40, o, 14, INK, limit=270)
+    b += text(793, 430, "防饿死：skip_time、skip_data", 14, GRAY, limit=270)
+    b += text(793, 450, "每 64 次派发 yield 一次", 14, GRAY, limit=270)
+    # bottom: startup
+    b += rect(24, 476, 912, 92, "white", ORANGE, rx=12)
+    b += text(44, 502, "启动", 15, ORANGE, "bold", "start")
+    b += text(96, 502, "缓存 → 绑定发送端 → 内核 start → 连接数据客户端 → 品种灌入缓存 → 连接执行客户端 → 对账 → start_trader → 运行", 14, INK, anchor="start", limit=830)
+    b += text(44, 538, "停止", 15, ORANGE, "bold", "start")
+    b += text(96, 538, "停 Trader（on_stop）→ 宽限期 delay_post_stop 处理残余事件 → 并行收尾报告任务与断开客户端 → 内核 finalize_stop", 14, INK, anchor="start", limit=830)
+    svg("live-node-loop.svg", "LiveNode 的事件循环",
+        "左边是 Tokio 工作线程上的消息来源；中间是 biased select 的 12 个分支，从上到下优先级递减：信号、停止检查、关闭截止时间、待派发回调、维护计时器、时间事件、系统事件与命令、执行事件、交易命令、外部消息、数据事件、数据命令；"
+        "右边是每类消息在核心线程上的去向。底部是启动和停止的顺序。",
+        588, b)
+
+
+def task_group():
+    b = text(480, 36, "TaskGroup 的一代任务：先登记后运行，两段有界关闭", 19, INK, "bold", limit=920)
+    b += box(40, 70, 220, 84, ["Open", "spawn：锁内登记 → 再运行", "TaskSpawner 绑定本代"], "teal", TEAL, 15, mono_from=9)
+    b += box(370, 70, 220, 84, ["Closing", "拒绝新任务", "等待任务结束"], "orange", ORANGE, 15, mono_from=9)
+    b += box(700, 70, 220, 84, ["Drained", "全部结束", "失败信息已取走"], "blue", BLUE, 15, mono_from=9)
+    b += arrow(260, 112, 368, 112, ORANGE)
+    b += text(314, 102, "begin_shutdown", 14, ORANGE, limit=110, mono=True)
+    b += arrow(590, 112, 698, 112, BLUE)
+    b += text(644, 102, "排空", 14, BLUE, limit=100)
+    b += poly_arrow([(810, 154), (810, 186), (150, 186), (150, 156)], TEAL)
+    b += text(480, 206, "start_generation：只有上一代 Drained 且为空时，才换上全新的一代", 14, TEAL, limit=700)
+    # timeline
+    b += text(40, 256, "finish_shutdown(优雅期限, 强制期限) 的时间轴", 15, INK, "bold", "start")
+    x0, x1, x2, x3 = 60, 300, 600, 900
+    b += arrow(x0, 300, x3, 300, GRAY)
+    for x, lab in [(x0, "0"), (x1, "优雅期限"), (x2, "优雅 + 强制期限")]:
+        b += f'<line x1="{x}" y1="292" x2="{x}" y2="308" stroke="{INK}" stroke-width="1.5"/>'
+        b += text(x, 326, lab, 14, INK, limit=160)
+    b += rect(x0 + 4, 340, x1 - x0 - 8, 70, "teal", TEAL, rx=8)
+    b += text((x0 + x1) / 2, 366, "优雅取消令牌已触发", 14, TEAL, "bold", limit=228)
+    b += text((x0 + x1) / 2, 390, "任务自己监听、自行退出", 14, INK, limit=228)
+    b += rect(x1 + 4, 340, x2 - x1 - 8, 70, "orange", ORANGE, rx=8)
+    b += text((x1 + x2) / 2, 366, "触发强制取消令牌", 14, ORANGE, "bold", limit=288)
+    b += text((x1 + x2) / 2, 390, "包装层 select! 直接丢弃 future", 14, INK, limit=288)
+    b += rect(x2 + 4, 340, x3 - x2 - 8, 70, "white", GRAY, rx=8, dash=True)
+    b += text((x2 + x3) / 2, 366, "仍未结束 → Timeout", 14, INK, "bold", limit=288)
+    b += text((x2 + x3) / 2, 390, "保持 Closing，继续持有剩余任务", 14, INK, limit=288)
+    b += text(480, 444, "任何时刻全部结束 → Drained；任务 panic 或意外取消 → 记为失败，以 Join 错误返回", 14, GRAY, limit=900)
+    b += text(480, 468, "OKX：begin_shutdown → finish_shutdown(1 秒, 2 秒)", 14, GRAY, limit=900)
+    svg("task-group.svg", "TaskGroup 的状态与两段关闭",
+        "上面是一代任务的三个状态：Open 接受新任务，begin_shutdown 后进入 Closing，所有任务结束后进入 Drained，之后 start_generation 换上新的一代。"
+        "下面是 finish_shutdown 的时间轴：优雅期限内等待任务自行退出，之后触发强制取消，再在强制期限内等待，仍未结束则返回 Timeout 并保留任务。",
+        490, b)
+
+
+def live_timer():
+    b = text(480, 36, "一个实时计时器：任务在工作线程上等待，回调在核心线程上执行", 19, INK, "bold", limit=920)
+    b += rect(24, 62, 360, 300, "blue", BLUE, rx=14)
+    b += text(204, 88, "核心线程", 16, BLUE, "bold", limit=340)
+    b += box(44, 104, 320, 60, ["策略 on_start", "clock.set_timer(\"heartbeat\", 30 秒)"], "white", BLUE, 14, mono_from=9)
+    b += box(44, 184, 320, 60, ["LiveClock", "取消同名旧计时器 → 建 LiveTimer → start()"], "white", BLUE, 14, mono_from=9)
+    b += box(44, 274, 320, 70, ["事件循环取出 TimeEvent", "凭回调或令牌找到回调，执行", "on_time_event(event)"], "white", BLUE, 14, mono_from=9)
+    b += arrow(204, 164, 204, 182, BLUE)
+    b += rect(576, 62, 360, 300, "teal", TEAL, rx=14)
+    b += text(756, 88, "Tokio 工作线程", 16, TEAL, "bold", limit=340)
+    b += box(596, 104, 320, 70, ["计时器任务（每个计时器一个）", "固定间隔：interval_at，错过连续补发", "日程：睡到下一个时间点，错过补一次"], "white", TEAL, 14, mono_from=9)
+    b += box(596, 194, 320, 70, ["到点：构造 TimeEvent", "ts_event = 计划时间", "ts_init = 实际读到的时间"], "white", TEAL, 14, mono_from=9)
+    b += box(596, 284, 320, 60, ["按回调类型发出", "Send 回调随事件走；Rc 回调只发令牌"], "white", TEAL, 14, mono_from=9)
+    b += arrow(756, 174, 756, 192, TEAL)
+    b += arrow(756, 264, 756, 282, TEAL)
+    b += arrow(364, 214, 594, 139, ORANGE)
+    b += text(480, 160, "spawn 到全局运行时", 14, ORANGE, limit=200)
+    b += arrow(594, 314, 366, 309, ORANGE)
+    b += text(480, 296, "时间事件 channel", 14, ORANGE, "bold", limit=200)
+    # timeline
+    y = 410
+    b += arrow(60, y, 900, y, GRAY)
+    pts = [(200, "ts_event", "计划时间 10:00:00.000"), (470, "ts_init", "任务构造事件 +0.4 ms"), (760, "回调执行", "核心线程取出 +3 ms")]
+    for x, t, d in pts:
+        b += f'<circle cx="{x}" cy="{y}" r="6" fill="{ORANGE}"/>'
+        b += text(x, y - 16, t, 14, ORANGE, "bold", limit=200)
+        b += text(x, y + 26, d, 14, INK, limit=260)
+    b += text(335, y + 52, "Tokio 调度延迟", 14, GRAY, limit=200)
+    b += text(615, y + 52, "channel 排队时间", 14, GRAY, limit=200)
+    svg("live-timer.svg", "实时计时器的生命周期",
+        "左边核心线程上，策略调用 set_timer，LiveClock 建 LiveTimer 并 spawn 一个任务；右边工作线程上，任务等待到点，构造带 ts_event 和 ts_init 的 TimeEvent，按回调类型发进时间事件 channel；"
+        "核心线程的事件循环取出事件并执行回调。底部时间轴标出计划时间、构造时间和回调执行时间之间的两段延迟。",
+        480, b)
+
+
+def websocket_client():
+    b = text(480, 36, "WebSocketClient：四个任务、重连与状态边沿", 19, INK, "bold", limit=920)
+    b += box(24, 70, 150, 64, ["适配器", "send / 回调"], "white", GRAY, 15, mono_from=9)
+    b += box(214, 70, 150, 64, ["限流器", "GCRA 多键等待"], "orange", ORANGE, 15, mono_from=9)
+    b += box(404, 70, 170, 64, ["写入任务", "唯一写端；重连缓冲重放"], "blue", BLUE, 15, mono_from=9)
+    b += box(404, 150, 170, 56, ["心跳任务", "Ping 或文本 ping"], "white", BLUE, 15, mono_from=9)
+    b += box(214, 150, 150, 56, ["读取任务", "旧纪元的帧丢弃"], "white", BLUE, 15, mono_from=9)
+    b += box(614, 96, 150, 80, ["传输层", "tungstenite /", "sockudo-ws"], "white", GRAY, 15, mono_from=9)
+    b += box(804, 96, 132, 80, ["交易所", "WebSocket", "端点"], "white", GRAY, 15, mono_from=9)
+    b += arrow(174, 102, 212, 102, ORANGE)
+    b += arrow(364, 102, 402, 102, BLUE)
+    b += arrow(489, 150, 489, 136, BLUE)
+    b += arrow(574, 110, 612, 120, BLUE)
+    b += poly_arrow([(689, 176), (689, 222), (289, 222), (289, 208)], BLUE)
+    b += arrow(214, 178, 100, 136, BLUE)
+    b += arrow(764, 136, 802, 136, GRAY, both=True)
+    # controller
+    b += rect(24, 236, 600, 200, "white", TEAL, rx=12)
+    b += text(44, 262, "控制器：连接状态", 15, TEAL, "bold", "start")
+    b += box(44, 280, 120, 46, ["Active"], "teal", TEAL, 15)
+    b += box(244, 280, 150, 46, ["Reconnecting"], "orange", ORANGE, 15)
+    b += box(474, 280, 130, 46, ["Closed"], "white", GRAY, 15)
+    b += arrow(164, 296, 242, 296, ORANGE)
+    b += arrow(242, 312, 166, 312, TEAL)
+    b += arrow(394, 303, 472, 303, GRAY)
+    b += text(204, 346, "失败 / Close / 超时 / 请求", 14, ORANGE, limit=240)
+    b += text(530, 346, "达到次数上限", 14, GRAY, limit=160)
+    b += text(44, 378, "等待：0 → 2 → 3 → 4.5 → 6.75 → … → 30 秒（+0～100 ms 抖动）", 14, INK, anchor="start", limit=570)
+    b += text(44, 402, "连上满 10 秒重置；两分钟内 ≥ 3 次则每次至少 1 秒", 14, GRAY, anchor="start", limit=570)
+    b += text(44, 424, "心跳超时：任何帧重置；空闲超时：只有应用数据重置", 14, GRAY, anchor="start", limit=570)
+    # right: state edges
+    b += rect(652, 236, 284, 200, "white", BLUE, rx=12)
+    b += text(794, 262, "状态边沿 → 总线", 15, BLUE, "bold", limit=264)
+    for i, l in enumerate(["SocketStateSink：Connected /", "Disconnected", "→ 系统事件 channel → 节点", "→ events.system.", "SocketStateChanged.{客户端}.{端点}", "反向：ReconnectSocket 命令", "→ request_reconnect()"]):
+        b += text(794, 290 + i * 22, l, 14, INK if i not in (5, 6) else ORANGE, limit=270)
+    svg("websocket-client.svg", "WebSocket 客户端的结构与重连",
+        "上半部分：适配器的发送经限流器交给唯一的写入任务，心跳也经写入任务，读取任务把消息交回适配器并丢弃旧纪元的帧，传输层可选 tungstenite 或 sockudo-ws。"
+        "左下是控制器的状态：Active、Reconnecting、Closed，以及默认的重连等待序列、稳定阈值和节流。右下是状态边沿经节点变成总线事件，以及反向的重连命令。",
+        456, b)
+
+
+def reconciliation_flow():
+    b = text(480, 36, "对账：启动时一次，运行期周期检查", 19, INK, "bold", limit=920)
+    b += text(24, 70, "启动（连接执行客户端之后、启动 Trader 之前）", 15, BLUE, "bold", "start")
+    steps = [["拉报告", "订单、成交、仓位"], ["去重", "重复报告记警告"], ["订单对账", "外部订单新建"],
+             ["成交对账", "补 OrderFilled"], ["仓位对账", "按账户和品种比较"]]
+    for i, lines in enumerate(steps):
+        x = 24 + i * 150
+        b += box(x, 84, 136, 64, lines, "blue", BLUE, 14, mono_from=9)
+        if i < 4:
+            b += arrow(x + 136, 116, x + 148, 116, BLUE)
+    b += arrow(774, 116, 790, 116, BLUE)
+    b += box(792, 76, 144, 80, ["一致？", "是 → 启动 Trader", "否 → 生成订单"], "orange", ORANGE, 14, mono_from=9)
+    b += rect(24, 166, 912, 50, "white", ORANGE, rx=10, dash=True)
+    b += text(480, 188, "生成 RECONCILIATION 合成市价单补齐（generate_missing_orders，默认开启）", 14, INK, limit=890)
+    b += text(480, 208, "补齐后仍超出容差 → 启动失败，策略不启动；缺少仓位报告 ≠ 空仓", 14, ORANGE, "bold", limit=890)
+    b += text(24, 250, "运行期（维护计时器调度，startup_delay 10 秒后开始）", 15, TEAL, "bold", "start")
+    rows = [
+        ("在途检查", "默认每 2 秒；在途 > 5 秒的订单单独查询，最多 5 次"),
+        ("未结订单检查", "默认关闭；只看未结列表时，缺失 5 次后单独查询，查不到不下结论"),
+        ("仓位检查", "默认关闭；先补权威成交，再生成合成事件；查询失败本轮跳过"),
+    ]
+    for i, (t, d) in enumerate(rows):
+        y = 266 + i * 46
+        b += rect(24, y, 912, 38, "teal" if i == 0 else "white", TEAL, rx=8)
+        b += text(44, y + 25, t, 14, TEAL, "bold", "start", limit=120)
+        b += text(180, y + 25, d, 14, INK, anchor="start", limit=740)
+    b += text(24, 426, "在途查询耗尽后", 15, INK, "bold", "start")
+    b += box(24, 440, 446, 74, ["RetainUnresolved（默认）", "未确认的提交保持未解决，发布 SubmissionRecoveryExhausted", "待撤 / 待改：拒绝命令，订单恢复原状态"], "teal", TEAL, 14, mono_from=9)
+    b += box(490, 440, 446, 74, ["ResolveLocally", "SUBMITTED → 拒绝（INFLIGHT_TIMEOUT）", "PENDING_CANCEL / UPDATE → 视为已撤销"], "white", GRAY, 14, mono_from=9)
+    svg("reconciliation-flow.svg", "对账的两个阶段",
+        "上面是启动对账：拉取报告、去重、订单对账、成交对账、仓位对账，一致则启动 Trader，否则生成 RECONCILIATION 订单补齐，仍不一致则启动失败。"
+        "中间是运行期的三种检查及默认设置。下面对比在途查询耗尽后两种恢复策略的处理。",
+        534, b)
+
+
+def book_sync():
+    b = text(480, 36, "订单簿的同步与恢复：只有 Synced 才输出", 19, INK, "bold", limit=920)
+    b += box(40, 66, 200, 72, ["Waiting", "等第一份快照", "不输出"], "white", GRAY, 15, mono_from=9)
+    b += box(380, 66, 200, 72, ["Synced(seqId)", "增量接得上就前进", "输出给 DataEngine"], "teal", TEAL, 15, mono_from=9)
+    b += box(720, 66, 200, 72, ["Recovering", "失步，等新快照", "不输出"], "orange", ORANGE, 15, mono_from=9)
+    b += arrow(240, 102, 378, 102, TEAL)
+    b += text(309, 92, "接受快照", 14, TEAL, limit=130)
+    b += arrow(580, 92, 718, 92, ORANGE)
+    b += text(649, 82, "gap()：接不上", 14, ORANGE, limit=130)
+    b += arrow(718, 116, 582, 116, TEAL)
+    b += text(649, 134, "接受新快照", 14, TEAL, limit=130)
+    b += text(820, 160, "无负责者 → 返回 Recover", 14, ORANGE, limit=210)
+    # recovery steps
+    b += rect(24, 178, 912, 150, "white", ORANGE, rx=12)
+    b += text(44, 204, "一次恢复（claim 之后，BookRecovery::run）", 15, ORANGE, "bold", "start")
+    steps = [["关闭快照闸门", "SnapshotGate"], ["重新订阅", "写入请求"], ["连接确认写入", "打开闸门"], ["接受合法快照", "整体替换价位"]]
+    for i, lines in enumerate(steps):
+        x = 44 + i * 222
+        b += box(x, 220, 196, 60, lines, "orange" if i in (0, 2) else "white", ORANGE, 14, mono_from=9)
+        if i < 3:
+            b += arrow(x + 196, 250, x + 220, 250, ORANGE)
+    b += text(480, 310, "写入完成不算恢复完成；闸门打开之前到达的快照不接受", 14, GRAY, limit=880)
+    # retry timeline
+    b += text(44, 360, "失败时的重试节奏", 15, INK, "bold", "start")
+    b += arrow(60, 400, 910, 400, GRAY)
+    b += rect(70, 382, 260, 36, "teal", TEAL, rx=6)
+    b += text(200, 405, "预算：180 秒内 8 次", 14, TEAL, "bold", limit=250)
+    xs = [(380, "1 分钟"), (470, "2 分钟"), (590, "4 分钟"), (730, "8 分钟"), (880, "15 分钟")]
+    for x, t in xs:
+        b += f'<circle cx="{x}" cy="400" r="5" fill="{ORANGE}"/>'
+        b += text(x, 432, t, 14, ORANGE, limit=90)
+    b += text(480, 462, "之后间隔翻倍、加抖动，上限 15 分钟；每次尝试最长 max(快照超时, 60 秒)；永不放弃，直到成功或取消", 14, GRAY, limit=900)
+    b += text(480, 484, "OKX 序号：快照 prevSeqId = -1；增量的 prevSeqId 必须等于上一批的 seqId", 14, GRAY, limit=900)
+    svg("book-sync.svg", "订单簿的同步与恢复",
+        "上面是三个阶段：Waiting 接受快照后进入 Synced 并输出，增量接不上时进入 Recovering 停止输出，接受新快照后回到 Synced。"
+        "中间是一次恢复的四步：关闭快照闸门、重新订阅、连接确认后打开闸门、接受合法快照。下面是重试节奏：180 秒内 8 次，之后间隔从 1 分钟翻倍到 15 分钟。",
+        504, b)
+
+
+def external_backends():
+    b = text(480, 36, "外部后端：核心线程只放 channel，I/O 在后台任务里", 19, INK, "bold", limit=920)
+    # cache path
+    b += text(24, 70, "缓存后端", 15, BLUE, "bold", "start")
+    b += box(24, 84, 190, 70, ["Cache（核心线程）", "写入只发命令", "立即返回"], "blue", BLUE, 14, mono_from=9)
+    b += box(254, 84, 180, 70, ["写命令 channel", "无界"], "white", GRAY, 14, mono_from=9)
+    b += box(474, 84, 220, 70, ["后台写任务", "每 buffer_interval_ms", "一批 pipeline 提交"], "teal", TEAL, 14, mono_from=9)
+    b += box(734, 84, 202, 70, ["Redis / PostgreSQL", "trader-{id}:orders:…", "订单存为事件列表"], "white", ORANGE, 14, mono_from=9)
+    b += arrow(214, 119, 252, 119, BLUE)
+    b += arrow(434, 119, 472, 119, GRAY)
+    b += arrow(694, 119, 732, 119, TEAL)
+    b += poly_arrow([(835, 154), (835, 180), (119, 180), (119, 156)], ORANGE)
+    b += text(477, 198, "启动：读连接 load_all → 按事件重建订单、仓位、账户（不恢复行情历史，之后仍要对账）", 14, ORANGE, limit=880)
+    # msgbus path
+    b += text(24, 240, "消息总线：采集节点 → Redis 流 → 策略节点", 15, BLUE, "bold", "start")
+    b += rect(24, 254, 290, 200, "white", BLUE, rx=12)
+    b += text(169, 278, "采集节点", 15, BLUE, "bold", limit=270)
+    b += text(169, 306, "publish：先本地分发", 14, INK, limit=270)
+    b += text(169, 330, "→ BusMessage{topic, type,", 14, INK, limit=270)
+    b += text(169, 352, "encoding, payload}", 14, INK, limit=270)
+    b += text(169, 380, "types_filter 排除报价", 14, GRAY, limit=270)
+    b += text(169, 404, "出站任务：攒批 XADD", 14, TEAL, "bold", limit=270)
+    b += text(169, 430, "autotrim：按时间或条数修剪", 14, GRAY, limit=270)
+    b += box(370, 314, 220, 80, ["Redis 流 binance", "关掉三个前缀开关", "键就是 binance"], "orange", ORANGE, 14, mono_from=9)
+    b += rect(646, 254, 290, 200, "white", BLUE, rx=12)
+    b += text(791, 278, "策略节点", 15, BLUE, "bold", limit=270)
+    b += text(791, 306, "external_streams = [binance]", 14, INK, limit=270)
+    b += text(791, 330, "入站任务：XREAD，从当前时刻读", 14, TEAL, "bold", limit=270)
+    b += text(791, 356, "事件循环的外部消息分支", 14, INK, limit=270)
+    b += text(791, 380, "→ 本地总线再发布（不再外发）", 14, INK, limit=270)
+    b += text(791, 404, "外部客户端 BINANCE_EXT", 14, INK, limit=270)
+    b += text(791, 428, "→ 数据引擎写缓存、维护订单簿", 14, INK, limit=270)
+    b += arrow(314, 354, 368, 354, TEAL)
+    b += arrow(590, 354, 644, 354, TEAL)
+    svg("external-backends.svg", "缓存后端与外部消息流",
+        "上面是缓存后端：核心线程上的缓存把写命令发进无界 channel，后台任务按间隔成批提交到 Redis 或 PostgreSQL，订单存为事件列表，启动时经读连接恢复。"
+        "下面是消息总线：采集节点发布时先本地分发，再把 BusMessage 交给出站任务 XADD 到 Redis 流；策略节点的入站任务用 XREAD 从当前时刻读取，在本地总线上再发布，外部客户端的行情进入数据引擎。",
+        474, b)
+
+
+def dst_layers():
+    b = text(480, 36, "DST：一份源码，两种构建，一个种子", 19, INK, "bold", limit=920)
+    b += text(170, 70, "普通构建", 15, GRAY, "bold", limit=280)
+    b += text(480, 70, "源码里写的", 15, BLUE, "bold", limit=280)
+    b += text(790, 70, "simulation + --cfg madsim", 15, TEAL, "bold", limit=280)
+    rows = [
+        ("tokio::time / task / runtime", "dst::time · dst::task · dst::runtime", "madsim（单线程、虚拟时间）"),
+        ("tokio::signal", "dst::signal", "ctrl_c 可注入；terminate 永不完成"),
+        ("SystemTime::now()", "duration_since_unix_epoch", "madsim 虚拟墙上时间"),
+        ("rand::rng()", "UUID4、抖动、成交模型接缝", "madsim::rand（种子）"),
+        ("AHashMap 随机顺序", "IndexMap / IndexSet / 排序", "顺序固定"),
+        ("select! 随机轮询", "select! { biased; … }", "按书写顺序"),
+    ]
+    for i, (l, m, r) in enumerate(rows):
+        y = 84 + i * 50
+        b += box(24, y, 292, 40, [l], "white", GRAY, 14)
+        b += box(334, y, 292, 40, [m], "blue", BLUE, 14)
+        b += box(644, y, 292, 40, [r], "teal", TEAL, 14)
+        b += arrow(332, y + 20, 318, y + 20, GRAY)
+        b += arrow(628, y + 20, 642, y + 20, TEAL)
+    b += text(170, 400, "第一层：前两行（门面替换运行时）", 14, GRAY, limit=290)
+    b += text(790, 400, "第二层：后四行（接缝与约定）", 14, GRAY, limit=290)
+    b += rect(24, 418, 600, 92, "white", ORANGE, rx=12)
+    b += text(44, 444, "守住约定", 15, ORANGE, "bold", "start")
+    b += text(44, 470, "Clippy：禁 getrandom 直调、LocalSet", 14, INK, anchor="start", limit=570)
+    b += text(44, 494, "check-dst-conventions：7 条规则，17 个 crate；例外写 // dst-ok", 14, INK, anchor="start", limit=570)
+    b += rect(644, 418, 292, 92, "orange", ORANGE, rx=12)
+    b += text(790, 444, "种子", 15, ORANGE, "bold", limit=270)
+    b += text(790, 470, "同种子 → 同调度、同计时器、同随机数", 14, INK, limit=280)
+    b += text(790, 494, "MADSIM_TEST_SEED=… 重放失败", 14, INK, limit=280)
+    svg("dst-layers.svg", "DST 的两层与种子",
+        "三列分别是普通构建、源码里的写法、仿真构建。第一层由门面把 Tokio 的时间、任务、运行时和信号换成 madsim；第二层用接缝处理墙上时间、随机数、迭代顺序和 select 轮询顺序。"
+        "左下是 Clippy 和提交前钩子的静态检查，右下是种子：同一个种子得到相同的执行，失败时用 MADSIM_TEST_SEED 重放。",
+        530, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 12 章 · 图 2：从零写一个指标的四步
+# ---------------------------------------------------------------------------
+def custom_indicator_lab():
+    b = text(480, 36, "从零写一个指标：定规格 → 实现 → 单元测试 → 回测里逐根对账", 19, INK, "bold", limit=920)
+    steps = [
+        ("① 定规格", ["IBS = (收盘 − 最低) / (最高 − 最低)", "取最近 period 根的平均", "攒满之前 value = 0", "坏数据、零振幅 K 线跳过"], GRAY, "gray"),
+        ("② 实现 Indicator", ["update_raw：校验 → 窗口 → 平均", "handle_bar：取高、低、收", "reset：清空全部状态", "src/lib.rs"], TEAL, "teal"),
+        ("③ 单元测试", ["手算值：0.5、0.25", "未初始化、零振幅、坏数据", "属性测试：任意序列 = 朴素平均", "cargo test：13 个通过"], ORANGE, "orange"),
+    ]
+    for i, (title, lines, c, fill) in enumerate(steps):
+        x = 24 + i * 312
+        b += rect(x, 60, 288, 168, fill, c, rx=12)
+        b += text(x + 144, 88, title, 16, c, "bold", limit=270)
+        for j, line in enumerate(lines):
+            b += text(x + 144, 120 + j * 26, line, 14, INK if j < 3 else GRAY, limit=270)
+        if i < 2:
+            b += arrow(x + 290, 144, x + 310, 144, GRAY)
+    b += arrow(480, 230, 480, 254, GRAY)
+    b += rect(24, 258, 912, 412, "blue", BLUE, rx=14)
+    b += text(44, 284, "④ 回测里对账：同一份成交走两条互不相干的路，再逐根比较", 16, BLUE, "bold", "start", limit=880)
+    b += box(300, 300, 360, 56, ["ethusdt-trades.csv", "69,806 笔 ETHUSDT 成交"], "white", GRAY, 15, mono_from=9)
+    b += poly_arrow([(390, 358), (390, 374), (250, 374), (250, 386)], BLUE)
+    b += poly_arrow([(570, 358), (570, 374), (710, 374), (710, 386)], TEAL)
+    left = [
+        ("BacktestEngine · DataEngine", "每 250 笔聚合一根 K 线（INTERNAL）"),
+        ("Indicators 表先更新指标", "register_indicator_for_bars"),
+        ("on_bar 记下高、低、收和 value", "此时 value 已含这根 K 线"),
+    ]
+    right = [
+        ("独立算法（不经过框架）", "每 250 笔切一块：最高、最低、最后"),
+        ("逐块算 IBS，取最近 10 个平均", "Rust 朴素循环 / pandas rolling"),
+        ("得到 279 根的期望值", "前 9 根没有期望值"),
+    ]
+    for k, (l1, l2) in enumerate(left):
+        y = 390 + k * 74
+        b += box(40, y, 420, 52, [l1, l2], "white", BLUE, 15, mono_from=9)
+        if k < 2:
+            b += arrow(250, y + 52, 250, y + 72, BLUE)
+    for k, (l1, l2) in enumerate(right):
+        y = 390 + k * 74
+        b += box(500, y, 420, 52, [l1, l2], "white", TEAL, 15, mono_from=9)
+        if k < 2:
+            b += arrow(710, y + 52, 710, y + 72, TEAL)
+    b += arrow(462, 564, 498, 564, GRAY, both=True)
+    b += box(40, 608, 880, 46, ["279 根逐根比较：K 线完全一致，第 10 根起初始化，最大误差 6.1e-16（Rust）/ 6.7e-16（Python）"], "#fde68a", ORANGE, 15, mono_from=9)
+    b += text(480, 700, "期望值必须来自另一条路径：拿指标自己再算一遍，只能证明它和自己一致。", 14, GRAY, limit=920)
+    svg("custom-indicator-lab.svg", "从零写一个指标的四步",
+        "上排三个框：先定规格（IBS 公式、取最近 period 根平均、攒满之前值为 0、坏数据和零振幅 K 线跳过），"
+        "再实现 Indicator（update_raw、handle_bar、reset），再写单元测试（手算值、边界、属性测试，cargo test 13 个通过）。"
+        "下方是回测对账：同一份 69,806 笔 ETHUSDT 成交，一路经 BacktestEngine 聚合成 250 笔一根的 K 线、由注册表先更新指标、在 on_bar 里记录；"
+        "另一路不经过框架，每 250 笔切块算 IBS 并取最近 10 个平均。两路逐根比较 279 根，K 线完全一致，最大误差约 6e-16。",
+        724, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -1972,6 +2375,16 @@ def main():
     simulated_exchange()
     behavioral_models()
     analysis_pipeline()
+    tokio_runtime_threads()
+    live_node_loop()
+    task_group()
+    live_timer()
+    websocket_client()
+    reconciliation_flow()
+    book_sync()
+    external_backends()
+    dst_layers()
+    custom_indicator_lab()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

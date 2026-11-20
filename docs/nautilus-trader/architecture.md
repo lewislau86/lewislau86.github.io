@@ -21,7 +21,7 @@ description: NautilusTrader 的 Rust 核心怎样组织：设计理念、crate �
 
 官方架构文档（`docs/concepts/architecture.md`）列出的设计风格有五项：领域驱动设计（DDD）、事件驱动、消息模式（发布/订阅、请求/响应、点对点）、端口与适配器（六边形架构），以及 crash-only 设计。读源码时最该先记住的是两条：
 
-- **核心是单线程的。** 同一个节点里，消息派发、策略逻辑、风控检查、执行协调、缓存读写都在**同一个线程**上串行执行，文档拿 LMAX 交易所的架构作类比。网络 I/O、日志、持久化跑在后台的 Tokio 运行时上，通过 channel 把事件送回核心线程。所以核心代码里到处是 `Rc<RefCell<…>>`，而不是 `Arc<Mutex<…>>`。
+- **核心是单线程的。** 同一个节点里，消息派发、策略逻辑、风控检查、执行协调、缓存读写都在**同一个线程**上串行执行，文档拿 LMAX 交易所的架构作类比。网络 I/O 和持久化跑在后台的 Tokio 运行时上，日志有自己的专用线程，它们都通过 channel 和核心线程通信（第 29 章）。所以核心代码里到处是 `Rc<RefCell<…>>`，而不是 `Arc<Mutex<…>>`。
 - **crash-only。** release 构建遇到 panic 直接退出（`panic = "abort"`），由外部守护进程重启；重启后走正常的启动流程，从缓存或事件存储恢复，再和交易所对账。没有单独的“故障恢复”代码路径。
 
 还有一条现状要知道：`develop` 分支是 v2，核心全部是 Rust，Python 包通过 PyO3 调用 Rust（扩展模块叫 `nautilus_trader._libnautilus`），`python/nautilus_trader/` 只是一层外观。旧的 Cython 版本（v1）留在 `develop_v1` 分支，按 `MIGRATION_V2.md` 的说法，v2 切换后约三个月内只回移关键安全补丁，不再做功能或对齐工作。网上很多文章和旧版文档讲的是 v1，读的时候要分清。
