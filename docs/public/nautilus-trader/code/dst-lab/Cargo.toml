@@ -1,0 +1,26 @@
+[package]
+name = "dst-lab"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.100.0"
+
+[features]
+default = []
+# The simulation seam. It only takes effect together with RUSTFLAGS="--cfg madsim".
+sim = ["nautilus-common/simulation", "nautilus-core/simulation"]
+
+# All NautilusTrader crates pinned to the commit the book was checked against.
+[dependencies]
+nautilus-common = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["live"] }
+nautilus-core = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+ahash = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "time"] }
+
+[target.'cfg(madsim)'.dependencies]
+madsim = { version = "0.2.34", default-features = false, features = ["macros"] }
+
+[profile.dev]
+debug = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(madsim)"] }

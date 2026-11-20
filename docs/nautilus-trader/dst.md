@@ -147,6 +147,61 @@ MADSIM_TEST_SEED=1234567 RUSTFLAGS="--cfg madsim" \
 
 怎么读这张图：中间一列是一份源码在两种构建下的样子，左边是普通构建、右边是仿真构建，门面和接缝是两者之间的开关。底部是种子：它是仿真运行里唯一的不确定输入。
 
+## 9. 动手验证 {#lab}
+
+同一个小程序编译两次：一次只打开 `simulation` 特性，一次再加上 `--cfg madsim`。程序起五个任务，每个在两个 `yield_now` 之后记下自己的名字（`0a` 是任务 0 的第一步），然后睡 3 秒，生成一个 UUID，再遍历一个 6 个键的 `AHashMap`。每个种子在一个新的子进程里跑，种子 1 跑两次。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，`nautilus-common`、`nautilus-core` 来自提交 `364254f`，madsim 0.2.34。代码在独立的小工程 `dst-lab` 里（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/dst-lab)，`README.md` 写了运行方法），因为 `--cfg madsim` 会让依赖全部重新编译。下面的输出原样摘录。
+:::
+
+<<< @/public/nautilus-trader/code/dst-lab/src/main.rs#scenario
+
+<<< @/public/nautilus-trader/code/dst-lab/src/main.rs#runtime
+
+**只打开特性**（`cargo run --features sim`）：
+
+```text
+build: feature sim = true, cfg(madsim) = false
+seed 1:
+    interleaving 2a 0a 4a 1a 3a 2b 1b 4b 0b 3b
+    uuid c5d1d116  ahash order ["ETH", "BTC", "XRP", "SOL", "DOGE", "ADA"]  wall clock advanced 3.005 s
+    real time 3.006 s
+seed 1:
+    interleaving 0a 4a 1a 3a 0b 2a 1b 3b 4b 2b
+    uuid 2e3de56a  ahash order ["ETH", "DOGE", "XRP", "ADA", "BTC", "SOL"]  wall clock advanced 3.004 s
+    real time 3.006 s
+seed 2:
+    interleaving 4a 0a 3a 4b 1a 2a 2b 1b 3b 0b
+    uuid 9fae8b96  ahash order ["ADA", "ETH", "BTC", "XRP", "DOGE", "SOL"]  wall clock advanced 3.005 s
+    real time 3.007 s
+```
+
+**再加上 `--cfg madsim`**（`RUSTFLAGS="--cfg madsim" cargo run --features sim`）：
+
+```text
+build: feature sim = true, cfg(madsim) = true
+seed 1:
+    interleaving 2a 2b 1a 4a 1b 0a 0b 3a 4b 3b
+    uuid 18fbf7bd  ahash order ["SOL", "ADA", "BTC", "ETH", "XRP", "DOGE"]  wall clock advanced 3.000 s
+    real time 0.000 s
+seed 1:
+    interleaving 2a 2b 1a 4a 1b 0a 0b 3a 4b 3b
+    uuid 18fbf7bd  ahash order ["SOL", "BTC", "ADA", "XRP", "ETH", "DOGE"]  wall clock advanced 3.000 s
+    real time 0.000 s
+seed 2:
+    interleaving 1a 3a 0a 2a 2b 4a 0b 3b 4b 1b
+    uuid 0ea16da4  ahash order ["ADA", "BTC", "XRP", "SOL", "DOGE", "ETH"]  wall clock advanced 3.000 s
+    real time 0.000 s
+```
+
+两次对照，第 1 到第 3 节的说法都看得到：
+
+- **只开特性等于没开。** 第一组的 `cfg(madsim) = false`，跑的是真的 Tokio：`dst::time::sleep(3 秒)` 真的睡了 3 秒，同样写着“种子 1”的两次运行，任务交错顺序和 UUID 都不一样。编译没有任何提示，这就是第 3 节表格第一行说的“静默退回”。
+- **同一个种子，逐位相同。** 第二组里种子 1 的两次运行，在两个独立的进程里得到完全相同的交错顺序和 UUID；种子 2 则换了一种交错、一个不同的 UUID。UUID 相同说明 `UUID4::new()` 的随机数走的是 madsim 的确定性随机源。
+- **时间是虚拟的。** 仿真里墙上时间前进了整整 3.000 秒，真实耗时 0.000 秒：`nanos_since_unix_epoch()` 这条接缝读的是虚拟时钟。
+- **`AHashMap` 的遍历顺序不受种子控制。** 种子 1 的两次运行，同样 6 个键的遍历顺序不一样。这就是第 2 节要求在影响输出顺序的地方用 `IndexMap` 或排序的原因：哪怕调度、时间、随机数都确定了，一个随手写的哈希表遍历仍然会让两次运行分叉。
+
 ::: warning 常见误区
 - **只打开 `simulation` 特性，忘了 `--cfg madsim`。** 会静默地跑在真的 Tokio 上，什么都不确定。
 - **在 DST 路径上写 `tokio::time::sleep` 或 `Instant::now()`。** 要用 `dst::time` 和时间接缝，钩子会拒绝直接写法。
@@ -191,6 +246,7 @@ DST 把异步系统里所有不确定的来源换成一个种子：第一层由 
 
 - 官方文档：[DST](https://nautilustrader.io/docs/latest/concepts/dst/)
 - 源码：[`crates/common/src/live/dst.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/dst.rs) · [`crates/network/src/dst.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/dst.rs) · [`crates/network/src/http/simulation.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/network/src/http/simulation.rs) · [`.pre-commit-hooks/check_dst_conventions.sh`](https://github.com/nautechsystems/nautilus_trader/blob/develop/.pre-commit-hooks/check_dst_conventions.sh) · [`Makefile`](https://github.com/nautechsystems/nautilus_trader/blob/develop/Makefile)（`cargo-test-sim`）
+- 实验代码：[`dst-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/dst-lab)
 - 延伸阅读：[FoundationDB 的测试方法](https://apple.github.io/foundationdb/testing.html) · [madsim](https://github.com/madsim-rs/madsim) · [Turmoil](https://github.com/tokio-rs/turmoil)
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 

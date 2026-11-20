@@ -10,12 +10,17 @@ rust-version = "1.100.0"
 nautilus-common = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["live"] }
 nautilus-core = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
 nautilus-live = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
-nautilus-model = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-model = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a", features = ["test-support"] }
+nautilus-trading = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
+nautilus-infrastructure = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
 nautilus-network = { git = "https://github.com/nautechsystems/nautilus_trader", rev = "364254fb77046747926bd4314631ffb38195457a" }
 anyhow = "1"
+async-trait = "0.1"
+rust_decimal = "1"
+redis = { version = "1", default-features = false, features = ["streams"] }
 futures-util = { version = "0.3", default-features = false, features = ["std", "sink"] }
 log = "0.4"
-tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync", "test-util"] }
 tokio-tungstenite = "0.30"
 ustr = "1"
 

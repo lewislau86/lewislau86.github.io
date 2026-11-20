@@ -85,11 +85,11 @@ Redis 的出站实现和缓存一样：消息进一个无界 channel，一个后
 
 反方向，节点可以从外部流读消息，再发布到本地总线上。配置 `MessageBusConfig.external_streams = ["binance"]` 后，Redis 后端会启动一个读取任务，用 `XREAD` 读这些流，把每条记录交给节点。第 30 章的事件循环里有一个“外部消息总线入站”分支，取出消息后：
 
-1. 先交给用 `add_stream_processor` 注册的处理函数（如果有）；
-2. 解码，按原来的主题在本地总线上再发布一次，但**不会**再转发出去，避免循环；
+1. 命令、报告、数据响应这几类消息，先交给用 `add_stream_processor` 注册的处理函数（如果有）；行情、品种、订单事件等其余类型不经过处理函数；
+2. 解码，按原来的主题在本地总线上再发布一次，但**不会**再转发出去，避免循环。前提是这个类型已经**登记为入站类型**，没有登记的消息只记一条调试日志，然后丢掉；
 3. 账户状态不直接发布，而是交给 Portfolio 的账户端点（第 22 章），由它更新缓存后再发布。
 
-如果消息是行情，而数据引擎里把对应的客户端声明为**外部客户端**（`LiveDataEngineConfig.external_clients`，第 18 章），数据引擎会像处理本地行情一样写缓存、维护订单簿，而不是只做转发。同时，数据引擎不会把这个客户端的订阅命令发给任何本地客户端，因为数据由外部流提供。
+行情类型的登记来自数据引擎：把客户端声明为**外部客户端**（`LiveDataEngineConfig.external_clients`，第 18 章）后，组件通过这个客户端订阅报价、成交、K 线时，数据引擎不会把订阅命令发给任何本地客户端（数据由外部流提供），而是把对应的类型登记为入站类型。之后从流里进来的这类行情在本地总线上再发布，数据引擎像处理本地行情一样写缓存、维护订单簿。只配置了 `external_streams`、没有这次订阅，行情会被读进来，但不会出现在本地总线上（第 6 节实测）。
 
 有一个限制要注意：内置的 Redis 入站从**当前时刻**开始读每个流，节点启动之前已经在流里的消息不会被重放。外部流提供的是实时转发，不是一个消费者组式的积压队列。需要启动前的历史时，用缓存恢复或事件存储（第 8 章）。
 
@@ -126,6 +126,72 @@ let msgbus = MessageBusConfig {
 
 怎么读这张图：上下两条路径都遵循同一个原则：核心线程只往 channel 里放东西，所有 I/O 在全局运行时的后台任务里做。下面的路径跨了两个进程，中间的 Redis 流是它们唯一的连接。
 
+## 6. 动手验证 {#lab}
+
+实验在本机起一个 Redis 7.2（从源码编译，`--save ""` 不落盘），先直接用缓存和 Redis 后端写一张订单，再用两个独立进程的节点走一遍消息总线的出站和入站。PostgreSQL 后端没有测。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch36_redis.rs" download><code>ch36_redis.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch36_redis`。下面的输出原样摘录，毫秒数每次运行略有不同。需要本机有一个 Redis（6.2 或更新），端口用 `REDIS_PORT` 指定，默认 6379；程序开始时会清空它。
+:::
+
+**缓存后端。** `buffer_interval_ms` 设为 200 毫秒，加一个品种、一张订单，再给订单补三个事件，最后用一个新的 `Cache` 从同一个数据库恢复：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch36_redis.rs#cache
+
+```text
+right after add_order: 0 key(s) in Redis
+  trader-LAB-001:currencies:ETH  (string)
+  trader-LAB-001:currencies:USDT  (string)
+  trader-LAB-001:index:orders  (set)
+  trader-LAB-001:instruments:ETHUSDT-PERP.BINANCE  (string)
+  trader-LAB-001:orders:O-19700101-000000-001-001-1  (list)
+after 3 more events: LLEN trader-LAB-001:orders:O-19700101-000000-001-001-1 = 4
+index:orders_closed = ["O-19700101-000000-001-001-1"]
+restored: O-19700101-000000-001-001-1 status=Filled filled=0.100 events=4
+```
+
+- `add_order` 返回时 Redis 里一个键都没有：写命令还在 channel 里等后台任务凑批，这就是第 1 节说的“写入成功只说明内存修改完成了”。300 毫秒后再看，键都在了。
+- 键的形状和第 2 节一致：前缀 `trader-LAB-001:`，品种和币种是字符串，订单是列表，索引是集合。
+- 订单补了提交、接受、成交三个事件后，列表长度是 4，一个事件一个元素；成交后订单 ID 进了 `index:orders_closed`。
+- 新的 `Cache` 调用 `cache_all()` 后，订单按 4 个事件重建，状态是 `Filled`。
+
+**消息总线。** 生产者节点每 500 毫秒在普通的报价主题上发布一条 `QuoteTick`，流的键用固定的 `lab`（三个前缀开关都关掉）。两个消费者节点都从 `lab` 读：一个 0.5 秒后启动、不订阅任何东西；一个 2.5 秒后启动，通过一个声明为外部客户端的 `LAB_EXT` 订阅报价：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch36_redis.rs#producer
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch36_redis.rs#consumer
+
+```text
+[producer]
+   551 ms  producer: published quote #1 (bid 3001.00)
+  1042 ms  producer: published quote #2 (bid 3002.00)
+  1543 ms  producer: published quote #3 (bid 3003.00)
+  2041 ms  producer: published quote #4 (bid 3004.00)
+  2558 ms  producer: published quote #5 (bid 3005.00)
+  3042 ms  producer: published quote #6 (bid 3006.00)
+  3551 ms  producer: published quote #7 (bid 3007.00)
+  4046 ms  producer: published quote #8 (bid 3008.00)
+  4549 ms  producer: published quote #9 (bid 3009.00)
+  5042 ms  producer: published quote #10 (bid 3010.00)
+[consumer without subscription, clock starts at 0.5 s]
+stream processor was called 0 time(s)
+[consumer with subscription, clock starts at 2.5 s]
+   507 ms  consumer: on_quote (bid 3006.00)
+  1012 ms  consumer: on_quote (bid 3007.00)
+  1508 ms  consumer: on_quote (bid 3008.00)
+  2011 ms  consumer: on_quote (bid 3009.00)
+stream processor was called 0 time(s)
+XLEN lab = 10
+first entry: topic=data.quotes.BINANCE.ETHUSDT-PERP, type=QuoteTick, payload=<166 bytes>, encoding=Json
+```
+
+这一段纠正了第 5 节原来的两处说法：
+
+- **入站的行情要先“登记”才会在本地再发布。** 不订阅的那个消费者，流里的 10 条报价它都读到了（调试日志里每条都有一行 `Skipping external QuoteTick message … because the type is not registered for streaming`），但一条也没有发布到本地总线。登记发生在数据引擎处理一个发往外部客户端的订阅命令时：订阅报价就登记 `QuoteTick`，订阅 K 线就登记 `Bar`。所以 `external_clients` 和那次订阅缺一不可。
+- **`add_stream_processor` 的处理函数只接收命令、报告、数据响应这几类消息。** 两个消费者的处理函数都一次也没被调用：行情在解码之前就走了另一条路径，直接按上一条的规则决定是否再发布。
+
+其余的和原文一致：订阅了的消费者 2.5 秒启动，收到的第一条是 3.04 秒发布的第 6 条，第 5 条（2.56 秒，消费者还在启动）和之前的都没有重放，入站从读取任务开始的那一刻读起。流里一共 10 条，每条记录有 `topic`、`type`、`payload`、`encoding` 四个字段，默认编码是 JSON。
+
 ::: warning 常见误区
 - **以为缓存写入成功就已经落盘。** 它只确认了内存修改；写入在后台成批进行，失败只记日志。
 - **用 Redis 后端又打开 `save_market_data`。** Redis 不存行情，每次写入都会记错误日志。
@@ -133,12 +199,13 @@ let msgbus = MessageBusConfig {
 - **以为几个节点共用一个 Redis 就能共享缓存。** 每个节点各有自己的内存缓存，后端不同步它们。
 - **期望消费节点启动后能收到之前流里的消息。** 内置的 Redis 入站从当前时刻开始读。
 - **采集节点保留默认的流键前缀，消费节点用 `binance` 订阅。** 两边的键对不上；要么关掉前缀，要么消费端写完整的键。
-- **没有把外部客户端声明进数据引擎。** 外部来的行情只会被直接转发，不会写缓存、维护订单簿。
+- **只配了 `external_streams`，没有通过外部客户端订阅。** 行情类型没有登记，读进来的消息直接丢掉，本地总线上什么都没有。
+- **想用 `add_stream_processor` 处理外部行情。** 处理函数只接收命令、报告和数据响应，行情要通过订阅拿到。
 :::
 
 ## 本章结论
 
-缓存后端和消息总线后端都遵循同一个模式：核心线程把命令或消息放进无界 channel 后立刻返回，全局运行时上的后台任务成批地写入 Redis 或 PostgreSQL。Redis 的缓存键以 `trader-{trader_id}:` 开头，订单、仓位、账户存成事件列表，重启时按事件重建；Redis 不存行情，PostgreSQL 可以存报价、成交、K 线。恢复的是参考数据和交易对象，不是行情历史，也替代不了对账。消息总线的出站把发布的消息序列化成 `BusMessage`，用 `XADD` 写进 Redis 流，可以按类型过滤、自动修剪；入站用 `XREAD` 从当前时刻开始读外部流，在本地总线上再发布，声明为外部客户端的行情会像本地行情一样进入数据引擎。
+缓存后端和消息总线后端都遵循同一个模式：核心线程把命令或消息放进无界 channel 后立刻返回，全局运行时上的后台任务成批地写入 Redis 或 PostgreSQL。Redis 的缓存键以 `trader-{trader_id}:` 开头，订单、仓位、账户存成事件列表，重启时按事件重建；Redis 不存行情，PostgreSQL 可以存报价、成交、K 线。恢复的是参考数据和交易对象，不是行情历史，也替代不了对账。消息总线的出站把发布的消息序列化成 `BusMessage`，用 `XADD` 写进 Redis 流，可以按类型过滤、自动修剪；入站用 `XREAD` 从当前时刻开始读外部流，已登记的类型在本地总线上再发布；行情类型要通过声明为外部客户端的订阅来登记，之后像本地行情一样进入数据引擎。
 
 ## 检查理解
 
@@ -170,6 +237,7 @@ let msgbus = MessageBusConfig {
 
 - 官方文档：[Cache](https://nautilustrader.io/docs/latest/concepts/cache/) · [Message Bus](https://nautilustrader.io/docs/latest/concepts/message_bus/)
 - 源码：[`crates/infrastructure/src/redis/cache.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/infrastructure/src/redis/cache.rs) · [`crates/infrastructure/src/redis/msgbus.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/infrastructure/src/redis/msgbus.rs) · [`crates/infrastructure/src/sql/`](https://github.com/nautechsystems/nautilus_trader/tree/develop/crates/infrastructure/src/sql) · [`crates/common/src/msgbus/external/mod.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/msgbus/external/mod.rs) · [`crates/common/src/live/listener.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/common/src/live/listener.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch36_redis.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 第五部分讲的这些异步机制，网络、计时器、重连、恢复，最难的是测试：真实时间、真实网络都无法重现。最后一章看 NautilusTrader 怎样让异步代码的执行可以重放。[第 37 章：确定性仿真测试](./dst.md)。

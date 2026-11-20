@@ -72,10 +72,10 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 - [第 31 章 · 任务管理：TaskGroup 与有界关闭](./task-management.md)：先登记后运行；按“代”隔离连接；`begin_shutdown` 与 `finish_shutdown` 的两段取消、两个期限；超时后仍持有任务；`TaskSlot` 与 `finish_task`；附可运行实验
 - [第 32 章 · LiveClock 与实时计时器](./live-clock.md)：`AtomicTime` 的比较交换；每个计时器一个任务；固定间隔与日程两种节奏、错过时的补发；回调与令牌怎样回到核心线程；`ts_event`、`ts_init` 与回调时间；附可运行实验
 - [第 33 章 · 网络层：HTTP、WebSocket 与 Socket 客户端](./networking.md)：GCRA 限流与多键等待；WebSocket 的四个任务与连接纪元；心跳超时与空闲超时；重连退避、稳定阈值与节流；`SocketStateChanged` 与重连命令；TCP 的后缀分帧；附可运行实验
-- [第 34 章 · ExecutionManager：实盘执行管理与对账](./reconciliation.md)：四种执行报告；启动对账的五步与拒绝启动；缺少报告不等于空仓；外部订单的归属；在途、未结订单、仓位三种检查；`RetainUnresolved` 与 `ResolveLocally`
-- [第 35 章 · 订单簿同步与恢复](./book-sync.md)：用序号发现断档；`BookSync` 的三个阶段与“必须有负责者”；标记、请求、认领、运行；快照闸门；180 秒 8 次再到 15 分钟的重试；输出契约
-- [第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流](./external-backends.md)：不阻塞的成批写入；Redis 的键与事件列表；两种后端的持久化范围；消息总线的出站 `XADD` 与入站 `XREAD`；采集节点加策略节点的例子
-- [第 37 章 · 确定性仿真测试：让异步代码可重放](./dst.md)：madsim 替换时间、任务、运行时和信号；时钟、随机数、迭代顺序、`biased;` 等接缝；确定性契约；提交前钩子的七条规则；`MADSIM_TEST_SEED` 重放；DST 的边界
+- [第 34 章 · ExecutionManager：实盘执行管理与对账](./reconciliation.md)：四种执行报告；启动对账的五步与拒绝启动；缺少报告不等于空仓；外部订单的归属；在途、未结订单、仓位三种检查；`RetainUnresolved` 与 `ResolveLocally`；附可运行实验
+- [第 35 章 · 订单簿同步与恢复](./book-sync.md)：用序号发现断档；`BookSync` 的三个阶段与“必须有负责者”；标记、请求、认领、运行；快照闸门；180 秒 8 次再到 15 分钟的重试；输出契约；附可运行实验
+- [第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流](./external-backends.md)：不阻塞的成批写入；Redis 的键与事件列表；两种后端的持久化范围；消息总线的出站 `XADD` 与入站 `XREAD`；采集节点加策略节点的例子；附可运行实验
+- [第 37 章 · 确定性仿真测试：让异步代码可重放](./dst.md)：madsim 替换时间、任务、运行时和信号；时钟、随机数、迭代顺序、`biased;` 等接缝；确定性契约；提交前钩子的七条规则；`MADSIM_TEST_SEED` 重放；DST 的边界；附可运行实验
 
 ## 第六部分 · 接入券商
 

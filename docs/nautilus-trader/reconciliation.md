@@ -67,7 +67,7 @@ description: 为什么实盘需要对账；谁负责什么：LiveNode、Executio
 | 交易所上的订单 | `EXTERNAL`，标签 `VENUE` | 认领的策略，无标签 |
 | 仓位对账生成的订单 | `EXTERNAL`，标签 `RECONCILIATION` | 认领的策略，标签 `RECONCILIATION` |
 
-策略在配置里写 `external_order_instrument_ids`，就是声明要认领这些品种上的外部订单和对账活动（第 20 章的“外部订单认领”）。这样一个策略重启后，即使缓存是空的，也能接管交易所上已有的挂单和仓位。主线例子里，如果策略认领了 `ETH-USDT-SWAP.OKX`，卖单 B 就归这个策略，策略能在 `on_start` 之后看到并管理它；否则它属于 `EXTERNAL`，仍然计入仓位和组合，但没有策略会主动撤它。
+策略在配置里写 `external_order_instrument_ids`，就是声明要认领这些品种上的外部订单和对账活动（第 20 章的“外部订单认领”）。注意 Rust 和 Python 的差别：Python 策略的包装会读这个配置字段；Rust 节点读的是 `Strategy` trait 的 `external_order_instrument_ids()` 方法，默认返回 `None`，Rust 策略要自己覆盖它（比如返回配置里的值），否则配置写了也不生效（第 7 节实测）。这样一个策略重启后，即使缓存是空的，也能接管交易所上已有的挂单和仓位。主线例子里，如果策略认领了 `ETH-USDT-SWAP.OKX`，卖单 B 就归这个策略，策略能在 `on_start` 之后看到并管理它；否则它属于 `EXTERNAL`，仍然计入仓位和组合，但没有策略会主动撤它。
 
 NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、同一品种上有多个策略各自持仓时，对账会记警告；官方建议每个账户和品种只由一个策略认领。
 
@@ -77,7 +77,7 @@ NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、
 
 | 检查 | 默认 | 做什么 |
 | --- | --- | --- |
-| 在途检查 | 每 2 秒，开启 | 找出提交、待改、待撤超过 5 秒没有回音的订单，逐个查询 |
+| 在途检查 | 每 2 秒，开启 | 找出提交、待改、待撤超过 5 秒没有回音的订单，逐个查询；同一张单两次查询之间也至少隔 5 秒 |
 | 未结订单检查 | 关闭（`open_check_interval_secs`） | 拉取交易所的未结订单，和本地比对 |
 | 仓位检查 | 关闭（`position_check_interval_secs`） | 拉取仓位报告，和本地比对 |
 
@@ -93,7 +93,7 @@ NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、
 
 最棘手的情况是：策略提交了一张单，请求发出去了，但交易所既没确认也没拒绝。可能是请求没到，也可能到了而回报丢了。直接当作“失败”重新下单，可能重复下单；直接当作“成功”，可能以为有一张不存在的挂单。
 
-在途检查对这类订单的处理：每 2 秒检查一次，订单处于在途状态超过 5 秒（`inflight_check_threshold_ms`）就向交易所查询；最多检查 5 次（`inflight_check_retries`）。耗尽之后，取决于 `submission_recovery_policy`：
+在途检查对这类订单的处理：每 2 秒检查一次，订单处于在途状态超过 5 秒（`inflight_check_threshold_ms`）就向交易所查询，此后每次查询之间也要隔满这个阈值，所以默认配置下实际约每 6 秒查一次；最多检查 5 次（`inflight_check_retries`），实测是查询 4 次、第 5 次检查时宣告耗尽，约在提交后 30 秒。耗尽之后，取决于 `submission_recovery_policy`：
 
 - **`RetainUnresolved`（默认）**：从未被确认过的提交保持未解决，停止自动的单张查询，等待后续的交易所证据（推送、未结订单检查等）来决定它的结局。节点发布一个 `SubmissionRecoveryExhausted` 诊断事件到 `reconciliation.SubmissionRecoveryExhausted`，这不是订单事件，不代表任何结果。对已确认的订单上的待撤、待改命令，拒绝这个命令、把订单恢复到命令前的状态，订单保持未结。
 - **`ResolveLocally`**：按本地规则了结。`SUBMITTED` 的订单以 `INFLIGHT_TIMEOUT` 为原因被拒绝；`PENDING_CANCEL`、`PENDING_UPDATE` 的订单以同样的原因被视为已撤销。
@@ -104,12 +104,113 @@ NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、
 
 怎么读这张图：上面一行是启动对账，最右边的菱形是“能否启动”的分界。下面是运行期的三条检查线，最下面一行对比了两种恢复策略对同一张在途订单的处理。
 
+## 7. 动手验证 {#lab}
+
+对账需要一个“交易所”。实验写了一个最小的假执行客户端：启动时按脚本返回一份 `ExecutionMassStatus`，收到下单只回一个 `OrderSubmitted`（真实适配器在发出请求前也是这样做的），之后就再也不说话。节点里只有一个策略 `LAB-001`，没有数据客户端。每个场景在单独的子进程里跑。
+
+::: info 实验环境
+Linux（aarch64，4 核、3 GB 内存）上的 Rust 1.100.0，NautilusTrader 各 crate 来自提交 `364254f`。代码是 <a href="/nautilus-trader/code/live-lab/examples/ch34_reconciliation.rs" download><code>ch34_reconciliation.rs</code></a>，属于第五部分的实验工程 `live-lab`（[在 GitHub 查看](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab)，`README.md` 写了运行方法）。运行命令是 `cargo run --example ch34_reconciliation`。下面的输出原样摘录，毫秒数每次运行略有不同。整个程序要跑约 2 分钟。
+:::
+
+假交易所的核心是 `generate_mass_status` 和 `submit_order` 两个方法：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch34_reconciliation.rs#venue
+
+`submit_order` 里的 `OrderSubmitted` 要经执行事件 channel 送回去（`ExecutionEventEmitter` 加上 `get_exec_event_sender()`）。最初的版本直接调用 `msgbus::send_order_event` 把事件同步交给执行引擎，结果在 `RefCell already borrowed` 上 panic：执行引擎正在调用 `submit_order`，自己还被借用着，同步回送就是重入。这正是第 30 章说事件要经 channel、下一轮循环再处理的原因。
+
+**启动对账。** 脚本对应本章的主线例子：交易所上有一张本地不知道的卖单 B（0.5 @ 3,100，`ACCEPTED`），一个多 1.0 的仓位，没有任何成交报告：
+
+```text
+generate_missing_orders=true inflight: every 2000 ms, threshold 5000 ms, retries 5, policy RetainUnresolved, startup delay 10 s
+    0.02 s  venue: mass status requested
+    0.02 s  strategy: on_start
+run() -> Ok
+  order 3181344a-7c5e-576d-9acb-5fd42fdc20f9 Buy 1.000 @ None status=Filled strategy=EXTERNAL tags=Some(["RECONCILIATION"])
+  order V-B Sell 0.500 @ Some("3100.00") status=Accepted strategy=EXTERNAL tags=Some(["VENUE"])
+  position Long 1.000 avg_px_open=3000 strategy=EXTERNAL
+```
+
+卖单 B 作为外部订单新建，策略 ID `EXTERNAL`、标签 `VENUE`；仓位报告找不到成交来解释，于是生成了一张标签为 `RECONCILIATION` 的合成市价买单，成交 1.0，开仓均价取报告的 3,000。合成订单的 ID 是一串由事件内容算出来的 UUID，重启后重放会得到同一个 ID。对账完成后策略的 `on_start` 才被调用。
+
+**关掉 `generate_missing_orders`：**
+
+```text
+    0.04 s  venue: mass status requested
+run() -> Err: Unresolved positions during startup reconciliation for FAKE: account=BINANCE-001, instrument=ETHUSDT-PERP.BINANCE, venue_position_id=None, venue_quantity=1.000: generate_missing_orders is disabled
+  order V-B Sell 0.500 @ Some("3100.00") status=Accepted strategy=EXTERNAL tags=Some(["VENUE"])
+```
+
+外部订单照样建了，但仓位无法补齐，`run()` 直接返回错误，策略的 `on_start` 没有被调用。
+
+**认领外部订单。** 实验里有一个和第 4 节不一样的发现：
+
+<<< @/public/nautilus-trader/code/live-lab/examples/ch34_reconciliation.rs#strategy
+
+只在 `StrategyConfig` 里写 `external_order_instrument_ids`，订单和仓位仍然归 `EXTERNAL`：
+
+```text
+  order 3181344a-7c5e-576d-9acb-5fd42fdc20f9 Buy 1.000 @ None status=Filled strategy=EXTERNAL tags=Some(["RECONCILIATION"])
+  order V-B Sell 0.500 @ Some("3100.00") status=Accepted strategy=EXTERNAL tags=Some(["VENUE"])
+  position Long 1.000 avg_px_open=3000 strategy=EXTERNAL
+```
+
+Rust 节点在 `add_strategy` 时读的是 `Strategy` trait 的 `external_order_instrument_ids()` 方法，它的默认实现返回 `None`，并不读配置字段；只有 Python 策略的包装会从配置里取。像上面那样在 `nautilus_strategy!` 里覆盖这个方法之后：
+
+```text
+  order 3181344a-7c5e-576d-9acb-5fd42fdc20f9 Buy 1.000 @ None status=Filled strategy=LAB-001 tags=Some(["RECONCILIATION"])
+  order V-B Sell 0.500 @ Some("3100.00") status=Accepted strategy=LAB-001 tags=None
+  position Long 1.000 avg_px_open=3000 strategy=LAB-001
+```
+
+三样东西都归 `LAB-001`，外部卖单没有标签，合成订单保留 `RECONCILIATION` 标签，和第 4 节的表一致。
+
+**结果未知的提交。** 策略在 `on_start` 里下一张限价单，假交易所之后一言不发。为了少等，周期检查的启动延迟设成 1 秒，在途检查的其他参数都是默认值：
+
+```text
+generate_missing_orders=true inflight: every 2000 ms, threshold 5000 ms, retries 5, policy RetainUnresolved, startup delay 1 s
+run() called at 2026-11-20T08:02:05.222951164+00:00
+[WARN 08:02:35.030] Submission recovery exhausted for O-20261120-080205-001-001-1, retaining unacknowledged order pending venue evidence
+[WARN 08:02:35.030] Submission recovery exhausted for O-20261120-080205-001-001-1: Inflight after 5 checks; submission remains unresolved pending venue evidence
+    0.02 s  venue: mass status requested
+    0.02 s  strategy: on_start
+    0.02 s  venue: submit O-20261120-080205-001-001-1 (then silence)
+    5.13 s  venue: query_order O-20261120-080205-001-001-1
+   11.23 s  venue: query_order O-20261120-080205-001-001-1
+   17.52 s  venue: query_order O-20261120-080205-001-001-1
+   23.63 s  venue: query_order O-20261120-080205-001-001-1
+run() -> Err: Submission recovery incomplete at shutdown: unresolved client order IDs ["O-20261120-080205-001-001-1"]
+  order O-20261120-080205-001-001-1 Buy 0.100 @ Some("2900.00") status=Submitted strategy=LAB-001 tags=None
+```
+
+```text
+generate_missing_orders=true inflight: every 2000 ms, threshold 5000 ms, retries 5, policy ResolveLocally, startup delay 1 s
+run() called at 2026-11-20T08:02:55.289833771+00:00
+[WARN 08:03:25.098] LAB-001 <--[EVT] OrderRejected(client_order_id=O-20261120-080255-001-001-1, reason='INFLIGHT_TIMEOUT', …)
+    0.04 s  venue: mass status requested
+    0.04 s  strategy: on_start
+    0.04 s  venue: submit O-20261120-080255-001-001-1 (then silence)
+    5.15 s  venue: query_order O-20261120-080255-001-001-1
+   11.35 s  venue: query_order O-20261120-080255-001-001-1
+   17.45 s  venue: query_order O-20261120-080255-001-001-1
+   23.75 s  venue: query_order O-20261120-080255-001-001-1
+run() -> Ok
+  order O-20261120-080255-001-001-1 Buy 0.100 @ Some("2900.00") status=Rejected strategy=LAB-001 tags=None
+```
+
+两种策略的前半段完全一样：订单在途 5 秒后第一次查询，之后约每 6 秒查询一次，一共 4 次。间隔不是 2 秒，是因为在途检查虽然每 2 秒运行一次，但同一张单两次查询之间也要隔满 5 秒的阈值，于是落在“5 秒之后的下一个 2 秒检查点”上。第 5 次检查时宣告耗尽，大约在提交后 30 秒（日志时间减去 `run() called` 的时间）。之后：
+
+- **`RetainUnresolved`**：订单停在 `SUBMITTED`，记两条 WARN，不再查询；停止节点时 `run()` 返回错误，列出这张未解决的提交。
+- **`ResolveLocally`**：订单以 `INFLIGHT_TIMEOUT` 为原因被拒绝，策略收到 `OrderRejected`，`run()` 正常返回。
+
+启动对账那几个场景的输出里还能看到两条 `Residual` WARN：节点停止时，缓存检查发现还有未结的订单和仓位，第 30 章第 3 题说的就是这条日志。
+
 ::: warning 常见误区
 - **以为交易所没返回仓位就是空仓。** 缺少报告不是空仓的证据。
 - **关掉 `generate_missing_orders` 以为能“跳过”仓位差异。** 差异仍会导致启动失败。
 - **以为默认会周期性检查未结订单和仓位。** 默认只开了在途检查，另外两种要自己配置间隔。
 - **以为“未结订单列表里没有”就说明订单不存在。** 默认模式不据此下结论，只在单独查询确认后才处理。
 - **以为在途超时的订单默认会被标记为拒绝。** 默认的 `RetainUnresolved` 保持未解决，只发布诊断事件。
+- **在 Rust 策略的配置里写了 `external_order_instrument_ids` 就以为认领了。** Rust 节点读的是 trait 方法，要在策略里覆盖它。
 - **没设回溯窗口，又没有持久化缓存。** 早于窗口的成交找不回来，只能靠仓位报告补齐，补齐用的是合成价格，历史盈亏无法重建。
 :::
 
@@ -131,7 +232,7 @@ NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、
 
    <details><summary>参考答案</summary>
 
-   在途检查每 2 秒运行一次，订单在途超过 5 秒后开始向交易所单独查询，共检查 5 次。默认的 `RetainUnresolved` 下，耗尽后订单保持 `SUBMITTED`，停止自动查询，节点发布 `SubmissionRecoveryExhausted` 诊断事件；之后如果交易所推送了这张单的状态，或者未结订单检查找到了它，就按报告处理。停止节点时，它会作为未解决的提交出现在 `stop` 的错误里。改成 `ResolveLocally` 后，耗尽时订单以 `INFLIGHT_TIMEOUT` 被拒绝。
+   在途检查每 2 秒运行一次，订单在途超过 5 秒后开始向交易所单独查询，之后约每 6 秒查一次，第 5 次检查时（约 10:00:30）宣告耗尽，第 7 节的实验测到的正是这个节奏。默认的 `RetainUnresolved` 下，耗尽后订单保持 `SUBMITTED`，停止自动查询，节点发布 `SubmissionRecoveryExhausted` 诊断事件；之后如果交易所推送了这张单的状态，或者未结订单检查找到了它，就按报告处理。停止节点时，它会作为未解决的提交出现在 `stop` 的错误里。改成 `ResolveLocally` 后，耗尽时订单以 `INFLIGHT_TIMEOUT` 被拒绝。
 
    </details>
 
@@ -147,6 +248,7 @@ NETTING 账户上，交易所报告的是账户级的净仓位。同一账户、
 
 - 官方文档：[Execution Reconciliation](https://nautilustrader.io/docs/latest/concepts/execution/reconciliation/) · [Execution Policies](https://nautilustrader.io/docs/latest/concepts/execution/policies/)
 - 源码：[`crates/live/src/execution/manager.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/execution/manager.rs) · [`crates/live/src/execution/reconciliation.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/execution/reconciliation.rs) · [`crates/live/src/node/reconciliation.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/node/reconciliation.rs) · [`crates/live/src/node/config.rs`](https://github.com/nautechsystems/nautilus_trader/blob/develop/crates/live/src/node/config.rs)
+- 实验代码：[`live-lab`](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/nautilus-trader/code/live-lab) 的 `examples/ch34_reconciliation.rs`
 - 配图由 `scripts/generate-nautilus-trader-figures.py` 生成。
 
 订单和仓位之外，行情也会出现断档：订单簿的增量流丢了一条，本地的订单簿就和交易所不一样了。下一章看订单簿怎样发现断档、怎样恢复。[第 35 章：订单簿同步与恢复](./book-sync.md)。
