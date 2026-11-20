@@ -5,7 +5,7 @@ description: 严格按 NautilusTrader 官方《Adapters》开发指南的章节�
 
 # 第 38 章：增加一个券商：以富途为例
 
-[全书目录](./index.md) · [上一篇](./dst.md) · [附录](./core-topics.md)
+[全书目录](./index.md) · [上一篇](./dst.md) · [下一章](./python-strategy.md)
 
 ::: tip 本章怎么读
 本章的正文是 NautilusTrader 官方开发指南《Adapters》（[`docs/developer_guide/adapters.md`](https://github.com/nautechsystems/nautilus_trader/blob/develop/docs/developer_guide/adapters.md)）的中文全译，章节顺序、标题层级和原文一致，每个标题后面的锚点就是原文的英文锚点，方便对照。翻译依据提交 `364254f`（2026-11-18），原文以 LGPL-3.0 发布；译文力求完整，代码块保持原样。
@@ -13,6 +13,8 @@ description: 严格按 NautilusTrader 官方《Adapters》开发指南的章节�
 每一节末尾的“富途怎么做”提示框是本书加的：说明富途适配器怎样满足这一节的要求，或在哪里需要记录为例外。哪些是官方指南的规定、哪些是本书的设计，以此区分。
 
 富途本身的背景知识放在三个附录里：[附录 A：富途 OpenD 协议要点](#appendix-opend)、[附录 B：两边的概念对照](#appendix-concepts)、[附录 C：Python 绑定的三条路线](#appendix-python)。第一次读，可以先看附录 A，再回到正文。
+
+**和本书前面各章的关系：** 指南里的规则，背后的机制前面都讲过：传输、限流与重连见[第 33 章](./networking.md)，任务组见[第 31 章](./task-management.md)，运行时与核心线程见[第 29 章](./tokio-runtime.md)、[第 30 章](./live-node.md)，对账报告见[第 34 章](./reconciliation.md)，订单簿恢复见[第 35 章](./book-sync.md)，确定性仿真见[第 37 章](./dst.md)。第 29～37 章的“动手验证”一节都有可运行的实验，其中第 34 章用一个脚本化的假交易所演示了执行客户端最少要实现什么。
 
 **富途文档：** OpenAPI v10.12。文中的 `futu-opend`、`crates/adapters/futu` 及其文件和类型名都是本书的设计建议，仓库里还没有。
 
@@ -192,6 +194,8 @@ OKX 是参考实现。它通过共享接缝、静态门禁和行为门禁来证�
 这一节对富途的设计影响最大。`futu-opend` 如果要进官方仓库，就不能是一个完全不依赖 Nautilus 的独立库：时间、任务、随机数要经 `nautilus_common::live::dst` 获取，TCP 连接要经 `nautilus_network::net` 建立，不能直接 `tokio::net::TcpStream::connect`（`docs/concepts/dst.md` 的规则）。所有 `select!` 要写 `biased;`，重试和重连发出的请求字节必须完全相同。
 
 按“从第一个传输开始证明约定”的要求，第一步就固定 InitConnect（协议号 1001）请求的字节：同样的输入，在仿真和真实运行下产生一模一样的包头和包体。只在自己的仓库里维护（路线 B、C）时，`futu-opend` 才可以完全独立。
+
+门面、接缝和“只开特性不加 `--cfg madsim` 会静默退回真 Tokio”这些坑，第 37 章有一个对照实验。
 :::
 
 ## 适配器的结构 {#structure-of-an-adapter}
@@ -1004,7 +1008,7 @@ Binance 在检测到缺口的同一步中进行认领：针对未同步订单簿
 
 
 ::: tip 富途怎么做
-3013 每次推送都是完整的前若干档，所以富途的订单簿不存在“增量断档、要拉快照恢复”的问题，本节的恢复机制大部分用不上；但仍要在推送中断、重连之后清掉旧盘口，避免策略看到过期数据。
+3013 每次推送都是完整的前若干档，所以富途的订单簿不存在“增量断档、要拉快照恢复”的问题，本节的恢复机制（第 35 章）大部分用不上；但仍要在推送中断、重连之后清掉旧盘口，避免策略看到过期数据。
 :::
 
 ## 执行客户端 {#execution-client}
@@ -1145,7 +1149,7 @@ Binance 在检测到缺口的同一步中进行认领：针对未同步订单簿
 | 成交 `generate_fill_reports` | 当日成交 2211 加历史成交 2222 |
 | 持仓 `generate_position_status_reports` | Trd_GetPositionList（2102）；持仓不生成虚拟的订单报告 |
 
-`ts_init` 在开始收集之前用本地时钟取一次。富途持仓给出的成本价口径（以 `.proto` 里的字段说明为准）和 Nautilus 按成交算出的开仓均价不一定一致，要按本节的说明设置开仓均价的对账方式。
+这些报告在启动对账和运行期检查里怎样被使用，以及“缺少仓位报告不等于空仓”“结果未知的提交怎样收尾”，见第 34 章，那里的假交易所实验可以直接改成富途的版本。`ts_init` 在开始收集之前用本地时钟取一次。富途持仓给出的成本价口径（以 `.proto` 里的字段说明为准）和 Nautilus 按成交算出的开仓均价不一定一致，要按本节的说明设置开仓均价的对账方式。
 :::
 
 ### 手续费失败处理 {#commission-failure-handling}
@@ -1329,7 +1333,7 @@ Polymarket 则会隔离无效成交，并立即发起定向 REST 解析；修复
 
 
 ::: tip 富途怎么做
-在富途 App 或其他终端上手动下的单，对本系统来说是外部订单：推送（2208、2218）里出现本地不认识的订单号时，转成订单状态报告和成交报告交给执行引擎，而不是生成订单事件。策略可以通过 `external_order_instrument_ids` 认领某些标的上的外部订单。
+在富途 App 或其他终端上手动下的单，对本系统来说是外部订单：推送（2208、2218）里出现本地不认识的订单号时，转成订单状态报告和成交报告交给执行引擎，而不是生成订单事件。策略可以通过 `external_order_instrument_ids` 认领某些标的上的外部订单。注意第 34 章实测的一点：Rust 策略要覆盖 `Strategy::external_order_instrument_ids()` 这个 trait 方法，只写在 `StrategyConfig` 里不生效；Python 策略读的是配置。
 :::
 
 ### 事件排序与去重 {#event-ordering-and-deduplication}
@@ -1646,7 +1650,7 @@ Betfair 在 60 秒的 `customerRef` 窗口内保留 45 秒的订单重试预算�
 富途没有 HTTP，但本节关于重试和限流的规则同样适用于 OpenD 的请求层：
 
 - **下单只发一次。** 本节要求提交、改单、撤单只有在“重试窗口内能用稳定身份去重”时才可以重试。富途的 `PacketID` 由 `connID` 和 `serialNo` 组成，重连后 `connID` 会变，跨重连无法去重，所以下单类命令不重试，超时一律按结果不明处理。
-- **限频是滚动窗口。** 本节提醒“按标称速率的令牌桶仍可能超过严格的滚动窗口”。富途的限制是同一账户每 30 秒下单 15 次、改撤单 20 次、查询 10 次，要用滚动窗口计数，而不是简单的令牌桶。
+- **限频是滚动窗口。** 本节提醒“按标称速率的令牌桶仍可能超过严格的滚动窗口”。富途的限制是同一账户每 30 秒下单 15 次、改撤单 20 次、查询 10 次，要用滚动窗口计数，而不是简单的令牌桶。如果复用网络层的 GCRA 限流器，要给同一账户的请求带上同一个显式的键：第 33 章第 8 节实测，默认额度是每个键各算一份，不是全局上限。
 :::
 
 ## WebSocket 客户端模式 {#websocket-client-patterns}
@@ -1818,7 +1822,7 @@ OpenD 的长连接和本节描述的 WebSocket 客户端形状相同，几条规
 - **认证：** InitConnect 相当于握手和认证；重连后要重新 InitConnect，拿新的 `connID` 和 AES 密钥。
 - **订阅：** `Qot_Sub` 的订阅状态用 `SubscriptionState` 一类的结构管理，正好能表达“已订阅、待退订（富途要等 1 分钟）”。
 - **路由：** 推送按包头里的协议号分发。
-- **重连：** 依次重做 InitConnect、`Trd_SubAccPush`、`Qot_Sub`，重放订阅但不重放待退订的项目，也不重放结果不明的命令。
+- **重连：** 依次重做 InitConnect、`Trd_SubAccPush`、`Qot_Sub`，重放订阅但不重放待退订的项目，也不重放结果不明的命令。如果沿用网络层 WebSocket 客户端的重连节奏，要知道它的实际行为（第 33 章第 8 节实测）：断线后前两次尝试立即进行，之后按 2、3、4.5 秒……退避，连接被拒绝时每次还另加 1 秒节流。OpenD 在本机，连不上多半是网关没启动或被踢下线（Notify 1003），这时快速重试没有意义，可以把初始退避调大。
 - **背压：** 事件通道用无界通道，执行事件不得丢弃。
 :::
 
@@ -1924,7 +1928,7 @@ where
 ::: tip 富途怎么做
 ![富途适配器的运行时位置：核心线程上 DataEngine、ExecutionEngine 经适配器包装调用 FutuDataClient、FutuExecutionClient 的同步方法，方法把网络工作交给 Tokio 上 TaskGroup 的任务后立刻返回；任务经共享连接 FutuSharedClient 和本机 OpenD 通信；推送解析后经 channel 交给 AsyncRunner，再派发回引擎](/nautilus-trader/figures/futu-runtime.svg)
 
-怎么读这张图：左边是核心线程，中间是 Tokio，右边是外部进程；命令从左往右走，事件从右往左回来。trait 方法（`subscribe_quotes`、`submit_order`）在核心线程上同步执行，只做校验和记账，把网络工作交给任务组后立刻返回；只有 `connect`、`disconnect` 和 `generate_*` 是 `async` 的。富途的任务按本节划分：读包循环和 KeepAlive 是会话级任务，放进会话任务组，重连时整代关闭再开；下单、查询是命令级任务，放进命令任务组。所有请求经同一个共享连接（`FutuSharedClient`），结果经 `get_data_event_sender()`、`get_exec_event_sender()` 回到核心线程。
+怎么读这张图：左边是核心线程，中间是 Tokio，右边是外部进程；命令从左往右走，事件从右往左回来。trait 方法（`subscribe_quotes`、`submit_order`）在核心线程上同步执行，只做校验和记账，把网络工作交给任务组后立刻返回；只有 `connect`、`disconnect` 和 `generate_*` 是 `async` 的。富途的任务按本节划分：读包循环和 KeepAlive 是会话级任务，放进会话任务组，重连时整代关闭再开；下单、查询是命令级任务，放进命令任务组。所有请求经同一个共享连接（`FutuSharedClient`），结果经 `get_data_event_sender()`、`get_exec_event_sender()` 回到核心线程。这一点不能省：第 34 章的实验里，执行客户端在 `submit_order` 里直接用 `msgbus::send_order_event` 同步回送 `OrderSubmitted`，执行引擎当场重入，panic 在 `RefCell already borrowed` 上；改成经执行事件 channel 发送就好了。线程和任务的分工见第 29～31 章。
 :::
 
 ## 测试 {#testing}
@@ -2382,7 +2386,7 @@ builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientCon
 三条路线怎么选：先用路线 B（加官方 SDK）把模拟盘的行情和下单跑通，验证概念映射；性能或可靠性需要时，把协议层换成 Rust（路线 C）；要进官方仓库再走路线 A，届时 `futu-opend` 可以原样复用。
 
 
-::: warning 容易踩的坑
+::: warning 常见误区
 - **把 OpenD 当成 REST 服务。** 它是长连接 + 推送，下单的回包只说明“OpenD 收到了”，订单状态要看 2208 推送或查询。
 - **忘了调 `Trd_SubAccPush`。** 不调就收不到任何订单和成交推送，看起来像“下了单没反应”。
 - **用 GitHub master 上的 `.proto`。** 比文档旧，生成的代码缺字段。
@@ -2392,6 +2396,36 @@ builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientCon
 - **在 SDK 回调线程里直接产出数据。** 路线 B 用官方 Python SDK 时，推送回调在 SDK 自己的线程上，要先切回节点的事件循环。
 - **把订阅额度当成无限。** 额度用完后订阅会失败，退订还要等 1 分钟才生效。
 :::
+
+## 本章结论 {#futu-conclusion}
+
+官方开发指南把一个仓库内的 Rust 适配器拆成一致性清单、推荐的目录结构和 0～9 十个实现阶段，核心要求是：保留交易场所的语义，产出有效的领域事件，把结果不明的命令显式化，并且在确定性仿真下可重放。富途的特殊之处在于传输：OpenD 是本机网关上的长度前缀私有 TCP 协议，所以协议层单独做成 `futu-opend`，自己写编解码器，连接仍经 `nautilus_network::net` 建立，这一点作为一致性例外记录。执行侧要把超时和断线当作“结果不明”交给对账，按账户的滚动窗口限频，用成交 ID 去重；行情侧 3013 推送的是完整盘口，订单簿恢复机制大部分用不上。落地顺序上，先用纯 Python 适配器加官方 SDK 在模拟盘跑通，再把协议层换成 Rust，要进官方仓库时按指南走 Rust 适配器加 PyO3 绑定。
+
+## 检查理解 {#futu-check}
+
+1. 富途下单请求返回 `retType = -100`（超时）。执行客户端应该发出什么事件？之后谁来确定这张单的结局？
+
+   <details><summary>参考答案</summary>
+
+   不发 `OrderRejected`。超时是“结果不明”：请求可能根本没到，也可能到了而回包丢了。按订单命令结果策略把它归为 `Ambiguous`，订单停在已提交状态，由运行期的在途检查（第 34 章）向 OpenD 查询这张单；查到了按订单状态报告对账，查不到时按 `submission_recovery_policy` 收尾，默认保持未解决，不给它一个没有证据的结局。
+
+   </details>
+
+2. 为什么富途适配器不能直接用 `nautilus_network::socket::SocketClient`，但连接仍然要经 `nautilus_network::net` 建立？
+
+   <details><summary>参考答案</summary>
+
+   `SocketClient` 只支持按结尾分隔符切包，而 OpenD 的包是“44 字节固定包头 + 包头里写明长度的包体”，要自己写按长度分帧的编解码器。但仓库内适配器要满足确定性仿真的约定：连接要经网络层的门面建立，仿真构建下才能换成 madsim 的字节流，钩子也会拒绝直接写 `TcpStream::connect`。所以分帧自己写，建连接仍走网络层。
+
+   </details>
+
+3. 你只想先在富途模拟盘上验证“行情能进来、单能下出去”，应该选哪条路线？代价是什么？
+
+   <details><summary>参考答案</summary>
+
+   路线 B：纯 Python 适配器，继承 `nautilus_trader.live.clients` 的基类，直接用富途官方的 `futu-api` SDK 连 OpenD，不用自己实现协议。要注意 SDK 的推送回调在它自己的线程上，要先用 `call_soon_threadsafe` 切回节点的事件循环再产出数据。代价是协议处理和对象转换都在 Python 里，高频行情下 CPU 开销大，也进不了官方仓库；之后可以把协议层换成 Rust（路线 C），或按指南做成仓库内适配器（路线 A）。
+
+   </details>
 
 ## 待核实 {#futu-todo}
 
@@ -2407,4 +2441,4 @@ builder = builder.add_data_client("FUTU", FutuPyDataClientFactory, DataClientCon
 - 富途 OpenAPI：[底层协议介绍](https://openapi.futunn.com/futu-api-doc/ftapi/protocol.html) · [OpenD 概述](https://openapi.futunn.com/futu-api-doc/opend/opend-intro.html) · [OpenD 命令行参数](https://openapi.futunn.com/futu-api-doc/opend/opend-cmd.html) · [权限与额度](https://openapi.futunn.com/futu-api-doc/intro/authority.html) · [订阅规则](https://openapi.futunn.com/futu-api-doc/quote/sub.html) · [交易接口总览](https://openapi.futunn.com/futu-api-doc/trade/trade.html)
 - [py-futu-api](https://github.com/FutunnOpen/py-futu-api)：`futu/common/constant.py`（协议号）、`utils.py`（包头）、`conn_mng.py`（加密）、`pb/*.proto`
 
-适配器只是 Rust 核心的一个入口。读源码、写适配器时反复遇到的其他主题（定点数、时钟、订单状态机、缓存、并发模型、风控、对账等）在附录里有一份速览：[附录：重点主题速览](./core-topics.md)。
+附录 C 的路线 B 用 Python 写适配器；而大多数人在 Python 里写的是策略。下一章看 Python 的 `Strategy` 怎样包住第 9 章的 Rust 策略框架：[第 39 章：Python 策略](./python-strategy.md)。

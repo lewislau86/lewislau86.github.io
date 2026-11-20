@@ -213,14 +213,27 @@
     ]
   },
   {
-    "text": "规划中 · 第七部分 · Python 层",
-    "collapsed": true,
+    "text": "第七部分 · Python 层",
     "items": [
       {
-        "text": "第 39 章 · Python 策略：Rust 策略框架的绑定"
+        "text": "第 39 章 · Python 策略：Rust 策略框架的绑定",
+        "link": "/nautilus-trader/python-strategy"
       },
       {
-        "text": "其余待定"
+        "text": "第 40 章 · Python 的其他组件：DataActor、ExecutionAlgorithm 与 Controller",
+        "link": "/nautilus-trader/python-components"
+      },
+      {
+        "text": "第 41 章 · 在 Python 里跑回测（规划中）"
+      },
+      {
+        "text": "第 42 章 · 在 Python 里跑实盘（规划中）"
+      },
+      {
+        "text": "第 43 章 · 用 Python 写适配器（规划中）"
+      },
+      {
+        "text": "第 44 章 · 边界与迁移（规划中）"
       }
     ]
   },

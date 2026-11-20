@@ -2335,6 +2335,138 @@ def custom_indicator_lab():
         724, b)
 
 
+# ---------------------------------------------------------------------------
+# 第 39 章 · Python 策略怎样挂在 Rust 框架上
+# ---------------------------------------------------------------------------
+def python_strategy_dispatch():
+    b = text(480, 36, "Python 策略：一个 Rust 类的子类，回调经 PyO3 从 Rust 调进来", 19, INK, "bold", limit=920)
+    # Python column
+    b += rect(24, 60, 290, 520, "orange", ORANGE, rx=14)
+    b += text(169, 88, "Python", 17, ORANGE, "bold")
+    b += box(44, 108, 250, 70, ["class EMACross(Strategy)", "on_bar 等方法是你写的 Python"], "white", ORANGE, 14, mono_from=9)
+    b += box(44, 198, 250, 70, ["self.config", "任意 Python 对象，原样保留"], "white", ORANGE, 14, mono_from=9)
+    b += box(44, 288, 250, 82, ["你手里的 Bar、Order", "每次穿过边界都是一份拷贝", "之后不会自己更新"], "white", ORANGE, 14, mono_from=9)
+    b += box(44, 390, 250, 82, ["self.cache / portfolio / clock", "同一份 Rust 状态的包装", "每次读取返回新的快照"], "white", ORANGE, 14, mono_from=9)
+    b += box(44, 492, 250, 70, ["submit_order(order)", "走第 9 章的同一条 Rust 路径"], "white", ORANGE, 14, mono_from=9)
+    # Boundary column
+    b += rect(334, 60, 290, 520, "gray", GRAY, rx=14)
+    b += text(479, 88, "PyO3 边界", 17, INK, "bold")
+    b += box(354, 108, 250, 82, ["Strategy（pyclass）", "unsendable, subclass, weakref", "持有 Rc<UnsafeCell<…Inner>>"], "white", GRAY, 14, mono_from=9)
+    b += box(354, 210, 250, 108, ["一次回调", "① 升级弱引用拿到 Python 对象", "② Python::attach 拿 GIL", "③ Rust 值转成新的 Python 对象"], "white", GRAY, 14, mono_from=9)
+    b += box(354, 338, 250, 82, ["④ call_method1(\"on_bar\")", "按名字查找：你的覆盖", "或基类里 Rust 的空实现"], "white", GRAY, 14, mono_from=9)
+    b += box(354, 440, 250, 100, ["异常", "数据回调：记 ERROR，继续运行", "on_start：启动失败，", "run() 抛 RuntimeError"], "#fee2e2", RED, 14, mono_from=9)
+    # Rust column
+    b += rect(644, 60, 292, 520, "blue", BLUE, rx=14)
+    b += text(790, 88, "Rust 核心（核心线程）", 17, BLUE, "bold")
+    b += box(664, 108, 252, 82, ["PyStrategyInner", "StrategyCore + 弱引用 + 配置", "实现 DataActor、Strategy"], "white", BLUE, 14, mono_from=9)
+    b += box(664, 210, 252, 82, ["组件 / Actor 注册表", "存放 Inner 的 Rc", "另保留 Python 对象的强引用"], "white", BLUE, 14, mono_from=9)
+    b += box(664, 312, 252, 82, ["消息总线 → handle_bar", "先更新指标（第 12 章）", "再调用 on_bar"], "white", BLUE, 14, mono_from=9)
+    b += box(664, 414, 252, 70, ["RiskEngine → ExecEngine", "下单与 Rust 策略完全相同"], "white", BLUE, 14, mono_from=9)
+    b += box(664, 504, 252, 58, ["LiveNode.run() 释放 GIL", "回调时再拿回来"], "white", BLUE, 14, mono_from=9)
+    # arrows: Rust -> boundary -> Python (callbacks)
+    b += arrow(662, 353, 606, 270, BLUE)
+    b += arrow(352, 379, 296, 143, GRAY)
+    # Python -> Rust (commands)
+    b += poly_arrow([(296, 553), (630, 553), (630, 449), (662, 449)], ORANGE)
+    b += arrow(606, 149, 662, 149, GRAY, both=True)
+    b += text(480, 612, "每条订阅到的消息都会穿过一次边界，不论子类是否覆盖了对应的方法；实测一次空回调约 1 微秒（debug 构建）。", 14, GRAY, limit=920)
+    svg("python-strategy-dispatch.svg", "Python 策略怎样挂在 Rust 框架上",
+        "左列是 Python 一侧：你的子类、原样保留的配置对象、每次穿过边界得到的拷贝、缓存等句柄返回的快照，以及下单。"
+        "中列是 PyO3 边界：Strategy 是一个不可跨线程、可子类化、支持弱引用的 Rust 类，持有 Rc<UnsafeCell<PyStrategyInner>>；"
+        "一次回调要升级弱引用、拿 GIL、把 Rust 值转成新的 Python 对象，再按名字调用方法；数据回调里的异常只记日志，on_start 里的异常让启动失败。"
+        "右列是 Rust 核心：PyStrategyInner 实现 DataActor 和 Strategy，注册表存放它的 Rc 并保留 Python 对象的强引用；"
+        "消息总线先更新指标再调用 on_bar；下单与 Rust 策略走同一条路径；LiveNode.run 释放 GIL。",
+        636, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 40 章 · Python 的四种组件
+# ---------------------------------------------------------------------------
+def python_components():
+    b = text(480, 36, "四种 Python 组件：同一种包装，不同的 ID 规则和加入方式", 19, INK, "bold", limit=920)
+    cols = [
+        ("DataActor", "nautilus_trader.common", ["默认 ID = 类名", "同类第二个实例冲突", "add_actor"], BLUE, "blue"),
+        ("Strategy", "nautilus_trader.trading", ["默认 ID = 类名-000…", "标签必须唯一", "add_strategy"], ORANGE, "orange"),
+        ("ExecutionAlgorithm", "nautilus_trader.trading", ["默认 ID = 类名", "on_order 收到主单拷贝", "add_exec_algorithm"], TEAL, "teal"),
+        ("Controller", "继承 DataActor", ["持有 Trader 的弱引用", "只能用可导入配置加入", "运行时增删组件"], GRAY, "gray"),
+    ]
+    for i, (name, mod, lines, c, fill) in enumerate(cols):
+        x = 24 + i * 232
+        b += rect(x, 60, 216, 196, fill, c, rx=12)
+        b += text(x + 108, 88, name, 16, c, "bold", limit=200)
+        b += text(x + 108, 112, mod, 14, GRAY, limit=200)
+        b += text(x + 108, 146, "沿用 DataActor 的 Inner" if name == "Controller" else "Rc<UnsafeCell<…Inner>>", 14, INK, limit=200)
+        for j, line in enumerate(lines):
+            b += text(x + 108, 178 + j * 24, line, 14, INK if j < 2 else GRAY, limit=200)
+    b += rect(24, 276, 912, 76, "white", GRAY, rx=12)
+    b += text(44, 302, "启动顺序：Actor → Strategy → ExecutionAlgorithm（与加入顺序无关）", 15, INK, "bold", "start", limit=880)
+    b += text(44, 330, "停止顺序：Actor → ExecutionAlgorithm → Strategy；所以 Actor 在 on_start 里订阅，能收到策略在 on_start 里发出的信号", 14, GRAY, "normal", "start", limit=880)
+    b += text(480, 384, "穿过边界时，四种东西的待遇不同", 16, INK, "bold", limit=880)
+    rows = [
+        ("Bar、QuoteTick、Order", "拷贝成新的 Python 对象", "手里的对象不会再变", ORANGE),
+        ("信号的 value", "str(value)，收到的永远是字符串", "数字、字典都会变成字符串", RED),
+        ("Python 自定义数据", "包装原对象，收到同一个对象", "接收方改它，发送方也看得见", TEAL),
+        ("嵌套回调里改订阅", "外层调用还借用着同一个对象", "里层报 already borrowed", RED),
+    ]
+    for k, (what, how, note, c) in enumerate(rows):
+        y = 404 + k * 58
+        b += rect(24, y, 912, 48, "white", c, rx=10, width=1.3)
+        b += text(44, y + 30, what, 15, c, "bold", "start", limit=250)
+        b += text(320, y + 30, how, 14, INK, "normal", "start", limit=340)
+        b += text(680, y + 30, note, 14, GRAY, "normal", "start", limit=245)
+    svg("python-components.svg", "四种 Python 组件与边界上的待遇",
+        "上排是四种 Python 组件：DataActor、Strategy、ExecutionAlgorithm、Controller，都是持有 Rc<UnsafeCell<Inner>> 的 Rust 类；"
+        "DataActor 和执行算法默认用类名作 ID，策略用类名加三位标签，Controller 继承 DataActor、持有 Trader 的弱引用、只能经可导入配置加入。"
+        "中间是生命周期顺序：启动时 Actor、策略、执行算法，停止时 Actor、执行算法、策略。"
+        "下方四行是穿过边界时的不同待遇：行情和订单是拷贝；信号的值被转成字符串；Python 自定义数据传递的是同一个对象；嵌套回调里修改订阅会遇到借用冲突。",
+        650, b)
+
+
+# ---------------------------------------------------------------------------
+# 第 41 章 · Python 里跑回测的两条路
+# ---------------------------------------------------------------------------
+def python_backtest_paths():
+    b = text(480, 36, "Python 里跑回测：BacktestEngine 手工装配，BacktestNode 按配置从数据目录跑", 19, INK, "bold", limit=920)
+    # Engine lane
+    b += rect(24, 60, 912, 176, "blue", BLUE, rx=14)
+    b += text(44, 86, "BacktestEngine（低层）：数据在内存里，自己装配", 16, BLUE, "bold", "start", limit=880)
+    steps = [("BacktestEngine", "传入引擎配置"), ("add_venue", "add_instrument"),
+             ("add_data", "每次一条独立的流"), ("add_strategy", "实例或可导入配置"), ("run()", "同步跑完")]
+    for i, (a, c) in enumerate(steps):
+        x = 44 + i * 176
+        b += box(x, 102, 156, 56, [a, c], "white", BLUE, 15, mono_from=9)
+        if i < 4:
+            b += arrow(x + 158, 130, x + 174, 130, BLUE)
+    b += text(44, 186, "重复跑：reset() 保留数据、品种、交易所和组件；换参数前 clear_strategies()", 14, INK, "normal", "start", limit=880)
+    b += text(44, 212, "数据太大：add_data(批) → run(streaming=True) → clear_data()，最后 end()", 14, INK, "normal", "start", limit=880)
+    # Node lane
+    b += rect(24, 252, 912, 176, "teal", TEAL, rx=14)
+    b += text(44, 278, "BacktestNode（高层）：一个 BacktestRunConfig 描述一次运行", 16, TEAL, "bold", "start", limit=880)
+    steps = [("数据目录", "Parquet：品种与行情"), ("BacktestRunConfig", "交易所、数据、引擎"),
+             ("BacktestNode", "build()"), ("加策略", "按运行 ID"), ("run()", "返回结果列表")]
+    for i, (a, c) in enumerate(steps):
+        x = 44 + i * 176
+        b += box(x, 294, 156, 56, [a, c], "white", TEAL, 15, mono_from=9)
+        if i < 4:
+            b += arrow(x + 158, 322, x + 174, 322, TEAL)
+    b += text(44, 378, "chunk_size 不为空时分块读取目录；dispose_on_completion=False 才能在 run 之后取报表", 14, INK, "normal", "start", limit=880)
+    b += text(44, 404, "独立的多组配置：每组建一个节点，跑完 dispose，再建下一个", 14, INK, "normal", "start", limit=880)
+    # Results
+    b += rect(24, 444, 912, 128, "orange", ORANGE, rx=14)
+    b += text(44, 470, "结果", 16, ORANGE, "bold", "start", limit=880)
+    outs = [("BacktestResult", "统计与收益序列"), ("generate_*_report", "pandas DataFrame"),
+            ("create_tearsheet", "交互式 HTML"), ("shutdown_on_error", "记 ERROR 即提前结束")]
+    for i, (a, c) in enumerate(outs):
+        x = 44 + i * 222
+        b += box(x, 488, 204, 64, [a, c], "white", ORANGE, 15, mono_from=9)
+    b += text(480, 600, "两条路最后跑的是同一个 Rust BacktestEngine；本章实验里四种跑法得到完全相同的 16 张订单、8 个仓位。", 14, GRAY, limit=920)
+    svg("python-backtest-paths.svg", "Python 里跑回测的两条路",
+        "上面是低层的 BacktestEngine：建引擎、加交易所和品种、加数据、加策略、运行；可以 reset 后换参数重跑，也可以分批流式运行。"
+        "中间是高层的 BacktestNode：数据先写进 Parquet 数据目录，用 BacktestRunConfig 描述交易所、数据和引擎，构建节点、按运行 ID 加策略、运行得到结果列表，可以分块读取。"
+        "下面是结果：BacktestResult、DataFrame 报表、HTML 业绩报告，以及记 ERROR 即提前结束的 shutdown_on_error。",
+        620, b)
+
+
 def main():
     system_overview()
     rust_crates()
@@ -2385,6 +2517,9 @@ def main():
     external_backends()
     dst_layers()
     custom_indicator_lab()
+    python_strategy_dispatch()
+    python_components()
+    python_backtest_paths()
     for w in WARNINGS:
         print("WARNING:", w, file=sys.stderr)
 

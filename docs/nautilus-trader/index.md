@@ -83,13 +83,19 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 
 这一章会用到前面所有部分：数据和执行引擎、对账、网络层、任务管理和确定性仿真测试。放在最后，是把它当作综合实战；只想先接入券商的读者，读完导读也可以直接读，遇到没讲过的组件再回头查。
 
-## 第七部分 · Python 层（规划中）
+## 第七部分 · Python 层
+
+- [第 39 章 · Python 策略：Rust 策略框架的绑定](./python-strategy.md)：`Strategy` 是一个可子类化的 Rust 类，持有实现了 `DataActor` 和 `Strategy` trait 的 `PyStrategyInner`；配置对象怎样保留、策略 ID 和标签怎样生成；注册时注册表和强引用表各存什么；一次回调的四步（弱引用、GIL、拷贝、按名字调用）；异常在数据回调和 `on_start` 里的不同后果；缓存返回快照；回测与实盘的线程和 GIL；每次回调的实测开销；附可运行实验
+- [第 40 章 · Python 的其他组件：DataActor、ExecutionAlgorithm 与 Controller](./python-components.md)：三种组件和策略共用同一种包装；默认 ID、加入方式与固定的启动顺序；信号的值变成字符串、Python 自定义数据传同一个对象、行情和订单是拷贝；嵌套回调里的借用冲突；用 Python 写执行算法和 Controller；附可运行实验
+
+### 规划中
 
 | 章 | 主题 | 要回答的问题 | 主要源码 |
 | --- | --- | --- | --- |
-| 39 | Python 策略：Rust 策略框架的绑定 | Python 的 `Strategy` 怎样包住第 9 章的 Rust 框架：`PyStrategy` 与 `PyStrategyInner`、配置类的取值、注册时做了什么、每个回调怎样转发到 Python、下单参数怎样转成 Rust 值；和 Rust 策略相比多了哪些开销、少了哪些能力 | `crates/trading/src/python/strategy.rs`、`crates/system/src/python/registration.rs` |
-
-其余章节待定。
+| 41 | 在 Python 里跑回测 | `BacktestEngine` 和 `BacktestNode` 怎么选；可导入配置；结果怎样取出；`analysis` 包的报表和业绩报告 | `crates/backtest/src/python/`、`python/nautilus_trader/analysis/` |
+| 42 | 在 Python 里跑实盘 | `run()` 和 `run_async()` 的区别；用 asyncio、uvloop、ASGI 托管节点；`dispose` 与单节点规则；信号处理归谁 | `crates/live/src/python/node.rs`、`runtime.rs` |
+| 43 | 用 Python 写适配器 | `live.clients` 基类、绑定的事件循环、只读缓存、排队输出、工厂注册；第 38 章附录 C 路线 B 的完整实操 | `python/nautilus_trader/live/`、`docs/developer_guide/python_adapters.md` |
+| 44 | 边界与迁移 | 类型存根就是公共 API；精度模式；异常映射；从 v1 迁移时哪些写法失效；什么时候该把 Python 换成 Rust | `python/nautilus_trader/**/*.pyi`、`MIGRATION_V2.md` |
 
 ## 附录
 
@@ -102,7 +108,7 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | 官方页面 | 本书章节 |
 | :--- | :--- |
 | Overview、Architecture | 第 0 章、第 1 章 |
-| Rust、Python | 第 0 章第 2～4 节；第 9 章；第七部分 |
+| Rust、Python | 第 0 章第 2～4 节；第 9 章；第 39 章 |
 | Instruments、Synthetics、Continuous Futures | 第 3 章 |
 | Value Types | 第 2 章 |
 | Data、Order Book、Custom Data | 第 4 章；第 11 章（K 线聚合）；第 18 章；第 25 章（数据目录） |
@@ -113,7 +119,7 @@ description: 从源码读开源量化交易平台 NautilusTrader：先从零编�
 | Positions | 第 6 章 |
 | Accounting、Portfolio | 第 7 章；第 22 章 |
 | Reports、Visualization | 第 28 章 |
-| Actors、Strategies | 第 9、10、12、13 章；第 23 章（生命周期） |
+| Actors、Strategies | 第 9、10、12、13 章；第 23 章（生命周期）；第 39 章（Python 策略） |
 | Cache、Message Bus | 第 16 章；第 15 章；第 36 章（外部后端） |
 | Configuration、Logging | 第 13 章 |
 | Backtesting、Behavioral Models | 第 24、26、27 章 |
