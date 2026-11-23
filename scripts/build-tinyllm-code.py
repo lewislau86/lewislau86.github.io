@@ -75,6 +75,8 @@ ARTIFACTS = {
     ("kv-memory", "kv_memory_log.json"): ROOT / "scripts/data/tinyllm-kv-memory-log.json",
     ("inference-optimization", "inference_optimization_log.json"): ROOT / "scripts/data/tinyllm-inference-optimization-log.json",
     ("annealing", "annealing_log.json"): ROOT / "scripts/data/tinyllm-annealing-log.json",
+    ("long-context", "long_context_log.json"): ROOT / "scripts/data/tinyllm-long-context-log.json",
+    ("continued-pretraining", "continued_pretraining_log.json"): ROOT / "scripts/data/tinyllm-continued-pretraining-log.json",
     ("initialization-and-residuals", "initialization_residuals_log.json"): ROOT / "scripts/data/tinyllm-initialization-residuals-log.json",
 }
 

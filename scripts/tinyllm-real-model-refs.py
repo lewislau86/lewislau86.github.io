@@ -237,6 +237,23 @@ SPEC = {
         ("fork", "generation/continuous_batching/cache_allocators/cache_allocator.py", "CacheAllocator.fork_blocks", "写满的块共享、引用计数加 1；没写满的块在 fork 时就复制一份，而不是像本章那样等到写的时候再复制"),
         ("抢占：搬走或重算", "generation/continuous_batching/offloading_manager.py", "OffloadingManager.offload_requests", "先清掉留着的块；还不够，就从分不到块的请求里挑几个抢占（至少留一个在跑）。CPU 上放得下就把它的块拷过去，放不下就“软重置”：扔掉缓存，把已生成的 token 接到提示词后面重新排队，下次从头 prefill，和本章第 3 节的重算一样"),
     ]),
+    "annealing": ("transformers 的 `Trainer` 自带 WSD 调度，也能从检查点恢复优化器；“衰减段换数据”和“汤”不在 transformers 里，要在数据管线和训练脚本里自己做：", [
+        ("WSD 的三段", "optimization.py", "_get_wsd_scheduler_lambda", "warmup 之后稳定段一直返回 1.0，衰减段按 `decay_type`（linear、cosine、1-sqrt 三种）降到 `min_lr_ratio`"),
+        ("调度器入口", "optimization.py", "get_wsd_schedule", "`num_stable_steps`、`num_decay_steps` 分开给，同一条稳定段可以配不同长度的衰减；在 `TrainingArguments` 里用 `lr_scheduler_type=\"warmup_stable_decay\"` 加 `lr_scheduler_kwargs` 选它；`decay_type` 默认是 `\"cosine\"`，本章用的是 `\"linear\"`"),
+        ("从检查点恢复优化器", "trainer.py", "Trainer._load_optimizer_and_scheduler", "从检查点目录读回优化器和调度器的状态；分叉退火时优化器状态（AdamW 的动量）照搬，调度器要换成新的衰减段，不能接着原来的走"),
+    ]),
+    "long-context": ("transformers 把几种上下文扩展都写成“换一组 `inv_freq`”：配置里 `rope_parameters` 的 `rope_type` 选方法，`factor` 是本章的 s，模型代码一行不改：", [
+        ("位置插值", "modeling_rope_utils.py", "_compute_linear_scaling_rope_parameters", "`inv_freq /= factor`：把每一维的旋转速度除以 s，等价于本章把位置除以 s"),
+        ("调大 base（动态）", "modeling_rope_utils.py", "_compute_dynamic_ntk_parameters", "`base * ((factor * seq_len / max_position_embeddings) - (factor - 1)) ** (dim / (dim - 2))`：随当前长度调 base，不超过训练长度时不变；`factor=1`、长度为 4 倍时就是本章的 base·4^(d/(d−2))"),
+        ("YaRN", "modeling_rope_utils.py", "_compute_yarn_parameters", "`beta_fast=32`、`beta_slow=1` 按“训练长度内转几圈”划出不动、插值和过渡三段，和本章相同；过渡段按维度序号线性（论文按圈数线性），边界取整；`attention_factor = 0.1 * ln(factor) + 1`"),
+        ("Llama 3.1 的做法", "modeling_rope_utils.py", "_compute_llama3_parameters", "按波长分段：波长短于原长度的 1/4 不动，长于原长度的除以 `factor`（Llama 3.1 用 8，原长度 8192），中间平滑过渡；思路和 YaRN 一样，但不乘注意力温度"),
+        ("温度乘在 cos、sin 上", LLAMA, "LlamaRotaryEmbedding.forward", "`cos = emb.cos() * self.attention_scaling`，q、k 各转一次，所以注意力分数乘它的平方，和本章 `with_rope` 的写法相同"),
+    ]),
+    "continued-pretraining": ("用 transformers 做继续预训练，就是“加载已有的权重，再起一次新的训练”：模型代码不变，要自己决定优化器、学习率和数据配比；回放（新旧数据按比例混合）在数据管线里做，例如 `datasets.interleave_datasets` 的 `probabilities`：", [
+        ("加载已有的权重", "modeling_utils.py", "PreTrainedModel.from_pretrained", "只加载权重，优化器和调度器在新的 `Trainer` 里重新建；本章除了权重还沿用了基线的 AdamW 动量，大模型发布时一般只给权重，拿不到优化器状态"),
+        ("从检查点续训", "trainer.py", "Trainer.train", "`resume_from_checkpoint` 恢复的是“同一次训练”：优化器、调度器、数据顺序都接着走，学习率不会重新升；继续预训练要的是一次新的训练，不传这个参数"),
+        ("重新升温、再衰减", "optimization.py", "get_linear_schedule_with_warmup", "先线性升到峰值、再线性降到 0，就是本章 `continue_pretrain` 的学习率；`warmup_steps` 和 `learning_rate` 分别对应本章的 warmup 和峰值"),
+    ]),
     "speculative-decoding": ("transformers 把投机解码叫“辅助生成”（assisted generation）：`generate(assistant_model=...)` 用小模型起草，`generate(prompt_lookup_num_tokens=...)` 在已有文本里查，起草和验证分在两个地方：", [
         ("小模型起草", "generation/candidate_generator.py", "AssistedCandidateGenerator", "`num_assistant_tokens` 就是每轮起草的个数 γ；`update_candidate_strategy` 里有一条启发式：草稿全部被接受就 +2，否则 −1"),
         ("在已有文本里查", "generation/candidate_generator.py", "PromptLookupCandidateGenerator", "`max_matching_ngram_size` 默认 2：先找最后 2 个 token、找不到再找最后 1 个，取从左往右第一处匹配（本章只找 2 个、取最近的一处）；都找不到就返回原输入，这一轮退回普通 decode"),

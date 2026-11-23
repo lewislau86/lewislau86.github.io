@@ -3,7 +3,7 @@
 #
 # 配套教案：https://lewislau86.github.io/tinyllm/annealing
 #
-# 从上到下运行即可（`python annealing.py`），CPU 上约一分半（3 个种子的稳定段，加上六七十段短的衰减）。需要安装 PyTorch 和 `tokenizers`。
+# 从上到下运行即可（`python annealing.py`），CPU 上约两分钟（3 个种子的稳定段，加上七十多段短的衰减）。需要安装 PyTorch 和 `tokenizers`。
 # 这个文件是本章代码的唯一来源：教案中的代码片段由 `# region 名字` / `# endregion 名字`
 # 标记的区域直接引用，notebook 也由它生成（scripts/build-tinyllm-code.py）。
 #
@@ -345,14 +345,15 @@ log["no_anneal"], log["mix"] = no_anneal, {str(p): v for p, v in mix.items()}
 # %% [markdown]
 # ## 4. 高质量数据越少，越容易背
 #
-# 把高质量训练集缩到 50 首、25 首（取前若干首），衰减段的设置不变，比较 p=10% 和 30%。
-# 数据少了，同样的 p 意味着每首诗被看更多遍。
+# 把高质量训练集缩到 50 首、25 首（用一个固定的生成器随机抽，不按语料顺序：语料最前面是第 1 章的 39 首，比别的诗短），
+# 衰减段的设置不变，比较 p=10% 和 30%。数据少了，同样的 p 意味着每首诗被看更多遍。
 
 # %%
 # region pool-size
 pool = {}
+subset = torch.randperm(len(hq_train), generator=torch.Generator().manual_seed(36)).tolist()   # 随机取，不按语料顺序
 for n in (25, 50, 100):
-    stream = to_stream(hq_train[:n])
+    stream = to_stream([hq_train[i] for i in sorted(subset[:n])])
     for p in (0.1, 0.3):
         res = mix[p] if n == len(hq_train) else [report(anneal(ckpts[seed][STABLE_END], DECAY, p, hq_stream=stream)) for seed in SEEDS]
         pool[n, p] = res

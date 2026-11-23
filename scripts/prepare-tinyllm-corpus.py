@@ -15,8 +15,14 @@
 另外把《全唐诗》最前面 3 个源文件（poet.tang.0/1000/2000.json，共 3002 条）原样复制到同一目录，
 供第 14 章“语料与数据管线”演示清洗、去重和划分；校验值记在 manifest.json 的 raw_sample 里。
 
+另外，第 37 章“继续预训练”要一份和五言不同的“新领域”数据：用 --qiyan 从同目录的 3 个原始样本里
+挑出七言绝句和七言律诗（2 或 4 段，每段都是“七字，七字。”），繁转简、按正文去重、按固定种子打乱，
+按正文的 SHA-256 划出约 10% 验证集，写到 tang-qiyan.jsonl，并把校验值记进 manifest.json 的 qiyan 一项。
+这一步不联网，只读仓库里已有的原始样本。
+
 依赖：pip install opencc-python-reimplemented（需要联网下载源数据，约 24 MB）。
 用法：python scripts/prepare-tinyllm-corpus.py
+      python scripts/prepare-tinyllm-corpus.py --qiyan
 """
 
 from pathlib import Path
@@ -154,5 +160,40 @@ def main() -> None:
     (OUT.parent / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(json.dumps(manifest, ensure_ascii=False))
 
+LINE7 = re.compile(r"^[一-鿿]{7}，[一-鿿]{7}。$")
+QIYAN = OUT.parent / "tang-qiyan.jsonl"
+
+
+def qiyan() -> None:
+    """第 37 章的七言诗：只读仓库里的 3 个原始样本，不联网。"""
+    from opencc import OpenCC
+    t2s = OpenCC("t2s").convert
+    poems, seen = [], set()
+    for name in [p.split("/")[-1] for p in RAW_SAMPLE]:
+        for item in json.loads((OUT.parent / name).read_text(encoding="utf-8")):
+            paras = item.get("paragraphs", [])
+            if len(paras) in (2, 4) and all(LINE7.match(p) for p in paras):
+                text = t2s("".join(paras))
+                if text not in seen:
+                    seen.add(text)
+                    poems.append({"text": text, "title": t2s(item.get("title", "")), "author": t2s(item.get("author", "")), "source": "全唐诗"})
+    random.Random(0).shuffle(poems)
+    with QIYAN.open("w", encoding="utf-8", newline="\n") as f:
+        for k, p in enumerate(poems):
+            split = "val" if int(hashlib.sha256(p["text"].encode("utf-8")).hexdigest(), 16) % 10 == 0 else "train"
+            f.write(json.dumps({"id": k, "split": split, **p}, ensure_ascii=False) + "\n")
+    data = QIYAN.read_bytes()
+    rows = [json.loads(l) for l in data.decode("utf-8").splitlines()]
+    path = OUT.parent / "manifest.json"
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+    manifest["qiyan"] = {"file": QIYAN.name, "bytes": len(data), "sha256": hashlib.sha256(data).hexdigest(), "poems": len(rows),
+                         "chars": sum(len(r["text"]) for r in rows),
+                         "splits": {s: sum(r["split"] == s for r in rows) for s in ("train", "val")},
+                         "from": "raw_sample"}
+    path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+    print(json.dumps(manifest["qiyan"], ensure_ascii=False))
+
+
 if __name__ == "__main__":
-    main()
+    import sys
+    qiyan() if "--qiyan" in sys.argv else main()

@@ -53,6 +53,15 @@ python scripts/prepare-tinyllm-corpus.py
 
 `poet.tang.0.json`、`poet.tang.1000.json`、`poet.tang.2000.json` 是 chinese-poetry 固定版本里《全唐诗》最前面的 3 个源文件，原样复制（共 3,002 条记录，繁体，未经任何处理），校验值见 `manifest.json` 的 `raw_sample`。第 14 章“语料与数据管线”用它们演示清洗、繁转简、去重和划分。
 
+## 七言诗（第 37 章）
+
+`tang-qiyan.jsonl` 是第 37 章“继续预训练”用的新领域数据：从上面 3 个原始样本里挑出七言绝句和七言律诗（2 或 4 段，每段都是“七字，七字。”），繁体转简体、按正文去重、按固定种子打乱，按正文的 SHA-256 分出约 10% 验证集。共 528 首、20,832 字（训练 478 首、验证 50 首），129,214 字节，SHA-256 `0a23e00937f16763adc2d5de9774c66da98aa18391ce08ebc714447455e6dad0`，记在 `manifest.json` 的 `qiyan` 一项。每一行的字段和 `tang-poems.jsonl` 相同（`split` 只有 `train`、`val`）。重新生成不需要联网：
+
+```sh
+python -m pip install opencc-python-reimplemented
+python scripts/prepare-tinyllm-corpus.py --qiyan
+```
+
 ## 更大的语料
 
 第 13 章“TinyLLM 在 GPU 上完整实现”另用一份唐宋诗大语料（约 29.7 万首、1,726 万字、90 MB），太大不放进仓库，由 `scripts/prepare-tinyllm-large-corpus.py` 在本机生成，校验值见同目录的 `manifest-large.json`。
