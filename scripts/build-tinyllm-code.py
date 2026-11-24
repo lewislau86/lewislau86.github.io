@@ -83,6 +83,7 @@ ARTIFACTS = {
     ("rlhf", "rlhf_log.json"): ROOT / "scripts/data/tinyllm-rlhf-log.json",
     ("preference-alignment", "preference_alignment_log.json"): ROOT / "scripts/data/tinyllm-preference-alignment-log.json",
     ("grpo", "grpo_log.json"): ROOT / "scripts/data/tinyllm-grpo-log.json",
+    ("llm-agent-interaction", "llm-agent-interaction_log.json"): ROOT / "scripts/data/tinyllm-llm-agent-interaction-log.json",
     ("initialization-and-residuals", "initialization_residuals_log.json"): ROOT / "scripts/data/tinyllm-initialization-residuals-log.json",
 }
 

@@ -247,18 +247,13 @@
     "collapsed": false
   },
   {
-    "text": "规划中（尚未成文）",
-    "collapsed": true,
+    "text": "第九部分 · 应用",
     "items": [
       {
-        "text": "第九部分 · 应用",
-        "items": [
-          {
-            "text": "第 44 章 · LLM 和 Agent 的交互",
-            "link": "/tinyllm/llm-agent-interaction"
-          }
-        ]
+        "text": "第 44 章 · LLM 和 Agent 的交互",
+        "link": "/tinyllm/llm-agent-interaction"
       }
-    ]
+    ],
+    "collapsed": false
   }
 ]

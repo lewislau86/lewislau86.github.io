@@ -308,6 +308,14 @@ SPEC = {
         ("KL 项", "trl:trl/trainer/grpo_trainer.py", ("grep", r"torch\.exp\(ref_per_token_logps - per_token_logps\) - \(ref_per_token_logps - per_token_logps\) - 1"), "和本章一样用 k3 估计每个 token 的 KL，乘 `beta` 加进损失"),
         ("默认配置", "trl:trl/trainer/grpo_config.py", "GRPOConfig", "`num_generations` 默认 8；`beta` 默认 0.0，即不加 KL、也不加载参考模型（注释里写 DeepSeek-R1 用 0.001）；`loss_type` 默认 `\"dapo\"`，按整批 token 数归一化，本章按每个回答的长度归一化，相当于其中的 `\"grpo\"`，文档提醒它有长度偏差；`scale_rewards=\"none\"` 就是 Dr. GRPO 建议的不除标准差"),
     ]),
+    "llm-agent-interaction": ("transformers 自带的 `transformers serve` 就是本章服务端的完整版：用模型自带的对话模板渲染消息，生成以后按“响应模板”把文字切成 content 和 tool_calls，再按 OpenAI 的格式返回：", [
+        ("消息 → token", "tokenization_utils_base.py", "PreTrainedTokenizerBase.apply_chat_template", "`add_generation_prompt=True` 在末尾补上助手这一轮的开头，和本章 `render(..., add_generation_prompt=True)` 相同；`tools` 参数把工具说明交给模板，由模板写进提示词（本章的模板省掉了这一步，因为模型只学了一个工具）"),
+        ("工具说明从函数生成", "utils/chat_template_utils.py", "get_json_schema", "从类型标注和 Google 风格的 docstring 生成 JSON Schema，就是 Agent 请求里 `tools` 的那一段"),
+        ("工具调用的分隔符", "cli/serving/utils.py", ("grep", r'"open_pattern": r"\\s\*<tool_call>",'), "Qwen 系列的回退模板：工具调用写在 `<tool_call>` 和 `</tool_call>` 之间，对应本章的 `<call>` 和 `<eos>`"),
+        ("解析出 tool_calls", "cli/serving/utils.py", "parse_assistant_message", "按响应模板把生成的文字切成 content、reasoning 和 tool_calls；模型没有响应模板时不解析，原样当文字返回"),
+        ("arguments 写回字符串", "cli/serving/utils.py", "_normalize_tool_call", "解析出来的参数是 dict，再 `json.dumps` 成字符串，因为协议规定 `arguments` 是 JSON 字符串；本章服务端也这样做，Agent 一侧再 `json.loads` 回来校验"),
+        ("id 与 finish_reason", "cli/serving/chat_completion.py", "ChatCompletionHandler._non_streaming", "调用的 id 由服务端生成（请求 id 加序号）；有 tool_calls 时 `finish_reason` 是 `tool_calls`，到长度上限是 `length`，否则 `stop`，和本章一样"),
+    ]),
     "speculative-decoding": ("transformers 把投机解码叫“辅助生成”（assisted generation）：`generate(assistant_model=...)` 用小模型起草，`generate(prompt_lookup_num_tokens=...)` 在已有文本里查，起草和验证分在两个地方：", [
         ("小模型起草", "generation/candidate_generator.py", "AssistedCandidateGenerator", "`num_assistant_tokens` 就是每轮起草的个数 γ；`update_candidate_strategy` 里有一条启发式：草稿全部被接受就 +2，否则 −1"),
         ("在已有文本里查", "generation/candidate_generator.py", "PromptLookupCandidateGenerator", "`max_matching_ngram_size` 默认 2：先找最后 2 个 token、找不到再找最后 1 个，取从左往右第一处匹配（本章只找 2 个、取最近的一处）；都找不到就返回原输入，这一轮退回普通 decode"),

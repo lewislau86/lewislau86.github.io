@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
 const props = withDefaults(defineProps<{ active?: string; caption?: boolean }>(), { caption: true })
 
-const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching", "kv-memory", "inference-optimization", "annealing", "long-context", "continued-pretraining", "instruction-finetuning", "lora-finetuning", "distillation", "rlhf", "preference-alignment", "grpo"])
+const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching", "kv-memory", "inference-optimization", "annealing", "long-context", "continued-pretraining", "instruction-finetuning", "lora-finetuning", "distillation", "rlhf", "preference-alignment", "grpo", "llm-agent-interaction"])
 
 // 每章在图中的输入与输出（图注里显示）
 const io: Record<string, [string, string]> = {
@@ -57,7 +57,7 @@ const io: Record<string, [string, string]> = {
   'rlhf': ["SFT 模型和偏好数据（二选一）", "奖励模型，以及用 PPO 对齐后的模型"],
   'preference-alignment': ["SFT 模型和成对的偏好数据", "不训练奖励模型、直接用 DPO 对齐后的模型"],
   'grpo': ["SFT 模型和能由程序判分的任务", "用 GRPO 在可判分任务上提高了合格率的模型"],
-  'llm-agent-interaction': ["用户问题、工具结果和记忆", "组装好的上下文（重新分词送进模型），以及从输出里解析出的动作"]
+  'llm-agent-interaction': ["Agent 发来的消息、工具说明和工具结果", "按模板渲染、生成，解析成工具调用或答案，按协议返回"]
 }
 
 type Section = { id: string; title: string; x: number; y: number; w: number; h: number; slugs: string[] }

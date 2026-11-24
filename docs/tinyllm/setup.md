@@ -104,7 +104,7 @@ python -m pip install -r requirements.txt
 | 包 | 用在哪里 | 不装会怎样 |
 | --- | --- | --- |
 | `torch` | 所有章节 | 无法运行 |
-| `tokenizers` | 第 4、10、12～43 章：训练字节级 BPE | 这几章无法运行 |
+| `tokenizers` | 第 4、10、12～44 章：训练字节级 BPE | 这几章无法运行 |
 | `pypinyin` | 第 43 章：判定押韵 | 第 43 章无法运行 |
 | `opencc-python-reimplemented` | 第 14 章：繁体转简体 | 第 14 章无法运行 |
 | `plotly` | 第 4、8、10、16 章的交互图表 | 这几章画图那一步报错 |

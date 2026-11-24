@@ -26,7 +26,7 @@ pageClass: tinyllm-course
 2. **再读第 2、3 章，补两样背景。** [第 2 章](./tensors-and-autograd.md)备好工具：张量、形状和自动求导，后面每一章都要用；[第 3 章](./architecture-evolution.md)讲架构的来历：从翻译用的 Transformer，到只有解码器的 GPT，再到今天的稀疏混合架构，TinyLLM 的每个零件都能在这里找到出处。
 3. **然后顺着总图从上往下搭模型（第 4～9 章）。** 文字变编号、编号变向量、注意力让向量互相看见、前馈层各自加工，最后装进 Block。
 4. **把 Block 叠深，它会训不动；第 10～12 章修好它。** 残差、初始化、归一化三件工具让深层网络稳定，再组装出完整的 TinyLLM；第 13 章把同一份代码搬到 GPU 上放大训练。
-5. **之后是预训练（第 14～26 章）、推理（第 27～34 章）、中训练（第 35～37 章）、后训练（第 38～43 章）和应用（第 44 章）。** 一个模型从零到能对话，要依次经过预训练、中训练、后训练三段；[30 分钟快速体验](./quickstart.md#base-and-chat)用 Hugging Face 上 Qwen 的一组模型说明了每一段产出的是什么。 已成文的章节之间如果隔着规划中的章节，可以先跳过，侧栏的“下一篇”会直接带你到下一章已完成的内容。
+5. **之后是预训练（第 14～26 章）、推理（第 27～34 章）、中训练（第 35～37 章）、后训练（第 38～43 章）和应用（第 44 章）。** 一个模型从零到能对话，要依次经过预训练、中训练、后训练三段；[30 分钟快速体验](./quickstart.md#base-and-chat)用 Hugging Face 上 Qwen 的一组模型说明了每一段产出的是什么。
 
 不要求现在就认识每个名词。遇到 MoE、μP 等，先知道它们是后续专题即可。
 
@@ -77,6 +77,7 @@ pageClass: tinyllm-course
 | [第 41 章 · RLHF：奖励模型与 PPO](./rlhf.md) | 程序评审造偏好数据；Bradley–Terry 奖励模型（留出 65%）；策略、参考、奖励、价值四个模型的 PPO；奖励模型的分涨到 10、评审的分只在有 KL 时提高，没有 KL 时变成同一个字的堆砌 | [查看](/tinyllm/notebooks/rlhf) |
 | [第 42 章 · DPO：直接偏好优化](./preference-alignment.md) | 从 RLHF 目标推出 DPO 损失；同一份偏好数据上和 PPO 对照；β 太小时评审分一路掉到 0、选中回答的概率一起下降；加 NLL 保住首字；隐含奖励的准确率 | [查看](/tinyllm/notebooks/preference-alignment) |
 | [第 43 章 · GRPO 与可验证奖励](./grpo.md) | 用拼音判定押韵当奖励；组内平均当基线的 GRPO；3 个种子的合格率都是先平台、后突变，从 0.16 到 0.75～0.92，却全靠同字押韵；补严规则后平台更长，学会的是“只押 eng 一个韵”；强化学习放大已有倾向，首字和原有能力一起丢掉 | [查看](/tinyllm/notebooks/grpo) |
+| [第 44 章 · LLM 和 Agent 的交互](./llm-agent-interaction.md) | 把从零训练的 TinyLLM 接到 learn-agent-rust 专题 3 的 Agent 上：对话模板加 `<system>`/`<tool>`/`<call>`，服务端把 `<call>` 后的 JSON 解析成 `tool_calls`，照 Rust 代码写的 Agent 校验协议、参数和预算；经真 HTTP 跑通两次往返；工具结果换键顺序、系统策略多一句时小模型会坏在哪里；上下文预算与外部记忆 | [查看](/tinyllm/notebooks/llm-agent-interaction) |
 
 ## 课程路线 {#roadmap}
 
@@ -167,7 +168,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 
 模型参数不动，靠往上下文里放信息让它更有用。
 
-- [第 44 章 · LLM 和 Agent 的交互](./llm-agent-interaction.md)（规划中）
+- [第 44 章 · LLM 和 Agent 的交互](./llm-agent-interaction.md)
 
 ## 贯穿全书的主线选择 {#mainline-choices}
 
@@ -221,7 +222,7 @@ Block 一叠深就训不动。残差、初始化、归一化三件工具解决�
 | [41 RLHF](./rlhf.md) | 完整实现一遍：奖励模型从 SFT 初始化、Bradley–Terry 损失、留出报告准确率；PPO 四个模型、每 token 奖励带 −β·KL；评估要有奖励模型之外的独立评审；实际对齐用第 42、43 章 | 奖励模型留出 65%；β=0.05 时评审分 1.67→2.53，但 64% 的回答堆砌、首字对 0.42→0.13；β=0 时评审分掉到 0。评审是程序，偏好数据由它生成，一个种子。 |
 | [42 DPO](./preference-alignment.md) | 偏好对齐用 DPO：参考模型是冻住的 SFT 模型，β=1（学习率 1e-3），损失加选中回答的 NLL，用独立评审定期检查并早停 | 同一份偏好数据：DPO 评审分 2.64、KL 17.4，PPO 2.53、29.4，DPO 不要奖励模型和采样；β=0.1 时评审分掉到 0、选中回答对数概率降 48.8；加 NLL 后只降 8.0、评审 1.94、首字对 0.24；隐含奖励留出 68%。一个种子。 |
 | [43 GRPO](./grpo.md) | 有程序能判对错的任务时用 GRPO：每个提示采样 8 个，组内平均当基线、标准差归一化，保留 KL；规则堵住能想到的捷径，并监控规则之外的指标（多样性、原有能力）；按多个种子看平台期 | 3 个种子：押韵奖励 100 步合格 0.16→0.75～0.92，全是同字押韵；补严后 200 步不取巧的押韵 0.53～0.86，但全在 eng 一个韵组；首字对 0.45→0 附近，验证损失 4.64→5.3～7.1。押韵按普通话近似，3 个种子共用一个 SFT 模型。 |
-| [44 LLM 与 Agent](./llm-agent-interaction.md) | 只通过文本消息交互：与 SFT 相同的对话模板渲染四种角色，工具调用写成一行 JSON，解析或校验失败把错误送回模型，循环设步数上限；跨会话事实带来源和时间存在模型外，检索后放回上下文 | 调工具、记事情的能力来自 Agent 和模型约定的格式；小模型能否稳定按格式调用要实测，不稳时加约束解码。参数和 KV cache 不保存可更新的跨会话事实，按规模决定是否加向量索引。 |
+| [44 LLM 与 Agent](./llm-agent-interaction.md) | 模型和 Agent 只通过 Chat Completions 的 JSON 交互：服务端用训练时的模板渲染，`<call>` 开头的输出解析成 `tool_calls`、id 由服务端生成，格式坏了原样返回；Agent 负责 Schema、id 配对、参数与权限校验、预算与停止，出错就停不重试；跨会话事实带来源存在模型外，检索后放回上下文 | 3 个种子：公开用例 4 条过 3 条，新组合的 README 0.84～0.88，没见过的词 0.28～0.29；工具结果换键顺序平均降到 0.58，系统策略多一句两个种子变成 0（其一是参数名写错，被 Agent 的校验拦下）。模型只学了一个任务、一个工具；Rust 程序未在沙箱里运行。 |
 
 归一化、激活和位置编码的主线选择参考 [LLaMA](https://arxiv.org/abs/2302.13971) 与 [Llama 3](https://arxiv.org/abs/2407.21783) 的公开架构；门控前馈层见 [GLU 变体研究](https://arxiv.org/abs/2002.05202)，Pre-Norm 的初始化梯度分析见 [Xiong 等](https://arxiv.org/abs/2002.04745)。线性层的 Xavier 初始化见 [PyTorch 文档](https://docs.pytorch.org/docs/stable/nn.init.html)；残差投影按层数缩小借鉴 [nanoGPT 的具体实现](https://github.com/karpathy/nanoGPT/blob/master/model.py)，但这里从 Xavier 尺度出发，并非逐行复现 nanoGPT，更不是所有 LLM 共用的规则。GQA 的缓存权衡见 [GQA 论文](https://arxiv.org/abs/2305.13245)。
 

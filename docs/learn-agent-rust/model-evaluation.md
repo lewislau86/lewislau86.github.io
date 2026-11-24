@@ -284,6 +284,10 @@ python3 lab.py fixture target/debug/learn-agent-p03 demo-fixture
 
 可以先改一份解压副本的 `cases.json`，加入一个新启动命令，再观察两策略差异；不要覆盖课程原始证据。若要做模型评测集，应另留未用于调提示词的任务集并固定版本，这四项公开诊断题只做管线自检。
 
+### 换成一个本地的小模型
+
+TinyLLM 课程的[第 44 章](/tinyllm/llm-agent-interaction)把这里按规则写死的夹具换成了一个从零训练的小模型：它在 `127.0.0.1` 的 `/fixture/...` 路径上按同一份协议回复，回填请求里的模型名；按本专题 `provider.rs` 的规则逐条对过，Rust 程序应该不用改就能用 `fixture` 模式调用它（命令见[那一章第 10 节](/tinyllm/llm-agent-interaction#rust-agent)；这个组合本身还没有实际运行过）。那一章照本专题的代码写了一个 Python 版的 Agent，用 `lab.py` 的 27 种场景核对过停止原因、读取次数和请求次数。它适合用来观察模型一侧怎样把消息渲染成 token、怎样写出工具调用，以及提示词或结果格式稍有变化时会以哪种停止原因失败；它只学过这一个任务，不能代表真实模型的质量。
+
 ### 真实服务：本次未运行
 
 学习包提供一个显式 `live` 入口，只允许 `https://api.deepseek.com/chat/completions`，沿用同一工具、提示词、任务和判分器。需要在本机安全配置 `DEEPSEEK_API_KEY` 和显式 `P03_MODEL`，运行前按官方文档核对该模型的参数支持。

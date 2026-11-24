@@ -47,12 +47,13 @@
 | 第 41 章 RLHF：奖励模型与 PPO | [rlhf.py](rlhf.py) | [打开](https://lewislau86.github.io/tinyllm/rlhf) |
 | 第 42 章 DPO：直接偏好优化 | [preference-alignment.py](preference-alignment.py) | [打开](https://lewislau86.github.io/tinyllm/preference-alignment) |
 | 第 43 章 GRPO 与可验证奖励 | [grpo.py](grpo.py) | [打开](https://lewislau86.github.io/tinyllm/grpo) |
+| 第 44 章 LLM 和 Agent 的交互 | [llm-agent-interaction.py](llm-agent-interaction.py) | [打开](https://lewislau86.github.io/tinyllm/llm-agent-interaction) |
 
 ## 怎么运行
 
 安装步骤、整包下载和常见问题见 [实验环境：安装与代码下载](https://lewislau86.github.io/tinyllm/setup)。
 
-每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、10、12～43 章还需要 `tokenizers`，第 43 章还需要 `pypinyin`，第 4、8、10、16 章的交互图表需要 `plotly`；第 29 章最后一节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一节会跳过。
+每个文件自带全部 `import`，下载后直接 `python <文件名>` 从头跑到尾，就能复现教案里引用的所有输出。大多数章节只需要 PyTorch；第 4、10、12～44 章还需要 `tokenizers`，第 43 章还需要 `pypinyin`，第 4、8、10、16 章的交互图表需要 `plotly`；第 29 章最后一节的 `torch.compile` 还需要一个 C++ 编译器，没有时那一节会跳过。
 
 ## 可选实验：`extras/`
 

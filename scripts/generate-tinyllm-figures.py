@@ -5347,6 +5347,77 @@ def grpo_results():
               "首字对都掉到 0 附近；图例里是预训练验证损失。")
 
 
+def agent_roundtrip():
+    """第 44 章：learn-agent-rust 的 Agent 和 TinyLLM 服务端之间的两次往返。"""
+    body = text(480, 34, "一次任务两次请求：Agent 管流程和工具，模型只读 token、写 token", 19, weight="bold")
+    body += text(165, 66, "Agent（learn-agent-rust 专题 3）", 14, BLUE, "bold")
+    body += text(480, 66, "HTTP：Chat Completions 的 JSON", 14, GRAY, "bold")
+    body += text(795, 66, "TinyLLM 服务端（本章，Python）", 14, TEAL, "bold")
+    rows = [
+        (84, ["messages：system 策略、user 目标", "tools：read_file 的说明和 JSON Schema"],
+         ["render：<system>…<user>…<assistant>", "贪心生成：<call>{\"name\":\"read_file\",…}<eos>", "解析成 tool_calls，服务端配一个 id"],
+         "POST（第 1 次）", "finish_reason = tool_calls"),
+        (236, ["ExecuteTools：名字、参数、预算都对", "才读 README.md；结果作为 tool 消息", "追加，tool_call_id 和调用的 id 配对"],
+         ["render 整段对话（前一半和第 1 次相同）", "贪心生成：{\"command\":…,\"source\":…}<eos>", "没有 <call>：作为 content 返回"],
+         "POST（第 2 次，带上工具结果）", "finish_reason = stop"),
+    ]
+    for y, left, right, go, back in rows:
+        body += box(30, y, 270, 112, SOFT[BLUE], BLUE)
+        for i, line_ in enumerate(left):
+            body += text(165, y + 34 + i * 26, line_, 12.5, INK)
+        body += box(660, y, 270, 112, SOFT[TEAL], TEAL)
+        for i, line_ in enumerate(right):
+            body += text(795, y + 34 + i * 26, line_.replace("\\", ""), 12.5, INK)
+        body += arrow(304, y + 38, 654, y + 38, BLUE, 2.5) + text(480, y + 30, go, 13, BLUE)
+        body += arrow(654, y + 82, 306, y + 82, TEAL, 2.5) + text(480, y + 74, back, 13, TEAL)
+    body += path("M165 198L165 232", BLUE, 2.5)
+    body += box(30, 380, 270, 44, "#ffffff", BLUE) + text(165, 407, "answered → grade：格式、答案、真的读过", 12.5, INK)
+    body += path("M165 350L165 376", BLUE, 2.5)
+    body += text(480, 452, "调用 id 的配对、参数校验、读文件的预算、什么时候停，都写在两边的程序里；模型只是在 <assistant> 后面接着写", 13, GRAY)
+    body += text(615, 407, "左边：本章实验用照 Rust 代码写的 Python 版，也可以直接换成 Rust 程序", 12, GRAY)
+    svg("agent-roundtrip.svg", "Agent 与 TinyLLM 的两次往返",
+        "第 1 次请求只有系统策略、用户目标和工具说明，TinyLLM 把消息渲染成 token，生成以 <call> 开头的一行 JSON，服务端解析成 tool_calls 返回。"
+        "Agent 检查工具名、参数和预算后读取 README.md，把结果作为 tool 消息追加。第 2 次请求带着整段对话，TinyLLM 生成 JSON 答案，作为普通内容返回，Agent 判分。", 470, body)
+
+
+def agent_results():
+    log = _p8_log("llm-agent-interaction")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1.6]})
+    res = [log["results"][str(s)] for s in range(3)]
+    groups = [("公开用例\n（4 条）", [sum(r[k] for k in ("rust", "node", "injection", "missing")) / 4 for r in res]),
+              ("新组合\n（100 份）", [r["新组合"] for r in res]), ("没见过的词\n（100 份）", [r["没见过的词"] for r in res])]
+    ax = axes[0]
+    for i, (name, vals) in enumerate(groups):
+        mean = sum(vals) / 3
+        ax.bar(i, mean, color=[BLUE, TEAL, ORANGE][i], yerr=[[mean - min(vals)], [max(vals) - mean]], capsize=4, ecolor=INK)
+        ax.text(i, mean + 0.06, f"{mean:.2f}", ha="center", fontsize=11)
+    ax.set_xticks(range(3), [g[0] for g in groups])
+    ax.set_ylim(0, 1.12)
+    ax.set_title("任务通过率（3 个种子的平均与范围）", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    names = list(log["variants"])
+    xs = [i if i < 4 else i + 0.6 for i in range(len(names))]                # 后两根不是改格式，隔开画
+    for x, name in zip(xs, names):
+        vals = log["variants"][name]
+        mean = sum(vals) / 3
+        color = GRAY if x == 0 else PURPLE if x > 4 else (RED if mean < 0.7 else TEAL)
+        ax.bar(x, mean, color=color, yerr=[[mean - min(vals)], [max(vals) - mean]], capsize=4, ecolor=INK)
+        ax.text(x, max(vals) + 0.04, f"{mean:.2f}", ha="center", fontsize=11)
+    ax.axvline(4.3, color=GRAY, lw=1, ls="--")
+    labels = [n.replace("工具结果", "工具结果\n").replace("系统策略", "系统策略\n").replace("的 README", "的\nREADME") for n in names]
+    ax.set_xticks(xs, labels, fontsize=10)
+    ax.set_ylim(0, 1.12)
+    ax.set_title("新组合的 100 份：虚线左边是基线和三种格式改动，右边按有没有备注拆开", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "agent-results.svg", "TinyLLM 接上 Agent 以后的结果",
+              "左：3 个种子的任务通过率。公开用例 4 条里通过 3 条（含 demo 这个没见过的词的那条失败），新组合的 README 0.84～0.88，词从没见过的 0.28～0.29。"
+              "右：同样 100 份 README，前四根只改 Agent 一侧的格式：工具结果加空格几乎没影响；键换顺序平均降到 0.58，一个种子只剩 0.19；"
+              "系统策略多一句，两个种子通过率为 0。后两根不改格式，把这 100 份按有没有备注拆开：有备注的 27 份平均 0.67，没备注的 73 份 0.93。")
+
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -6465,7 +6536,7 @@ def main():
                sft_template, sft_results,
                lora_structure, lora_results,
                kd_methods, kd_results,
-               rlhf_pipeline, rlhf_results, dpo_vs_rlhf, dpo_results, grpo_group, grpo_results,
+               rlhf_pipeline, rlhf_results, dpo_vs_rlhf, dpo_results, grpo_group, grpo_results, agent_roundtrip, agent_results,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,
