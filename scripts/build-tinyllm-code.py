@@ -77,6 +77,12 @@ ARTIFACTS = {
     ("annealing", "annealing_log.json"): ROOT / "scripts/data/tinyllm-annealing-log.json",
     ("long-context", "long_context_log.json"): ROOT / "scripts/data/tinyllm-long-context-log.json",
     ("continued-pretraining", "continued_pretraining_log.json"): ROOT / "scripts/data/tinyllm-continued-pretraining-log.json",
+    ("instruction-finetuning", "instruction_finetuning_log.json"): ROOT / "scripts/data/tinyllm-instruction-finetuning-log.json",
+    ("lora-finetuning", "lora_finetuning_log.json"): ROOT / "scripts/data/tinyllm-lora-finetuning-log.json",
+    ("distillation", "distillation_log.json"): ROOT / "scripts/data/tinyllm-distillation-log.json",
+    ("rlhf", "rlhf_log.json"): ROOT / "scripts/data/tinyllm-rlhf-log.json",
+    ("preference-alignment", "preference_alignment_log.json"): ROOT / "scripts/data/tinyllm-preference-alignment-log.json",
+    ("grpo", "grpo_log.json"): ROOT / "scripts/data/tinyllm-grpo-log.json",
     ("initialization-and-residuals", "initialization_residuals_log.json"): ROOT / "scripts/data/tinyllm-initialization-residuals-log.json",
 }
 

@@ -11,6 +11,7 @@
     python scripts/tinyllm-real-model-refs.py /tmp/tf           # 生成
 
 --fetch 用 git 浅克隆固定版本 TAG，并把 sparse-checkout 设成 SPEC 里出现的文件（不用手写路径清单）；
+后训练几章引用的 TRL、PEFT 也一并浅克隆到 <源码目录>/_repos/ 下（版本见 OTHER）；
 目录已经是一个克隆时，只更新 sparse-checkout。新增 SPEC 条目或升级 TAG 后重新 --fetch 一次即可。
 
 源码目录里缺文件时，脚本列出缺的文件并直接退出，不逐条报错。
@@ -31,6 +32,28 @@ TAG = "v5.21"
 BLOB = f"https://github.com/huggingface/transformers/blob/{TAG}/src/transformers/"
 START, END = "<!-- real-model:start -->", "<!-- real-model:end -->"
 REPO = os.environ.get("TINYLLM_TF_REPO", "https://github.com/huggingface/transformers.git")
+# 后训练几章还引用 TRL、PEFT：SPEC 里写成 "trl:路径" / "peft:路径"，本地放在 <源码目录>/_repos/<名字>/ 下
+OTHER = {
+    "trl": ("v1.18.2", "https://github.com/huggingface/trl.git", "https://github.com/huggingface/trl/blob/v1.18.2/"),
+    "peft": ("v0.22.0", "https://github.com/huggingface/peft.git", "https://github.com/huggingface/peft/blob/v0.22.0/"),
+}
+
+
+def split_file(file: str):
+    """"trl:trl/x.py" → ("trl", "trl/x.py")；没有前缀的是 transformers 的 src/transformers/ 下的文件。"""
+    if ":" in file and file.split(":", 1)[0] in OTHER:
+        return tuple(file.split(":", 1))
+    return "transformers", file
+
+
+def local_path(base: Path, file: str) -> Path:
+    repo, rel = split_file(file)
+    return base / "src/transformers" / rel if repo == "transformers" else base / "_repos" / repo / rel
+
+
+def blob_url(file: str) -> str:
+    repo, rel = split_file(file)
+    return BLOB + rel if repo == "transformers" else OTHER[repo][2] + rel
 
 LLAMA = "models/llama/modeling_llama.py"
 QWEN3 = "models/qwen3/modeling_qwen3.py"
@@ -254,6 +277,37 @@ SPEC = {
         ("从检查点续训", "trainer.py", "Trainer.train", "`resume_from_checkpoint` 恢复的是“同一次训练”：优化器、调度器、数据顺序都接着走，学习率不会重新升；继续预训练要的是一次新的训练，不传这个参数"),
         ("重新升温、再衰减", "optimization.py", "get_linear_schedule_with_warmup", "先线性升到峰值、再线性降到 0，就是本章 `continue_pretrain` 的学习率；`warmup_steps` 和 `learning_rate` 分别对应本章的 warmup 和峰值"),
     ]),
+    "instruction-finetuning": ("真实模型的对话模板写在分词器里（一段 Jinja 模板），SFT 一般用 TRL 的 `SFTTrainer`；本章的模板、掩码和补齐在那里都有对应：", [
+        ("对话模板", "tokenization_utils_base.py", "PreTrainedTokenizerBase.apply_chat_template", "按模型自带的模板把 `messages` 拼成文本再分词；`add_generation_prompt=True` 在末尾补上助手回合的开头（相当于本章的 `<assistant>`），`return_assistant_tokens_mask=True` 返回哪些 token 属于助手的回答，就是本章的 loss 掩码"),
+        ("只在回答上算损失", "trl:trl/trainer/sft_config.py", "SFTConfig", "`completion_only_loss` 默认按数据格式决定：“提示—回答”格式的数据只在回答上算；对话数据要打开 `assistant_only_loss`，只在助手说的话上算"),
+        ("补齐与标签", "trl:trl/trainer/sft_trainer.py", "DataCollatorForLanguageModeling.torch_call", "右侧补 pad，标签里补齐的位置和不算损失的位置都是 -100（交叉熵忽略这些位置），等价于本章的掩码；`padding_free=True` 时把一个 batch 首尾相接成一行，用 position_ids 分开（第 14 章的打包）"),
+    ]),
+    "lora-finetuning": ("LoRA 在 Hugging Face 生态里由 PEFT 库实现：`get_peft_model(model, LoraConfig(...))` 把指定的线性层换成带 LoRA 支路的层，模型代码不用改：", [
+        ("配置：秩、α、加在哪里", "peft:src/peft/tuners/lora/config.py", "LoraConfig", "`r` 默认 8、`lora_alpha` 默认 8，支路输出乘 α/r（`use_rslora=True` 时是 α/√r）；`target_modules` 选加在哪些层；`trainable_token_indices` 只训练嵌入表里指定的几行，正是本章给两个新特殊 token 的做法"),
+        ("初始化", "peft:src/peft/tuners/lora/layer.py", "LoraLayer.reset_lora_parameters", "A 用 `nn.Linear` 默认的 kaiming 均匀分布，B 全部置零，所以刚加上时模型输出不变，和本章相同"),
+        ("前向", "peft:src/peft/tuners/lora/layer.py", "Linear.forward", "`result = result + lora_B(lora_A(dropout(x))) * scaling`：原层的输出加上低秩支路；已经合并过（`self.merged`）时直接走原层"),
+        ("合并", "peft:src/peft/tuners/lora/layer.py", "Linear.get_delta_weight", "增量就是 `B @ A` 乘 scaling；`merge()` 把它加回原权重，`merge_and_unload()` 再把 LoRA 层换回普通线性层，对应本章的 `merged`"),
+    ]),
+    "distillation": ("TRL 的 `DistillationTrainer` 做的是 on-policy 蒸馏：学生先自己写，再在自己写的每个位置上拟合老师的分布；本章的软标签蒸馏在真实的诗上拟合，属于 off-policy，序列级蒸馏则只需要一个能生成文本的老师：", [
+        ("蒸馏训练器", "trl:trl/trainer/distillation_trainer.py", "DistillationTrainer", "学生生成回答后，老师和学生在同样的位置上各算一遍分布，按 `beta` 选定的散度求损失；要求两者共用同一个词表（本章的老师和学生也共用分词器）"),
+        ("选哪种散度", "trl:trl/trainer/distillation_config.py", "DistillationConfig", "`beta=0` 是本章用的前向 KL(老师‖学生)，`beta=1`（默认）是反向 KL，中间是广义 JSD；`temperature` 同时用于采样和算损失"),
+        ("分块算散度", "trl:trl/trainer/distillation_trainer.py", "_chunked_divergence_loss", "不一次算出整张 logits，而是把老师和学生的隐藏状态分块乘输出层、边算边累加；词表有十几万个 token 时，这比存两份完整的 logits 省得多"),
+    ]),
+    "rlhf": ("TRL 里奖励模型的训练很直接；PPO 训练器在 TRL 1.x 里已经不在了，RLHF 的强化学习部分如今多用不需要价值模型的 GRPO、RLOO（第 43 章）：", [
+        ("奖励模型的损失", "trl:trl/trainer/reward_trainer.py", "RewardTrainer.compute_loss", "一个 batch 里前一半是选中、后一半是落选，`-logsigmoid(rewards_chosen - rewards_rejected)`，就是本章的 Bradley–Terry 损失；可选的 `margin` 要求两者至少差一个给定值，`center_rewards_coefficient` 让分数的均值靠近 0"),
+        ("偏好数据怎样拼 batch", "trl:trl/trainer/reward_trainer.py", "DataCollatorForPreference", "把选中和落选各自补齐后上下拼在一起，一次前向同时算出两边的分数"),
+    ]),
+    "preference-alignment": ("TRL 的 `DPOTrainer` 实现了本章的 DPO 和十几种变体，用 `loss_type` 选择，可以组合：", [
+        ("β 与损失类型", "trl:trl/trainer/dpo_config.py", "DPOConfig", "`beta` 默认 0.1；`loss_type` 默认 `[\"sigmoid\"]`（标准 DPO），还有 `ipo`、`hinge`、`robust` 等；写成 `[\"sigmoid\", \"sft\"]` 并配上 `loss_weights`，就是本章第 4 节在损失里加“选中”回答的负对数似然"),
+        ("标准 DPO 的损失", "trl:trl/trainer/dpo_trainer.py", ("grep", r'if loss_type == "sigmoid"'), "`-F.logsigmoid(self.beta * delta_score)`：默认设置下 `delta_score` 是选中、落选两边“策略对数概率减参考模型对数概率”之差，和本章的 `dpo` 一样"),
+        ("加上 NLL", "trl:trl/trainer/dpo_trainer.py", ("grep", r'elif loss_type == "sft"'), "`-chosen_per_token_logps[chosen_mask].mean()`：“选中”回答每个 token 的负对数似然取平均，和 DPO 损失按 `loss_weights` 加权相加"),
+        ("参考模型的对数概率", "trl:trl/trainer/dpo_trainer.py", "DPOTrainer._precompute_ref_logps", "参考模型冻住，它对每个对子的对数概率可以在训练前一次算好存进数据集，训练时就不用再加载参考模型"),
+    ]),
+    "grpo": ("TRL 的 `GRPOTrainer` 就是本章的算法加上大量工程：用 vLLM 生成、多种损失归一化方式、奖励函数可以是任意 Python 函数（可验证奖励）：", [
+        ("组内比较", "trl:trl/trainer/grpo_trainer.py", ("grep", r"mean_grouped_rewards = torch\.nanmean\(rewards\.view\(-1, num_generations\)"), "每组 `num_generations` 个回答的奖励求平均，`advantages = rewards - mean_grouped_rewards`，再按 `scale_rewards` 除以组内标准差（加 1e-4），和本章相同"),
+        ("KL 项", "trl:trl/trainer/grpo_trainer.py", ("grep", r"torch\.exp\(ref_per_token_logps - per_token_logps\) - \(ref_per_token_logps - per_token_logps\) - 1"), "和本章一样用 k3 估计每个 token 的 KL，乘 `beta` 加进损失"),
+        ("默认配置", "trl:trl/trainer/grpo_config.py", "GRPOConfig", "`num_generations` 默认 8；`beta` 默认 0.0，即不加 KL、也不加载参考模型（注释里写 DeepSeek-R1 用 0.001）；`loss_type` 默认 `\"dapo\"`，按整批 token 数归一化，本章按每个回答的长度归一化，相当于其中的 `\"grpo\"`，文档提醒它有长度偏差；`scale_rewards=\"none\"` 就是 Dr. GRPO 建议的不除标准差"),
+    ]),
     "speculative-decoding": ("transformers 把投机解码叫“辅助生成”（assisted generation）：`generate(assistant_model=...)` 用小模型起草，`generate(prompt_lookup_num_tokens=...)` 在已有文本里查，起草和验证分在两个地方：", [
         ("小模型起草", "generation/candidate_generator.py", "AssistedCandidateGenerator", "`num_assistant_tokens` 就是每轮起草的个数 γ；`update_candidate_strategy` 里有一条启发式：草稿全部被接受就 +2，否则 −1"),
         ("在已有文本里查", "generation/candidate_generator.py", "PromptLookupCandidateGenerator", "`max_matching_ngram_size` 默认 2：先找最后 2 个 token、找不到再找最后 1 个，取从左往右第一处匹配（本章只找 2 个、取最近的一处）；都找不到就返回原输入，这一轮退回普通 decode"),
@@ -293,29 +347,50 @@ def locate(src: Path, target):
 def section(slug: str, base: Path, problems: list) -> str | None:
     """生成一章的“在真实模型里”。找不到的条目记进 problems 并跳过；一条都没找到时返回 None。"""
     intro, rows = SPEC[slug]
+    repos = sorted({split_file(row[1])[0] for row in rows})
+    names = "、".join(f"{'Hugging Face ' if i == 0 else ''}{r} 的固定版本 `{TAG if r == 'transformers' else OTHER[r][0]}`"
+                     for i, r in enumerate(["transformers"] * ("transformers" in repos) + [r for r in repos if r != "transformers"]))
     out = [START, "", "## 在真实模型里", "",
-           f"{intro.rstrip('：')}。下表的链接都指向 Hugging Face transformers 的固定版本 `{TAG}`，精确到行。"
+           f"{intro.rstrip('：')}。下表的链接都指向 {names}，精确到行。"
            "读代码时可以先跳过缓存、掩码、并行这些工程细节，只看和本章对应的那几行。", "",
            "| 本章的零件 | 真实代码 | 对照要点 |", "| --- | --- | --- |"]
     found = 0
     for what, file, target, note in rows:
         try:
-            start, end = locate(base / "src/transformers" / file, target)
+            start, end = locate(local_path(base, file), target)
         except Missing as e:
             problems.append((slug, what, str(e)))
             continue
         found += 1
         name = target if isinstance(target, str) else f"{Path(file).name} 第 {start} 行"
         anchor = f"#L{start}" if start == end else f"#L{start}-L{end}"
-        out.append(f"| {what} | [`{name}`]({BLOB}{file}{anchor}) | {note} |")
+        out.append(f"| {what} | [`{name}`]({blob_url(file)}{anchor}) | {note} |")
     if found == 0:
         return None
-    out += ["", "想在本机看源码，可以先 `pip install transformers`，再用 `python -m inspect transformers.models.llama.modeling_llama:LlamaMLP` 这样的命令打印出任意一个类。", "", END]
+    out += ["", footer(repos, rows), "", END]
     return "\n".join(out)
 
 
-def needed_files() -> list[str]:
-    """SPEC 里用到的全部源码文件（相对 src/transformers/）。"""
+def footer(repos: list, rows: list) -> str:
+    """“在本机看源码”的提示：装这一章表里用到的包；示例取表里第一个 TRL/PEFT 的类，只有 transformers 时用 LlamaMLP。"""
+    example = "transformers.models.llama.modeling_llama:LlamaMLP"
+    for _, file, target, _ in rows:
+        repo, rel = split_file(file)
+        if repo != "transformers" and isinstance(target, str) and target[:1].isupper():
+            module = rel.removeprefix("src/").removesuffix(".py").replace("/", ".")
+            example = f"{module}:{target.split('.')[0]}"
+            break
+    return (f"想在本机看源码，可以先 `pip install {' '.join(repos)}`，再用 `python -m inspect {example}` "
+            "这样的命令打印出任意一个类。")
+
+
+def needed_files(repo: str = "transformers") -> list[str]:
+    """SPEC 里用到的某个仓库的全部源码文件（transformers 相对 src/transformers/，其他仓库相对仓库根目录）。"""
+    return sorted({split_file(row[1])[1] for _, rows in SPEC.values() for row in rows if split_file(row[1])[0] == repo})
+
+
+def all_needed() -> list[str]:
+    """全部需要的文件，写成 SPEC 里的形式（其他仓库带前缀）。"""
     return sorted({row[1] for _, rows in SPEC.values() for row in rows})
 
 
@@ -335,6 +410,16 @@ def fetch(dest: Path) -> None:
     if missing:
         raise SystemExit("检出后仍然缺这些文件（TAG 里可能没有它们，改 SPEC）：\n  " + "\n  ".join(missing))
     print(f"已取到 {len(needed_files())} 个文件：{dest}（transformers {TAG}）")
+    for repo, (tag, url, _) in OTHER.items():
+        files = needed_files(repo)
+        if not files:
+            continue
+        sub = dest / "_repos" / repo
+        if not (sub / ".git").exists():
+            git("clone", "--depth", "1", "--branch", tag, "--filter=blob:none", "--no-checkout", url, str(sub))
+        git("-C", str(sub), "sparse-checkout", "set", "--no-cone", *[f"/{f}" for f in files])
+        git("-C", str(sub), "checkout", "--detach", tag)
+        print(f"已取到 {len(files)} 个文件：{sub}（{repo} {tag}）")
 
 
 def main() -> None:
@@ -347,11 +432,11 @@ def main() -> None:
     if do_fetch:
         fetch(base)
         return
-    missing = [f for f in needed_files() if not (base / "src/transformers" / f).exists()]
+    missing = [f for f in all_needed() if not local_path(base, f).exists()]
     if missing:
-        print(f"{base} 下缺 {len(missing)}/{len(needed_files())} 个源码文件：")
+        print(f"{base} 下缺 {len(missing)}/{len(all_needed())} 个源码文件：")
         for f in missing:
-            print(f"  src/transformers/{f}")
+            print(f"  {local_path(base, f).relative_to(base)}")
         raise SystemExit(f"先运行：python scripts/tinyllm-real-model-refs.py --fetch {base}")
     problems = []
     for slug in SPEC:

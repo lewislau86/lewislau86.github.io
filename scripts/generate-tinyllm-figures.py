@@ -4894,6 +4894,459 @@ def cpt_tradeoff():
               "绿色菱形是同样 900 步、七言占 10% 从头一起训：五言几乎和基线一样，七言却比所有继续预训练都差。灰色三角标出基线的五言损失，它的七言损失 5.95 在图外。")
 
 
+# ---------- 第 38 章：指令微调 ----------
+
+def _sft_log():
+    src = DATA / "tinyllm-instruction-finetuning-log.json"
+    if not src.exists():
+        print("skip instruction-finetuning figures: run scripts/build-tinyllm-code.py instruction-finetuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def sft_template():
+    """一条 SFT 样本：模板、loss 掩码；推理时模板停在 <assistant>，生成到 <eos>。"""
+    body = text(480, 34, "SFT 的一条样本：模板拼好，只有回答部分算损失", 19, weight="bold")
+    y = 80
+    segs = [("<user>", 70, BLUE, False), ("写一首五言绝句，用“春”字开头。", 280, GRAY, False), ("<assistant>", 100, BLUE, False),
+            ("春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。", 330, ORANGE, True), ("<eos>", 64, RED, True)]
+    x = 50
+    for label, w, color, loss in segs:
+        body += box(x, y, w, 44, SOFT[color] if loss else "#ffffff", color, width=2)
+        body += text(x + w / 2, y + 28, label, 14 if len(label) < 20 else 13, color if label.startswith("<") else INK)
+        x += w + 6
+    body += f'<path d="M50 {y + 58} L{50 + 70 + 280 + 100 + 12} {y + 58}" stroke="{GRAY}" stroke-width="2.5" fill="none"/>'
+    body += text(50 + (70 + 280 + 100 + 12) / 2, y + 80, "掩码 0：不算损失（指令是用户给的，模型不用学着写）", 13.5, GRAY)
+    x1 = 50 + 70 + 280 + 100 + 18
+    body += f'<path d="M{x1} {y + 58} L{x1 + 330 + 70} {y + 58}" stroke="{ORANGE}" stroke-width="2.5" fill="none"/>'
+    body += text(x1 + 200, y + 80, "掩码 1：算损失（包括 <eos>，学会停下）", 13.5, ORANGE)
+    y2 = y + 130
+    body += text(50, y2, "推理时：", 15, INK, "bold", anchor="start")
+    x = 130
+    for label, w, color in [("<user>", 70, BLUE), ("新的指令", 160, GRAY), ("<assistant>", 100, BLUE)]:
+        body += box(x, y2 - 26, w, 40, "#ffffff", color, width=2) + text(x + w / 2, y2 - 1, label, 14, color if label.startswith("<") else INK)
+        x += w + 6
+    body += arrow(x + 4, y2 - 6, x + 50, y2 - 6, TEAL, 2.5)
+    body += text(x + 60, y2 - 1, "模型从这里开始逐字生成，生成出 <eos> 就停", 14, TEAL, anchor="start")
+    body += text(480, y2 + 50, "训练和推理必须用同一个模板：少了 <assistant> 或者换了说法，“去指令里找首字”这类行为就会失灵", 14, RED)
+    svg("sft-template.svg", "SFT 样本的模板与损失掩码",
+        "上：一条训练样本由 <user>、指令、<assistant>、回答和 <eos> 拼成；前三段掩码为 0 不算损失，回答和 <eos> 掩码为 1 算损失。"
+        "下：推理时把新的指令按同一个模板拼到 <assistant> 为止，模型从那里开始生成，直到生成 <eos>。", y2 + 76, body)
+
+
+def sft_results():
+    """左：基座、SFT（3 个种子）、两个对照的各项合格率；中：种子 0 随 SFT 步数的变化；右：推理时换模板。"""
+    log = _sft_log()
+    if log is None:
+        return
+    keys = [("five", "每句五字"), ("count", "句数对"), ("first", "首字对"), ("stop", "按时停下"), ("all", "全部照做")]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [2.2, 1, 1.3]})
+    ax = axes[0]
+    sft = list(log["sft"].values())
+    groups = [("基座", [log["base"]], GRAY), ("SFT（只算回答）", sft, BLUE), ("全部 token 都算", [log["all_tokens"]], ORANGE), ("训练时没有 <eos>", [log["no_eos"]], RED)]
+    w = 0.2
+    for j, (name, rows, color) in enumerate(groups):
+        for i, (k, _) in enumerate(keys):
+            vals = [r[k] for r in rows]
+            m = sum(vals) / len(vals)
+            x = i + (j - 1.5) * w
+            ax.bar(x, m, width=w, color=color, label=name if i == 0 else None)
+            if len(vals) > 1:
+                ax.plot([x, x], [min(vals), max(vals)], color=INK, lw=1.2)
+    ax.set_xticks(range(len(keys)), [k[1] for k in keys])
+    ax.set_ylim(0, 1.3)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_ylabel("合格率（64 条评估指令）")
+    ax.set_title("SFT 学会了格式和停下，首字只学会一部分", fontsize=12)
+    ax.legend(fontsize=9, ncol=4, loc="upper center", handlelength=1.2, columnspacing=0.8)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    steps = [0, 500, 1000, 1500]
+    rows = [log["base"], log["curve"]["500"], log["curve"]["1000"], log["sft"]["0"]]
+    for k, name, color in [("count", "句数对", BLUE), ("first", "首字对", ORANGE), ("all", "全部照做", TEAL)]:
+        ax.plot(steps, [r[k] for r in rows], "o-", color=color, label=name, lw=2)
+    ax.set_xticks(steps)
+    ax.set_xlabel("SFT 步数（种子 0）")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("格式先会，首字后会", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    ax = axes[2]
+    cases = [("训练时的模板", log["sft"]["0"]), ("少了 <assistant>", log["mismatch"]["no_assistant"]), ("换一种说法", log["mismatch"]["reworded"])]
+    for i, (name, r) in enumerate(cases):
+        ax.bar(i - 0.17, r["count"], width=0.32, color=BLUE, label="句数对" if i == 0 else None)
+        ax.bar(i + 0.17, r["first"], width=0.32, color=ORANGE, label="首字对" if i == 0 else None)
+    ax.set_xticks(range(3), [c[0] for c in cases], fontsize=10)
+    ax.set_ylim(0, 1.05)
+    ax.set_title("推理时换模板：首字先掉", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "sft-results.svg", "指令微调的结果",
+              "左：基座、只在回答上算损失的 SFT（3 个种子，竖线是范围）、全部 token 都算损失、训练时去掉 <eos> 四种模型，在 64 条评估指令上的各项合格率。"
+              "基座全是 0；SFT 后每句五字、句数对约 0.8～0.9，首字对 0.34～0.45，全部照做约 0.55；全部 token 都算时首字对降到 0.24；去掉 <eos> 后模型停不下来，几乎全不合格。"
+              "中：种子 0 在 SFT 第 0、500、1000、1500 步的合格率，句数对 500 步就到 0.77，首字对 500 步只有 0.03，1500 步到 0.39。"
+              "右：推理时少了 <assistant>，首字对降到 0；把指令换一种说法，首字对降到 0.21，句数对几乎不变。")
+
+
+# ---------- 第 39 章：参数高效微调（LoRA） ----------
+
+def _lora_log():
+    src = DATA / "tinyllm-lora-finetuning-log.json"
+    if not src.exists():
+        print("skip lora figures: run scripts/build-tinyllm-code.py lora-finetuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def lora_structure():
+    """LoRA：冻住的 W 旁边加一条低秩支路 B·A；训练完合并回 W。"""
+    body = text(480, 34, "LoRA：原权重冻住，旁边加一条低秩支路，训练完再合并回去", 19, weight="bold")
+    body += box(60, 150, 70, 50, "#ffffff", GRAY) + text(95, 181, "x", 18)
+    body += box(230, 90, 220, 70, SOFT[GRAY], GRAY, width=2)
+    body += text(340, 118, "W（out × in）", 16, INK, "bold") + text(340, 142, "冻住，不更新", 13, GRAY)
+    body += box(210, 200, 110, 60, SOFT[ORANGE], ORANGE, width=2) + text(265, 226, "A（r × in）", 14, ORANGE, "bold") + text(265, 247, "随机初始化", 12, GRAY)
+    body += box(350, 200, 110, 60, SOFT[ORANGE], ORANGE, width=2) + text(405, 226, "B（out × r）", 14, ORANGE, "bold") + text(405, 247, "初始化为 0", 12, GRAY)
+    body += arrow(132, 168, 226, 128, GRAY, 2.5) + arrow(132, 182, 206, 228, ORANGE, 2.5) + arrow(322, 230, 346, 230, ORANGE, 2.5)
+    body += circle(540, 175, 22, "#ffffff", INK) + text(540, 182, "+", 22, INK, "bold")
+    body += arrow(452, 125, 520, 162, GRAY, 2.5) + arrow(462, 230, 520, 190, ORANGE, 2.5)
+    body += text(500, 245, "× α/r", 14, ORANGE, anchor="start")
+    body += arrow(564, 175, 620, 175, INK, 2.5) + text(640, 181, "输出", 16, INK, anchor="start")
+    body += text(60, 320, "可训练参数：r·(in + out)，原来是 in·out。r 远小于 in、out 时，梯度和 AdamW 状态都只剩一小部分", 14, INK, anchor="start")
+    body += text(60, 348, "B 从 0 开始，刚加上时模型和原来完全一样；训练只改 A、B", 14, INK, anchor="start")
+    body += box(60, 372, 840, 50, SOFT[TEAL], TEAL, width=2)
+    body += text(480, 403, "合并：W′ = W + (α/r)·B·A，支路消失，推理时的结构、参数量、速度都和原模型一样", 15, TEAL, "bold")
+    svg("lora-structure.svg", "LoRA 的结构",
+        "输入 x 同时经过冻住的原权重 W 和一条低秩支路：先乘 A（r×in，随机初始化），再乘 B（out×r，初始化为 0），乘 α/r 后和 W 的输出相加。"
+        "可训练参数从 in·out 变成 r·(in+out)。训练完把 (α/r)·B·A 加回 W，支路消失，推理和原模型一样。", 440, body)
+
+
+def lora_results():
+    """左：四种做法的合格率；中：预训练验证损失（越低越少遗忘）；右：训练时的显存账。"""
+    log = _lora_log()
+    if log is None:
+        return
+    res = log["results"]
+    names = list(res)
+    colors = [BLUE, ORANGE, PURPLE, TEAL]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5), layout="constrained", gridspec_kw={"width_ratios": [1.5, 1, 1.1]})
+    ax = axes[0]
+    keys = [("count", "句数对"), ("first", "首字对"), ("all", "全部照做")]
+    w = 0.2
+    for j, (n, c) in enumerate(zip(names, colors)):
+        for i, (k, _) in enumerate(keys):
+            ax.bar(i + (j - 1.5) * w, res[n]["eval"][k], width=w, color=c, label=n if i == 0 else None)
+    ax.set_xticks(range(3), [k[1] for k in keys])
+    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("合格率（64 条评估指令）")
+    ax.set_title("首字：LoRA 明显不如全参数微调", fontsize=12)
+    ax.legend(fontsize=9, ncol=2, loc="upper right")
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    for j, (n, c) in enumerate(zip(names, colors)):
+        v = res[n]["pretrain_loss"]
+        ax.bar(j, v, color=c, width=0.65)
+        ax.text(j, v + 0.01, f"{v:.3f}", ha="center", fontsize=9.5)
+    ax.axhline(log["base_loss"], color=GRAY, ls="--", lw=1.2)
+    ax.text(-0.45, log["base_loss"] + 0.01, f"基座 {log['base_loss']:.3f}", ha="left", fontsize=9.5, color=GRAY)
+    ax.set_xticks(range(4), [n.replace(" + ", "\n+ ") for n in names], fontsize=9)
+    ax.set_ylim(4.2, 4.7)
+    ax.set_ylabel("预训练验证损失（越低越少遗忘）")
+    ax.set_title("LoRA 学得少，也忘得少", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[2]
+    n_total = log["n_total"]
+    for j, n in enumerate(["全参数微调", "LoRA r=4", "LoRA r=32"]):
+        t = res[n]["trainable"]
+        weights = (n_total + (t if n != "全参数微调" else 0)) * 4 / 2**20
+        grads, adam = t * 4 / 2**20, 2 * t * 4 / 2**20
+        ax.bar(j, weights, color=GRAY, width=0.6, label="权重" if j == 0 else None)
+        ax.bar(j, grads, bottom=weights, color=BLUE, width=0.6, label="梯度" if j == 0 else None)
+        ax.bar(j, adam, bottom=weights + grads, color=ORANGE, width=0.6, label="AdamW 状态" if j == 0 else None)
+        ax.text(j, weights + grads + adam + 0.03, f"{weights + grads + adam:.2f}", ha="center", fontsize=9.5)
+    ax.set_xticks(range(3), ["全参数", "LoRA r=4", "LoRA r=32"])
+    ax.set_ylabel("MiB（FP32，不含激活）")
+    ax.set_title("省下的是梯度和优化器状态", fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "lora-results.svg", "全参数微调与 LoRA 的对比",
+              "同一个基座、同样的 SFT 数据和步数（一个种子）。左：句数对、首字对、全部照做；全参数微调首字对 0.39，LoRA r=4、r=32 只有 0 和 0.05，"
+              "让两个新特殊 token 的嵌入也可训练后升到 0.21。中：预训练验证损失，基座 4.305，全参数微调升到 4.640，LoRA 只升到 4.51～4.58。"
+              "右：按 FP32 算的权重、梯度和 AdamW 状态；LoRA 的权重略多（多了 A、B），梯度和状态少得多。")
+
+
+# ---------- 第 40 章：蒸馏与合成数据 ----------
+
+def _kd_log():
+    src = DATA / "tinyllm-distillation-log.json"
+    if not src.exists():
+        print("skip distillation figures: run scripts/build-tinyllm-code.py distillation to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kd_methods():
+    """三种训学生的办法：真实数据的硬标签、老师写的数据的硬标签、老师分布的软标签。"""
+    body = text(480, 34, "三种训学生的办法：学的都是“下一个字”，标签从哪来不一样", 19, weight="bold")
+    rows = [("从头训", "真实的诗", "每个位置只有一个正确答案（真实的下一个字）", GRAY, [1.0]),
+            ("序列级蒸馏", "老师写的诗", "老师采样写出来，学生把它当成真实数据学", BLUE, [1.0]),
+            ("软标签蒸馏", "真实的诗", "每个位置给出老师的整个概率分布，学生去拟合它", ORANGE, [0.42, 0.21, 0.13, 0.09, 0.06, 0.05, 0.04])]
+    for i, (name, data, note, color, bars) in enumerate(rows):
+        y = 74 + i * 112
+        body += box(30, y, 150, 86, SOFT[color], color, width=2) + text(105, y + 50, name, 16, color, "bold")
+        body += text(210, y + 26, f"数据：{data}", 14, INK, anchor="start")
+        body += text(210, y + 52, note, 13.5, GRAY, anchor="start")
+        x0, base = 690, y + 76
+        for j in range(7):
+            h = (bars[j] if j < len(bars) else 0) * 60
+            colr = color if (j == 0 or len(bars) > 1) else "#cbd5e1"
+            body += f'<rect x="{x0 + j * 30}" y="{base - max(h, 2)}" width="22" height="{max(h, 2)}" fill="{colr}" rx="2"/>'
+        body += text(x0 + 100, base + 18, "这个位置的目标分布", 12, GRAY)
+    body += text(480, 420, "软标签告诉学生“哪些字也说得通、各有几分可能”，一个位置传过去的信息多得多；代价是训练时每一步都要跑一遍老师", 13.5, INK)
+    svg("kd-methods.svg", "三种训学生的办法",
+        "第一行从头训：用真实的诗，每个位置的目标是真实的下一个字，只有一个 token 的概率为 1。第二行序列级蒸馏：用老师写的诗，目标同样只有一个字。"
+        "第三行软标签蒸馏：用真实的诗，但每个位置的目标是老师给出的整个概率分布，学生用 KL 散度去拟合。", 440, body)
+
+
+def kd_results():
+    """左：三种训法的验证损失随步数（3 个种子）；中：软标签的变体；右：训到 1800 步。"""
+    log = _kd_log()
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1, 1.1]})
+    ax = axes[0]
+    colors = {"从头训": GRAY, "序列级蒸馏": BLUE, "软标签蒸馏": ORANGE}
+    for m, c in colors.items():
+        s = log["summary"][m]
+        xs = [200, 400, 600]
+        ax.plot(xs, [s["curve"][str(k)] for k in xs], "o-", color=c, lw=2, label=m)
+        ax.plot([600, 600], [min(s["final"]), max(s["final"])], color=c, lw=4, alpha=0.4)
+    ax.axhline(4.305, color=INK, ls=":", lw=1)
+    ax.text(210, 4.33, "老师 4.305", fontsize=9.5)
+    ax.set_xticks([200, 400, 600])
+    ax.set_xlabel("学生训练步数")
+    ax.set_ylabel("真实验证集上的损失（3 个种子平均）")
+    ax.set_title("软标签一直领先", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    ax = axes[1]
+    names = ["温度 1", "温度 2", "只留前 8 个"]
+    vals = [log["summary"]["软标签蒸馏"]["final"][0], log["variants"]["软标签，温度 2"], log["variants"]["软标签，只留前 8 个"]]
+    for i, (n, v) in enumerate(zip(names, vals)):
+        ax.bar(i, min(v, 5.2), color=[ORANGE, PURPLE, RED][i], width=0.6)
+        ax.text(i, min(v, 5.2) + 0.02, f"{v:.3f}", ha="center", fontsize=10)
+    ax.axhline(log["summary"]["从头训"]["final"][0], color=GRAY, ls="--", lw=1.2)
+    ax.text(2.4, log["summary"]["从头训"]["final"][0] + 0.02, "从头训（种子 0）", ha="right", fontsize=9.5, color=GRAY)
+    ax.set_xticks(range(3), names)
+    ax.set_ylim(4.2, 5.3)
+    ax.set_title("软标签的变体（种子 0，600 步）", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[2]
+    for m, c in [("从头训", GRAY), ("软标签蒸馏", ORANGE)]:
+        cur = log["long"][m]
+        xs = [600, 1200, 1800]
+        ax.plot(xs, [cur[str(k)] for k in xs], "o-", color=c, lw=2, label=m)
+    ax.set_xticks([600, 1200, 1800])
+    ax.set_xlabel("学生训练步数（同一份约 10 万 token 的数据）")
+    ax.set_title("训得更久，差距仍在", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "kd-results.svg", "蒸馏的结果",
+              "左：三种训法在真实验证集上的损失，第 200、400、600 步（3 个种子平均，600 步处的竖条是范围）；软标签蒸馏每个时刻都最低，600 步时 4.47，从头训 4.68，序列级蒸馏 4.76，老师 4.305。"
+              "中：种子 0 的软标签变体，温度 2 时 4.59，只保留老师前 8 个概率时升到 6.33（图中截断），虚线是从头训。"
+              "右：在同一份数据上训到 1800 步，从头训 4.61，软标签 4.37。")
+
+
+# ---------- 第 41～43 章：RLHF、DPO、GRPO ----------
+
+def _p8_log(slug):
+    src = DATA / f"tinyllm-{slug}-log.json"
+    if not src.exists():
+        print(f"skip {slug} figures: run scripts/build-tinyllm-code.py {slug} to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def _smooth(values, k=10):
+    return [sum(values[i:i + k]) / k for i in range(0, len(values) - k + 1, k)]
+
+
+def rlhf_pipeline():
+    """RLHF 三步：SFT → 奖励模型 → PPO（四个模型）。"""
+    body = text(480, 34, "RLHF 的三步：先 SFT，再从二选一学一个打分器，最后用强化学习对着打分器优化", 18, weight="bold")
+    steps = [("① SFT", "第 38 章", "指令—回答，交叉熵", BLUE),
+             ("② 奖励模型", "偏好对：同一条指令的两个回答", "Bradley–Terry：选中的分比落选的高", ORANGE),
+             ("③ PPO", "策略采样 → 打分 → 更新", "奖励 = 奖励模型的分 − β·KL", TEAL)]
+    for i, (t, a, b, c) in enumerate(steps):
+        x = 30 + i * 310
+        body += box(x, 70, 280, 100, SOFT[c], c, width=2)
+        body += text(x + 140, 100, t, 17, c, "bold") + text(x + 140, 128, a, 13, INK) + text(x + 140, 152, b, 13, GRAY)
+        if i < 2:
+            body += arrow(x + 282, 120, x + 308, 120, GRAY, 2.5)
+    body += text(480, 210, "PPO 这一步同时用到四个模型", 15, INK, "bold")
+    models = [("策略", "从 SFT 复制，要训练", TEAL), ("参考", "SFT 本身，冻住；算 KL", GRAY), ("奖励模型", "冻住；给整个回答打分", ORANGE), ("价值模型", "从奖励模型复制，要训练", PURPLE)]
+    for i, (n, d, c) in enumerate(models):
+        x = 30 + i * 232
+        body += box(x, 230, 210, 74, "#ffffff", c, width=2) + text(x + 105, 258, n, 15, c, "bold") + text(x + 105, 282, d, 11.5, GRAY)
+    body += text(480, 340, "KL 是一根绳子：策略离 SFT 越远，罚得越多。没有它，策略会找到奖励模型的漏洞，分数一路涨，回答越来越不像话", 13.5, RED)
+    svg("rlhf-pipeline.svg", "RLHF 的三步",
+        "第一步 SFT；第二步用同一条指令的两个回答和人的二选一，按 Bradley–Terry 损失训练奖励模型；第三步 PPO：策略采样回答，奖励模型打分，"
+        "每个 token 再减去 β 乘以和 SFT 的 KL。PPO 同时用到策略、参考、奖励模型、价值模型四个模型；价值模型估计每个位置之后还能拿多少奖励。", 362, body)
+
+
+def rlhf_results():
+    log = _p8_log("rlhf")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1, 1.3]})
+    for beta, style in [("0.05", "-"), ("0.0", "--")]:
+        h = log["history"][beta]
+        xs = list(range(10, 101, 10))
+        axes[0].plot(xs, _smooth([x["rm"] for x in h]), style, color=ORANGE, marker="o", ms=4, label=f"β={beta}")
+        axes[1].plot(xs, _smooth([x["judge"] for x in h]), style, color=TEAL, marker="o", ms=4, label=f"β={beta}")
+    axes[0].set_title("奖励模型的分：两次都一路涨", fontsize=12)
+    axes[1].set_title("评审的分：β=0 时掉到 0", fontsize=12)
+    for ax in axes[:2]:
+        ax.set_xlabel("PPO 步数（每 10 步平均）")
+        ax.legend(fontsize=10)
+        ax.grid(alpha=0.2)
+    ax = axes[2]
+    res = log["results"]
+    names = ["SFT", "PPO β=0.05", "PPO β=0"]
+    keys = [("judge", "评审（0～4）", 4), ("images", "意象字个数", 4), ("stuffed", "堆砌比例", 1), ("first", "首字对", 1)]
+    w = 0.26
+    for j, (n, c) in enumerate(zip(names, [BLUE, TEAL, RED])):
+        for i, (k, _, scale) in enumerate(keys):
+            ax.bar(i + (j - 1) * w, res[n][k] / scale, width=w, color=c, label=n if i == 0 else None)
+    ax.set_xticks(range(4), [f"{k[1]}\n（÷{k[2]}）" if k[2] > 1 else k[1] for k in keys], fontsize=9.5)
+    ax.set_ylim(0, 1.15)
+    ax.set_title("64 条新指令上的评估", fontsize=12)
+    ax.legend(fontsize=9.5, ncol=3, loc="upper center")
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "rlhf-results.svg", "PPO 的训练曲线与评估",
+              "左：训练中采样到的回答的奖励模型分数，β=0.05（实线）和 β=0（虚线）都从前 10 步平均 2.2～2.5 涨到 10 左右。中：同样这些回答的评审分数，β=0.05 从约 1.7 升到 2.5，β=0 在第 20 步后掉到 0。"
+              "右：64 条新指令上，SFT、PPO β=0.05、PPO β=0 的评审分（除以 4）、意象字个数（除以 4）、堆砌比例、首字对；β=0.05 意象字多了、评审分高了，但堆砌和首字都变差；β=0 全部堆砌。")
+
+
+def dpo_vs_rlhf():
+    body = text(480, 34, "DPO：把“训练奖励模型 + 强化学习”合成一步监督学习", 19, weight="bold")
+    body += box(30, 70, 420, 150, SOFT[GRAY], GRAY, width=2) + text(240, 98, "RLHF（第 41 章）", 16, INK, "bold")
+    for i, t in enumerate(["偏好对 → 训练奖励模型", "策略采样 → 奖励模型打分 → 价值模型估计优势", "PPO 更新策略和价值模型，减去 β·KL", "四个模型，要在线采样"]):
+        body += text(50, 128 + i * 24, "· " + t, 13.5, INK, anchor="start")
+    body += box(510, 70, 420, 150, SOFT[ORANGE], ORANGE, width=2) + text(720, 98, "DPO", 16, ORANGE, "bold")
+    for i, t in enumerate(["偏好对直接进损失，不训练奖励模型", "不采样：只算两个回答的对数概率", "隐含奖励 = β·(log π − log π_ref)", "两个模型（策略 + 冻住的参考），像 SFT 一样训练"]):
+        body += text(530, 128 + i * 24, "· " + t, 13.5, INK, anchor="start")
+    body += text(480, 262, "损失 = −log σ( β · [ (log π(选中) − log π_ref(选中)) − (log π(落选) − log π_ref(落选)) ] )", 15, INK, "bold")
+    body += text(480, 292, "它和“奖励模型 + KL 约束的最优策略”在数学上对应；β 越小，越容易偏离参考模型", 13.5, GRAY)
+    svg("dpo-vs-rlhf.svg", "DPO 与 RLHF 的对比",
+        "左：RLHF 先用偏好对训练奖励模型，再让策略采样、打分，用 PPO 和价值模型更新，减去 β 乘 KL，需要四个模型和在线采样。"
+        "右：DPO 把偏好对直接放进损失，只需要策略和冻住的参考模型，不采样；隐含奖励是 β 乘以策略和参考模型对数概率之差。", 312, body)
+
+
+def dpo_results():
+    log, ppo = _p8_log("preference-alignment"), _p8_log("rlhf")
+    if log is None or ppo is None:
+        return
+    res = log["results"]
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.6, 1]})
+    ax = axes[0]
+    rows = [("SFT", res["SFT"], BLUE), ("DPO β=0.1\n100 步", res["DPO β=0.1 第 100 步"], "#fdba74"), ("DPO β=0.1\n200 步", res["DPO β=0.1 第 200 步"], ORANGE),
+            ("DPO β=0.1\n300 步", res["DPO β=0.1"], RED), ("DPO β=1", res["DPO β=1"], PURPLE), ("DPO β=0.1\n+ NLL", res["DPO β=0.1 + NLL"], TEAL),
+            ("PPO β=0.05\n（第 41 章）", ppo["results"]["PPO β=0.05"], GRAY)]
+    for i, (n, r, c) in enumerate(rows):
+        ax.bar(i - 0.2, r["judge"], width=0.38, color=c)
+        ax.bar(i + 0.2, r["stuffed"] * 4, width=0.38, color=c, alpha=0.4, hatch="//", edgecolor="white")
+        ax.text(i - 0.2, r["judge"] + 0.05, f"{r['judge']:.2f}", ha="center", fontsize=9)
+    ax.set_xticks(range(len(rows)), [r[0] for r in rows], fontsize=9)
+    ax.set_ylim(0, 4.3)
+    ax.set_ylabel("评审分（实心）；堆砌比例 × 4（斜线）")
+    ax.set_title("β 小、训得久，DPO 会把模型训坏", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    xs = [100, 200, 300]
+    d = log["drift"]
+    ax.plot(xs, [d[str(k)][0] for k in xs], "o-", color=TEAL, lw=2, label="选中")
+    ax.plot(xs, [d[str(k)][1] for k in xs], "o-", color=RED, lw=2, label="落选")
+    ax.scatter([300], [d["nll"][0]], color=TEAL, marker="*", s=160, zorder=3, label="选中（加 NLL）")
+    ax.scatter([300], [d["nll"][1]], color=RED, marker="*", s=160, zorder=3, label="落选（加 NLL）")
+    ax.axhline(0, color=GRAY, lw=1)
+    ax.set_xticks(xs)
+    ax.set_xlabel("DPO 步数（β = 0.1）")
+    ax.set_ylabel("留出对子上的对数概率（相对 SFT）")
+    ax.set_title("两边的概率都在降", fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "dpo-results.svg", "DPO 的结果",
+              "左：64 条新指令上的评审分（实心柱）和堆砌比例乘 4（斜线柱）。SFT 评审 1.67；DPO β=0.1 在第 100 步 1.64、第 200 步 1.09、第 300 步 0；β=1 是 2.64；"
+              "β=0.1 加上选中回答的负对数似然是 1.94，几乎不堆砌；第 41 章的 PPO β=0.05 是 2.53。"
+              "右：β=0.1 时留出对子上选中和落选回答的对数概率（相对 SFT），两者都从 0 一路降到 −49 和 −57，差在变大；加 NLL 后只降到 −8 和 −10。")
+
+
+def grpo_group():
+    body = text(480, 34, "GRPO：同一条指令采样一组回答，组内比高低，不需要价值模型", 19, weight="bold")
+    body += box(30, 140, 170, 60, SOFT[BLUE], BLUE, width=2) + text(115, 166, "一条指令", 15, BLUE, "bold") + text(115, 187, "写一首五言绝句。", 12, INK)
+    rewards = [1, 0, 0, 1, 0, 0, 0, 0]
+    mean = sum(rewards) / 8
+    std = (sum((r - mean) ** 2 for r in rewards) / 7) ** 0.5
+    for i, r in enumerate(rewards):
+        y = 66 + i * 34
+        body += arrow(202, 170, 260, y + 12, GRAY, 1.5)
+        body += box(262, y, 300, 26, "#ffffff", TEAL if r else "#cbd5e1") + text(272, y + 18, f"回答 {i + 1}", 12.5, INK, anchor="start")
+        body += text(600, y + 18, f"奖励 {r}", 13, TEAL if r else GRAY, "bold" if r else "normal")
+        adv = (r - mean) / std
+        body += text(720, y + 18, f"优势 {adv:+.2f}", 13, TEAL if adv > 0 else RED)
+    body += text(860, 150, "组内平均", 13, GRAY) + text(860, 172, f"{mean:.2f}", 15, INK, "bold")
+    body += text(860, 210, "组内标准差", 13, GRAY) + text(860, 232, f"{std:.2f}", 15, INK, "bold")
+    body += text(480, 368, "优势 = (奖励 − 组内平均) ÷ 组内标准差：比同组其他回答好就加强，差就减弱；全组一样（全对或全错）时优势为 0，这组不起作用", 13, INK)
+    body += text(480, 392, "奖励由程序判定（押韵、格式），不需要奖励模型；每个 token 用同一个优势，另加 β·KL 拴住", 13, GRAY)
+    svg("grpo-group.svg", "GRPO 的组内比较",
+        "一条指令采样 8 个回答，程序判定奖励：两个回答得 1，其余得 0。组内平均 0.25、标准差约 0.46，得 1 的回答优势约 +1.62，得 0 的约 −0.54。"
+        "每个回答里的每个 token 都用这个优势更新；全组奖励相同时优势为 0。", 410, body)
+
+
+def grpo_results():
+    log = _p8_log("grpo")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1, 1.3]})
+    for key, name, color in [("history_rhyme", "奖励：押韵", ORANGE), ("history_honest", "奖励：不取巧的押韵", PURPLE)]:
+        for seed, h in enumerate(log[key]):
+            xs = list(range(10, len(h) + 1, 10))
+            label = name if seed == 0 else None
+            axes[0].plot(xs, _smooth([x["reward"] for x in h]), "-", color=color, alpha=0.85, lw=1.6, label=label)
+            axes[1].plot(xs, _smooth([x["kl"] for x in h]), "-", color=color, alpha=0.85, lw=1.6, label=label)
+    axes[0].set_title("训练时的奖励（每条线一个种子）", fontsize=12)
+    axes[1].set_title("和 SFT 的 KL（每个回答的总和）", fontsize=12)
+    for ax in axes[:2]:
+        ax.set_xlabel("GRPO 步数（每 10 步平均）")
+        ax.legend(fontsize=9.5)
+        ax.grid(alpha=0.2)
+    ax = axes[2]
+    res = log["results"]
+    arms = [("SFT", ["SFT"], BLUE), ("押韵", [f"押韵 种子 {i}" for i in range(3)], ORANGE),
+            ("不取巧", [f"不取巧 种子 {i}" for i in range(3)], PURPLE)]
+    keys = [("rhyme", "押韵合格"), ("honest", "不取巧的押韵"), ("first", "首字对")]
+    w = 0.26
+    for j, (arm, names, c) in enumerate(arms):
+        losses = [res[n]["loss"] for n in names]
+        loss_text = f"{losses[0]:.2f}" if len(losses) == 1 else f"{min(losses):.2f}～{max(losses):.2f}"
+        for i, (k, _) in enumerate(keys):
+            vals = [res[n][k] for n in names]
+            mean = sum(vals) / len(vals)
+            err = None if len(vals) == 1 else [[mean - min(vals)], [max(vals) - mean]]
+            ax.bar(i + (j - 1) * w, mean, width=w, color=c, yerr=err, capsize=3, ecolor=INK,
+                   label=f"{arm}（损失 {loss_text}）" if i == 0 else None)
+    ax.set_xticks(range(3), [k[1] for k in keys])
+    ax.set_ylim(0, 1.15)
+    ax.set_title("64 条新指令上的评估（3 个种子的平均与范围）", fontsize=12)
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "grpo-results.svg", "GRPO 的结果",
+              "左：训练时采样到的回答的平均奖励，每条线一个种子。以押韵为奖励时训 100 步，前 75 步每 25 步平均在 0.03～0.12，最后 25 步升到 0.35～0.54；"
+              "以不取巧的押韵为奖励时训 200 步，前 100 步几乎不动，100 步以后才上升，最后到 0.5～0.66。中：和 SFT 的 KL，最后 25 步平均在 24～33。"
+              "右：64 条新指令上，押韵合格率 SFT 0.16，以押韵为奖励 0.75～0.92，以不取巧为奖励 0.69～1.00；不取巧的押韵分别是 0.16、0～0.02、0.53～0.86；"
+              "首字对都掉到 0 附近；图例里是预训练验证损失。")
+
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -6009,6 +6462,10 @@ def main():
                anneal_fork, anneal_mix, anneal_length_soup,
                lc_task, lc_turns, lc_results, lc_deps,
                cpt_curves, cpt_tradeoff,
+               sft_template, sft_results,
+               lora_structure, lora_results,
+               kd_methods, kd_results,
+               rlhf_pipeline, rlhf_results, dpo_vs_rlhf, dpo_results, grpo_group, grpo_results,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,

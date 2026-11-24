@@ -217,38 +217,39 @@
     ]
   },
   {
+    "text": "第八部分 · 后训练",
+    "items": [
+      {
+        "text": "第 38 章 · 指令微调",
+        "link": "/tinyllm/instruction-finetuning"
+      },
+      {
+        "text": "第 39 章 · 参数高效微调（LoRA）",
+        "link": "/tinyllm/lora-finetuning"
+      },
+      {
+        "text": "第 40 章 · 蒸馏与合成数据",
+        "link": "/tinyllm/distillation"
+      },
+      {
+        "text": "第 41 章 · RLHF：奖励模型与 PPO",
+        "link": "/tinyllm/rlhf"
+      },
+      {
+        "text": "第 42 章 · DPO：直接偏好优化",
+        "link": "/tinyllm/preference-alignment"
+      },
+      {
+        "text": "第 43 章 · GRPO 与可验证奖励",
+        "link": "/tinyllm/grpo"
+      }
+    ],
+    "collapsed": false
+  },
+  {
     "text": "规划中（尚未成文）",
     "collapsed": true,
     "items": [
-      {
-        "text": "第八部分 · 后训练",
-        "items": [
-          {
-            "text": "第 38 章 · 指令微调",
-            "link": "/tinyllm/instruction-finetuning"
-          },
-          {
-            "text": "第 39 章 · 参数高效微调（LoRA）",
-            "link": "/tinyllm/lora-finetuning"
-          },
-          {
-            "text": "第 40 章 · 蒸馏与合成数据",
-            "link": "/tinyllm/distillation"
-          },
-          {
-            "text": "第 41 章 · RLHF：奖励模型与 PPO",
-            "link": "/tinyllm/rlhf"
-          },
-          {
-            "text": "第 42 章 · DPO：直接偏好优化",
-            "link": "/tinyllm/preference-alignment"
-          },
-          {
-            "text": "第 43 章 · GRPO 与可验证奖励",
-            "link": "/tinyllm/grpo"
-          }
-        ]
-      },
       {
         "text": "第九部分 · 应用",
         "items": [

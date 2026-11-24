@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
 const props = withDefaults(defineProps<{ active?: string; caption?: boolean }>(), { caption: true })
 
-const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching", "kv-memory", "inference-optimization", "annealing", "long-context", "continued-pretraining"])
+const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching", "kv-memory", "inference-optimization", "annealing", "long-context", "continued-pretraining", "instruction-finetuning", "lora-finetuning", "distillation", "rlhf", "preference-alignment", "grpo"])
 
 // 每章在图中的输入与输出（图注里显示）
 const io: Record<string, [string, string]> = {
@@ -54,9 +54,9 @@ const io: Record<string, [string, string]> = {
   'instruction-finetuning': ["预训练好的模型和指令数据", "会按对话格式回答的模型（复用训练循环）"],
   'lora-finetuning': ["冻结的预训练权重", "一小份低秩增量权重"],
   'distillation': ["大模型老师和它的输出或概率分布", "学了老师本事的小模型"],
-  'rlhf': ["SFT 模型和人类偏好数据", "奖励模型，以及用 PPO 对齐后的模型"],
+  'rlhf': ["SFT 模型和偏好数据（二选一）", "奖励模型，以及用 PPO 对齐后的模型"],
   'preference-alignment': ["SFT 模型和成对的偏好数据", "不训练奖励模型、直接用 DPO 对齐后的模型"],
-  'grpo': ["SFT 模型和能自动判分的任务", "用 GRPO 训练后、会先推理再回答的模型"],
+  'grpo': ["SFT 模型和能由程序判分的任务", "用 GRPO 在可判分任务上提高了合格率的模型"],
   'llm-agent-interaction': ["用户问题、工具结果和记忆", "组装好的上下文（重新分词送进模型），以及从输出里解析出的动作"]
 }
 
