@@ -10,7 +10,7 @@ import { withBase } from 'vitepress'
 // 布尔 prop 不写时 Vue 会当成 false，所以要显式给默认值 true
 const props = withDefaults(defineProps<{ active?: string; caption?: boolean }>(), { caption: true })
 
-const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching"])
+const done = new Set(["first-run", "tensors-and-autograd", "architecture-evolution", "initialization-and-residuals", "normalization", "activations-and-ffn", "transformer-block", "tokenization", "self-attention", "position-encoding", "embeddings-and-output", "optimizers", "precision", "tinyllm-model", "gpu-training", "data-pipeline", "generation", "language-model-loss", "learning-rate", "regularization", "gradient-stability", "training-loop", "training-evaluation", "hyperparameter-tuning", "scaling-laws", "large-model-stability", "mixture-of-experts", "inference-efficiency", "attention-kernels", "quantization", "speculative-decoding", "batching", "kv-memory", "inference-optimization", "annealing", "long-context", "continued-pretraining", "instruction-finetuning", "lora-finetuning", "distillation", "rlhf", "preference-alignment", "grpo", "llm-agent-interaction"])
 
 // 每章在图中的输入与输出（图注里显示）
 const io: Record<string, [string, string]> = {
@@ -46,18 +46,18 @@ const io: Record<string, [string, string]> = {
   'quantization': ["训练好的权重、激活和 KV cache", "更少位数的存储，以及它带来的质量变化"],
   'speculative-decoding': ["草稿猜的几个 token", "目标模型一次前向验证后接受的 token：贪心时输出不变，采样时分布不变"],
   'batching': ["多个长短不一、先后到达的请求", "按 token 步调度、首尾相接的同一批前向，每个请求的输出不变"],
-  'kv-memory': ["各请求的 KV cache", "分页、可共享前缀的显存布局"],
-  'inference-optimization': ["前面几章的各项优化", "逐项对照的延迟、吞吐，以及一个推理服务"],
+  'kv-memory': ["各请求按需增长的 K、V", "块表、引用计数和前缀缓存管理的块池，每个请求的输出不变"],
+  'inference-optimization': ["第 30～33 章的各项优化和同一份请求流", "单独打开与去掉一项的对照、多实例路由，以及一个 OpenAI 兼容的推理服务"],
   'annealing': ["稳定段的检查点和一小份高质量数据", "学习率衰减段换过数据的基础模型"],
   'long-context': ["只见过短序列的基础模型", "能用上更长上下文的基础模型（调整 RoPE 后继续训练）"],
   'continued-pretraining': ["训好的基础模型和新领域数据", "学会新领域、旧能力少忘的基础模型（混入旧数据回放）"],
   'instruction-finetuning': ["预训练好的模型和指令数据", "会按对话格式回答的模型（复用训练循环）"],
   'lora-finetuning': ["冻结的预训练权重", "一小份低秩增量权重"],
   'distillation': ["大模型老师和它的输出或概率分布", "学了老师本事的小模型"],
-  'rlhf': ["SFT 模型和人类偏好数据", "奖励模型，以及用 PPO 对齐后的模型"],
+  'rlhf': ["SFT 模型和偏好数据（二选一）", "奖励模型，以及用 PPO 对齐后的模型"],
   'preference-alignment': ["SFT 模型和成对的偏好数据", "不训练奖励模型、直接用 DPO 对齐后的模型"],
-  'grpo': ["SFT 模型和能自动判分的任务", "用 GRPO 训练后、会先推理再回答的模型"],
-  'llm-agent-interaction': ["用户问题、工具结果和记忆", "组装好的上下文（重新分词送进模型），以及从输出里解析出的动作"]
+  'grpo': ["SFT 模型和能由程序判分的任务", "用 GRPO 在可判分任务上提高了合格率的模型"],
+  'llm-agent-interaction': ["Agent 发来的消息、工具说明和工具结果", "按模板渲染、生成，解析成工具调用或答案，按协议返回"]
 }
 
 type Section = { id: string; title: string; x: number; y: number; w: number; h: number; slugs: string[] }

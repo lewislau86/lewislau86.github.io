@@ -1,0 +1,18 @@
+# live-lab：第五部分的实验
+
+《深入理解 NautilusTrader》第 29～36 章的配套实验，每章一个 example。依赖固定在 NautilusTrader `develop` 分支的提交 `364254f`，Rust 工具链 1.100.0。线程列表读的是 Linux 的 `/proc`，在 macOS 上只会打印一行提示，其余结果不受影响。
+
+```bash
+cargo run --example ch29_runtime        # 全局运行时：懒创建、线程数、注入、同步调异步
+cargo run --example ch30_live_node      # 不带客户端的 LiveNode：回调线程、单节点规则、停止宽限期（约 15 秒）
+cargo run --example ch31_task_group     # TaskGroup：三种任务的两段关闭、准入、代、panic、TaskSlot
+NAUTILUS_WORKER_THREADS=1 cargo run --example ch32_live_clock   # AtomicTime 与实时计时器
+cargo run --example ch33_network        # GCRA 限流、退避序列、对本地 WebSocket 服务的重连（约 60 秒）
+cargo run --example ch34_reconciliation # 假交易所：启动对账、外部订单归属、在途检查两种收尾（约 2 分钟）
+cargo run --example ch35_book_sync      # BookSync 阶段、快照闸门、恢复的重试节奏（虚拟时间，瞬间完成）
+cargo run --example ch36_redis          # Redis 缓存后端与 Redis 流的出站、入站（需要本机 Redis 6.2+，约 15 秒）
+```
+
+第 37 章的确定性仿真实验在相邻的 `dst-lab` 工程里，因为它要用 `--cfg madsim` 单独编译一遍。
+
+`ch32_live_clock` 的 C 段要把唯一的 Tokio 工作线程堵住，所以要带 `NAUTILUS_WORKER_THREADS=1` 运行。

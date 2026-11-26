@@ -32,5 +32,17 @@
       "bytes": 417948,
       "sha256": "ec28efa7e2ae9cdbbba09f0ed186e32ccae47a325ad1e5816b7ad56071c1665a"
     }
+  },
+  "qiyan": {
+    "file": "tang-qiyan.jsonl",
+    "bytes": 129214,
+    "sha256": "0a23e00937f16763adc2d5de9774c66da98aa18391ce08ebc714447455e6dad0",
+    "poems": 528,
+    "chars": 20832,
+    "splits": {
+      "train": 478,
+      "val": 50
+    },
+    "from": "raw_sample"
   }
 }

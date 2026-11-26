@@ -1,0 +1,253 @@
+[
+  {
+    "text": "深入理解 NautilusTrader",
+    "items": [
+      {
+        "text": "返回知识库",
+        "link": "/"
+      },
+      {
+        "text": "全书目录",
+        "link": "/nautilus-trader/"
+      }
+    ]
+  },
+  {
+    "text": "动手准备",
+    "items": [
+      {
+        "text": "从零编译：Rust 与 Python",
+        "link": "/nautilus-trader/build-from-source"
+      }
+    ]
+  },
+  {
+    "text": "导读",
+    "items": [
+      {
+        "text": "第 0 章 · NautilusTrader 架构",
+        "link": "/nautilus-trader/nautilus-architecture"
+      },
+      {
+        "text": "第 1 章 · 运行全景",
+        "link": "/nautilus-trader/architecture"
+      }
+    ]
+  },
+  {
+    "text": "第一部分 · 交易领域模型",
+    "items": [
+      {
+        "text": "第 2 章 · 数值类型、标识符与时间戳",
+        "link": "/nautilus-trader/value-types"
+      },
+      {
+        "text": "第 3 章 · 品种：从现货到期权、合成品种与连续期货",
+        "link": "/nautilus-trader/instruments"
+      },
+      {
+        "text": "第 4 章 · 行情数据与订单簿",
+        "link": "/nautilus-trader/market-data"
+      },
+      {
+        "text": "第 5 章 · 订单：类型、有效期、状态机与条件单",
+        "link": "/nautilus-trader/orders"
+      },
+      {
+        "text": "第 6 章 · 成交、仓位与盈亏",
+        "link": "/nautilus-trader/positions"
+      },
+      {
+        "text": "第 7 章 · 账户与保证金",
+        "link": "/nautilus-trader/accounts"
+      },
+      {
+        "text": "第 8 章 · 事件与事件溯源",
+        "link": "/nautilus-trader/events"
+      }
+    ]
+  },
+  {
+    "text": "第二部分 · 写策略",
+    "items": [
+      {
+        "text": "第 9 章 · Rust 策略的框架与运行机制",
+        "link": "/nautilus-trader/rust-strategy"
+      },
+      {
+        "text": "第 10 章 · 回调：一条消息怎样变成 on_xxx",
+        "link": "/nautilus-trader/callbacks"
+      },
+      {
+        "text": "第 11 章 · K 线聚合器",
+        "link": "/nautilus-trader/bar-aggregation"
+      },
+      {
+        "text": "第 12 章 · 指标",
+        "link": "/nautilus-trader/indicators"
+      },
+      {
+        "text": "第 13 章 · Actor、执行算法与配置",
+        "link": "/nautilus-trader/actors-and-config"
+      }
+    ]
+  },
+  {
+    "text": "第三部分 · 内核组件",
+    "items": [
+      {
+        "text": "第 14 章 · NautilusKernel：组装、启动与关闭",
+        "link": "/nautilus-trader/kernel"
+      },
+      {
+        "text": "第 15 章 · MessageBus：端点、主题与类型化路由",
+        "link": "/nautilus-trader/message-bus"
+      },
+      {
+        "text": "第 16 章 · Cache：状态、索引与持久化接口",
+        "link": "/nautilus-trader/cache"
+      },
+      {
+        "text": "第 17 章 · Clock 与计时器：时间从哪里来",
+        "link": "/nautilus-trader/clock"
+      },
+      {
+        "text": "第 18 章 · DataEngine：订阅、路由与历史请求",
+        "link": "/nautilus-trader/data-engine"
+      },
+      {
+        "text": "第 19 章 · RiskEngine：下单前检查与限流",
+        "link": "/nautilus-trader/risk-engine"
+      },
+      {
+        "text": "第 20 章 · ExecutionEngine：路由命令、处理订单事件与成交",
+        "link": "/nautilus-trader/execution-engine"
+      },
+      {
+        "text": "第 21 章 · OrderEmulator 与 OrderManager：本地仿真与订单联动",
+        "link": "/nautilus-trader/order-emulator"
+      },
+      {
+        "text": "第 22 章 · Portfolio：净头寸、盈亏与账户状态",
+        "link": "/nautilus-trader/portfolio"
+      },
+      {
+        "text": "第 23 章 · Trader：组件的生命周期与动态管理",
+        "link": "/nautilus-trader/trader"
+      }
+    ]
+  },
+  {
+    "text": "第四部分 · 回测",
+    "items": [
+      {
+        "text": "第 24 章 · BacktestEngine 与 BacktestNode",
+        "link": "/nautilus-trader/backtest-engine"
+      },
+      {
+        "text": "第 25 章 · 数据目录：Parquet 与 Arrow",
+        "link": "/nautilus-trader/data-catalog"
+      },
+      {
+        "text": "第 26 章 · 模拟交易所与撮合引擎",
+        "link": "/nautilus-trader/simulated-exchange"
+      },
+      {
+        "text": "第 27 章 · 行为模型：成交、手续费、延迟与保证金",
+        "link": "/nautilus-trader/behavioral-models"
+      },
+      {
+        "text": "第 28 章 · 报告、统计与可视化",
+        "link": "/nautilus-trader/reports-and-statistics"
+      }
+    ]
+  },
+  {
+    "text": "第五部分 · 实盘与 Tokio 运行时",
+    "items": [
+      {
+        "text": "第 29 章 · 全局 Tokio 运行时",
+        "link": "/nautilus-trader/tokio-runtime"
+      },
+      {
+        "text": "第 30 章 · LiveNode 与 AsyncRunner：核心线程上的事件循环",
+        "link": "/nautilus-trader/live-node"
+      },
+      {
+        "text": "第 31 章 · 任务管理：TaskGroup 与有界关闭",
+        "link": "/nautilus-trader/task-management"
+      },
+      {
+        "text": "第 32 章 · LiveClock 与实时计时器",
+        "link": "/nautilus-trader/live-clock"
+      },
+      {
+        "text": "第 33 章 · 网络层：HTTP、WebSocket 与 Socket 客户端",
+        "link": "/nautilus-trader/networking"
+      },
+      {
+        "text": "第 34 章 · ExecutionManager：实盘执行管理与对账",
+        "link": "/nautilus-trader/reconciliation"
+      },
+      {
+        "text": "第 35 章 · 订单簿同步与恢复",
+        "link": "/nautilus-trader/book-sync"
+      },
+      {
+        "text": "第 36 章 · 外部后端：Redis、PostgreSQL 与外部消息流",
+        "link": "/nautilus-trader/external-backends"
+      },
+      {
+        "text": "第 37 章 · 确定性仿真测试：让异步代码可重放",
+        "link": "/nautilus-trader/dst"
+      }
+    ]
+  },
+  {
+    "text": "第六部分 · 接入券商",
+    "items": [
+      {
+        "text": "第 38 章 · 增加一个券商：以富途为例",
+        "link": "/nautilus-trader/futu-adapter"
+      }
+    ]
+  },
+  {
+    "text": "第七部分 · Python 层",
+    "items": [
+      {
+        "text": "第 39 章 · Python 策略：Rust 策略框架的绑定",
+        "link": "/nautilus-trader/python-strategy"
+      },
+      {
+        "text": "第 40 章 · Python 的其他组件：DataActor、ExecutionAlgorithm 与 Controller",
+        "link": "/nautilus-trader/python-components"
+      },
+      {
+        "text": "第 41 章 · 在 Python 里跑回测：BacktestEngine 与 BacktestNode",
+        "link": "/nautilus-trader/python-backtest"
+      },
+      {
+        "text": "第 42 章 · 在 Python 里跑实盘：run() 与 run_async()",
+        "link": "/nautilus-trader/python-live"
+      },
+      {
+        "text": "第 43 章 · 用 Python 写适配器",
+        "link": "/nautilus-trader/python-adapter"
+      },
+      {
+        "text": "第 44 章 · 边界与迁移：存根、精度、异常与 v1",
+        "link": "/nautilus-trader/python-boundaries"
+      }
+    ]
+  },
+  {
+    "text": "附录",
+    "items": [
+      {
+        "text": "重点主题速览",
+        "link": "/nautilus-trader/core-topics"
+      }
+    ]
+  }
+]

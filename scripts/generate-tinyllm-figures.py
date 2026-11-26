@@ -4187,6 +4187,1237 @@ def batch_tradeoff():
               f"TPOT 中位从 {avg(1, 'tpot50'):.2f} 涨到 {avg(S[-1], 'tpot50'):.2f}；goodput 在 B=8 和 16 时最高（B=16 在 3 份请求流之间波动很大），B=32 时掉到 {avg(32, 'goodput'):.2f}。")
 
 
+# ---------- 第 33 章：KV 显存管理 ----------
+
+def _kv_log():
+    src = DATA / "tinyllm-kv-memory-log.json"
+    if not src.exists():
+        print("skip kv-memory figures: run scripts/build-tinyllm-code.py kv-memory to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kv_layouts():
+    """同样 3 个请求：按最大长度预留一整段，和按块表分页。示意，长度是举例。"""
+    reqs = [("A", 20, 30, BLUE, [7, 2, 12]), ("B", 9, 26, TEAL, [0, 15]), ("C", 37, 45, ORANGE, [4, 9, 18, 1, 21])]
+    body = text(480, 36, "同样 3 个请求的 K、V，两种放法", 21, weight="bold")
+    body += text(40, 80, "① 按上下文上限预留（第 32 章的槽位）", 16, INK, "bold", "start")
+    cell, x0, y0 = 8.6, 150, 96
+    for r, (name, written, final, color, _) in enumerate(reqs):
+        y = y0 + r * 24
+        body += text(x0 - 12, y + 13, f"请求 {name}：已写 {written}", 12.5, GRAY, anchor="end")
+        for c in range(64):
+            if c < written:
+                fill, stroke = color, color
+            elif c < final:
+                fill, stroke = SOFT[color], color
+            else:
+                fill, stroke = "#f1f5f9", "#cbd5e1"
+            body += f'<rect x="{x0 + c * cell:.1f}" y="{y}" width="{cell - 1.5:.1f}" height="16" fill="{fill}" stroke="{stroke}" stroke-width="0.8"/>'
+    written = sum(r[1] for r in reqs)
+    xr = x0 + 64 * cell + 16
+    body += text(xr, y0 + 8, "预留 3 × 64 = 192 个位置", 13.5, INK, anchor="start")
+    body += text(xr, y0 + 28, f"存着 K、V 的只有 {written} 个", 13.5, RED, "bold", "start")
+    body += text(xr, y0 + 48, "实心：已写；浅色：以后才会写", 12, GRAY, anchor="start")
+    body += text(xr, y0 + 66, "灰格：到请求结束都用不上", 12, GRAY, anchor="start")
+    # 下：分页
+    y1 = 196
+    body += text(40, y1, "② 分页（块大小 8）：每个请求一张块表，块按需从池子里拿", 16, INK, "bold", "start")
+    owner = {}
+    for name, written_, _, color, table in reqs:
+        for j, b in enumerate(table):
+            owner[b] = (name, color, min(8, written_ - j * 8))
+    for r, (name, written_, _, color, table) in enumerate(reqs):
+        y = y1 + 30 + r * 46
+        body += text(40, y + 20, f"请求 {name} 的块表", 13.5, color, "bold", "start")
+        for j, b in enumerate(table):
+            bx = 150 + j * 40
+            body += box(bx, y + 2, 36, 26, SOFT[color], color, width=1.5)
+            body += mtext(bx + 18, y + 20, str(b), 13, color, "bold")
+        body += text(150, y + 42, "逻辑块 0 1 2 …  →  物理块号", 11, GRAY, anchor="start") if r == 2 else ""
+    px, py, bw = 400, y1 + 24, 66
+    body += text(px + 4 * bw, py - 2, "物理块池（24 块，每块 8 个位置）", 13.5, INK, "bold")
+    for b in range(24):
+        bx, by = px + (b % 8) * bw, py + 12 + (b // 8) * 44
+        if b in owner:
+            name, color, filled = owner[b]
+            body += box(bx, by, bw - 6, 34, "#ffffff", color, width=1.6)
+            for c in range(8):
+                fill = color if c < filled else "#ffffff"
+                body += f'<rect x="{bx + 3 + c * 6.8:.1f}" y="{by + 15}" width="5.6" height="15" fill="{fill}" stroke="{color}" stroke-width="0.6"/>'
+            body += mtext(bx + 4, by + 12, f"#{b}", 10.5, color, "bold", "start") + text(bx + bw - 10, by + 12, name, 10.5, color, "bold", "end")
+        else:
+            body += box(bx, by, bw - 6, 34, "#f8fafc", "#cbd5e1", dash=True, width=1.2)
+            body += mtext(bx + 4, by + 12, f"#{b}", 10.5, GRAY, anchor="start")
+            body += text(bx + (bw - 6) / 2, by + 28, "空闲", 11, GRAY)
+    n_blocks = sum(len(r[4]) for r in reqs)
+    body += text(480, py + 160, f"分出去 {n_blocks} 块 = {n_blocks * 8} 个位置，存着 K、V 的 {written} 个：浪费只剩每个请求最后一块没写满的部分", 14, TEAL, "bold")
+    body += text(480, py + 184, "块在池子里不必连续；注意力按块表把块拼回来读，第 p 个位置在 table[p // 8] 的第 p % 8 格", 13, GRAY)
+    svg("kv-layouts.svg", "按上限预留与分页的 KV 布局",
+        f"示意：3 个请求分别已写 20、9、37 个位置。上：每个请求按上下文上限预留 64 个位置，共 192 个，存着 K、V 的只有 {written} 个，"
+        "其余有的以后才会写，有的到请求结束都用不上。下：分页，块大小 8，每个请求一张块表记录逻辑块放在哪个物理块，"
+        f"3 个请求一共拿了 {n_blocks} 块、{n_blocks * 8} 个位置，物理块在池子里不连续，空闲块留给别的请求。", py + 200, body)
+
+
+def kv_sharing():
+    """前缀共享（块级哈希链）和 fork 后的写时复制。示意，块号是举例。"""
+    body = text(480, 36, "共享块：引用计数决定能不能直接写", 21, weight="bold")
+    # 左：前缀共享
+    body += text(240, 74, "① 前缀共享：同一段系统提示词", 16, BLUE, "bold")
+    keys = ["k1 = hash(·, 第 0～7 个)", "k2 = hash(k1, 第 8～15 个)", "k3 = hash(k2, 第 16～23 个)"]
+    for j, k in enumerate(keys):
+        body += cbox(40, 92 + j * 40, 210, 30, BLUE)
+        body += text(145, 112 + j * 40, k, 12, INK)
+        body += arrow(252, 107 + j * 40, 296, 107 + j * 40, BLUE, 1.6)
+        body += box(300, 92 + j * 40, 90, 30, SOFT[BLUE], BLUE, width=1.6)
+        body += text(345, 112 + j * 40, f"块 #{[3, 8, 5][j]}  引用 2", 12, BLUE, "bold")
+    body += text(240, 228, "请求 A 的块表：[3, 8, 5, 11]", 13, INK)
+    body += text(240, 250, "请求 B 的块表：[3, 8, 5, 14]", 13, INK)
+    body += text(240, 278, "前 3 块只算一次、只存一份；各自的第 4 块不同", 12.5, GRAY)
+    body += text(240, 300, "键链着前一块的键：同一个键 = 同一段完整前缀", 12.5, GRAY)
+    body += text(240, 322, "没写满的块不登记，也不会被别人命中", 12.5, GRAY)
+    body += line(480, 64, 480, 340, "#cbd5e1", 1.5)
+    # 右：fork + 写时复制
+    body += text(720, 74, "② fork 4 条采样：37 个 token 的提示词", 16, ORANGE, "bold")
+    for j in range(4):
+        bx = 520 + j * 66
+        body += box(bx, 92, 58, 30, SOFT[ORANGE], ORANGE, width=1.6)
+        body += text(bx + 29, 112, "引用 4", 11.5, ORANGE, "bold")
+    body += box(788, 92, 150, 30, "#ffffff", RED, width=2)
+    body += text(863, 112, "只写了 5/8 格 · 引用 4", 11.5, RED, "bold")
+    body += text(647, 142, "前 4 块写满：只读，4 条一直共用", 12.5, ORANGE)
+    body += text(863, 142, "第 5 块：4 条都要往里写", 12.5, RED)
+    rows = [("第 1 条要写第 38 个 token", "引用 4 > 1 → 复制一块再写", True),
+            ("第 2 条", "引用 3 > 1 → 复制", True),
+            ("第 3 条", "引用 2 > 1 → 复制", True),
+            ("第 4 条", "引用 1 → 原块直接写", False)]
+    for j, (who, what, copy) in enumerate(rows):
+        y = 168 + j * 34
+        body += text(530, y + 16, who, 12.5, INK, anchor="start")
+        body += box(712, y, 230, 26, SOFT[RED] if copy else SOFT[TEAL], RED if copy else TEAL, width=1.4)
+        body += text(827, y + 18, what, 12, RED if copy else TEAL, "bold")
+    body += text(720, 322, "写时复制 3 次；块数峰值 16，各自 prefill 要 28", 13.5, TEAL, "bold")
+    svg("kv-sharing.svg", "前缀共享与写时复制",
+        "示意。左：两个请求开头是同一段 24 个 token 的系统提示词，正好 3 个写满的块，每块的键是前一块的键加这一块 token 的哈希；"
+        "两张块表的前 3 项指向同样的物理块，引用计数 2，只算一次、只存一份。右：37 个 token 的提示词 prefill 一次后 fork 出 4 条采样，"
+        "4 个写满的块一直共用；第 5 块只写了 5 格，每条都要往里写，前 3 条写时引用计数大于 1，先复制一块再写，第 4 条写时引用计数已经是 1，直接写。"
+        "共复制 3 次，块数峰值 16，各自 prefill 要 28 块。", 350, body)
+
+
+def kv_waste():
+    """左：种子 0、重负载下，块大小 64 与 8 的分配量随时间；右：各块大小的平均分配量拆成存着的、以后才写的、白占的。"""
+    log = _kv_log()
+    if log is None:
+        return
+    tr = log["trace"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.35, 1]})
+    t64, t8 = tr["64"], tr["8"]
+    a1.step(t64["t"], t64["alloc"], where="pre", color=GRAY, lw=1.8, label="块大小 64：分配出去的位置")
+    a1.step(t64["t"], t64["used"], where="pre", color=BLUE, lw=1.4, label="块大小 64：存着 K、V 的位置")
+    a1.step(t8["t"], t8["alloc"], where="pre", color=TEAL, lw=1.8, label="块大小 8：分配出去的位置")
+    a1.step(t8["t"], t8["used"], where="pre", color=TEAL, lw=1.0, ls="--", label="块大小 8：存着 K、V 的位置")
+    a1.axhline(512, color=RED, lw=1, ls=":")
+    a1.text(2, 520, "显存上限 512", color=RED, fontsize=10)
+    a1.set_xlabel("时间（成本模型的单位）")
+    a1.set_ylabel("位置数")
+    a1.set_title("同一份请求流（种子 0，重负载）", fontsize=12)
+    a1.legend(fontsize=9, loc="upper center", ncol=2)
+    a1.grid(alpha=0.2)
+    a1.set_ylim(0, 700)
+    w = log["waste"]
+    bss = ["64", "16", "8", "4", "1"]
+    avg = lambda bs, k: sum(r[k] for r in w[bs]) / len(w[bs])
+    used = np.array([avg(b, "used") for b in bss])
+    alloc = np.array([avg(b, "alloc") for b in bss])
+    fut64 = avg("64", "future")
+    y = np.arange(len(bss))
+    a2.barh(y, used, color=BLUE, label="存着 K、V")
+    a2.barh(y[0], fut64, left=used[0], color="#fcd34d", label="以后才会写（只看块大小 64）")
+    a2.barh(y[0], alloc[0] - used[0] - fut64, left=used[0] + fut64, color="#cbd5e1", label="分配了但空着")
+    a2.barh(y[1:], alloc[1:] - used[1:], left=used[1:], color="#cbd5e1")
+    for i in range(len(bss)):
+        a2.text(alloc[i] + 6, y[i], f"{used[i] / alloc[i]:.0%}", va="center", fontsize=10.5, color=INK)
+    a2.set_yticks(y, [f"块大小 {b}" for b in bss])
+    a2.invert_yaxis()
+    a2.set_xlabel("平均占用的位置数（3 份请求流）")
+    a2.set_title("百分比 = 存着 K、V 的占分配的比例", fontsize=12)
+    a2.legend(fontsize=9, loc="lower right")
+    a2.set_xlim(0, 640)
+    a2.grid(alpha=0.2, axis="x")
+    save_plot(fig, "kv-waste.svg", "分配出去的显存里有多少存着 K、V",
+              f"左：同一份重负载请求流（种子 0）随时间的显存占用。块大小 64 时每个请求一进来就拿走 64 个位置，灰线常年贴着 512 的上限，"
+              f"真正存着 K、V 的蓝线只有它的三分之一左右；块大小 8 时分配的位置（绿线）紧跟实际写入的位置。"
+              f"右：3 份请求流的平均。块大小 64 时存着 K、V 的占 {used[0] / alloc[0]:.0%}，以后才会写的占 {fut64 / alloc[0]:.0%}，"
+              f"其余到请求结束都用不上；块大小 16、8、4、1 时这个比例是 "
+              + "、".join(f"{used[i] / alloc[i]:.0%}" for i in range(1, len(bss))) + "，浪费只剩每个请求最后一块没写满的部分。")
+
+
+def kv_prefix_eviction():
+    """左：两种共享场景下实际算的 prefill token 与 TTFT；右：多轮对话上四种淘汰策略的命中率随显存变化。"""
+    log = _kv_log()
+    if log is None:
+        return
+    pr, ev = log["prefix"], log["eviction"]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained")
+    names = ["系统提示词", "多轮对话"]
+    avg = lambda key, k: sum(r[k] for r in pr[key]) / len(pr[key])
+    x = np.arange(2)
+    for off, label, color in ((-0.18, "不共享", GRAY), (0.18, "前缀缓存", BLUE)):
+        comp = [avg(f"{n}-{label}", "prefill") - avg(f"{n}-{label}", "cached") for n in names]
+        ttft = [avg(f"{n}-{label}", "ttft50") for n in names]
+        bars = a1.bar(x + off, comp, 0.34, color=color, label=label)
+        for b, c, t in zip(bars, comp, ttft):
+            a1.text(b.get_x() + b.get_width() / 2, c + 20, f"{c:.0f}\nTTFT {t:.1f}", ha="center", fontsize=9.5)
+    a1.set_xticks(x, names)
+    a1.set_ylabel("实际算的 prefill token（3 份平均）")
+    a1.set_ylim(0, 2050)
+    a1.set_title("块大小 8、显存 512 个位置", fontsize=12)
+    a1.legend(fontsize=10, loc="upper right")
+    a1.grid(alpha=0.2, axis="y")
+    pools = sorted(int(p) for p in ev)
+    for pol, label, color, ls in (("lru", "LRU", BLUE, "-"), ("fifo", "FIFO", ORANGE, "-"), ("all", "缺块时一次清空", PURPLE, "--"), ("none", "不保留", GRAY, ":")):
+        hs = np.array([ev[str(p)][pol] for p in pools])
+        a2.plot(pools, hs.mean(1) * 100, "o" + ls, color=color, label=label, ms=4)
+        a2.fill_between(pools, hs.min(1) * 100, hs.max(1) * 100, color=color, alpha=0.12)
+    a2.set_xlabel("显存（能放多少个位置的 K、V）")
+    a2.set_ylabel("命中率 %（多轮对话）")
+    a2.set_title("中等显存时，淘汰谁最要紧", fontsize=12)
+    a2.legend(fontsize=10, loc="upper left")
+    a2.grid(alpha=0.2)
+    lru, fifo = (np.array([ev[str(p)][k] for p in pools]).mean(1) for k in ("lru", "fifo"))
+    save_plot(fig, "kv-prefix-eviction.svg", "前缀缓存的收益与淘汰策略",
+              f"左：块大小 8、显存 512 个位置时实际算的 prefill token。系统提示词场景从 {avg('系统提示词-不共享', 'prefill'):.0f} 个降到 "
+              f"{avg('系统提示词-前缀缓存', 'prefill') - avg('系统提示词-前缀缓存', 'cached'):.0f} 个，TTFT 中位从 {avg('系统提示词-不共享', 'ttft50'):.1f} 降到 {avg('系统提示词-前缀缓存', 'ttft50'):.1f}；"
+              f"多轮对话从 {avg('多轮对话-不共享', 'prefill'):.0f} 个降到 {avg('多轮对话-前缀缓存', 'prefill') - avg('多轮对话-前缀缓存', 'cached'):.0f} 个。"
+              f"右：多轮对话上四种淘汰策略的命中率，阴影是 3 份请求流的范围。显存 768 时三种保留策略都是 {lru[-1]:.0%}；"
+              f"显存 512 时 LRU {lru[4]:.0%}、FIFO {fifo[4]:.0%}，差得最多；显存太紧（256）时几种保留策略都留不住多少，差别不大；不保留始终是 0。")
+
+# ---------- 第 34 章：推理优化 ----------
+
+def _io_log():
+    src = DATA / "tinyllm-inference-optimization-log.json"
+    if not src.exists():
+        print("skip inference-optimization figures: run scripts/build-tinyllm-code.py inference-optimization to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def io_ablation():
+    """两份请求流上：单独打开每一项、全部打开再去掉一项、本章的选择，goodput 的平均和范围（对数坐标）。"""
+    log = _io_log()
+    if log is None:
+        return
+    ab = log["ablation"]
+    rows = [("基线", "alone", "基线", GRAY), ("+ 连续批", "alone", "连续批", BLUE), ("+ 分页与前缀缓存", "alone", "分页 + 前缀缓存", BLUE),
+            ("+ INT8 权重", "alone", "INT8 权重", BLUE), ("+ 投机（γ=3）", "alone", "投机（γ=3）", BLUE), None,
+            ("全部打开", "loo", "全部打开", TEAL), ("− 连续批", "loo", "去掉连续批", ORANGE), ("− 分块 prefill", "loo", "去掉分块 prefill", ORANGE),
+            ("− 分页", "loo", "去掉分页", ORANGE), ("− 前缀缓存", "loo", "去掉前缀缓存", ORANGE), ("− INT8", "loo", "去掉 INT8", ORANGE),
+            ("− 投机", "loo", "去掉投机", ORANGE), None, ("本章的选择", "choice", None, PURPLE)]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 5.6), layout="constrained", sharey=True)
+    for ax, w in zip(axes, ["通用", "系统提示词"]):
+        labels, y = [], 0
+        for row in rows:
+            if row is None:
+                y += 0.6
+                continue
+            name, kind, key, color = row
+            data = ab[f"choice | {w}"] if kind == "choice" else ab[f"{kind} | {w} | {key}"]
+            g = [r["goodput"] for r in data]
+            m = sum(g) / len(g)
+            ax.barh(y, m, color=color, height=0.72)
+            ax.plot([min(g), max(g)], [y, y], color=INK, lw=1.2)
+            ax.text(max(max(g), m) * 1.12, y, f"{m:.2f}", va="center", fontsize=9.5)
+            labels.append((y, name))
+            y += 1
+        ax.set_xscale("log")
+        ax.set_xlim(0.02, 40)
+        ax.set_title(f"{w}请求流（过载，3 份）", fontsize=12)
+        ax.set_xlabel("goodput（达标请求的 token / 单位，对数坐标）")
+        ax.grid(alpha=0.2, axis="x", which="both")
+    axes[0].set_yticks([p for p, _ in labels], [n for _, n in labels])
+    axes[0].invert_yaxis()
+    full = {w: sum(r["goodput"] for r in ab[f"loo | {w} | 全部打开"]) / 3 for w in ["通用", "系统提示词"]}
+    save_plot(fig, "io-ablation.svg", "逐项对照：单独打开与去掉一项",
+              "两份过载请求流上的 goodput（对数坐标，横线是 3 份请求流的范围）。上面一组是在基线上单独打开一项：连续批让 goodput 涨了十几到四十几倍，INT8 涨到 2～3 倍多，"
+              "分页与前缀缓存、投机几乎不动。中间一组是全部打开（通用 "
+              f"{full['通用']:.2f}、系统提示词 {full['系统提示词']:.2f}）再一次去掉一项：去掉连续批掉到 0.1 左右；系统提示词请求流上去掉分页或前缀缓存都掉到 1.7；"
+              "去掉 INT8 两份都变差；去掉投机两份都变好。最下面是去掉投机、分块额度放宽到 32 的本章选择。")
+
+
+def io_routing():
+    """4 个实例、四种路由：多轮对话与热门前缀两份负载上的 goodput、命中率和最忙实例的负载倍数。"""
+    log = _io_log()
+    if log is None:
+        return
+    rt = log["routing"]
+    names = ["轮询", "最少负载", "前缀优先", "前缀优先 + 负载上限"]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.2), layout="constrained")
+    for ax, w in zip(axes, ["多轮对话", "热门前缀"]):
+        for i, n in enumerate(names):
+            data = rt[f"{w} | {n}"]
+            g = [r["goodput"] for r in data]
+            m = sum(g) / 3
+            hit = sum(r["hit"] for r in data) / 3
+            imb = sum(r["imbalance"] for r in data) / 3
+            ax.bar(i, m, color=[GRAY, BLUE, ORANGE, TEAL][i], width=0.65)
+            ax.plot([i, i], [min(g), max(g)], color=INK, lw=1.2)
+            ax.annotate(f"{m:.1f}\n命中 {hit:.0%}\n最忙 {imb:.2f}×", (i, max(g)), xytext=(0, 4), textcoords="offset points",
+                        ha="center", va="bottom", fontsize=9.5)
+        ax.set_xticks(range(4), ["轮询", "最少负载", "前缀优先", "前缀优先\n+ 负载上限"])
+        ax.set_ylabel("goodput（3 份平均）")
+        ax.set_title(w, fontsize=12)
+        ax.margins(y=0.3)
+        ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "io-routing.svg", "多实例的路由",
+              "4 个实例、四种路由，柱子上标着 goodput、前缀命中率和最忙实例干的活是平均的几倍。左：多轮对话，前缀优先把下一轮发回上一轮的实例，"
+              "命中率从轮询的约 10% 升到约 50%，goodput 从约 6 升到约 12。右：所有请求共用一段系统提示词，前缀优先把全部请求都发给第一个实例，"
+              "最忙的实例干了平均 4 倍的活，goodput 只有约 2；加上负载上限后回到约 40，和轮询相当。")
+
+
+def io_server():
+    """本章服务的结构：HTTP 线程、收件箱、独占模型的引擎线程、每个请求自己的队列。"""
+    body = text(480, 34, "一个最小的推理服务：HTTP 线程不碰模型，引擎线程独占模型", 20, weight="bold")
+    body += cbox(30, 70, 190, 238, GRAY)
+    body += text(125, 96, "客户端", 15, GRAY, "bold")
+    for i, t in enumerate(["POST /v1/chat/completions", "  stream=false：一次返回", "  stream=true：SSE 逐段", "GET /metrics", "GET /health"]):
+        body += text(44, 128 + i * 30, t, 12.5, INK, anchor="start")
+    body += cbox(270, 70, 190, 238, BLUE)
+    body += text(365, 96, "HTTP 线程（每个连接一个）", 13.5, BLUE, "bold")
+    for i, t in enumerate(["解析 JSON、分词", "检查长度，退出中就回 503", "submit → 收件箱", "从自己的队列取 token", "DecodeStream 攒成整字", "写回 JSON 或 SSE"]):
+        body += text(365, 128 + i * 28, t, 12.5, INK)
+    body += arrow(222, 140, 266, 140, GRAY, 2)
+    body += arrow(266, 260, 222, 260, GRAY, 2)
+    body += cbox(510, 70, 140, 60, ORANGE)
+    body += text(580, 96, "收件箱", 14, ORANGE, "bold") + text(580, 116, "queue.Queue", 12, INK)
+    body += cbox(510, 248, 140, 60, ORANGE)
+    body += text(580, 274, "每个请求的队列", 13, ORANGE, "bold") + text(580, 294, "新 token / 结束", 12, INK)
+    body += arrow(462, 100, 506, 100, BLUE, 2)
+    body += arrow(506, 278, 462, 278, ORANGE, 2)
+    body += cbox(700, 70, 230, 238, TEAL)
+    body += text(815, 96, "引擎线程（只有一个）", 14, TEAL, "bold")
+    for i, t in enumerate(["取收件箱里的新请求", "Replica.step()：", "  抢占 / 放人 / 分块", "  一次前向（INT8 权重）", "  块池 + 前缀缓存", "把新 token 放进各自的队列"]):
+        body += text(716, 128 + i * 28, t, 12.5, INK, anchor="start")
+    body += arrow(652, 100, 696, 100, ORANGE, 2)
+    body += arrow(696, 278, 652, 278, TEAL, 2)
+    body += box(270, 336, 660, 70, "#ffffff", RED, width=1.6)
+    body += text(600, 360, "优雅退出：① accepting = False，新请求一律 503（/health 也变 503，负载均衡器把流量切走）", 12.5, RED)
+    body += text(600, 384, "② 引擎线程把收件箱和正在跑的请求都跑完　③ 线程结束，关掉 HTTP 服务", 12.5, RED)
+    svg("io-server.svg", "推理服务的结构",
+        "客户端发来的请求由 HTTP 线程解析、分词后放进收件箱；唯一的引擎线程取出新请求交给 Replica，一步一步跑（抢占、放人、分块、一次前向、块池和前缀缓存），"
+        "把每一步新出的 token 放进各请求自己的队列；HTTP 线程从队列里取 token，用 DecodeStream 攒成完整的字，按普通 JSON 或 SSE 流写回。"
+        "优雅退出时先拒绝新请求并让健康检查返回 503，再把手上的请求跑完，最后关掉服务。", 424, body)
+
+# ---------- 第 35 章：退火与数据配比 ----------
+
+def _an_log():
+    src = DATA / "tinyllm-annealing-log.json"
+    if not src.exists():
+        print("skip annealing figures: run scripts/build-tinyllm-code.py annealing to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def anneal_fork():
+    """WSD 稳定段只训一次（普通数据），在三个检查点分叉，衰减段换上不同比例的高质量数据。"""
+    body = text(480, 34, "稳定段只训一次，从检查点分叉出不同的退火：衰减段里换上一部分高质量数据", 19, weight="bold")
+    x0, y0, w, h = 90, 70, 800, 220
+    sx = lambda s: x0 + s / 720 * w
+    body += line(x0, y0 + h, x0 + w, y0 + h, INK, 1.5) + line(x0, y0, x0, y0 + h, INK, 1.5)
+    body += text(x0 + w, y0 + h + 24, "训练步数 →", 13, GRAY, anchor="end")
+    for s in (0, 240, 360, 480, 600):
+        body += text(sx(s), y0 + h + 24, str(s), 12, GRAY)
+    body += f'<text x="{x0 - 28}" y="{y0 + h / 2}" font-size="13" fill="{GRAY}" text-anchor="middle" transform="rotate(-90 {x0 - 28} {y0 + h / 2})">学习率</text>'
+    peak = y0 + 26
+    body += f'<path d="M{x0} {y0 + h} L{sx(30)} {peak} L{sx(480)} {peak}" stroke="{GRAY}" stroke-width="4" fill="none"/>'
+    body += text(sx(120), peak - 12, "稳定段：普通数据，峰值 1e-2", 13, GRAY)
+    for f, color in [(240, TEAL), (360, ORANGE), (480, BLUE)]:
+        body += circle(sx(f), peak, 6, SOFT[color], color)
+        body += f'<path d="M{sx(f)} {peak} L{sx(f + 120)} {y0 + h - 3}" stroke="{color}" stroke-width="2.6" fill="none" stroke-dasharray="7 4"/>'
+        body += text(sx(f), peak - 12, f"第 {f} 步检查点", 12, color)
+    # 衰减段的数据配比
+    body += text(sx(480) + 4, y0 + h - 60, "衰减 120 步", 12.5, BLUE, anchor="start")
+    by = y0 + h + 52
+    body += text(x0, by + 14, "衰减段每个 batch 的 16 行：", 13.5, INK, anchor="start")
+    for i, (p, label) in enumerate([(0.0, "p = 0%：全是普通数据"), (0.1, "p = 10%：约 1.6 行来自高质量数据"), (0.3, "p = 30%：约 4.8 行")]):
+        yy = by + 34 + i * 30
+        for r in range(16):
+            hq = r < round(p * 16)
+            body += f'<rect x="{x0 + r * 15}" y="{yy}" width="12" height="18" rx="2" fill="{ORANGE if hq else "#cbd5e1"}"/>'
+        body += text(x0 + 16 * 15 + 12, yy + 14, label, 13, INK, anchor="start")
+    body += f'<rect x="{x0 + 560}" y="{by + 34}" width="12" height="18" rx="2" fill="{ORANGE}"/>' + text(x0 + 580, by + 48, "高质量：100 首名篇（只在衰减段用）", 12.5, INK, anchor="start")
+    body += f'<rect x="{x0 + 560}" y="{by + 64}" width="12" height="18" rx="2" fill="#cbd5e1"/>' + text(x0 + 580, by + 78, "普通：5289 首《全唐诗》", 12.5, INK, anchor="start")
+    body += text(480, by + 140, "每个检查点 × 每种配比各衰减一次；比较 7 种配比，WSD 只需 480 + 7×120 = 1320 步，余弦调度要 7×600 = 4200 步", 13.5, GRAY)
+    svg("anneal-fork.svg", "从检查点分叉的退火",
+        "横轴是训练步数，纵轴是学习率。稳定段用普通数据训练到第 480 步，在第 240、360、480 步存检查点；每个检查点接一段 120 步线性降到 0 的衰减。"
+        "下方说明衰减段每个 batch 的 16 行里，每一行以概率 p 来自 100 首高质量诗，否则来自普通数据。比较 7 种配比，WSD 共 1320 步，余弦调度要 4200 步。",
+        by + 160, body)
+
+
+def anneal_mix():
+    """左：衰减段高质量比例 p 对两个验证集的影响（相对 p=0）；右：高质量数据被看的遍数与高质量验证损失的变化。"""
+    log = _an_log()
+    if log is None:
+        return
+    mix = log["mix"]
+    ps = ["0.0", "0.05", "0.1", "0.2", "0.3", "0.5"]
+    base = mix["0.0"]
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.6), layout="constrained")
+    ax = axes[0]
+    xs = [float(p) * 100 for p in ps]
+    for key, name, color in [("hq_val", "高质量验证", ORANGE), ("gen_val", "普通验证", BLUE)]:
+        d = [[a[key] - b[key] for a, b in zip(mix[p], base)] for p in ps]
+        m = [sum(v) / 3 for v in d]
+        ax.plot(xs, m, "o-", color=color, label=name, lw=2)
+        ax.fill_between(xs, [min(v) for v in d], [max(v) for v in d], color=color, alpha=0.15)
+    ax.axhline(0, color=GRAY, lw=1)
+    ax.set_xlabel("衰减段里高质量数据的比例 p（%）")
+    ax.set_ylabel("验证损失 − p=0% 的值（越低越好）")
+    ax.set_title("配比：10%～20% 最好，再多两个验证集都变差", fontsize=12)
+    ax.set_ylim(-0.06, 0.32)
+    ax.text(50, 0.30, f"p=100%：普通 +{sum(r['gen_val'] for r in mix['1.0']) / 3 - sum(r['gen_val'] for r in base) / 3:.1f}，"
+            f"高质量 +{sum(r['hq_val'] for r in mix['1.0']) / 3 - sum(r['hq_val'] for r in base) / 3:.1f}（图外）", ha="right", fontsize=9.5, color=GRAY)
+    ax.legend(loc="upper left", fontsize=10)
+    ax.grid(alpha=0.2)
+    ax = axes[1]
+    pool = log["pool"]
+    # 高质量数据被看的遍数取自 notebook 的输出（数据池的 token 数没有写进日志）
+    for n, color, marker in [(100, ORANGE, "o"), (50, PURPLE, "s"), (25, RED, "^")]:
+        pts = []
+        for p in ("0.1", "0.3"):
+            epochs = float(_notebook_lines("annealing", f"高质量训练集 {n:>3} 首，p={float(p):.0%}：看了").split("遍")[0])
+            d = sum(a["hq_val"] - b["hq_val"] for a, b in zip(pool[f"{n}|{p}"], base)) / 3
+            pts.append((epochs, d, p))
+        ax.plot([e for e, _, _ in pts], [d for _, d, _ in pts], marker + "-", color=color, label=f"高质量训练集 {n} 首", lw=2, ms=7)
+        for e, d, p in pts:
+            ax.annotate(f"p={float(p):.0%}", (e, d), xytext=(6, -14 if p == "0.1" else -4), textcoords="offset points", fontsize=9, color=color)
+    ax.axhline(0, color=GRAY, lw=1)
+    ax.set_xscale("log")
+    ax.set_xticks([2, 5, 10, 20, 40], ["2", "5", "10", "20", "40"])
+    ax.set_xlabel("衰减段里每首高质量诗平均被看的遍数（对数坐标）")
+    ax.set_ylabel("高质量验证损失 − p=0% 的值")
+    ax.set_title("重复越多收益越小，十几遍以上变差", fontsize=12)
+    ax.legend(loc="upper left", fontsize=10)
+    ax.grid(alpha=0.2, which="both")
+    save_plot(fig, "anneal-mix.svg", "退火数据的配比与重复次数",
+              "左：从第 480 步分叉、衰减 120 步，衰减段里高质量数据的比例 p 从 0% 到 50%，两个验证集的损失相对 p=0% 的变化（3 个种子的平均，阴影是范围）。"
+              "高质量验证在 p=10%～20% 时最低（约 −0.03～−0.04），p=30% 回到接近 0，p=50% 明显变差；普通验证在 p=5% 时几乎不变，之后随 p 变差。"
+              "右：把高质量训练集随机缩到 50 首、25 首后，同样的 p 意味着每首诗被看更多遍；横轴是遍数，纵轴是高质量验证相对 p=0% 的变化。p=10% 时收益从 100 首的 −0.032 缩到 0.01 以内；p=30% 时 50 首、25 首（15.5、31.6 遍）变差 0.11～0.14。")
+
+
+def anneal_length_soup():
+    """左：衰减段长度与 p=10% 的收益；右：分叉点不同，三种配比的排序；下：汤。"""
+    log = _an_log()
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4), layout="constrained")
+    ax = axes[0]
+    Ls = sorted(int(k) for k in log["length"])
+    for key, sub, name, color, style in [("hq_val", "p10", "高质量验证，p=10%", ORANGE, "o-"), ("hq_val", "p0", "高质量验证，p=0%", ORANGE, "o--"),
+                                         ("gen_val", "p10", "普通验证，p=10%", BLUE, "s-"), ("gen_val", "p0", "普通验证，p=0%", BLUE, "s--")]:
+        ax.plot(Ls, [sum(r[key] for r in log["length"][str(L)][sub]) / 3 for L in Ls], style, color=color, label=name, lw=2, ms=6)
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(Ls, [str(L) for L in Ls])
+    ax.set_xlabel("衰减段步数（从第 480 步分叉）")
+    ax.set_ylabel("验证损失（3 个种子平均）")
+    ax.set_title("衰减越长越好，高质量的收益也越大", fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.2)
+    ax = axes[1]
+    forks = log["forks"]
+    for p, color in [("0.0", GRAY), ("0.1", ORANGE), ("0.3", PURPLE)]:
+        fs = [240, 360, 480]
+        ax.plot(fs, [sum(r["hq_val"] for r in forks[f"{f}|{p}"]) / 3 for f in fs], "o-", color=color, label=f"p={float(p):.0%}", lw=2)
+    ax.set_xticks([240, 360, 480])
+    ax.set_xlabel("从第几步的检查点分叉")
+    ax.set_ylabel("高质量验证损失")
+    ax.set_title("早分叉，配比的排序不变", fontsize=12)
+    ax.legend(fontsize=10)
+    ax.grid(alpha=0.2)
+    ax = axes[2]
+    soup = log["soup"]
+    single = [sum(r["hq_val"] for r in row["singles"]) / 3 for row in soup]
+    best = [min(r["hq_val"] for r in row["singles"]) for row in soup]
+    souped = [row["soup"]["hq_val"] for row in soup]
+    longer = [r["hq_val"] for r in log["length"]["240"]["p10"]]
+    bars = [("单次退火\n（平均）", single, GRAY), ("三次里\n最好的", best, BLUE), ("三次取平均\n（汤）", souped, TEAL), ("一次衰减\n240 步", longer, ORANGE)]
+    for i, (name, v, color) in enumerate(bars):
+        m = sum(v) / 3
+        ax.bar(i, m, color=color, width=0.6)
+        ax.plot([i, i], [min(v), max(v)], color=INK, lw=1.2)
+        ax.text(i, max(v) + 0.004, f"{m:.3f}", ha="center", fontsize=10)
+    ax.set_xticks(range(4), [b[0] for b in bars], fontsize=10)
+    ax.set_ylim(4.30, 4.43)
+    ax.set_ylabel("高质量验证损失")
+    ax.set_title("汤比单次好，但不如衰减得更久", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "anneal-length-soup.svg", "退火段的长度、分叉点与汤",
+              "左：从第 480 步分叉，衰减段 30、60、120、240 步，p=0% 和 p=10% 时两个验证集的损失；衰减越长两者都越低，p=10% 在高质量验证上的收益从 −0.011 增大到 −0.045，普通验证几乎不受影响。"
+              "中：在第 240、360、480 步分叉、各衰减 120 步，三种配比在高质量验证上的排序都是 10% 最好、30% 其次、0% 最差。"
+              "右：同一检查点用 3 种数据顺序各退火 120 步，单次平均 4.405、三次里最好的 4.395、参数取平均的汤 4.366；只做一次、但衰减 240 步（比 3 次退火合计的 360 步还少）是 4.337。")
+
+
+# ---------- 第 36 章：长上下文扩展 ----------
+
+def _lc_log():
+    src = DATA / "tinyllm-long-context-log.json"
+    if not src.exists():
+        print("skip long-context figures: run scripts/build-tinyllm-code.py long-context to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+LC_NAMES = {"direct": "直接外推", "pi": "位置插值", "ntk": "调大 base", "yarn": "YaRN"}
+LC_COLORS = {"direct": RED, "pi": BLUE, "ntk": ORANGE, "yarn": TEAL}
+LC_DISTS = ["16", "48", "112", "176", "240"]
+
+
+def lc_task():
+    """检索任务的构造：一行长 256 的验证文本，倒数第二个位置放 <bos>，往前 d 个位置放一个字母。"""
+    body = text(480, 34, "检索任务：模型能不能找回 d 个位置以前的那个字母", 19, weight="bold")
+    x0, y0, cell = 40, 80, 22
+    tokens = ["春", "风", "又", "绿", "k", "江", "南", "岸", "…", "明", "月", "何", "时", "照", "我", "还", "<bos>", "?"]
+    for i, t in enumerate(tokens):
+        x = x0 + i * (cell + 30)
+        if t == "k":
+            body += box(x, y0, cell + 22, 40, SOFT[ORANGE], ORANGE, width=2) + text(x + 22, y0 + 26, "k", 16, ORANGE, "bold")
+        elif t == "<bos>":
+            body += box(x - 4, y0, cell + 30, 40, SOFT[BLUE], BLUE, width=2) + text(x + 22, y0 + 26, "<bos>", 13, BLUE, "bold")
+        elif t == "?":
+            body += box(x, y0, cell + 22, 40, "#ffffff", TEAL, dash=True, width=2) + text(x + 22, y0 + 26, "k ?", 14, TEAL, "bold")
+        else:
+            body += box(x, y0, cell + 22, 40, "#ffffff", "#cbd5e1") + text(x + 22, y0 + 26, t, 15)
+    kx, qx = x0 + 4 * 52 + 22, x0 + 16 * 52 + 22
+    body += f'<path d="M{qx} {y0 + 50} C{qx} {y0 + 110} {kx} {y0 + 110} {kx} {y0 + 50}" stroke="{TEAL}" stroke-width="2.5" fill="none" marker-end="url(#arrow-{TEAL[1:]})"/>'
+    body += text((kx + qx) / 2, y0 + 118, "注意力要跨过 d 个位置，找到这个字母并抄过来", 14, TEAL)
+    body += text(x0, y0 + 160, "· 字母是 a～p 之一，唐诗语料里从来不出现；猜对的概率靠蒙只有 1/16", 13.5, INK, anchor="start")
+    body += text(x0, y0 + 186, "· 基线训练时，四分之一的行里有字母和若干处 <bos> 查询，距离不超过 60（都在 64 个位置以内）", 13.5, INK, anchor="start")
+    body += text(x0, y0 + 212, "· 测试时把 d 取 16、48、112、176、240：后三个都超过了训练长度 64", 13.5, INK, anchor="start")
+    svg("lc-task.svg", "长上下文的检索任务",
+        "一行普通的唐诗文本中，某个位置被换成字母 k，倒数第二个位置换成 <bos>，模型要在 <bos> 后面预测出 k。字母和 <bos> 之间隔 d 个位置。"
+        "字母从 16 个唐诗里不出现的字母中选；基线训练时距离不超过 60，测试时 d 取到 240。", y0 + 230, body)
+
+
+def lc_turns():
+    """每一对维度在最后一个位置转过的圈数：训练时、以及四种方案扩到 256 时（对数坐标）。"""
+    rows = [("训练（64 个位置）", "训练（64 个位置）", GRAY)] + [(f"{LC_NAMES[m]}（256）", LC_NAMES[m] + "（256）", LC_COLORS[m]) for m in LC_NAMES]
+    fig, ax = plt.subplots(figsize=(11.5, 4.6), layout="constrained")
+    width = 0.16
+    train = None
+    for k, (label, prefix, color) in enumerate(rows):
+        vals = [float(v) for v in _notebook_lines("long-context", prefix).split()]
+        if train is None:
+            train = vals
+        xs = [i + (k - 2) * width for i in range(len(vals))]
+        ax.bar(xs, vals, width=width, color=color, label=label, alpha=0.9 if k else 0.6)
+    for i, t in enumerate(train):
+        ax.plot([i - 0.45, i + 0.45], [t, t], color=INK, lw=1.2, ls=":")
+    ax.set_yscale("log")
+    ax.set_ylim(0.004, 80)
+    ax.set_xticks(range(len(train)), [f"第 {i} 对\n（{'快' if i == 0 else '慢' if i == len(train) - 1 else ''}）".replace("（）", "") for i in range(len(train))])
+    ax.set_ylabel("最后一个位置转过的圈数（对数坐标）")
+    ax.axhline(1, color=GRAY, lw=1)
+    ax.text(len(train) - 0.5, 1.15, "1 圈", ha="right", fontsize=10, color=GRAY)
+    ax.set_title("虚线是训练时转到过的最大角度；柱子高过虚线的维度，在 256 个位置里会转到没见过的角度", fontsize=12)
+    ax.legend(fontsize=10, ncol=5, loc="upper right")
+    ax.grid(alpha=0.2, axis="y", which="both")
+    save_plot(fig, "lc-turns.svg", "四种方案下每一对维度转过的圈数",
+              "横轴是 RoPE 的 8 对维度（每个头 16 维），从转得最快到最慢；纵轴是位置 255（训练时是位置 63）转过的圈数，对数坐标。"
+              "训练时第 0 对转了约 10 圈，第 2 对正好 1 圈，第 3 对以后不到 1 圈。直接外推每一对都转到 4 倍；位置插值每一对都和训练时一样；"
+              "调大 base 只有第 0 对不变，其余各对都变慢，但没转满一圈的第 3～5 对仍超过训练时；YaRN 让第 0 对部分保留，其余和位置插值相同。")
+
+
+def lc_results():
+    """上：按位置的验证损失；下：检索准确率随距离。左边不训练，右边在长度 256 上训 150 步。"""
+    log = _lc_log()
+    if log is None:
+        return
+    fig, axes = plt.subplots(2, 2, figsize=(11.5, 7.6), layout="constrained", sharey="row")
+    buckets = ["0–63", "64–127", "128–191", "192–255"]
+    for col, (key, title) in enumerate([("untrained", "不训练，直接用到 256"), ("trained", "在长度 256 上训 150 步")]):
+        ax = axes[0, col]
+        for m in LC_NAMES:
+            rows = log[key][m]
+            ax.plot(range(4), [sum(r["loss"][k] for r in rows) / 3 for k in range(4)], "o-", color=LC_COLORS[m], label=LC_NAMES[m], lw=2)
+        ax.axvspan(-0.3, 0.5, color=GRAY, alpha=0.08)
+        ax.set_xticks(range(4), buckets)
+        ax.set_xlabel("位置（训练时只见过 0–63）")
+        ax.set_title(title, fontsize=12)
+        ax.grid(alpha=0.2)
+        ax = axes[1, col]
+        xs = [int(d) for d in LC_DISTS]
+        for m in LC_NAMES:
+            rows = log[key][m]
+            ax.plot(xs, [sum(r["acc"][d] for r in rows) / 3 for d in LC_DISTS], "o-", color=LC_COLORS[m], label=LC_NAMES[m], lw=2)
+        ax.axvspan(0, 64, color=GRAY, alpha=0.08)
+        ax.axhline(1 / 16, color=GRAY, lw=1, ls="--")
+        ax.set_xticks(xs)
+        ax.set_xlabel("字母与查询的距离 d（灰底是训练长度以内）")
+        ax.set_ylim(-0.03, 1.05)
+        ax.grid(alpha=0.2)
+    axes[0, 0].set_ylabel("验证损失（3 个种子平均）")
+    axes[1, 0].set_ylabel("检索准确率")
+    axes[1, 0].text(200, 1 / 16 - 0.06, "瞎猜 1/16", ha="center", fontsize=9.5, color=GRAY)
+    axes[0, 0].legend(fontsize=10)
+    save_plot(fig, "lc-results.svg", "四种方案在 256 个位置上的表现",
+              "上排是验证损失按位置分 4 组，下排是检索准确率随距离的变化，3 个种子平均。左列不训练：直接外推在 128 以后损失升到 6.1 以上、检索在 48 的距离就只剩约 0.4；"
+              "调大 base 的损失撑到 191 再升，检索越远越差；位置插值和 YaRN 的损失在所有位置都约 5.9～6.1（近处的词序被打乱了），但检索在远处仍然有效，YaRN 在 240 的距离上 0.93。"
+              "右列用含远距离依赖的长序列训 150 步后：四种方案的检索都是全对，损失回到 4.3～4.6，直接外推和调大 base 最低。")
+
+
+def lc_deps():
+    """扩展数据里有远距离依赖与只有近处依赖：左边是位置 192–255 的损失，右边是检索准确率随距离。"""
+    log = _lc_log()
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1.4]})
+    ax = axes[0]
+    for k, m in enumerate(["direct", "yarn"]):
+        for j, (key, label, hatch) in enumerate([("trained", "有远距离依赖", None), ("plain", "只有近处依赖", "//")]):
+            v = sum(r["loss"][3] for r in log[key][m]) / 3
+            x = k + (j - 0.5) * 0.36
+            ax.bar(x, v, width=0.34, color=LC_COLORS[m], hatch=hatch, edgecolor="white", alpha=1.0 if j == 0 else 0.65)
+            ax.text(x, v + 0.005, f"{v:.3f}", ha="center", fontsize=9.5)
+    ax.set_xticks([0, 1], ["直接外推", "YaRN"])
+    ax.set_ylim(4.3, 4.5)
+    ax.set_ylabel("位置 192–255 的验证损失")
+    ax.set_title("损失：两种数据几乎一样（左柱有远距离依赖，右柱只有近处）", fontsize=11)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    xs = [int(d) for d in LC_DISTS]
+    for m in ["direct", "yarn"]:
+        for key, style, label in [("trained", "-", "有远距离依赖"), ("plain", "--", "只有近处依赖")]:
+            ys = [sum(r["acc"][d] for r in log[key][m]) / 3 for d in LC_DISTS]
+            ax.plot(xs, ys, style, marker="o", color=LC_COLORS[m], lw=2, label=f"{LC_NAMES[m]}，{label}")
+    ax.axvspan(0, 64, color=GRAY, alpha=0.08)
+    ax.set_xticks(xs)
+    ax.set_ylim(0.7, 1.03)
+    ax.set_xlabel("字母与查询的距离 d（灰底是训练长度以内）")
+    ax.set_ylabel("检索准确率")
+    ax.set_title("检索：只有近处依赖时，直接外推的远处掉了", fontsize=11)
+    ax.legend(fontsize=9.5, loc="lower left", handlelength=3)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "lc-deps.svg", "验证损失看不出训练数据里有没有远距离依赖",
+              "直接外推和 YaRN 各在两种扩展数据上训 150 步：检索的第一处查询离字母 3～254 个位置（有远距离依赖），或者不超过 60 个位置（只有近处依赖）。"
+              "左图位置 192–255 的验证损失，两种数据几乎相同；右图检索准确率随距离的变化，直接外推在只有近处依赖时，112 以上距离掉到 0.81～0.95，"
+              "YaRN 在两种数据下都在 0.97 以上。")
+
+
+# ---------- 第 37 章：继续预训练与灾难性遗忘 ----------
+
+def _cp_log():
+    src = DATA / "tinyllm-continued-pretraining-log.json"
+    if not src.exists():
+        print("skip continued-pretraining figures: run scripts/build-tinyllm-code.py continued-pretraining to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def cpt_curves():
+    """左：继续预训练 100 步里两个验证集的变化（回放 0% 与 10%）；右：五言损失的上升拆成标点与字两部分。"""
+    log = _cp_log()
+    if log is None:
+        return
+    avg = lambda rows, k: sum(r[k] for r in rows) / len(rows)
+    base_wu, base_qi = avg(log["base"], "wu"), avg(log["base"], "qi")
+    fig, axes = plt.subplots(1, 2, figsize=(11.5, 4.5), layout="constrained", gridspec_kw={"width_ratios": [1.6, 1]})
+    ax = axes[0]
+    for r, style in [("0.0", "-"), ("0.1", "--")]:
+        curves = log["curves"][r]
+        steps = [s for s, _ in curves[0]]
+        for key, name, color in [("wu", "五言验证（旧）", BLUE), ("qi", "七言验证（新）", ORANGE)]:
+            ys = [sum(c[k][1][key] for c in curves) / len(curves) for k in range(len(steps))]
+            ax.plot(steps, ys, style, color=color, lw=2, marker="o", ms=4, label=f"{name}，回放 {float(r):.0%}")
+    joint = log["joint"]
+    ax.axhline(avg(joint, "wu"), color=BLUE, lw=1, ls=":")
+    ax.axhline(avg(joint, "qi"), color=ORANGE, lw=1, ls=":")
+    ax.text(100, avg(joint, "wu") - 0.06, f"从头一起训：五言 {avg(joint, 'wu'):.2f}", ha="right", fontsize=9.5, color=BLUE)
+    ax.text(100, avg(joint, "qi") + 0.03, f"从头一起训：七言 {avg(joint, 'qi'):.2f}", ha="right", fontsize=9.5, color=ORANGE)
+    ax.set_xlabel("继续预训练的步数")
+    ax.set_ylabel("验证损失（3 个种子平均）")
+    ax.set_title("前 10 步就忘了一大半，回放让五言回来一部分", fontsize=12)
+    ax.legend(fontsize=9, ncol=2, loc="upper right", handlelength=3.2)
+    ax.set_ylim(4.3, 6.15)
+    ax.grid(alpha=0.2)
+    ax = axes[1]
+    reps = ["0.0", "0.1", "0.5"]
+    fmt = [avg(log["replay"][r], "wu_format") - avg(log["base"], "wu_format") for r in reps]
+    con = [avg(log["replay"][r], "wu_content") - avg(log["base"], "wu_content") for r in reps]
+    xs = range(len(reps))
+    ax.bar(xs, fmt, color=RED, width=0.6, label="预测标点和 <eos>")
+    ax.bar(xs, con, bottom=fmt, color=GRAY, width=0.6, label="预测字")
+    for x, f, c in zip(xs, fmt, con):
+        ax.text(x, f + c + 0.02, f"+{f + c:.2f}\n（标点占 {f / (f + c):.0%}）", ha="center", fontsize=9.5)
+    ax.set_xticks(list(xs), [f"回放 {float(r):.0%}" for r in reps])
+    ax.set_ylabel("五言验证损失比基线升了多少")
+    ax.set_ylim(0, 1.45)
+    ax.set_title("忘掉的大部分是格式", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "cpt-curves.svg", "继续预训练中的学习与遗忘",
+              f"左：从五言基线（五言验证 {base_wu:.2f}、七言验证 {base_qi:.2f}）出发，在七言上训 100 步，每 10 步两个验证集的损失；实线不回放，虚线回放 10% 五言。"
+              "前 10 步七言验证从 5.95 降到 4.9，五言验证同时从 4.42 升到 5.16～5.29；不回放时五言一路升到 5.60，回放 10% 时回落到约 4.9。两条点线是同样算力从头一起训的结果。"
+              "右：五言验证损失的上升拆成两部分，红色是预测标点和 <eos> 的部分，灰色是预测字的部分；不回放时 81% 来自标点，回放 10% 时 66%。")
+
+
+def cpt_tradeoff():
+    """学会与遗忘的权衡：横轴五言验证（越低越好），纵轴七言验证（越低越好）。"""
+    log = _cp_log()
+    if log is None:
+        return
+    avg = lambda rows, k: sum(r[k] for r in rows) / len(rows)
+    fig, ax = plt.subplots(figsize=(8.6, 5.4), layout="constrained")
+    reps = ["0.0", "0.05", "0.1", "0.3", "0.5"]
+    xs = [avg(log["replay"][r], "wu") for r in reps]
+    ys = [avg(log["replay"][r], "qi") for r in reps]
+    ax.plot(xs, ys, "o-", color=BLUE, lw=2, label="回放比例（峰值 3e-3）")
+    for r, x, y in zip(reps, xs, ys):
+        ax.annotate(f"{float(r):.0%}", (x, y), xytext=(6, -12), textcoords="offset points", fontsize=10, color=BLUE)
+    for p, marker in [("0.001", "s"), ("0.01", "^")]:
+        x, y = avg(log["rewarm"][p], "wu"), avg(log["rewarm"][p], "qi")
+        ax.plot([x], [y], marker, color=ORANGE, ms=9)
+        ax.annotate(f"回放 10%，峰值 {float(p):.0e}", (x, y), xytext=(6, 6), textcoords="offset points", fontsize=10, color=ORANGE)
+    bx, by = avg(log["base"], "wu"), avg(log["base"], "qi")
+    jx, jy = avg(log["joint"], "wu"), avg(log["joint"], "qi")
+    ax.plot([jx], [jy], "D", color=TEAL, ms=9)
+    ax.annotate("从头一起训（900 步，七言 10%）", (jx, jy), xytext=(8, -4), textcoords="offset points", fontsize=10, color=TEAL)
+    ax.annotate(f"基线：七言 {by:.2f}（图外，在上方）", (bx, 4.98), xytext=(8, 0), textcoords="offset points", fontsize=10, color=GRAY)
+    ax.plot([bx], [4.98], "v", color=GRAY, ms=9)
+    ax.set_xlabel("五言验证损失（旧领域，越低越好）")
+    ax.set_ylabel("七言验证损失（新领域，越低越好）")
+    ax.set_ylim(4.55, 5.0)
+    ax.set_title("学会多少、忘掉多少：回放比例沿一条权衡曲线移动", fontsize=12)
+    ax.grid(alpha=0.2)
+    ax.legend(fontsize=10, loc="upper right")
+    save_plot(fig, "cpt-tradeoff.svg", "继续预训练的权衡",
+              "横轴是五言验证损失，纵轴是七言验证损失，都是越低越好，每个点是 3 个种子的平均。蓝线是回放 0%、5%、10%、30%、50% 五言的继续预训练（峰值学习率 3e-3、100 步）："
+              "回放越多，五言越好、七言越差。橙色是回放 10% 时把峰值换成 1e-3 和 1e-2：1e-3 五言略好、七言略差，1e-2 两边都更差。"
+              "绿色菱形是同样 900 步、七言占 10% 从头一起训：五言几乎和基线一样，七言却比所有继续预训练都差。灰色三角标出基线的五言损失，它的七言损失 5.95 在图外。")
+
+
+# ---------- 第 38 章：指令微调 ----------
+
+def _sft_log():
+    src = DATA / "tinyllm-instruction-finetuning-log.json"
+    if not src.exists():
+        print("skip instruction-finetuning figures: run scripts/build-tinyllm-code.py instruction-finetuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def sft_template():
+    """一条 SFT 样本：模板、loss 掩码；推理时模板停在 <assistant>，生成到 <eos>。"""
+    body = text(480, 34, "SFT 的一条样本：模板拼好，只有回答部分算损失", 19, weight="bold")
+    y = 80
+    segs = [("<user>", 70, BLUE, False), ("写一首五言绝句，用“春”字开头。", 280, GRAY, False), ("<assistant>", 100, BLUE, False),
+            ("春眠不觉晓，处处闻啼鸟。夜来风雨声，花落知多少。", 330, ORANGE, True), ("<eos>", 64, RED, True)]
+    x = 50
+    for label, w, color, loss in segs:
+        body += box(x, y, w, 44, SOFT[color] if loss else "#ffffff", color, width=2)
+        body += text(x + w / 2, y + 28, label, 14 if len(label) < 20 else 13, color if label.startswith("<") else INK)
+        x += w + 6
+    body += f'<path d="M50 {y + 58} L{50 + 70 + 280 + 100 + 12} {y + 58}" stroke="{GRAY}" stroke-width="2.5" fill="none"/>'
+    body += text(50 + (70 + 280 + 100 + 12) / 2, y + 80, "掩码 0：不算损失（指令是用户给的，模型不用学着写）", 13.5, GRAY)
+    x1 = 50 + 70 + 280 + 100 + 18
+    body += f'<path d="M{x1} {y + 58} L{x1 + 330 + 70} {y + 58}" stroke="{ORANGE}" stroke-width="2.5" fill="none"/>'
+    body += text(x1 + 200, y + 80, "掩码 1：算损失（包括 <eos>，学会停下）", 13.5, ORANGE)
+    y2 = y + 130
+    body += text(50, y2, "推理时：", 15, INK, "bold", anchor="start")
+    x = 130
+    for label, w, color in [("<user>", 70, BLUE), ("新的指令", 160, GRAY), ("<assistant>", 100, BLUE)]:
+        body += box(x, y2 - 26, w, 40, "#ffffff", color, width=2) + text(x + w / 2, y2 - 1, label, 14, color if label.startswith("<") else INK)
+        x += w + 6
+    body += arrow(x + 4, y2 - 6, x + 50, y2 - 6, TEAL, 2.5)
+    body += text(x + 60, y2 - 1, "模型从这里开始逐字生成，生成出 <eos> 就停", 14, TEAL, anchor="start")
+    body += text(480, y2 + 50, "训练和推理必须用同一个模板：少了 <assistant> 或者换了说法，“去指令里找首字”这类行为就会失灵", 14, RED)
+    svg("sft-template.svg", "SFT 样本的模板与损失掩码",
+        "上：一条训练样本由 <user>、指令、<assistant>、回答和 <eos> 拼成；前三段掩码为 0 不算损失，回答和 <eos> 掩码为 1 算损失。"
+        "下：推理时把新的指令按同一个模板拼到 <assistant> 为止，模型从那里开始生成，直到生成 <eos>。", y2 + 76, body)
+
+
+def sft_results():
+    """左：基座、SFT（3 个种子）、两个对照的各项合格率；中：种子 0 随 SFT 步数的变化；右：推理时换模板。"""
+    log = _sft_log()
+    if log is None:
+        return
+    keys = [("five", "每句五字"), ("count", "句数对"), ("first", "首字对"), ("stop", "按时停下"), ("all", "全部照做")]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [2.2, 1, 1.3]})
+    ax = axes[0]
+    sft = list(log["sft"].values())
+    groups = [("基座", [log["base"]], GRAY), ("SFT（只算回答）", sft, BLUE), ("全部 token 都算", [log["all_tokens"]], ORANGE), ("训练时没有 <eos>", [log["no_eos"]], RED)]
+    w = 0.2
+    for j, (name, rows, color) in enumerate(groups):
+        for i, (k, _) in enumerate(keys):
+            vals = [r[k] for r in rows]
+            m = sum(vals) / len(vals)
+            x = i + (j - 1.5) * w
+            ax.bar(x, m, width=w, color=color, label=name if i == 0 else None)
+            if len(vals) > 1:
+                ax.plot([x, x], [min(vals), max(vals)], color=INK, lw=1.2)
+    ax.set_xticks(range(len(keys)), [k[1] for k in keys])
+    ax.set_ylim(0, 1.3)
+    ax.set_yticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    ax.set_ylabel("合格率（64 条评估指令）")
+    ax.set_title("SFT 学会了格式和停下，首字只学会一部分", fontsize=12)
+    ax.legend(fontsize=9, ncol=4, loc="upper center", handlelength=1.2, columnspacing=0.8)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    steps = [0, 500, 1000, 1500]
+    rows = [log["base"], log["curve"]["500"], log["curve"]["1000"], log["sft"]["0"]]
+    for k, name, color in [("count", "句数对", BLUE), ("first", "首字对", ORANGE), ("all", "全部照做", TEAL)]:
+        ax.plot(steps, [r[k] for r in rows], "o-", color=color, label=name, lw=2)
+    ax.set_xticks(steps)
+    ax.set_xlabel("SFT 步数（种子 0）")
+    ax.set_ylim(0, 1.05)
+    ax.set_title("格式先会，首字后会", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    ax = axes[2]
+    cases = [("训练时的模板", log["sft"]["0"]), ("少了 <assistant>", log["mismatch"]["no_assistant"]), ("换一种说法", log["mismatch"]["reworded"])]
+    for i, (name, r) in enumerate(cases):
+        ax.bar(i - 0.17, r["count"], width=0.32, color=BLUE, label="句数对" if i == 0 else None)
+        ax.bar(i + 0.17, r["first"], width=0.32, color=ORANGE, label="首字对" if i == 0 else None)
+    ax.set_xticks(range(3), [c[0] for c in cases], fontsize=10)
+    ax.set_ylim(0, 1.05)
+    ax.set_title("推理时换模板：首字先掉", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "sft-results.svg", "指令微调的结果",
+              "左：基座、只在回答上算损失的 SFT（3 个种子，竖线是范围）、全部 token 都算损失、训练时去掉 <eos> 四种模型，在 64 条评估指令上的各项合格率。"
+              "基座全是 0；SFT 后每句五字、句数对约 0.8～0.9，首字对 0.34～0.45，全部照做约 0.55；全部 token 都算时首字对降到 0.24；去掉 <eos> 后模型停不下来，几乎全不合格。"
+              "中：种子 0 在 SFT 第 0、500、1000、1500 步的合格率，句数对 500 步就到 0.77，首字对 500 步只有 0.03，1500 步到 0.39。"
+              "右：推理时少了 <assistant>，首字对降到 0；把指令换一种说法，首字对降到 0.21，句数对几乎不变。")
+
+
+# ---------- 第 39 章：参数高效微调（LoRA） ----------
+
+def _lora_log():
+    src = DATA / "tinyllm-lora-finetuning-log.json"
+    if not src.exists():
+        print("skip lora figures: run scripts/build-tinyllm-code.py lora-finetuning to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def lora_structure():
+    """LoRA：冻住的 W 旁边加一条低秩支路 B·A；训练完合并回 W。"""
+    body = text(480, 34, "LoRA：原权重冻住，旁边加一条低秩支路，训练完再合并回去", 19, weight="bold")
+    body += box(60, 150, 70, 50, "#ffffff", GRAY) + text(95, 181, "x", 18)
+    body += box(230, 90, 220, 70, SOFT[GRAY], GRAY, width=2)
+    body += text(340, 118, "W（out × in）", 16, INK, "bold") + text(340, 142, "冻住，不更新", 13, GRAY)
+    body += box(210, 200, 110, 60, SOFT[ORANGE], ORANGE, width=2) + text(265, 226, "A（r × in）", 14, ORANGE, "bold") + text(265, 247, "随机初始化", 12, GRAY)
+    body += box(350, 200, 110, 60, SOFT[ORANGE], ORANGE, width=2) + text(405, 226, "B（out × r）", 14, ORANGE, "bold") + text(405, 247, "初始化为 0", 12, GRAY)
+    body += arrow(132, 168, 226, 128, GRAY, 2.5) + arrow(132, 182, 206, 228, ORANGE, 2.5) + arrow(322, 230, 346, 230, ORANGE, 2.5)
+    body += circle(540, 175, 22, "#ffffff", INK) + text(540, 182, "+", 22, INK, "bold")
+    body += arrow(452, 125, 520, 162, GRAY, 2.5) + arrow(462, 230, 520, 190, ORANGE, 2.5)
+    body += text(500, 245, "× α/r", 14, ORANGE, anchor="start")
+    body += arrow(564, 175, 620, 175, INK, 2.5) + text(640, 181, "输出", 16, INK, anchor="start")
+    body += text(60, 320, "可训练参数：r·(in + out)，原来是 in·out。r 远小于 in、out 时，梯度和 AdamW 状态都只剩一小部分", 14, INK, anchor="start")
+    body += text(60, 348, "B 从 0 开始，刚加上时模型和原来完全一样；训练只改 A、B", 14, INK, anchor="start")
+    body += box(60, 372, 840, 50, SOFT[TEAL], TEAL, width=2)
+    body += text(480, 403, "合并：W′ = W + (α/r)·B·A，支路消失，推理时的结构、参数量、速度都和原模型一样", 15, TEAL, "bold")
+    svg("lora-structure.svg", "LoRA 的结构",
+        "输入 x 同时经过冻住的原权重 W 和一条低秩支路：先乘 A（r×in，随机初始化），再乘 B（out×r，初始化为 0），乘 α/r 后和 W 的输出相加。"
+        "可训练参数从 in·out 变成 r·(in+out)。训练完把 (α/r)·B·A 加回 W，支路消失，推理和原模型一样。", 440, body)
+
+
+def lora_results():
+    """左：四种做法的合格率；中：预训练验证损失（越低越少遗忘）；右：训练时的显存账。"""
+    log = _lora_log()
+    if log is None:
+        return
+    res = log["results"]
+    names = list(res)
+    colors = [BLUE, ORANGE, PURPLE, TEAL]
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.5), layout="constrained", gridspec_kw={"width_ratios": [1.5, 1, 1.1]})
+    ax = axes[0]
+    keys = [("count", "句数对"), ("first", "首字对"), ("all", "全部照做")]
+    w = 0.2
+    for j, (n, c) in enumerate(zip(names, colors)):
+        for i, (k, _) in enumerate(keys):
+            ax.bar(i + (j - 1.5) * w, res[n]["eval"][k], width=w, color=c, label=n if i == 0 else None)
+    ax.set_xticks(range(3), [k[1] for k in keys])
+    ax.set_ylim(0, 1.15)
+    ax.set_ylabel("合格率（64 条评估指令）")
+    ax.set_title("首字：LoRA 明显不如全参数微调", fontsize=12)
+    ax.legend(fontsize=9, ncol=2, loc="upper right")
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    for j, (n, c) in enumerate(zip(names, colors)):
+        v = res[n]["pretrain_loss"]
+        ax.bar(j, v, color=c, width=0.65)
+        ax.text(j, v + 0.01, f"{v:.3f}", ha="center", fontsize=9.5)
+    ax.axhline(log["base_loss"], color=GRAY, ls="--", lw=1.2)
+    ax.text(-0.45, log["base_loss"] + 0.01, f"基座 {log['base_loss']:.3f}", ha="left", fontsize=9.5, color=GRAY)
+    ax.set_xticks(range(4), [n.replace(" + ", "\n+ ") for n in names], fontsize=9)
+    ax.set_ylim(4.2, 4.7)
+    ax.set_ylabel("预训练验证损失（越低越少遗忘）")
+    ax.set_title("LoRA 学得少，也忘得少", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[2]
+    n_total = log["n_total"]
+    for j, n in enumerate(["全参数微调", "LoRA r=4", "LoRA r=32"]):
+        t = res[n]["trainable"]
+        weights = (n_total + (t if n != "全参数微调" else 0)) * 4 / 2**20
+        grads, adam = t * 4 / 2**20, 2 * t * 4 / 2**20
+        ax.bar(j, weights, color=GRAY, width=0.6, label="权重" if j == 0 else None)
+        ax.bar(j, grads, bottom=weights, color=BLUE, width=0.6, label="梯度" if j == 0 else None)
+        ax.bar(j, adam, bottom=weights + grads, color=ORANGE, width=0.6, label="AdamW 状态" if j == 0 else None)
+        ax.text(j, weights + grads + adam + 0.03, f"{weights + grads + adam:.2f}", ha="center", fontsize=9.5)
+    ax.set_xticks(range(3), ["全参数", "LoRA r=4", "LoRA r=32"])
+    ax.set_ylabel("MiB（FP32，不含激活）")
+    ax.set_title("省下的是梯度和优化器状态", fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "lora-results.svg", "全参数微调与 LoRA 的对比",
+              "同一个基座、同样的 SFT 数据和步数（一个种子）。左：句数对、首字对、全部照做；全参数微调首字对 0.39，LoRA r=4、r=32 只有 0 和 0.05，"
+              "让两个新特殊 token 的嵌入也可训练后升到 0.21。中：预训练验证损失，基座 4.305，全参数微调升到 4.640，LoRA 只升到 4.51～4.58。"
+              "右：按 FP32 算的权重、梯度和 AdamW 状态；LoRA 的权重略多（多了 A、B），梯度和状态少得多。")
+
+
+# ---------- 第 40 章：蒸馏与合成数据 ----------
+
+def _kd_log():
+    src = DATA / "tinyllm-distillation-log.json"
+    if not src.exists():
+        print("skip distillation figures: run scripts/build-tinyllm-code.py distillation to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def kd_methods():
+    """三种训学生的办法：真实数据的硬标签、老师写的数据的硬标签、老师分布的软标签。"""
+    body = text(480, 34, "三种训学生的办法：学的都是“下一个字”，标签从哪来不一样", 19, weight="bold")
+    rows = [("从头训", "真实的诗", "每个位置只有一个正确答案（真实的下一个字）", GRAY, [1.0]),
+            ("序列级蒸馏", "老师写的诗", "老师采样写出来，学生把它当成真实数据学", BLUE, [1.0]),
+            ("软标签蒸馏", "真实的诗", "每个位置给出老师的整个概率分布，学生去拟合它", ORANGE, [0.42, 0.21, 0.13, 0.09, 0.06, 0.05, 0.04])]
+    for i, (name, data, note, color, bars) in enumerate(rows):
+        y = 74 + i * 112
+        body += box(30, y, 150, 86, SOFT[color], color, width=2) + text(105, y + 50, name, 16, color, "bold")
+        body += text(210, y + 26, f"数据：{data}", 14, INK, anchor="start")
+        body += text(210, y + 52, note, 13.5, GRAY, anchor="start")
+        x0, base = 690, y + 76
+        for j in range(7):
+            h = (bars[j] if j < len(bars) else 0) * 60
+            colr = color if (j == 0 or len(bars) > 1) else "#cbd5e1"
+            body += f'<rect x="{x0 + j * 30}" y="{base - max(h, 2)}" width="22" height="{max(h, 2)}" fill="{colr}" rx="2"/>'
+        body += text(x0 + 100, base + 18, "这个位置的目标分布", 12, GRAY)
+    body += text(480, 420, "软标签告诉学生“哪些字也说得通、各有几分可能”，一个位置传过去的信息多得多；代价是训练时每一步都要跑一遍老师", 13.5, INK)
+    svg("kd-methods.svg", "三种训学生的办法",
+        "第一行从头训：用真实的诗，每个位置的目标是真实的下一个字，只有一个 token 的概率为 1。第二行序列级蒸馏：用老师写的诗，目标同样只有一个字。"
+        "第三行软标签蒸馏：用真实的诗，但每个位置的目标是老师给出的整个概率分布，学生用 KL 散度去拟合。", 440, body)
+
+
+def kd_results():
+    """左：三种训法的验证损失随步数（3 个种子）；中：软标签的变体；右：训到 1800 步。"""
+    log = _kd_log()
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.3, 1, 1.1]})
+    ax = axes[0]
+    colors = {"从头训": GRAY, "序列级蒸馏": BLUE, "软标签蒸馏": ORANGE}
+    for m, c in colors.items():
+        s = log["summary"][m]
+        xs = [200, 400, 600]
+        ax.plot(xs, [s["curve"][str(k)] for k in xs], "o-", color=c, lw=2, label=m)
+        ax.plot([600, 600], [min(s["final"]), max(s["final"])], color=c, lw=4, alpha=0.4)
+    ax.axhline(4.305, color=INK, ls=":", lw=1)
+    ax.text(210, 4.33, "老师 4.305", fontsize=9.5)
+    ax.set_xticks([200, 400, 600])
+    ax.set_xlabel("学生训练步数")
+    ax.set_ylabel("真实验证集上的损失（3 个种子平均）")
+    ax.set_title("软标签一直领先", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    ax = axes[1]
+    names = ["温度 1", "温度 2", "只留前 8 个"]
+    vals = [log["summary"]["软标签蒸馏"]["final"][0], log["variants"]["软标签，温度 2"], log["variants"]["软标签，只留前 8 个"]]
+    for i, (n, v) in enumerate(zip(names, vals)):
+        ax.bar(i, min(v, 5.2), color=[ORANGE, PURPLE, RED][i], width=0.6)
+        ax.text(i, min(v, 5.2) + 0.02, f"{v:.3f}", ha="center", fontsize=10)
+    ax.axhline(log["summary"]["从头训"]["final"][0], color=GRAY, ls="--", lw=1.2)
+    ax.text(2.4, log["summary"]["从头训"]["final"][0] + 0.02, "从头训（种子 0）", ha="right", fontsize=9.5, color=GRAY)
+    ax.set_xticks(range(3), names)
+    ax.set_ylim(4.2, 5.3)
+    ax.set_title("软标签的变体（种子 0，600 步）", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[2]
+    for m, c in [("从头训", GRAY), ("软标签蒸馏", ORANGE)]:
+        cur = log["long"][m]
+        xs = [600, 1200, 1800]
+        ax.plot(xs, [cur[str(k)] for k in xs], "o-", color=c, lw=2, label=m)
+    ax.set_xticks([600, 1200, 1800])
+    ax.set_xlabel("学生训练步数（同一份约 10 万 token 的数据）")
+    ax.set_title("训得更久，差距仍在", fontsize=12)
+    ax.legend(fontsize=9.5)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "kd-results.svg", "蒸馏的结果",
+              "左：三种训法在真实验证集上的损失，第 200、400、600 步（3 个种子平均，600 步处的竖条是范围）；软标签蒸馏每个时刻都最低，600 步时 4.47，从头训 4.68，序列级蒸馏 4.76，老师 4.305。"
+              "中：种子 0 的软标签变体，温度 2 时 4.59，只保留老师前 8 个概率时升到 6.33（图中截断），虚线是从头训。"
+              "右：在同一份数据上训到 1800 步，从头训 4.61，软标签 4.37。")
+
+
+# ---------- 第 41～43 章：RLHF、DPO、GRPO ----------
+
+def _p8_log(slug):
+    src = DATA / f"tinyllm-{slug}-log.json"
+    if not src.exists():
+        print(f"skip {slug} figures: run scripts/build-tinyllm-code.py {slug} to create", src)
+        return None
+    return json.loads(src.read_text(encoding="utf-8"))
+
+
+def _smooth(values, k=10):
+    return [sum(values[i:i + k]) / k for i in range(0, len(values) - k + 1, k)]
+
+
+def rlhf_pipeline():
+    """RLHF 三步：SFT → 奖励模型 → PPO（四个模型）。"""
+    body = text(480, 34, "RLHF 的三步：先 SFT，再从二选一学一个打分器，最后用强化学习对着打分器优化", 18, weight="bold")
+    steps = [("① SFT", "第 38 章", "指令—回答，交叉熵", BLUE),
+             ("② 奖励模型", "偏好对：同一条指令的两个回答", "Bradley–Terry：选中的分比落选的高", ORANGE),
+             ("③ PPO", "策略采样 → 打分 → 更新", "奖励 = 奖励模型的分 − β·KL", TEAL)]
+    for i, (t, a, b, c) in enumerate(steps):
+        x = 30 + i * 310
+        body += box(x, 70, 280, 100, SOFT[c], c, width=2)
+        body += text(x + 140, 100, t, 17, c, "bold") + text(x + 140, 128, a, 13, INK) + text(x + 140, 152, b, 13, GRAY)
+        if i < 2:
+            body += arrow(x + 282, 120, x + 308, 120, GRAY, 2.5)
+    body += text(480, 210, "PPO 这一步同时用到四个模型", 15, INK, "bold")
+    models = [("策略", "从 SFT 复制，要训练", TEAL), ("参考", "SFT 本身，冻住；算 KL", GRAY), ("奖励模型", "冻住；给整个回答打分", ORANGE), ("价值模型", "从奖励模型复制，要训练", PURPLE)]
+    for i, (n, d, c) in enumerate(models):
+        x = 30 + i * 232
+        body += box(x, 230, 210, 74, "#ffffff", c, width=2) + text(x + 105, 258, n, 15, c, "bold") + text(x + 105, 282, d, 11.5, GRAY)
+    body += text(480, 340, "KL 是一根绳子：策略离 SFT 越远，罚得越多。没有它，策略会找到奖励模型的漏洞，分数一路涨，回答越来越不像话", 13.5, RED)
+    svg("rlhf-pipeline.svg", "RLHF 的三步",
+        "第一步 SFT；第二步用同一条指令的两个回答和人的二选一，按 Bradley–Terry 损失训练奖励模型；第三步 PPO：策略采样回答，奖励模型打分，"
+        "每个 token 再减去 β 乘以和 SFT 的 KL。PPO 同时用到策略、参考、奖励模型、价值模型四个模型；价值模型估计每个位置之后还能拿多少奖励。", 362, body)
+
+
+def rlhf_results():
+    log = _p8_log("rlhf")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1, 1.3]})
+    for beta, style in [("0.05", "-"), ("0.0", "--")]:
+        h = log["history"][beta]
+        xs = list(range(10, 101, 10))
+        axes[0].plot(xs, _smooth([x["rm"] for x in h]), style, color=ORANGE, marker="o", ms=4, label=f"β={beta}")
+        axes[1].plot(xs, _smooth([x["judge"] for x in h]), style, color=TEAL, marker="o", ms=4, label=f"β={beta}")
+    axes[0].set_title("奖励模型的分：两次都一路涨", fontsize=12)
+    axes[1].set_title("评审的分：β=0 时掉到 0", fontsize=12)
+    for ax in axes[:2]:
+        ax.set_xlabel("PPO 步数（每 10 步平均）")
+        ax.legend(fontsize=10)
+        ax.grid(alpha=0.2)
+    ax = axes[2]
+    res = log["results"]
+    names = ["SFT", "PPO β=0.05", "PPO β=0"]
+    keys = [("judge", "评审（0～4）", 4), ("images", "意象字个数", 4), ("stuffed", "堆砌比例", 1), ("first", "首字对", 1)]
+    w = 0.26
+    for j, (n, c) in enumerate(zip(names, [BLUE, TEAL, RED])):
+        for i, (k, _, scale) in enumerate(keys):
+            ax.bar(i + (j - 1) * w, res[n][k] / scale, width=w, color=c, label=n if i == 0 else None)
+    ax.set_xticks(range(4), [f"{k[1]}\n（÷{k[2]}）" if k[2] > 1 else k[1] for k in keys], fontsize=9.5)
+    ax.set_ylim(0, 1.15)
+    ax.set_title("64 条新指令上的评估", fontsize=12)
+    ax.legend(fontsize=9.5, ncol=3, loc="upper center")
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "rlhf-results.svg", "PPO 的训练曲线与评估",
+              "左：训练中采样到的回答的奖励模型分数，β=0.05（实线）和 β=0（虚线）都从前 10 步平均 2.2～2.5 涨到 10 左右。中：同样这些回答的评审分数，β=0.05 从约 1.7 升到 2.5，β=0 在第 20 步后掉到 0。"
+              "右：64 条新指令上，SFT、PPO β=0.05、PPO β=0 的评审分（除以 4）、意象字个数（除以 4）、堆砌比例、首字对；β=0.05 意象字多了、评审分高了，但堆砌和首字都变差；β=0 全部堆砌。")
+
+
+def dpo_vs_rlhf():
+    body = text(480, 34, "DPO：把“训练奖励模型 + 强化学习”合成一步监督学习", 19, weight="bold")
+    body += box(30, 70, 420, 150, SOFT[GRAY], GRAY, width=2) + text(240, 98, "RLHF（第 41 章）", 16, INK, "bold")
+    for i, t in enumerate(["偏好对 → 训练奖励模型", "策略采样 → 奖励模型打分 → 价值模型估计优势", "PPO 更新策略和价值模型，减去 β·KL", "四个模型，要在线采样"]):
+        body += text(50, 128 + i * 24, "· " + t, 13.5, INK, anchor="start")
+    body += box(510, 70, 420, 150, SOFT[ORANGE], ORANGE, width=2) + text(720, 98, "DPO", 16, ORANGE, "bold")
+    for i, t in enumerate(["偏好对直接进损失，不训练奖励模型", "不采样：只算两个回答的对数概率", "隐含奖励 = β·(log π − log π_ref)", "两个模型（策略 + 冻住的参考），像 SFT 一样训练"]):
+        body += text(530, 128 + i * 24, "· " + t, 13.5, INK, anchor="start")
+    body += text(480, 262, "损失 = −log σ( β · [ (log π(选中) − log π_ref(选中)) − (log π(落选) − log π_ref(落选)) ] )", 15, INK, "bold")
+    body += text(480, 292, "它和“奖励模型 + KL 约束的最优策略”在数学上对应；β 越小，越容易偏离参考模型", 13.5, GRAY)
+    svg("dpo-vs-rlhf.svg", "DPO 与 RLHF 的对比",
+        "左：RLHF 先用偏好对训练奖励模型，再让策略采样、打分，用 PPO 和价值模型更新，减去 β 乘 KL，需要四个模型和在线采样。"
+        "右：DPO 把偏好对直接放进损失，只需要策略和冻住的参考模型，不采样；隐含奖励是 β 乘以策略和参考模型对数概率之差。", 312, body)
+
+
+def dpo_results():
+    log, ppo = _p8_log("preference-alignment"), _p8_log("rlhf")
+    if log is None or ppo is None:
+        return
+    res = log["results"]
+    fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.4), layout="constrained", gridspec_kw={"width_ratios": [1.6, 1]})
+    ax = axes[0]
+    rows = [("SFT", res["SFT"], BLUE), ("DPO β=0.1\n100 步", res["DPO β=0.1 第 100 步"], "#fdba74"), ("DPO β=0.1\n200 步", res["DPO β=0.1 第 200 步"], ORANGE),
+            ("DPO β=0.1\n300 步", res["DPO β=0.1"], RED), ("DPO β=1", res["DPO β=1"], PURPLE), ("DPO β=0.1\n+ NLL", res["DPO β=0.1 + NLL"], TEAL),
+            ("PPO β=0.05\n（第 41 章）", ppo["results"]["PPO β=0.05"], GRAY)]
+    for i, (n, r, c) in enumerate(rows):
+        ax.bar(i - 0.2, r["judge"], width=0.38, color=c)
+        ax.bar(i + 0.2, r["stuffed"] * 4, width=0.38, color=c, alpha=0.4, hatch="//", edgecolor="white")
+        ax.text(i - 0.2, r["judge"] + 0.05, f"{r['judge']:.2f}", ha="center", fontsize=9)
+    ax.set_xticks(range(len(rows)), [r[0] for r in rows], fontsize=9)
+    ax.set_ylim(0, 4.3)
+    ax.set_ylabel("评审分（实心）；堆砌比例 × 4（斜线）")
+    ax.set_title("β 小、训得久，DPO 会把模型训坏", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    xs = [100, 200, 300]
+    d = log["drift"]
+    ax.plot(xs, [d[str(k)][0] for k in xs], "o-", color=TEAL, lw=2, label="选中")
+    ax.plot(xs, [d[str(k)][1] for k in xs], "o-", color=RED, lw=2, label="落选")
+    ax.scatter([300], [d["nll"][0]], color=TEAL, marker="*", s=160, zorder=3, label="选中（加 NLL）")
+    ax.scatter([300], [d["nll"][1]], color=RED, marker="*", s=160, zorder=3, label="落选（加 NLL）")
+    ax.axhline(0, color=GRAY, lw=1)
+    ax.set_xticks(xs)
+    ax.set_xlabel("DPO 步数（β = 0.1）")
+    ax.set_ylabel("留出对子上的对数概率（相对 SFT）")
+    ax.set_title("两边的概率都在降", fontsize=12)
+    ax.legend(fontsize=9)
+    ax.grid(alpha=0.2)
+    save_plot(fig, "dpo-results.svg", "DPO 的结果",
+              "左：64 条新指令上的评审分（实心柱）和堆砌比例乘 4（斜线柱）。SFT 评审 1.67；DPO β=0.1 在第 100 步 1.64、第 200 步 1.09、第 300 步 0；β=1 是 2.64；"
+              "β=0.1 加上选中回答的负对数似然是 1.94，几乎不堆砌；第 41 章的 PPO β=0.05 是 2.53。"
+              "右：β=0.1 时留出对子上选中和落选回答的对数概率（相对 SFT），两者都从 0 一路降到 −49 和 −57，差在变大；加 NLL 后只降到 −8 和 −10。")
+
+
+def grpo_group():
+    body = text(480, 34, "GRPO：同一条指令采样一组回答，组内比高低，不需要价值模型", 19, weight="bold")
+    body += box(30, 140, 170, 60, SOFT[BLUE], BLUE, width=2) + text(115, 166, "一条指令", 15, BLUE, "bold") + text(115, 187, "写一首五言绝句。", 12, INK)
+    rewards = [1, 0, 0, 1, 0, 0, 0, 0]
+    mean = sum(rewards) / 8
+    std = (sum((r - mean) ** 2 for r in rewards) / 7) ** 0.5
+    for i, r in enumerate(rewards):
+        y = 66 + i * 34
+        body += arrow(202, 170, 260, y + 12, GRAY, 1.5)
+        body += box(262, y, 300, 26, "#ffffff", TEAL if r else "#cbd5e1") + text(272, y + 18, f"回答 {i + 1}", 12.5, INK, anchor="start")
+        body += text(600, y + 18, f"奖励 {r}", 13, TEAL if r else GRAY, "bold" if r else "normal")
+        adv = (r - mean) / std
+        body += text(720, y + 18, f"优势 {adv:+.2f}", 13, TEAL if adv > 0 else RED)
+    body += text(860, 150, "组内平均", 13, GRAY) + text(860, 172, f"{mean:.2f}", 15, INK, "bold")
+    body += text(860, 210, "组内标准差", 13, GRAY) + text(860, 232, f"{std:.2f}", 15, INK, "bold")
+    body += text(480, 368, "优势 = (奖励 − 组内平均) ÷ 组内标准差：比同组其他回答好就加强，差就减弱；全组一样（全对或全错）时优势为 0，这组不起作用", 13, INK)
+    body += text(480, 392, "奖励由程序判定（押韵、格式），不需要奖励模型；每个 token 用同一个优势，另加 β·KL 拴住", 13, GRAY)
+    svg("grpo-group.svg", "GRPO 的组内比较",
+        "一条指令采样 8 个回答，程序判定奖励：两个回答得 1，其余得 0。组内平均 0.25、标准差约 0.46，得 1 的回答优势约 +1.62，得 0 的约 −0.54。"
+        "每个回答里的每个 token 都用这个优势更新；全组奖励相同时优势为 0。", 410, body)
+
+
+def grpo_results():
+    log = _p8_log("grpo")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1, 1.3]})
+    for key, name, color in [("history_rhyme", "奖励：押韵", ORANGE), ("history_honest", "奖励：不取巧的押韵", PURPLE)]:
+        for seed, h in enumerate(log[key]):
+            xs = list(range(10, len(h) + 1, 10))
+            label = name if seed == 0 else None
+            axes[0].plot(xs, _smooth([x["reward"] for x in h]), "-", color=color, alpha=0.85, lw=1.6, label=label)
+            axes[1].plot(xs, _smooth([x["kl"] for x in h]), "-", color=color, alpha=0.85, lw=1.6, label=label)
+    axes[0].set_title("训练时的奖励（每条线一个种子）", fontsize=12)
+    axes[1].set_title("和 SFT 的 KL（每个回答的总和）", fontsize=12)
+    for ax in axes[:2]:
+        ax.set_xlabel("GRPO 步数（每 10 步平均）")
+        ax.legend(fontsize=9.5)
+        ax.grid(alpha=0.2)
+    ax = axes[2]
+    res = log["results"]
+    arms = [("SFT", ["SFT"], BLUE), ("押韵", [f"押韵 种子 {i}" for i in range(3)], ORANGE),
+            ("不取巧", [f"不取巧 种子 {i}" for i in range(3)], PURPLE)]
+    keys = [("rhyme", "押韵合格"), ("honest", "不取巧的押韵"), ("first", "首字对")]
+    w = 0.26
+    for j, (arm, names, c) in enumerate(arms):
+        losses = [res[n]["loss"] for n in names]
+        loss_text = f"{losses[0]:.2f}" if len(losses) == 1 else f"{min(losses):.2f}～{max(losses):.2f}"
+        for i, (k, _) in enumerate(keys):
+            vals = [res[n][k] for n in names]
+            mean = sum(vals) / len(vals)
+            err = None if len(vals) == 1 else [[mean - min(vals)], [max(vals) - mean]]
+            ax.bar(i + (j - 1) * w, mean, width=w, color=c, yerr=err, capsize=3, ecolor=INK,
+                   label=f"{arm}（损失 {loss_text}）" if i == 0 else None)
+    ax.set_xticks(range(3), [k[1] for k in keys])
+    ax.set_ylim(0, 1.15)
+    ax.set_title("64 条新指令上的评估（3 个种子的平均与范围）", fontsize=12)
+    ax.legend(fontsize=9, loc="upper right")
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "grpo-results.svg", "GRPO 的结果",
+              "左：训练时采样到的回答的平均奖励，每条线一个种子。以押韵为奖励时训 100 步，前 75 步每 25 步平均在 0.03～0.12，最后 25 步升到 0.35～0.54；"
+              "以不取巧的押韵为奖励时训 200 步，前 100 步几乎不动，100 步以后才上升，最后到 0.5～0.66。中：和 SFT 的 KL，最后 25 步平均在 24～33。"
+              "右：64 条新指令上，押韵合格率 SFT 0.16，以押韵为奖励 0.75～0.92，以不取巧为奖励 0.69～1.00；不取巧的押韵分别是 0.16、0～0.02、0.53～0.86；"
+              "首字对都掉到 0 附近；图例里是预训练验证损失。")
+
+
+def agent_roundtrip():
+    """第 44 章：learn-agent-rust 的 Agent 和 TinyLLM 服务端之间的两次往返。"""
+    body = text(480, 34, "一次任务两次请求：Agent 管流程和工具，模型只读 token、写 token", 19, weight="bold")
+    body += text(165, 66, "Agent（learn-agent-rust 专题 3）", 14, BLUE, "bold")
+    body += text(480, 66, "HTTP：Chat Completions 的 JSON", 14, GRAY, "bold")
+    body += text(795, 66, "TinyLLM 服务端（本章，Python）", 14, TEAL, "bold")
+    rows = [
+        (84, ["messages：system 策略、user 目标", "tools：read_file 的说明和 JSON Schema"],
+         ["render：<system>…<user>…<assistant>", "贪心生成：<call>{\"name\":\"read_file\",…}<eos>", "解析成 tool_calls，服务端配一个 id"],
+         "POST（第 1 次）", "finish_reason = tool_calls"),
+        (236, ["ExecuteTools：名字、参数、预算都对", "才读 README.md；结果作为 tool 消息", "追加，tool_call_id 和调用的 id 配对"],
+         ["render 整段对话（前一半和第 1 次相同）", "贪心生成：{\"command\":…,\"source\":…}<eos>", "没有 <call>：作为 content 返回"],
+         "POST（第 2 次，带上工具结果）", "finish_reason = stop"),
+    ]
+    for y, left, right, go, back in rows:
+        body += box(30, y, 270, 112, SOFT[BLUE], BLUE)
+        for i, line_ in enumerate(left):
+            body += text(165, y + 34 + i * 26, line_, 12.5, INK)
+        body += box(660, y, 270, 112, SOFT[TEAL], TEAL)
+        for i, line_ in enumerate(right):
+            body += text(795, y + 34 + i * 26, line_.replace("\\", ""), 12.5, INK)
+        body += arrow(304, y + 38, 654, y + 38, BLUE, 2.5) + text(480, y + 30, go, 13, BLUE)
+        body += arrow(654, y + 82, 306, y + 82, TEAL, 2.5) + text(480, y + 74, back, 13, TEAL)
+    body += path("M165 198L165 232", BLUE, 2.5)
+    body += box(30, 380, 270, 44, "#ffffff", BLUE) + text(165, 407, "answered → grade：格式、答案、真的读过", 12.5, INK)
+    body += path("M165 350L165 376", BLUE, 2.5)
+    body += text(480, 452, "调用 id 的配对、参数校验、读文件的预算、什么时候停，都写在两边的程序里；模型只是在 <assistant> 后面接着写", 13, GRAY)
+    body += text(615, 407, "左边：本章实验用照 Rust 代码写的 Python 版，也可以直接换成 Rust 程序", 12, GRAY)
+    svg("agent-roundtrip.svg", "Agent 与 TinyLLM 的两次往返",
+        "第 1 次请求只有系统策略、用户目标和工具说明，TinyLLM 把消息渲染成 token，生成以 <call> 开头的一行 JSON，服务端解析成 tool_calls 返回。"
+        "Agent 检查工具名、参数和预算后读取 README.md，把结果作为 tool 消息追加。第 2 次请求带着整段对话，TinyLLM 生成 JSON 答案，作为普通内容返回，Agent 判分。", 470, body)
+
+
+def agent_results():
+    log = _p8_log("llm-agent-interaction")
+    if log is None:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(13, 4.3), layout="constrained", gridspec_kw={"width_ratios": [1, 1.6]})
+    res = [log["results"][str(s)] for s in range(3)]
+    groups = [("公开用例\n（4 条）", [sum(r[k] for k in ("rust", "node", "injection", "missing")) / 4 for r in res]),
+              ("新组合\n（100 份）", [r["新组合"] for r in res]), ("没见过的词\n（100 份）", [r["没见过的词"] for r in res])]
+    ax = axes[0]
+    for i, (name, vals) in enumerate(groups):
+        mean = sum(vals) / 3
+        ax.bar(i, mean, color=[BLUE, TEAL, ORANGE][i], yerr=[[mean - min(vals)], [max(vals) - mean]], capsize=4, ecolor=INK)
+        ax.text(i, mean + 0.06, f"{mean:.2f}", ha="center", fontsize=11)
+    ax.set_xticks(range(3), [g[0] for g in groups])
+    ax.set_ylim(0, 1.12)
+    ax.set_title("任务通过率（3 个种子的平均与范围）", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    ax = axes[1]
+    names = list(log["variants"])
+    xs = [i if i < 4 else i + 0.6 for i in range(len(names))]                # 后两根不是改格式，隔开画
+    for x, name in zip(xs, names):
+        vals = log["variants"][name]
+        mean = sum(vals) / 3
+        color = GRAY if x == 0 else PURPLE if x > 4 else (RED if mean < 0.7 else TEAL)
+        ax.bar(x, mean, color=color, yerr=[[mean - min(vals)], [max(vals) - mean]], capsize=4, ecolor=INK)
+        ax.text(x, max(vals) + 0.04, f"{mean:.2f}", ha="center", fontsize=11)
+    ax.axvline(4.3, color=GRAY, lw=1, ls="--")
+    labels = [n.replace("工具结果", "工具结果\n").replace("系统策略", "系统策略\n").replace("的 README", "的\nREADME") for n in names]
+    ax.set_xticks(xs, labels, fontsize=10)
+    ax.set_ylim(0, 1.12)
+    ax.set_title("新组合的 100 份：虚线左边是基线和三种格式改动，右边按有没有备注拆开", fontsize=12)
+    ax.grid(alpha=0.2, axis="y")
+    save_plot(fig, "agent-results.svg", "TinyLLM 接上 Agent 以后的结果",
+              "左：3 个种子的任务通过率。公开用例 4 条里通过 3 条（含 demo 这个没见过的词的那条失败），新组合的 README 0.84～0.88，词从没见过的 0.28～0.29。"
+              "右：同样 100 份 README，前四根只改 Agent 一侧的格式：工具结果加空格几乎没影响；键换顺序平均降到 0.58，一个种子只剩 0.19；"
+              "系统策略多一句，两个种子通过率为 0。后两根不改格式，把这 100 份按有没有备注拆开：有备注的 27 份平均 0.67，没备注的 73 份 0.93。")
+
+
 # ---------- 2026-11 评审补充的结构示意图 ----------
 
 def line(x1, y1, x2, y2, color=GRAY, width=2, dash=False):
@@ -5297,6 +6528,15 @@ def main():
                quant_levels, quant_granularity, quant_outliers,
                spec_round, spec_rejection, spec_gamma,
                batch_layouts, batch_timeline, batch_chunked, batch_tradeoff,
+               kv_layouts, kv_sharing, kv_waste, kv_prefix_eviction,
+               io_ablation, io_routing, io_server,
+               anneal_fork, anneal_mix, anneal_length_soup,
+               lc_task, lc_turns, lc_results, lc_deps,
+               cpt_curves, cpt_tradeoff,
+               sft_template, sft_results,
+               lora_structure, lora_results,
+               kd_methods, kd_results,
+               rlhf_pipeline, rlhf_results, dpo_vs_rlhf, dpo_results, grpo_group, grpo_results, agent_roundtrip, agent_results,
                first_run_shapes, reshape_vs_transpose, mask_patterns, attention_dataflow, gqa_heads, tinyllm_architecture,
                tokenizer_pipeline, ffn_vs_attention, norm_axes, data_eval_protocol, gpu_async_timeline, near_dup_index,
                lm_targets_mask, adam_step, wsd_branches, bf16_rounding, rng_timeline,
