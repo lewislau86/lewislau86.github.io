@@ -18,6 +18,19 @@
     ]
   },
   {
+    "text": "第三部分 · Agent 基础",
+    "items": [
+      {
+        "text": "第 11 章 · Agent 记忆：笔记、做梦与记忆层级",
+        "link": "/thinking-and-acting/agent-memory"
+      },
+      {
+        "text": "第 11 章附 · 原文中文编译",
+        "link": "/thinking-and-acting/agent-memory-digest"
+      }
+    ]
+  },
+  {
     "text": "规划中（尚未成文）",
     "collapsed": false,
     "items": [

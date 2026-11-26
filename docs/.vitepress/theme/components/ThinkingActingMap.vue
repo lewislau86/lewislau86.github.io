@@ -1,14 +1,37 @@
 <script setup lang="ts">
-const parts = ['Transformer 与 GPT', '模型效率与推理', 'Agent 基础', 'Agent 自我改进', '评测与开放问题']
+import { computed } from 'vue'
+
+// active：本章所在部分的序号（从 0 开始）；label：在高亮框里显示的本章说明。
+const props = withDefaults(defineProps<{ active?: number; label?: string }>(), {
+  active: 0,
+  label: '本章：Transformer',
+})
+
+// 每部分已成文的章节；新章节成文后在这里登记。
+const parts = [
+  { name: 'Transformer 与 GPT', written: ['Transformer'] },
+  { name: '模型效率与推理', written: [] as string[] },
+  { name: 'Agent 基础', written: ['Agent 记忆'] },
+  { name: 'Agent 自我改进', written: [] as string[] },
+  { name: '评测与开放问题', written: [] as string[] },
+]
+
+const ariaLabel = computed(() => `全书学习路线，本章位于${parts[props.active]?.name ?? ''}`)
+
+function status(i: number) {
+  if (i === props.active) return props.label
+  const n = parts[i].written.length
+  return n ? `已成文：${parts[i].written.join('、')}` : '规划中'
+}
 </script>
 
 <template>
-  <figure class="paper-map" aria-label="全书学习路线，本章位于 Transformer 与 GPT">
+  <figure class="paper-map" :aria-label="ariaLabel">
     <div class="paper-map-title">全书学习路线 · 本章位置</div>
     <div class="paper-map-path">
-      <div v-for="(part, i) in parts" :key="part" class="paper-map-step" :class="{ active: i === 0 }">
-        <span>{{ i + 1 }}</span><strong>{{ part }}</strong>
-        <small>{{ i === 0 ? '本章：Transformer' : '规划中' }}</small>
+      <div v-for="(part, i) in parts" :key="part.name" class="paper-map-step" :class="{ active: i === props.active }">
+        <span>{{ i + 1 }}</span><strong>{{ part.name }}</strong>
+        <small>{{ status(i) }}</small>
       </div>
     </div>
     <figcaption>从模型架构出发，逐步走向推理、行动、自我改进与评测。</figcaption>

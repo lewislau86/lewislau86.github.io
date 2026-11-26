@@ -12,9 +12,9 @@ title: 文档首页
 
 ### [思考与行动之间 · Agent 与大模型论文研读](./thinking-and-acting/index.md)
 
-从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。已完成 Transformer 论文解读，其余章节正在规划。
+从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。已完成 Transformer 论文解读与 Agent 记忆精读（附 Anthropic 原文中文编译），其余章节正在规划。
 
-[进入论文研读 →](./thinking-and-acting/index.md) · [阅读 Transformer 论文解读 →](./thinking-and-acting/transformer.md)
+[进入论文研读 →](./thinking-and-acting/index.md) · [阅读 Transformer 论文解读 →](./thinking-and-acting/transformer.md) · [阅读 Agent 记忆精读 →](./thinking-and-acting/agent-memory.md)
 
 ### [TinyLLM · 从零学习语言模型](./tinyllm/index.md)
 

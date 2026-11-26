@@ -1,0 +1,83 @@
+{
+  "source": {
+    "title": "The components of agent memory",
+    "author": "Lance Martin",
+    "publisher": "Anthropic",
+    "url": "https://www.anthropic.com/research/components-of-agent-memory",
+    "published": "2026-11-06",
+    "retrieved": "2026-11-26",
+    "note": "全部数值摘自原文正文与图注（含图片替代文本）；本文件只做转录，不含任何本站实验结果。"
+  },
+  "cl_bench_database": {
+    "figure": "原文图 3：CL-Bench 1.0 数据库任务，平均 reward，无状态基线 vs 记忆目录",
+    "questions_per_run": 30,
+    "models": [
+      {"name": "Opus 5.5", "baseline": 0.655, "memory": 0.838},
+      {"name": "Sonnet 5.5", "baseline": 0.644, "memory": 0.833},
+      {"name": "Opus 5", "baseline": 0.564, "memory": 0.828},
+      {"name": "Opus 4.7", "baseline": 0.383, "memory": 0.700},
+      {"name": "Sonnet 5", "baseline": 0.306, "memory": 0.610},
+      {"name": "Sonnet 4.6", "baseline": 0.330, "memory": 0.364}
+    ]
+  },
+  "steering": {
+    "figure": "原文图 5",
+    "sonnet_46": {"baseline": 0.330, "memory": 0.364, "memory_refined_instruction": 0.641},
+    "reference_lines": {"Opus 4.7 + memory": 0.700, "Opus 5 + memory": 0.828},
+    "record_only_failures_gain_change": {"Opus 5": -0.234, "Opus 4.7": -0.150, "Sonnet 4.6": -0.020},
+    "reads_memory_before_answering": {"Sonnet 5": "9 / 10", "Sonnet 4.6": "不到一半"}
+  },
+  "pokemon_memory": {
+    "figure": "原文图 4（树图）；约 10,000 步时各取一次运行",
+    "steps": 10000,
+    "Sonnet 3.7": {"files": 413, "folders": 225, "characters": 977930, "badges": 1},
+    "Fable 5": {"files": 10, "folders": 2, "characters": 43406, "badges": 4, "layout": "locations/、gameplay/ 两个文件夹共 9 个文件 + global.md"},
+    "sonnet_37_overhead": {"steps": 17, "files_created": 6, "files_deleted": 9, "game_actions": 0}
+  },
+  "mt_moon": {
+    "figure": "原文图 7、图 8，3,000 次累计动作内的进度",
+    "max_actions": 3000,
+    "memory_plus_dreaming_reaches_cerulean_at": 1935,
+    "raw_memory_ledge_falls": 3,
+    "raw_memory_outcome": "退回 Pewter City，未到达 Cerulean City",
+    "no_memory_outcome": "未到达 Cerulean City"
+  },
+  "stainless_wiki": {
+    "figure": "原文图 10",
+    "corpus_files": 350000,
+    "corpus_tokens": 420000000,
+    "questions": 25,
+    "model": "Opus 5",
+    "sessions": {"start": 2, "end": 128},
+    "dreaming_tokens": {"start": 2000000, "end": 128000000},
+    "graded_criteria_met": {
+      "wiki + search": {"start": 0.54, "end": 0.61},
+      "wiki only": {"start": 0.13, "end": 0.48},
+      "search only": {"start": 0.53, "end": 0.53}
+    },
+    "tokens_saved_per_question": 20000,
+    "wiki_graph": {"start": {"pages": 103, "links": 766}, "end": {"pages": 222, "links": 12893}}
+  },
+  "merger_questions": {
+    "figure": "原文图 11 左",
+    "questions": 24,
+    "documents": 10,
+    "need_judgment_or_math": 9,
+    "score": {"wiki": 0.87, "search only": 0.73}
+  },
+  "lab_single_doc": {"figure": "原文图 11 右", "criteria": 57, "result": "大多数评分点可在单一文档（通常是交易概览备忘录）中用文本搜索找到；wiki 无明显增益"},
+  "overgrown_wiki": {"figure": "原文图 12", "corpus_docs": 10, "corpus_kb": 115, "wiki_pages": 68, "wiki_links": 255, "wiki_kb": 203, "ratio": 1.77},
+  "contract_facts": {
+    "figure": "原文图 14",
+    "agents": 4,
+    "total_facts": 57,
+    "shared_page": {"page": "provisions.md", "facts_kept": 41},
+    "per_contract_pages": {"facts_kept": 57}
+  },
+  "wiki_repair": {
+    "figure": "原文图 15",
+    "before": {"entries": 38, "links": 225, "broken_links": 9, "pages_with_broken_links": 6, "missing_page": "escrow-agreement"},
+    "after": {"entries": 41, "links": 278, "broken_links": 0, "repointed_to": "buyer-form-escrow-agreement", "new_pages": ["index", "instructions email", "escalations"]}
+  },
+  "claude_code_auto_memory": {"loaded_lines": 200, "loaded_kb": 25, "file": "MEMORY.md"}
+}
