@@ -41,6 +41,8 @@ def configuration():
         raise ValueError("Experiment mapping must match every written lesson, in course order")
     lessons = []
     for lesson, row in zip(written, rows):
+        # stack 是迁移期字段（见根目录 agent.md）：旧版章节不写入下载包清单，已迁移章节才写，避免无关变动让旧包过期
+        lesson = {k: v for k, v in lesson.items() if not (k == "stack" and v == "v1")}
         lessons.append(dict(lesson, **{k: v for k, v in row.items() if k not in lesson}))
     return lessons
 
@@ -115,6 +117,9 @@ def main_readme(lessons, report):
         "```sh", "rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy",
         "python3 run.py list", "python3 run.py doctor", "python3 run.py integrity",
         "python3 run.py run R01", "python3 run.py test R01", "python3 run.py run R20 --keep ./my-results", "```", "",
+        "本书正在逐章迁移到 ADK-Rust 3.0（发布候选版，尚未上 crates.io）。表中标 ADK-Rust 3.0 的章节，先运行一次",
+        "`python3 run.py fetch-adk`，把固定提交的源码取到 chapters/adk-rust/（需要 Git 与 GitHub 访问）。",
+        "迁移前的旧版实验（graph-flow 与 langchain-rust）见网站仓库的 git 标签 learn-agent-rust-v1。", "",
         "`run` 编译并运行表中的演示；`test` 还运行格式检查、Rust 测试和 Cargo 工程的 Clippy。",
         "每次复制章节到临时目录运行，退出清理；`--keep` 保存演示的数据与证据，拒绝覆盖同名结果。",
         "修改 chapters 中的源码后也可重跑。编译缓存与最近一次结果保存在 .cache/，无需网站、Node.js、VitePress 或其他项目。", "",
@@ -128,7 +133,7 @@ def main_readme(lessons, report):
         "## 章节对应", "", "| 编号 | 教程 | 实验目录 | 统一入口运行内容 |", "| --- | --- | --- | --- |"]
     for row in lessons:
         lines.append("| {} | [{}](https://lewislau86.github.io/learn-agent-rust/{}) | [chapters/{}](chapters/{}/README.md) | {} |".format(
-            row["id"], chapter_label(row), row["slug"], row["slug"], row["slug"], row["run_scope"]))
+            row["id"], chapter_label(row) + ("（ADK-Rust 3.0）" if row.get("stack") == "adk3" else ""), row["slug"], row["slug"], row["slug"], row["run_scope"]))
     lines.extend(["", "## 检查证据与范围", "", "发布前逐章原验证器：{}/{} 通过，记录见 [audit.json](audit.json)。".format(
         sum(row["exit_code"] == 0 for row in report["lessons"]), len(lessons)),
         "原验证器检查正文引用、故障场景、实际产物及章节下载包；本代码库的 `test --all` 检查 Rust 测试、格式、Clippy 与运行表中的演示。两种检查分别记录。",
@@ -153,12 +158,14 @@ def render_page(lessons, report):
         '<a href="/learn-agent-rust/learn-agent-rust-experiments.zip" download>下载全书实验代码库（zip）</a> · [在 GitHub 浏览代码库](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust)', "",
         "## 下载后先跑一章", "", "按[环境准备](./setup.md)安装 Rust 1.99.1、rustfmt、Clippy、Git 和 C 编译工具；统一入口需要 Python 3.9+ 标准库。建议使用 macOS、Linux 或 WSL。", "",
         "解压后进入 `learn-agent-rust-experiments` 目录：", "", "```sh", "python3 run.py list", "python3 run.py doctor", "python3 run.py integrity", "python3 run.py run R01", "python3 run.py test R01", "python3 run.py run R20 --keep ./my-results", "```", "",
+        "::: info 迁移到 ADK-Rust 3.0", "全书正在逐章迁移到 ADK-Rust 3.0（发布候选版，尚未发布到 crates.io）。下文标“ADK-Rust 3.0”的章节，先在代码库根目录运行一次 `python3 run.py fetch-adk`，把固定提交的源码取到 `chapters/adk-rust/`（需要 Git 与 GitHub 访问）。迁移前的旧版实验（graph-flow 与 langchain-rust）不再维护，可从网站仓库的 git 标签 [`learn-agent-rust-v1`](https://github.com/lewislau86/lewislau86.github.io/tree/learn-agent-rust-v1/experiments/learn-agent-rust) 取得。", ":::", "",
         "`run` 编译并执行本页对应的演示；`test` 增加 Rust 测试、格式检查和 Cargo 工程的 Clippy。程序在临时目录运行，`--keep` 保存运行产物。每章也可进入 `chapters/<主题>/`，按 README 单独操作。", "",
         "## 全书重跑", "", "```sh", "python3 run.py test --all", "# 工具链和依赖已缓存后，可检查离线运行：", "python3 run.py test --all --offline", "```", "",
         "首次构建需要网络下载依赖。P01、P04 另需 PostgreSQL 18 服务端工具，脚本以普通用户创建并清理专用临时集群；工具不在 PATH 时设置 `P01_PG_BIN` 和 `P04_PG_BIN`。没有数据库环境时可显式加 `--skip-postgres`，结果会列出跳过项。", "",
         "## 按章找到实验", "", "目录名与文章主题名一致。主线按章号阅读；R/G/K/D/P 是稳定实验标识，用于命令与证据定位。例如 RAG 是第 11 章，仍运行 `python3 run.py run K01`。", ""]
     for row in lessons:
         lines.extend(["### {} {{#{}}}".format(chapter_label(row), row["slug"]), "",
+            *(["实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。", ""] if row.get("stack") == "adk3" else []),
             "[阅读本章](./{}.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/{})".format(row["slug"], row["slug"]), "",
             "目录：`chapters/{}/`；运行：`python3 run.py run {}`。{}{}".format(row["slug"], row["id"], row["run_scope"], "；需要 PostgreSQL 18。" if row["requires_postgres"] else "。"), "",
             "原章节验证器：`{}`。".format(row["verifier"]), ""])
@@ -183,7 +190,7 @@ def build():
         chapter = chapter_files(row)
         if row["kind"] == "cargo":
             row["binary"] = re.search(r'^name\s*=\s*"([^"]+)"', chapter["Cargo.toml"].decode(), re.M)[1]
-        graph_scope = {'G01': '4 组路由与循环演示', 'G02': '跨进程批准、恢复与终态保护演示', 'G03': '5 组并行、失败、子图与超时演示'}
+        graph_scope = {'G01': '4 组路由、修复额度、超步上限与建图探针演示', 'G02': '跨进程暂停、检查点与按节点名恢复的对照演示', 'G03': '5 组并行、失败、子图与超时演示'}
         row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "11 个检索与证据场景" if row["id"] == "K01" else "本章正常路径演示"
         if row['id'].startswith('D'):
             row['run_scope'] = '{} 个固定输入图场景'.format(json.loads(chapter['evidence.json'])['scenarios'])
@@ -195,6 +202,9 @@ def build():
     files["manifest.json"] = encoded(dict(schema_version=1, lessons=lessons))
     files["audit.json"] = REPORT.read_bytes()
     files["run.py"] = (ROOT / "scripts/templates/agent-experiments-run.py").read_bytes()
+    # ADK-Rust 3.0 章节需要的源码取用脚本与基线（run.py fetch-adk 调用）
+    files["fetch-adk-rust.py"] = (ROOT / "scripts/fetch-adk-rust.py").read_bytes()
+    files["learn-agent-rust-adk.json"] = (ROOT / "scripts/learn-agent-rust-adk.json").read_bytes()
     files["environment/check-environment.sh"] = (PUBLIC / "code/check-environment.sh").read_bytes()
     files[".gitignore"] = b".cache/\n__pycache__/\n.DS_Store\n"
     files["README.md"] = main_readme(lessons, report)

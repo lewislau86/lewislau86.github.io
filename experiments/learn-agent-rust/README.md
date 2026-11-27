@@ -21,6 +21,10 @@ python3 run.py test R01
 python3 run.py run R20 --keep ./my-results
 ```
 
+本书正在逐章迁移到 ADK-Rust 3.0（发布候选版，尚未上 crates.io）。表中标 ADK-Rust 3.0 的章节，先运行一次
+`python3 run.py fetch-adk`，把固定提交的源码取到 chapters/adk-rust/（需要 Git 与 GitHub 访问）。
+迁移前的旧版实验（graph-flow 与 langchain-rust）见网站仓库的 git 标签 learn-agent-rust-v1。
+
 `run` 编译并运行表中的演示；`test` 还运行格式检查、Rust 测试和 Cargo 工程的 Clippy。
 每次复制章节到临时目录运行，退出清理；`--keep` 保存演示的数据与证据，拒绝覆盖同名结果。
 修改 chapters 中的源码后也可重跑。编译缓存与最近一次结果保存在 .cache/，无需网站、Node.js、VitePress 或其他项目。
@@ -50,14 +54,14 @@ python3 run.py test P04
 
 | 编号 | 教程 | 实验目录 | 统一入口运行内容 |
 | --- | --- | --- | --- |
-| R00 | [第 0 章 · 整体架构与环境](https://lewislau86.github.io/learn-agent-rust/architecture-and-setup) | [chapters/architecture-and-setup](chapters/architecture-and-setup/README.md) | 本章正常路径演示 |
-| R01 | [第 1 章 · 最小 Agent 循环](https://lewislau86.github.io/learn-agent-rust/agent-loop) | [chapters/agent-loop](chapters/agent-loop/README.md) | 本章正常路径演示 |
-| R02 | [第 2 章 · 工具注册与图调度](https://lewislau86.github.io/learn-agent-rust/tools-and-graph) | [chapters/tools-and-graph](chapters/tools-and-graph/README.md) | 本章正常路径演示 |
-| R03 | [第 3 章 · 工具权限与审批](https://lewislau86.github.io/learn-agent-rust/permissions) | [chapters/permissions](chapters/permissions/README.md) | 本章正常路径演示 |
-| R04 | [第 4 章 · 生命周期与 Hooks](https://lewislau86.github.io/learn-agent-rust/hooks) | [chapters/hooks](chapters/hooks/README.md) | 本章正常路径演示 |
-| G01 | [第 5 章 · 图状态、条件路由与有界循环](https://lewislau86.github.io/learn-agent-rust/graph-state-routing) | [chapters/graph-state-routing](chapters/graph-state-routing/README.md) | 4 组路由与循环演示 |
-| G02 | [第 6 章 · 图暂停、会话存储与恢复](https://lewislau86.github.io/learn-agent-rust/graph-pause-resume) | [chapters/graph-pause-resume](chapters/graph-pause-resume/README.md) | 跨进程批准、恢复与终态保护演示 |
-| G03 | [第 7 章 · 图并行、归并与子图](https://lewislau86.github.io/learn-agent-rust/graph-parallel-subgraphs) | [chapters/graph-parallel-subgraphs](chapters/graph-parallel-subgraphs/README.md) | 5 组并行、失败、子图与超时演示 |
+| R00 | [第 0 章 · 整体架构与环境（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/architecture-and-setup) | [chapters/architecture-and-setup](chapters/architecture-and-setup/README.md) | 本章正常路径演示 |
+| R01 | [第 1 章 · 最小 Agent 循环（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/agent-loop) | [chapters/agent-loop](chapters/agent-loop/README.md) | 本章正常路径演示 |
+| R02 | [第 2 章 · 工具注册与图调度（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/tools-and-graph) | [chapters/tools-and-graph](chapters/tools-and-graph/README.md) | 本章正常路径演示 |
+| R03 | [第 3 章 · 工具权限与审批（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/permissions) | [chapters/permissions](chapters/permissions/README.md) | 本章正常路径演示 |
+| R04 | [第 4 章 · 生命周期与 Hooks（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/hooks) | [chapters/hooks](chapters/hooks/README.md) | 本章正常路径演示 |
+| G01 | [第 5 章 · 图状态、条件路由与有界循环（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-state-routing) | [chapters/graph-state-routing](chapters/graph-state-routing/README.md) | 4 组路由、修复额度、超步上限与建图探针演示 |
+| G02 | [第 6 章 · 图暂停、检查点与恢复（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-pause-resume) | [chapters/graph-pause-resume](chapters/graph-pause-resume/README.md) | 跨进程暂停、检查点与按节点名恢复的对照演示 |
+| G03 | [第 7 章 · 图并行、归并与子图（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-parallel-subgraphs) | [chapters/graph-parallel-subgraphs](chapters/graph-parallel-subgraphs/README.md) | 5 组并行、失败、子图与超时演示 |
 | R05 | [第 8 章 · 可见的任务清单](https://lewislau86.github.io/learn-agent-rust/todo-planning) | [chapters/todo-planning](chapters/todo-planning/README.md) | 本章正常路径演示 |
 | R06 | [第 9 章 · 子 Agent 与上下文隔离](https://lewislau86.github.io/learn-agent-rust/subagents) | [chapters/subagents](chapters/subagents/README.md) | 本章正常路径演示 |
 | R07 | [第 10 章 · 按需加载技能](https://lewislau86.github.io/learn-agent-rust/skill-loading) | [chapters/skill-loading](chapters/skill-loading/README.md) | 本章正常路径演示 |
@@ -84,7 +88,7 @@ python3 run.py test P04
 | R19 | [第 31 章 · MCP 外部工具](https://lewislau86.github.io/learn-agent-rust/mcp-tools) | [chapters/mcp-tools](chapters/mcp-tools/README.md) | 本章正常路径演示 |
 | R20 | [第 32 章 · 完整 Agent 集成](https://lewislau86.github.io/learn-agent-rust/integrated-agent) | [chapters/integrated-agent](chapters/integrated-agent/README.md) | 本章正常路径演示 |
 | P01 | [专题 1 · PostgreSQL 检查点](https://lewislau86.github.io/learn-agent-rust/postgres-checkpoints) | [chapters/postgres-checkpoints](chapters/postgres-checkpoints/README.md) | 完整本地 Python 套件 |
-| P02 | [专题 2 · 外部操作的可靠性](https://lewislau86.github.io/learn-agent-rust/side-effect-reliability) | [chapters/side-effect-reliability](chapters/side-effect-reliability/README.md) | 本章正常路径演示 |
+| P02 | [专题 2 · 外部操作的可靠性（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/side-effect-reliability) | [chapters/side-effect-reliability](chapters/side-effect-reliability/README.md) | 本章正常路径演示 |
 | P03 | [专题 3 · 模型协议与质量评估](https://lewislau86.github.io/learn-agent-rust/model-evaluation) | [chapters/model-evaluation](chapters/model-evaluation/README.md) | 完整本地 Python 套件 |
 | P04 | [专题 4 · 生产准入与演练](https://lewislau86.github.io/learn-agent-rust/production-readiness) | [chapters/production-readiness](chapters/production-readiness/README.md) | 完整本地 Python 套件 |
 | P05 | [专题 5 · 固定工作流与目标控制](https://lewislau86.github.io/learn-agent-rust/workflow-and-goal-control) | [chapters/workflow-and-goal-control](chapters/workflow-and-goal-control/README.md) | 完整本地 Python 套件 |

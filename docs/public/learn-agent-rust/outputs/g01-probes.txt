@@ -1,8 +1,11 @@
-probe=dangling_edge rejected=true
-probe=missing_start rejected=true
-probe=no_edge status=paused cursor=a
-probe=bad_goto rejected=true mutation_retained=true
-probe=cycle chained_limit_rejected=true
-probe=overlapping_conditions first_matching=b
-probe=context clone_shares=true serialized_snapshot_isolated=true
-probe=typed_state malformed_rejected=true
+probe=dangling_edge rejected_at_compile=true
+probe=missing_start rejected_at_compile=true
+probe=bad_goto rejected_at_run=true
+probe=unmapped_route rejected_at_run=true
+probe=no_edge completed=true x=1
+probe=two_edges ran=["a","b","c"]
+probe=typo_channel trace=["a"] traces="b"
+probe=strict_channels rejected=true
+probe=local_mutation x="original"
+probe=malformed_required rejected=true
+probe=counter_channel n=2.0

@@ -1,6 +1,21 @@
-scenario=write-error source=scripted_tool_requests storage=in_memory
-tool_result call_id=read-1 status=ok content="启动命令：cargo run\n"
-awaiting_approval approval=1 scope=this_session call_id=write-1 action=Write { path: "notes/summary.txt", content: "启动命令：cargo run\n" }
-tool_result call_id=write-1 status=tool_error content="filesystem_operation_failed"
-rejected_input reason=no_pending_approval
-stats read_attempts=1 write_attempts=1 write_successes=0 tool_results=2 pending=false summary_matches=false readme_unchanged=true
+场景：write-error；模型：ScriptedLlm；策略：SummaryPolicy；审批：InMemoryApprovalStore
+-- run 1
+[assistant] call    id=scripted_tc_0_0 read_file {"path":"README.md"}
+[assistant] result  id=scripted_tc_0_0 read_file status=ok {"text":"# 课程练习项目\n启动命令：cargo run\n"}
+[assistant] call    id=scripted_tc_1_0 write_summary {"content":"README 摘要：启动命令是 cargo run","path":"notes/summary.txt"}
+[assistant] result  id=scripted_tc_1_0 write_summary status=held {"error":"Tool 'write_summary' requires confirmation: 写入摘要需要人工批准","status":"confirmation_pending"}
+[assistant] text    "Tool confirmation required for 'write_summary'. Provide approve/deny decision to continue."
+[assistant] final
+pending call_id=scripted_tc_1_0 tool=write_summary args={"content":"README 摘要：启动命令是 cargo run","path":"notes/summary.txt"}
+decide Approve tampered=false
+-- run 2 (resume)
+[assistant] result  id=scripted_tc_1_0 write_summary status=failed code=file.write_failed {"error":"tool 'write_summary' failed: tool.unavailable (file.write_failed)"}
+[assistant] text    "处理完毕。"
+[assistant] final
+-- run 3
+[assistant] call    id=scripted_tc_3_0 write_summary {"content":"README 摘要：启动命令是 cargo run","path":"notes/summary.txt"}
+[assistant] result  id=scripted_tc_3_0 write_summary status=held {"error":"Tool 'write_summary' requires confirmation: 写入摘要需要人工批准","status":"confirmation_pending"}
+[assistant] text    "Tool confirmation required for 'write_summary'. Provide approve/deny decision to continue."
+[assistant] final
+pending call_id=scripted_tc_3_0 tool=write_summary args={"content":"README 摘要：启动命令是 cargo run","path":"notes/summary.txt"}
+统计：read_attempts=1 write_attempts=1 write_successes=0 tool_results=4 pending=1 summary_matches=false readme_unchanged=true

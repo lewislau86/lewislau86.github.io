@@ -1,1 +1,2 @@
-scenario=subgraph result=UPGRADE child_scratch_exported=false explicit_contract=true
+parent risk="high" scratch_exported=false
+wrong_mapping rejected_at_compile=true

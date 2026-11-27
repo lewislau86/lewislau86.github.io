@@ -4,26 +4,41 @@
     {
       "id": "R00",
       "slug": "architecture-and-setup",
-      "kind": "rustc",
-      "archive": null,
+      "kind": "cargo",
+      "archive": "architecture-and-setup.zip",
       "verifier": "scripts/verify-learn-agent-rust.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "--deny"
+        ],
+        [
+          "{binary}",
+          "--missing-file"
         ]
       ]
     },
     {
       "id": "R01",
       "slug": "agent-loop",
-      "kind": "rustc",
-      "archive": null,
+      "kind": "cargo",
+      "archive": "agent-loop.zip",
       "verifier": "scripts/verify-learn-agent-rust-loop.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "--scenario",
+          "two-tools",
+          "--max-tool-calls",
+          "1"
         ]
       ]
     },
@@ -43,28 +58,36 @@
     {
       "id": "R03",
       "slug": "permissions",
-      "kind": "rustc",
-      "archive": "permissions-lab.zip",
+      "kind": "cargo",
+      "archive": "permissions.zip",
       "verifier": "scripts/verify-agent-permissions.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}",
           "approve"
+        ],
+        [
+          "{binary}",
+          "tamper"
         ]
       ]
     },
     {
       "id": "R04",
       "slug": "hooks",
-      "kind": "rustc",
-      "archive": "hooks-lab.zip",
+      "kind": "cargo",
+      "archive": "hooks.zip",
       "verifier": "scripts/verify-agent-hooks.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}",
           "normal"
+        ],
+        [
+          "{binary}",
+          "post-error"
         ]
       ]
     },
@@ -82,16 +105,20 @@
         ],
         [
           "{binary}",
-          "direct"
+          "exhausted"
         ],
         [
           "{binary}",
-          "exhausted"
+          "runaway"
         ],
         [
           "{binary}",
           "probes"
         ]
+      ],
+      "verifier_args": [
+        "--lab",
+        "G01"
       ]
     },
     {
@@ -110,40 +137,23 @@
         [
           "{binary}",
           "{run}/review.db",
-          "step"
+          "show"
         ],
         [
           "{binary}",
           "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "approve",
-          "1",
-          "yes"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
+          "answer-loose",
+          "approve"
         ],
         [
           "{binary}",
           "{run}/review.db",
           "show"
         ]
+      ],
+      "verifier_args": [
+        "--lab",
+        "G02"
       ]
     },
     {
@@ -174,6 +184,10 @@
           "{binary}",
           "timeout"
         ]
+      ],
+      "verifier_args": [
+        "--lab",
+        "G03"
       ]
     },
     {

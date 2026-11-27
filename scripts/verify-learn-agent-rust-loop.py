@@ -1,154 +1,152 @@
-"""Run the standalone R01 loop, its failure paths and Rust tests; save/check evidence.
+"""Verify the R01 Cargo package (ADK-Rust 3.0) and generate reproducible course artifacts.
 
 python3 scripts/verify-learn-agent-rust-loop.py [--check]
-No model service, framework crate or database is used.
-"""
 
+先取 ADK-Rust 源码：python3 scripts/fetch-adk-rust.py .cache/adk-rust（或设 ADK_RUST_SRC）。
+打包章节、在临时目录解压并在旁边放好 adk-rust/，然后 fmt、clippy、cargo test、离线构建；
+14 个场景各连跑两次必须逐字节相同，核对计数、停止原因、调用与结果配对；非法参数必须以退出码 2 结束；
+最后把结果表写进正文 <!-- r01-results:start --> 与 <!-- r01-results:end --> 之间。
+"""
 import argparse
 import hashlib
 import json
-from pathlib import Path
 import re
-import shutil
-import subprocess
-import tempfile
+import sys
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "docs/public/learn-agent-rust/code/agent-loop.rs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import learn_agent_rust_adk as adk  # noqa: E402
+from learn_agent_rust_adk import require  # noqa: E402
+
+ROOT = adk.ROOT
+SLUG = "agent-loop"
+OUTPUT = adk.PUBLIC / "outputs"
 CHAPTER = ROOT / "docs/learn-agent-rust/agent-loop.md"
 DATA = ROOT / "scripts/data/learn-agent-rust/r01-results.json"
-OUTPUT = ROOT / "docs/public/learn-agent-rust/outputs"
-# name, flags, model turns, tool dispatches, read attempts, successes, messages, stop, goal
-SCENARIOS = [
-    ("normal", [], 2, 1, 1, 1, 4, "FinalAnswer", True),
-    ("changed-readme", ["--scenario", "changed-readme"], 2, 1, 1, 1, 4, "FinalAnswer", True),
-    ("missing-file", ["--scenario", "missing-file"], 2, 1, 1, 0, 4, "FinalAnswer", False),
-    ("model-budget", ["--max-model-turns", "1"], 1, 1, 1, 1, 3, "ModelBudget", False),
-    ("zero-model-budget", ["--max-model-turns", "0"], 0, 0, 0, 0, 1, "ModelBudget", False),
-    ("tool-budget", ["--max-tool-calls", "0"], 1, 0, 0, 0, 3, "ToolBudget", False),
-    ("repeat", ["--scenario", "repeat"], 3, 2, 2, 2, 7, "ToolBudget", False),
-    ("repeat-model-budget", ["--scenario", "repeat", "--max-model-turns", "2"], 2, 2, 2, 2, 5, "ModelBudget", False),
-    ("two-tools", ["--scenario", "two-tools"], 2, 2, 2, 2, 5, "FinalAnswer", True),
-    ("batch-budget", ["--scenario", "two-tools", "--max-tool-calls", "1"], 1, 0, 0, 0, 4, "ToolBudget", False),
-    ("duplicate-id", ["--scenario", "duplicate-id"], 2, 1, 1, 1, 4, "InvalidCall", False),
-    ("unknown-tool", ["--scenario", "unknown-tool"], 2, 1, 0, 0, 4, "FinalAnswer", False),
-    ("invalid-path", ["--scenario", "invalid-path"], 2, 1, 0, 0, 4, "FinalAnswer", False),
-]
+ARCHIVE = adk.PUBLIC / "agent-loop.zip"
+FILES = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "README.md", ".gitignore",
+         ".cargo/config.toml", "src/main.rs", "src/trace.rs"]
+EXTRA = {"fetch-adk-rust.py": ROOT / "scripts/fetch-adk-rust.py",
+         "learn-agent-rust-adk.json": ROOT / "scripts/learn-agent-rust-adk.json"}
+# 场景：参数，(模型调用, 工具结果, 读取尝试, 读取成功, 会话事件, 停止原因, 练习目标达成)
+SCENARIOS = {
+    "normal": ([], (2, 1, 1, 1, 4, "final_answer", True)),
+    "changed-readme": (["--scenario", "changed-readme"], (2, 1, 1, 1, 4, "final_answer", True)),
+    "missing-file": (["--scenario", "missing-file"], (2, 1, 1, 0, 4, "final_answer", False)),
+    "model-budget": (["--max-model-calls", "1"], (1, 1, 1, 1, 4, "budget.model_calls", False)),
+    "zero-model-budget": (["--max-model-calls", "0"], (0, 0, 0, 0, 2, "budget.model_calls", False)),
+    "tool-budget": (["--max-tool-calls", "0"], (1, 1, 0, 0, 4, "budget.tool_calls", False)),
+    "repeat": (["--scenario", "repeat", "--max-tool-calls", "2"], (3, 3, 2, 2, 8, "budget.tool_calls", False)),
+    "repeat-model-budget": (["--scenario", "repeat", "--max-model-calls", "2"], (2, 2, 2, 2, 6, "budget.model_calls", False)),
+    "loop-limit": (["--scenario", "repeat", "--max-iterations", "3"], (3, 3, 3, 3, 7, "agent.legacy", False)),
+    "two-tools": (["--scenario", "two-tools"], (2, 2, 2, 2, 5, "final_answer", True)),
+    "batch-budget": (["--scenario", "two-tools", "--max-tool-calls", "1"], (1, 2, 0, 0, 4, "budget.tool_calls", False)),
+    "duplicate-id": (["--scenario", "duplicate-id"], (3, 2, 2, 2, 6, "final_answer", True)),
+    "unknown-tool": (["--scenario", "unknown-tool"], (2, 1, 0, 0, 4, "final_answer", False)),
+    "invalid-path": (["--scenario", "invalid-path"], (2, 1, 0, 0, 4, "final_answer", False)),
+}
+STATS = re.compile(r"统计：model_calls=(\d+) tool_results=(\d+) read_attempts=(\d+) read_successes=(\d+) session_events=(\d+)")
+STOP = re.compile(r"停止：(\S+)；fixture_goal_met=(true|false)")
+START, END = "<!-- r01-results:start -->", "<!-- r01-results:end -->"
 
 
-def command(args, cwd):
-    return subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True).stdout
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
 
 
-def validate_trace(output, stop):
-    pending, seen = set(), set()
-    for line in output.splitlines():
-        request = re.match(r"消息 \d+ \| assistant \| call_id=(\S+) ", line)
-        result = re.match(r"消息 \d+ \| tool \| call_id=(\S+) ", line)
-        if request:
-            call_id = request[1]
-            if call_id in seen:
-                if stop != "InvalidCall":
-                    raise ValueError("Reused call ID was accepted")
-                continue
-            seen.add(call_id)
-            pending.add(call_id)
-        elif result:
-            if result[1] not in pending:
-                raise ValueError("Unpaired or repeated result")
-            pending.remove(result[1])
-        elif re.match(r"消息 \d+ \| assistant \| ", line) and pending:
-            raise ValueError("Final answer before all tool results")
-    if pending:
-        raise ValueError("Unpaired accepted calls")
+def check_trace(name, output, stop):
+    calls = re.findall(r"\] call    id=(\S+)", output)
+    results = re.findall(r"\] result  id=(\S+)", output)
+    # 每个被接受的调用恰好一条结果、ID 一一对应；预算拒绝的调用也有（not_run）结果
+    require(calls == results, f"{name}: calls {calls} vs results {results}")
+    if stop.startswith("budget."):
+        require(f"stop    code={stop}" in output, f"{name}: budget stop event missing")
+    else:
+        # 循环上限等其他停止方式不写停止事件
+        require("stop    code=" not in output, f"{name}: unexpected stop event")
+    if stop == "final_answer":
+        require(re.search(r'\] text    "', output) is not None, f"{name}: no final answer")
 
 
-def results_table(results):
-    lines = ["| 场景 | 模型轮次 | 工具执行尝试 | 文件读取尝试 / 成功 | 停止原因 | 练习目标达成 |",
-             "| --- | --- | --- | --- | --- | --- |"]
-    for row in results:
-        lines.append("| `{name}` | {model_turns} | {tool_calls} | {read_attempts} / {read_successes} | `{stop}` | {goal} |".format(
-            **row, goal="是" if row["fixture_goal_met"] else "否"))
+def table(rows):
+    lines = ["| 场景 | 参数 | 模型调用 | 工具结果 | 读取尝试 / 成功 | 会话事件 | 停止原因 | 练习目标 |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
+    for r in rows:
+        args = " ".join(r["args"]) or "—"
+        lines.append(f"| `{r['name']}` | `{args}` | {r['model_calls']} | {r['tool_results']} | "
+                     f"{r['read_attempts']} / {r['read_successes']} | {r['session_events']} | `{r['stop']}` | "
+                     f"{'达成' if r['fixture_goal_met'] else '未达成'} |")
     return "\n".join(lines)
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    expected_files, results = {}, []
-    with tempfile.TemporaryDirectory(prefix="learn-agent-r01-verify-") as temp:
-        # Compile a copied source outside the checkout, using no sibling crates.
-        local_source = Path(temp) / SOURCE.name
-        shutil.copyfile(SOURCE, local_source)
-        executable = str(Path(temp) / "agent-r01")
-        command(["rustfmt", "--edition", "2024", "--check", str(local_source)], temp)
-        command(["rustc", "--edition=2024", "-D", "warnings", str(local_source), "-o", executable], temp)
-        test_executable = str(Path(temp) / "agent-r01-tests")
-        command(["rustc", "--edition=2024", "-D", "warnings", "--test", str(local_source), "-o", test_executable], temp)
-        tests = command([test_executable], temp)
-        if "6 passed; 0 failed" not in tests:
-            raise ValueError("Rust contract tests did not all pass")
-        for name, flags, *expected in SCENARIOS:
-            output = command([executable] + flags, temp)
-            stats = re.search(r"统计：model_turns=(\d+) tool_calls=(\d+) read_attempts=(\d+) read_successes=(\d+) messages=(\d+)", output)
-            end = re.search(r"停止：(\w+)；fixture_goal_met=(true|false)", output)
-            if not stats or not end:
-                raise ValueError("Missing run statistics: " + name)
-            actual = list(map(int, stats.groups())) + [end[1], end[2] == "true"]
-            if actual != expected:
-                raise ValueError("Unexpected result: {}: {} != {}".format(name, actual, expected))
-            validate_trace(output, end[1])
-            if end[1] == "FinalAnswer" and not actual[-1] and "任务未完成：" not in output:
-                raise ValueError("Tool failure presented as task completion: " + name)
-            if name == "changed-readme" and "README 里的启动命令是：cargo run --release" not in output:
-                raise ValueError("Answer did not follow changed file contents")
-            expected_files[OUTPUT / ("r01-" + name + ".txt")] = output
-            results.append(dict(name=name, args=flags, **dict(zip(
-                ["model_turns", "tool_calls", "read_attempts", "read_successes", "messages", "stop", "fixture_goal_met"], actual)),
-                stdout_sha256=hashlib.sha256(output.encode()).hexdigest()))
-        for flags in [["--scenario", "unknown"], ["--max-model-turns", "-1"], ["--scenario"]]:
-            result = subprocess.run([executable] + flags, cwd=temp, capture_output=True, text=True)
-            if result.returncode == 0:
-                raise ValueError("Invalid CLI arguments accepted")
-        evidence = dict(scope="R01 standard-library explicit loop; scripted model; real temporary file; no HTTP/framework/database",
-                        source_sha256=hashlib.sha256(SOURCE.read_bytes()).hexdigest(),
-                        rustc=command(["rustc", "--version"], temp).strip(),
-                        host=command(["rustc", "-vV"], temp).split("host: ")[1].splitlines()[0],
-                        unit_tests_passed=6, scenarios=results)
+    files = adk.chapter_files(SLUG, FILES)
+    files.update({name: path.read_bytes() for name, path in EXTRA.items()})
+    packed = adk.pack(SLUG, files)
+    targets = {ARCHIVE: packed}
+    env = adk.cargo_env("learn-agent-r01-target")
+    rows = []
+    with adk.staged(SLUG, packed) as folder:
+        checks = adk.standard_checks(folder, env)
+        binary = Path(env["CARGO_TARGET_DIR"]) / "debug/learn-agent-r01"
+        for name, (flags, expected) in SCENARIOS.items():
+            output = adk.repeat_identical([binary, *flags], folder, env, times=2)
+            stats, stop = STATS.search(output), STOP.search(output)
+            require(stats is not None and stop is not None, f"{name}: missing stats\n{output}")
+            got = tuple(int(x) for x in stats.groups()) + (stop.group(1), stop.group(2) == "true")
+            require(got == expected, f"{name}: {got} != {expected}")
+            check_trace(name, output, got[5])
+            if name == "normal":
+                require("request 1: roles=system,user,model,function tools=[read_file]" in output, "normal: history")
+            if name == "two-tools":
+                # 一批两个调用的结果都写进历史以后，才发第二次请求
+                require("request 1: roles=system,user,model,function,function tools=[read_file]" in output, "two-tools")
+            if name == "changed-readme":
+                require("cargo run --release" in output, "changed-readme must answer from the file read")
+            if got[5] == "final_answer" and not got[6]:
+                require("任务未完成：" in output, f"{name}: failure must be reported, not invented")
+            targets[OUTPUT / f"r01-{name}.txt"] = output.encode()
+            rows.append(dict(name=name, args=flags, model_calls=got[0], tool_results=got[1], read_attempts=got[2],
+                             read_successes=got[3], session_events=got[4], stop=got[5], fixture_goal_met=got[6],
+                             stdout_sha256=sha(output.encode())))
+        for bad in (["--scenario", "unknown"], ["--max-model-calls", "-1"], ["--scenario"]):
+            p = adk.run([binary, *bad], folder, env, ok=(2,))
+            require("usage:" in p.stderr, f"{bad}: usage expected")
+        header = adk.evidence_header(folder, env)
+    evidence = dict(
+        scope="R01 on ADK-Rust 3.0 RC: a rule-based Llm implementation that only reads its LlmRequest, "
+              "FunctionTool on a real temporary README, RunBudget limits, in-memory session",
+        **header, source_sha256={name: sha(data) for name, data in sorted(files.items())},
+        archive_sha256=sha(packed), **checks, repeated_identical_runs=2, invalid_cli_cases=3, scenarios=rows)
     if args.check and DATA.exists():
-        historical = json.loads(DATA.read_text())
-        for key in ("rustc", "host"):
-            evidence[key] = historical[key]
-    expected_files[OUTPUT / "r01-environment.txt"] = (
-        "rustc=" + evidence["rustc"] + "\nhost=" + evidence["host"]
-        + "\nedition=2024\ndependencies=Rust standard library only\n"
-        + "model=scripted, no HTTP\nworkspace=owned temporary fixture\n"
-        + "scenarios=13\ncontract_tests=6\ninvalid_cli_cases=3\n")
-    expected_files[DATA] = json.dumps(evidence, ensure_ascii=False, indent=2) + "\n"
-    chapter = CHAPTER.read_text()
-    start, end = "<!-- r01-results:start -->", "<!-- r01-results:end -->"
-    if chapter.count(start) != 1 or chapter.count(end) != 1:
-        raise ValueError("Missing R01 results markers")
-    before, rest = chapter.split(start)
-    _, after = rest.split(end)
-    expected_files[CHAPTER] = before + start + "\n\n" + results_table(results) + "\n\n" + end + after
-    # Check snippet regions and include only evidence produced by this run.
-    source = SOURCE.read_text()
-    for region in re.findall(r"<<< @/public/learn-agent-rust/code/agent-loop.rs#([\w-]+)", chapter):
-        if source.count("// region " + region + "\n") != 1 or source.count("// endregion " + region + "\n") != 1:
-            raise ValueError("Missing/duplicate source region: " + region)
-    for name in re.findall(r"<<< @/public/learn-agent-rust/outputs/(r01-[\w-]+\.txt)", chapter):
-        if OUTPUT / name not in expected_files:
-            raise ValueError("Unverified output referenced: " + name)
-    for path, content in expected_files.items():
+        recorded = json.loads(DATA.read_text())
+        evidence["rustc"], evidence["cargo"] = recorded["rustc"], recorded["cargo"]
+    targets[DATA] = (json.dumps(evidence, ensure_ascii=False, indent=2) + "\n").encode()
+    text = CHAPTER.read_text(encoding="utf-8")
+    require(text.count(START) == 1 and text.count(END) == 1, "chapter needs exactly one r01-results block")
+    before, rest = text.split(START)
+    targets[CHAPTER] = (before + START + "\n\n" + table(rows) + "\n\n" + END + rest.split(END)[1]).encode()
+    # 正文导入的片段与输出必须存在
+    for region in set(re.findall(r"code/agent-loop/src/main\.rs#([\w-]+)", text)):
+        require(files["src/main.rs"].decode().count(f"// region {region}\n") == 1, f"region {region} missing")
+    for output in set(re.findall(r"outputs/(r01-[\w-]+\.txt)", text)):
+        require(OUTPUT / output in targets, f"chapter imports {output}, which this run did not produce")
+    stale = [p for p in OUTPUT.glob("r01-*.txt") if p not in targets]
+    for path, content in targets.items():
         if args.check:
-            if not path.exists() or path.read_text() != content:
-                raise SystemExit("Stale R01 evidence: " + str(path.relative_to(ROOT)))
+            require(path.exists() and path.read_bytes() == content, "Stale R01 artifact: " + str(path.relative_to(ROOT)))
         else:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
-    print("R01: 13 scenarios, 6 Rust contract tests and 3 invalid CLI cases passed; " + ("evidence checked" if args.check else "evidence saved"))
+            path.write_bytes(content)
+    if args.check:
+        require(not stale, "Obsolete R01 outputs: " + ", ".join(p.name for p in stale))
+    else:
+        for path in stale:
+            path.unlink()
+    print(f"R01: {len(rows)} scenarios x2 identical, {checks['rust_tests_passed']} Rust tests, fmt, Clippy, "
+          "3 usage errors; " + ("artifacts checked" if args.check else "artifacts saved"))
 
 
 if __name__ == "__main__":

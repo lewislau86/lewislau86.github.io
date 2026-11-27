@@ -1,24 +1,40 @@
-# R03 工具权限与审批实验
+# R03：工具权限与审批（ADK-Rust 3.0）
 
-教程正文以网站为准：https://lewislau86.github.io/learn-agent-rust/permissions
-需要支持 edition 2024 的 Rust 稳定工具链（Rust 1.85 或更新）。无第三方依赖。
+课程正文：https://lewislau86.github.io/learn-agent-rust/permissions
 
-在解压后的目录中运行：
+同一份工具请求先过应用策略：允许、拒绝，或等待人批准。策略是文件里的 `SummaryPolicy`（实现 ADK-Rust 的
+`ToolPolicy`），装在 `Runner` 上；需要批准的调用被框架挂起，请求记进 `InMemoryApprovalStore`；审批人按请求的指纹
+记下决定，下一次运行恢复原来那次调用。模型是 `ScriptedLlm`；文件工具读写程序自建的临时目录；不读取凭据、不联网。
 
-    rustc --edition=2024 -D warnings permissions.rs -o permissions
-    ./permissions approve
-    ./permissions wait
-    ./permissions decline
-    ./permissions tamper
-    ./permissions replay
-    ./permissions write-error
-    rustc --edition=2024 -D warnings --test permissions.rs -o permission-tests
-    ./permission-tests
+## 准备 ADK-Rust 源码
 
-Windows 用户将 ./permissions 与 ./permission-tests 换成对应 .exe 路径。
-全部场景：read deny invalid-path unknown wait approve decline tamper replay write-error。
-每次运行创建并清理自己的临时工作区，不需要从教程仓库启动。
-模型请求与人工回复由程序固定生成，实际调用 std::fs 读写文件。
-wait 只在本次进程内保留状态；再次启动命令会创建新会话。
-这不是通用文件系统沙箱，也不提供真实模型、认证 UI 或跨进程恢复。
-outputs/ 与 evidence.json 是生成学习包时的实际运行记录。
+```sh
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
+```
+
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
+
+## 运行
+
+```sh
+cargo run --locked                 # approve：等待 → 批准 → 恢复后写入
+cargo run --locked -- wait
+cargo run --locked -- tamper
+cargo run --locked -- replay
+cargo test --locked
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+```
+
+场景：read、deny、invalid-path、unknown、wait、approve、decline、tamper、replay、write-error。
+
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。编译时会看到 adk-core 的
+3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
+
+## 实验边界
+
+- 模型请求与审批人的决定都是固定输入；没有真实的审批界面或身份认证。
+- 审批记录只在内存里（`InMemoryApprovalStore`），进程退出就没了；跨进程恢复见第 6、21 章。
+- 路径规则面向程序自建的可信临时目录，不是通用沙箱。
+
+网站维护者在仓库根目录运行 `python3 scripts/verify-agent-permissions.py`，`--check` 检查产物是否过期。

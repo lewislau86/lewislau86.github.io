@@ -7,11 +7,20 @@
     "Cargo.lock": "fe91ebf086f16a6959e6552a1ce4e95e1c075c316e4ca440561c9c7446cae2d1",
     "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
     ".gitignore": "fecfc195d731ca6d896c5f1111d6e60dc470ff13baa0d960ee450453d909ea0c",
-    "README.md": "a0059fae6c4e8ad2f668e0d5248a70898e6e86637a6d799ebae653b20e8b6805",
+    "README.md": "cc2d8aca1bfd2b8eee7f0858e98e950ba91bfba97b3f95b54e74034c2b60f080",
     "src/main.rs": "3405fead94c90f2f06abea9047f85b5c4fbde52059501e0234058784b088ec6c",
     "src/client.rs": "42c10e66002e8c970cc7a577120b98af91ad6737801650203d6779b832b4275c",
     "src/provider.rs": "e059fe302932cae9341cff6491e3fb6548b314aa3de520756157e6d6048518d0",
-    "src/tests.rs": "fa291347355a6cfc314f81820317b5d54a41cc9c0381a2502eccaaf11cbb55ec"
+    "src/tests.rs": "fa291347355a6cfc314f81820317b5d54a41cc9c0381a2502eccaaf11cbb55ec",
+    "adk/Cargo.toml": "baff5151a95bb8d42e0c792031573d6da14a245d792adc863982eda693e47090",
+    "adk/Cargo.lock": "ffe192da15db791696ba9ab8d4a880af06f7353a4051b2dc999c66f8213f09e8",
+    "adk/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "adk/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "adk/.cargo/config.toml": "8485ffd865df123b81da51182dd49795be6daebf60eedd6a6f256ebaf5590595",
+    "adk/src/main.rs": "926520cad26a17aebc54c2c136b8c29bf3be4b3b6d97cc1f6a712cf3f8caa232",
+    "adk/src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e"
   },
   "scenarios": [
     {

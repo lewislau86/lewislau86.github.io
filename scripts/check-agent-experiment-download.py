@@ -28,6 +28,14 @@ def main():
         (package / ".cache").mkdir()
         (package / ".cache/target").symlink_to(cache, target_is_directory=True)
         command = [sys.executable, "run.py"]
+        lessons = json.loads((package / "manifest.json").read_text(encoding="utf-8"))["lessons"]
+        if any(row.get("stack") == "adk3" for row in lessons):
+            # ADK-Rust 3.0 章节需要 chapters/adk-rust：已有本地源码（ADK_RUST_SRC）就链接，否则按读者方式 git 获取
+            if os.environ.get("ADK_RUST_SRC"):
+                (package / "chapters/adk-rust").symlink_to(Path(os.environ["ADK_RUST_SRC"]).resolve(),
+                                                           target_is_directory=True)
+            else:
+                subprocess.run(command + ["fetch-adk"], cwd=package, check=True)
         for operation in (["integrity"], ["list"], ["doctor"]):
             subprocess.run(command + operation, cwd=package, check=True)
         subprocess.run(["bash", "environment/check-environment.sh"], cwd=package, check=True,

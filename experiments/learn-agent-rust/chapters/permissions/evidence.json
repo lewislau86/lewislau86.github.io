@@ -1,18 +1,55 @@
 {
-  "scope": "R03; scripted tool requests and trusted simulated human replies; std::fs; in-memory only",
-  "source_sha256": "94af1a33502f46f0445a00498f2e79357f5afc068fffa9cbf58436b95d1b2c26",
-  "environment": {
-    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-    "platform": "macOS-27.2-arm64-arm-64bit"
+  "scope": "R03 on ADK-Rust 3.0 RC: ScriptedLlm, an application ToolPolicy (allow / deny / require approval), InMemoryApprovalStore decisions keyed by call fingerprint, real temporary files",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
   },
-  "regression_tests": [
-    "another_session_cannot_use_the_same_call_and_sequence",
-    "approval_binds_every_field_and_preserves_original_pending_call",
-    "decline_returns_a_paired_result_without_writing",
-    "deny_unknown_paths_and_oversized_content_before_any_io",
-    "failure_consumes_approval_and_does_not_claim_success",
-    "waiting_blocks_new_calls_and_has_no_tool_result"
-  ],
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-model": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "b1a1de68e110da7a7a7b8587925ce5c88e608bf2724ccc62001d675aa7bf500e",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "9b37756a619eefbc0a8c702bf5ba0e68826a4bb32b5c2c13633896f287d89080",
+    "Cargo.toml": "0885afcd64a7281171d88e0bd495000b3d133570d831fbc5d48ee6dcbbbb38d7",
+    "README.md": "4dba8c24537d8555ed2c5b1d8ec59226220fa1eb6b3efbcca4b8e5c8fb4f7256",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "c7f08fbb1b98e9313b9598fa3fa73bb83b14d8c07c3961e14a65ee7958a783ce",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "4876e89d1edfc0fc56d37bd1e6f6d53081bd2b31ac74335a98318c20d6d6d876",
+  "rust_tests_passed": 6,
+  "repeated_identical_runs": 2,
   "scenarios": [
     {
       "name": "read",
@@ -20,16 +57,13 @@
       "write_attempts": 0,
       "write_successes": 0,
       "tool_results": 1,
-      "pending": false,
+      "pending": 0,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ]
+        "read_file:ok"
       ],
-      "stdout_sha256": "f40aed5f70879c99877646c7a290690f8f8358b125db756d80b9012dd096ca34"
+      "stdout_sha256": "ba31e1936f834e35ba290ce8324ed51cf81e8a6c4d40464a65ab249cde907dd2"
     },
     {
       "name": "deny",
@@ -37,20 +71,14 @@
       "write_attempts": 0,
       "write_successes": 0,
       "tool_results": 2,
-      "pending": false,
+      "pending": 0,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "denied"
-        ]
+        "read_file:ok",
+        "write_summary:refused"
       ],
-      "stdout_sha256": "050e60b577b59ff2dd69838e49a6d8731c41979cc37e36cc64d167b457ab8513"
+      "stdout_sha256": "d1b5adc146cbd385fe2d49234f20b11f4b8e77c07c186690e0aad58cee90194d"
     },
     {
       "name": "invalid-path",
@@ -58,20 +86,14 @@
       "write_attempts": 0,
       "write_successes": 0,
       "tool_results": 2,
-      "pending": false,
+      "pending": 0,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "denied"
-        ]
+        "read_file:ok",
+        "write_summary:refused"
       ],
-      "stdout_sha256": "2aba8249a06864dcc39f2dfe726ab902219a5afd33731bcbab77ec62cb6da0c7"
+      "stdout_sha256": "5fc5fc7b70636292e22249b6057b33c643ebe1d9e298fd8fc4c0dfd795344b85"
     },
     {
       "name": "unknown",
@@ -79,138 +101,110 @@
       "write_attempts": 0,
       "write_successes": 0,
       "tool_results": 2,
-      "pending": false,
+      "pending": 0,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "denied"
-        ]
+        "read_file:ok",
+        "bash:not_run"
       ],
-      "stdout_sha256": "0931e8041c5fa3172ef0adbc5cc7c6f908019ed5193dafe2137e788594cbbce8"
+      "stdout_sha256": "3196ad7d50a868c150ba6664eb04db4943910ad42e0f0ad208bae77ffef8c059"
     },
     {
       "name": "wait",
       "read_attempts": 1,
       "write_attempts": 0,
       "write_successes": 0,
-      "tool_results": 1,
-      "pending": true,
+      "tool_results": 2,
+      "pending": 1,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ]
+        "read_file:ok",
+        "write_summary:held"
       ],
-      "stdout_sha256": "b874ee34fca7839f4fd153e0e861e938fa149c0f35bcbb5636ff97248646b209"
+      "stdout_sha256": "cf1f4a6f88faa706b6e50f1d1330fc4255a879d96a8c3e29930e5a9f388f95fe"
     },
     {
       "name": "approve",
       "read_attempts": 1,
       "write_attempts": 1,
       "write_successes": 1,
-      "tool_results": 2,
-      "pending": false,
+      "tool_results": 3,
+      "pending": 0,
       "summary_matches": true,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "ok"
-        ]
+        "read_file:ok",
+        "write_summary:held",
+        "write_summary:ok"
       ],
-      "stdout_sha256": "8d241dacc581f7f75cb1406a4b592dad0ddb55f6cd9e88c2a8fba9b6cfd15959"
+      "stdout_sha256": "e5fe0f524001b079b2af0b63c9e6adcd4a0c7470feb6fb89251b74ac8389cfa2"
     },
     {
       "name": "decline",
       "read_attempts": 1,
       "write_attempts": 0,
       "write_successes": 0,
-      "tool_results": 2,
-      "pending": false,
+      "tool_results": 3,
+      "pending": 0,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "declined"
-        ]
+        "read_file:ok",
+        "write_summary:held",
+        "write_summary:refused"
       ],
-      "stdout_sha256": "15e01d6bc0e74716646ff0732007cdf403048786192bf889bf983278c40eda6b"
+      "stdout_sha256": "7be5f8aadd7f7e31a56ab5c7aa6b96fcd174dbaa9bf92a28d9ae9f68601b7acd"
     },
     {
       "name": "tamper",
       "read_attempts": 1,
       "write_attempts": 0,
       "write_successes": 0,
-      "tool_results": 1,
-      "pending": true,
+      "tool_results": 2,
+      "pending": 1,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ]
+        "read_file:ok",
+        "write_summary:held"
       ],
-      "stdout_sha256": "74e07e743a3cbd24ff07a016cd6a8df87f01a305d203c9c7c8491ccb542154f7"
+      "stdout_sha256": "4ea9e0c2fdb8962810fec70bbb5f18ae5831f7e9cff1eec4c6308b4b51e5cb71"
     },
     {
       "name": "replay",
       "read_attempts": 1,
       "write_attempts": 1,
       "write_successes": 1,
-      "tool_results": 2,
-      "pending": false,
+      "tool_results": 4,
+      "pending": 1,
       "summary_matches": true,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "ok"
-        ]
+        "read_file:ok",
+        "write_summary:held",
+        "write_summary:ok",
+        "write_summary:held"
       ],
-      "stdout_sha256": "ab4363e4f5d757ca2baa7f2313bf22d3b128c15c3796e9caa2e505aca59c5b16"
+      "stdout_sha256": "71df99a84fca788e4917bf0a8b2853b7b6597261ec38e20e03bcf7df8f7a595d"
     },
     {
       "name": "write-error",
       "read_attempts": 1,
       "write_attempts": 1,
       "write_successes": 0,
-      "tool_results": 2,
-      "pending": false,
+      "tool_results": 4,
+      "pending": 1,
       "summary_matches": false,
       "readme_unchanged": true,
       "statuses": [
-        [
-          "read-1",
-          "ok"
-        ],
-        [
-          "write-1",
-          "tool_error"
-        ]
+        "read_file:ok",
+        "write_summary:held",
+        "write_summary:failed",
+        "write_summary:held"
       ],
-      "stdout_sha256": "ef3917d8a57331d44b0981e43fd70c6b52819d5a08eaa5e8f99556e9cf551f45"
+      "stdout_sha256": "aeb77cf611c0e1a95e984c5bdd7b9701fa4e5ad15e9563f557c98bd169d05087"
     }
   ]
 }

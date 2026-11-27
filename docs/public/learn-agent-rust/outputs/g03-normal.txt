@@ -1,1 +1,4 @@
-scenario=normal child_end_ignored=true both_started=true report=compatibility:pass | tests:pass
+step=0 ran=plan
+step=1 ran=license,security
+step=2 ran=merge
+verdict=ready security_runs=1 license_runs=1

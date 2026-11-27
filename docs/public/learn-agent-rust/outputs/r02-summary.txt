@@ -1,12 +1,21 @@
-R02 | scripted model + real filesystem | explicit vs graph-flow
-normal: equal=true turns=3 dispatches=2 messages=6 stop=completed
-nodes: ModelTurn -> ExecuteTools -> ModelTurn -> ExecuteTools -> ModelTurn
-answer: README 里的启动命令是：cargo run
-batch: equal=true turns=2 dispatches=2 messages=5 stop=completed
-unknown-tool: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
-invalid-json: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
-invalid-args: equal=true turns=2 dispatches=1 messages=4 stop=tool_error
-missing-file: equal=true turns=3 dispatches=2 messages=6 stop=tool_error
-duplicate-id: equal=true turns=1 dispatches=0 messages=1 stop=invalid_call_id
-zero-budget: equal=true turns=0 dispatches=0 messages=1 stop=turn_limit
-turn-limit: equal=true turns=1 dispatches=1 messages=3 stop=turn_limit
+R02 | ScriptedLlm + real temp dir | Runner(LlmAgent) vs Runner(GraphAgent)
+normal: equal=true model_calls=3 tool_results=2 stop=final_answer verified=true graph_check=true
+  [assistant] call    id=scripted_tc_0_0 list_files {"path":"."}
+  [assistant] result  id=scripted_tc_0_0 list_files status=ok {"entries":["Cargo.toml","README.md"]}
+  [assistant] call    id=scripted_tc_1_0 read_file {"path":"README.md"}
+  [assistant] result  id=scripted_tc_1_0 read_file status=ok {"text":"# Demo\n启动命令：cargo run\n"}
+  [assistant] text    "README 里的启动命令是：cargo run"
+  [assistant] final
+batch: equal=true model_calls=2 tool_results=2 stop=final_answer verified=true graph_check=true
+unknown-tool: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+invalid-args: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+extra-field: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+invalid-json: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+not-an-object: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+outside-path: equal=true model_calls=2 tool_results=1 stop=final_answer verified=false graph_check=false
+missing-file: equal=true model_calls=3 tool_results=2 stop=final_answer verified=false graph_check=false
+unreadable-file: equal=true model_calls=3 tool_results=2 stop=final_answer verified=false graph_check=false
+unreadable-file-exposed: equal=true model_calls=3 tool_results=2 stop=final_answer verified=false graph_check=false
+duplicate-id: equal=true model_calls=2 tool_results=2 stop=final_answer verified=true graph_check=true
+zero-budget: equal=true model_calls=0 tool_results=0 stop=budget.model_calls verified=false graph_check=none
+turn-limit: equal=true model_calls=1 tool_results=1 stop=agent.legacy verified=false graph_check=none

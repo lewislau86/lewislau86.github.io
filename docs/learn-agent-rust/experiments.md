@@ -29,6 +29,10 @@ python3 run.py test R01
 python3 run.py run R20 --keep ./my-results
 ```
 
+::: info 迁移到 ADK-Rust 3.0
+全书正在逐章迁移到 ADK-Rust 3.0（发布候选版，尚未发布到 crates.io）。下文标“ADK-Rust 3.0”的章节，先在代码库根目录运行一次 `python3 run.py fetch-adk`，把固定提交的源码取到 `chapters/adk-rust/`（需要 Git 与 GitHub 访问）。迁移前的旧版实验（graph-flow 与 langchain-rust）不再维护，可从网站仓库的 git 标签 [`learn-agent-rust-v1`](https://github.com/lewislau86/lewislau86.github.io/tree/learn-agent-rust-v1/experiments/learn-agent-rust) 取得。
+:::
+
 `run` 编译并执行本页对应的演示；`test` 增加 Rust 测试、格式检查和 Cargo 工程的 Clippy。程序在临时目录运行，`--keep` 保存运行产物。每章也可进入 `chapters/<主题>/`，按 README 单独操作。
 
 ## 全书重跑
@@ -47,6 +51,8 @@ python3 run.py test --all --offline
 
 ### 第 0 章 · 整体架构与环境 {#architecture-and-setup}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./architecture-and-setup.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/architecture-and-setup)
 
 目录：`chapters/architecture-and-setup/`；运行：`python3 run.py run R00`。本章正常路径演示。
@@ -54,6 +60,8 @@ python3 run.py test --all --offline
 原章节验证器：`scripts/verify-learn-agent-rust.py`。
 
 ### 第 1 章 · 最小 Agent 循环 {#agent-loop}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./agent-loop.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/agent-loop)
 
@@ -63,6 +71,8 @@ python3 run.py test --all --offline
 
 ### 第 2 章 · 工具注册与图调度 {#tools-and-graph}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./tools-and-graph.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/tools-and-graph)
 
 目录：`chapters/tools-and-graph/`；运行：`python3 run.py run R02`。本章正常路径演示。
@@ -70,6 +80,8 @@ python3 run.py test --all --offline
 原章节验证器：`scripts/verify-learn-agent-rust-r02.py`。
 
 ### 第 3 章 · 工具权限与审批 {#permissions}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./permissions.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/permissions)
 
@@ -79,6 +91,8 @@ python3 run.py test --all --offline
 
 ### 第 4 章 · 生命周期与 Hooks {#hooks}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./hooks.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/hooks)
 
 目录：`chapters/hooks/`；运行：`python3 run.py run R04`。本章正常路径演示。
@@ -87,21 +101,27 @@ python3 run.py test --all --offline
 
 ### 第 5 章 · 图状态、条件路由与有界循环 {#graph-state-routing}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./graph-state-routing.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-state-routing)
 
-目录：`chapters/graph-state-routing/`；运行：`python3 run.py run G01`。4 组路由与循环演示。
+目录：`chapters/graph-state-routing/`；运行：`python3 run.py run G01`。4 组路由、修复额度、超步上限与建图探针演示。
 
 原章节验证器：`scripts/verify-agent-orchestration.py`。
 
-### 第 6 章 · 图暂停、会话存储与恢复 {#graph-pause-resume}
+### 第 6 章 · 图暂停、检查点与恢复 {#graph-pause-resume}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./graph-pause-resume.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-pause-resume)
 
-目录：`chapters/graph-pause-resume/`；运行：`python3 run.py run G02`。跨进程批准、恢复与终态保护演示。
+目录：`chapters/graph-pause-resume/`；运行：`python3 run.py run G02`。跨进程暂停、检查点与按节点名恢复的对照演示。
 
 原章节验证器：`scripts/verify-agent-orchestration.py`。
 
 ### 第 7 章 · 图并行、归并与子图 {#graph-parallel-subgraphs}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./graph-parallel-subgraphs.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/graph-parallel-subgraphs)
 
@@ -318,6 +338,8 @@ python3 run.py test --all --offline
 原章节验证器：`scripts/verify-agent-checkpoints.py`。
 
 ### 专题 2 · 外部操作的可靠性 {#side-effect-reliability}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./side-effect-reliability.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/side-effect-reliability)
 

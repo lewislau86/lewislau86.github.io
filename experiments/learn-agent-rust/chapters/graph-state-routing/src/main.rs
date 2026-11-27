@@ -1,285 +1,445 @@
-use async_trait::async_trait;
-use graph_flow::{
-    Context, ExecutionStatus, Graph, GraphBuilder, GraphError, NextAction, Session, Task,
-    TaskResult,
+//! G01（ADK-Rust 3.0 / adk-graph）：图状态、条件路由与有界循环。
+//!
+//! 升级审查：准备初稿 → 检查等级 → 不够就修复再检查；达到要求就接受，修复额度用完就转人工。
+//! 节点是确定性的业务规则，不调用模型。用法：graph-state-lab normal|exhausted|runaway|probes
+mod trace;
+
+use adk_graph::{
+    checkpoint::MemoryCheckpointer,
+    edge::{END, START},
+    error::{GraphError, Result},
+    graph::{CompiledGraph, StateGraph},
+    node::{ExecutionConfig, NodeContext, NodeOutput},
+    state::{State, StateSchema},
+    stream::{StreamEvent, StreamMode},
 };
-use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use futures::StreamExt;
+use serde_json::{Value, json};
+
+const MAX_REPAIRS: u64 = 2;
 
 // region state
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-struct Review {
-    schema: u32,
-    draft: u32,
-    required: u32,
-    repairs: u32,
-    max_repairs: u32,
-    outcome: Option<String>,
-    trace: Vec<String>,
+/// 图状态由“通道”组成。每个通道有一个归并规则（reducer），决定节点写入的新值怎样与旧值合并：
+/// 默认是覆盖；trace 用列表通道，每次写入追加一项；repairs 用计数通道，每次写入加到原值上。
+fn schema() -> StateSchema {
+    StateSchema::builder()
+        .channel("draft")
+        .channel("required")
+        .counter_channel("repairs")
+        .channel("outcome")
+        .list_channel("trace")
+        .build()
 }
 
-fn state(ctx: &Context) -> graph_flow::Result<Review> {
-    let value: Review = ctx
-        .get("review")
-        .ok_or_else(|| GraphError::ContextError("review missing or wrong type".into()))?;
-    if value.schema != 1 {
-        return Err(GraphError::ContextError("unsupported review schema".into()));
-    }
-    Ok(value)
-}
-
-fn initial(required: u32) -> Review {
-    Review {
-        schema: 1,
-        draft: 0,
-        required,
-        repairs: 0,
-        max_repairs: 2,
-        outcome: None,
-        trace: vec![],
+/// 读取一个等级字段。值不存在或不是非负整数都算契约错误，拒绝继续，
+/// 而不是悄悄当成 0 走下去。计数通道按浮点数累加（写入 1，读出 1.0），所以这里按数值读取。
+fn level(state: &State, key: &str) -> Result<u64> {
+    let value = state
+        .get(key)
+        .ok_or_else(|| GraphError::NodeExecutionFailed {
+            node: "state".into(),
+            message: format!("{key} missing"),
+        })?;
+    match value.as_f64() {
+        Some(n) if n >= 0.0 && n.fract() == 0.0 => Ok(n as u64),
+        _ => Err(GraphError::NodeExecutionFailed {
+            node: "state".into(),
+            message: format!("{key} is not a level: {value}"),
+        }),
     }
 }
 // endregion state
 
-struct Step(&'static str, bool);
 // region nodes
-#[async_trait]
-impl Task for Step {
-    fn id(&self) -> &str {
-        self.0
+/// 每个节点：读取并校验输入，完成本步的业务变更，只通过 NodeOutput 写回更新。
+async fn prepare(_ctx: NodeContext) -> Result<NodeOutput> {
+    Ok(NodeOutput::new()
+        .with_update("draft", json!(1))
+        .with_update("trace", json!("prepare")))
+}
+
+async fn check(ctx: NodeContext) -> Result<NodeOutput> {
+    // 只读状态、写一条轨迹；去哪里由条件边决定
+    level(&ctx.state, "draft")?;
+    level(&ctx.state, "required")?;
+    Ok(NodeOutput::new().with_update("trace", json!("check")))
+}
+
+/// 修复节点自己决定下一步：额度还有就修复并回到 check，用完就转人工（with_goto）。
+/// `improves=false` 模拟修复无效；`counts=false` 模拟忘了计数的 bug。
+fn repair(
+    improves: bool,
+    counts: bool,
+) -> impl Fn(NodeContext) -> std::pin::Pin<Box<dyn Future<Output = Result<NodeOutput>> + Send>>
++ Send
++ Sync {
+    move |ctx: NodeContext| {
+        Box::pin(async move {
+            let draft = level(&ctx.state, "draft")?;
+            let repairs = level(&ctx.state, "repairs").unwrap_or(0);
+            let out = NodeOutput::new().with_update("trace", json!("repair"));
+            if repairs >= MAX_REPAIRS {
+                return Ok(out.with_goto(["handoff"]));
+            }
+            let out = if counts {
+                out.with_update("repairs", json!(1))
+            } else {
+                out
+            };
+            let out = if improves {
+                out.with_update("draft", json!(draft + 1))
+            } else {
+                out
+            };
+            Ok(out.with_goto(["check"]))
+        })
     }
-    async fn run(&self, ctx: Context) -> graph_flow::Result<TaskResult> {
-        let mut s = state(&ctx)?;
-        s.trace.push(self.0.into());
-        let mut next = if self.1 {
-            NextAction::ContinueAndExecute
-        } else {
-            NextAction::Continue
-        };
-        match self.0 {
-            "prepare" => s.draft = 1,
-            "check" => {}
-            "repair" => {
-                if s.repairs >= s.max_repairs {
-                    next = NextAction::GoTo("handoff".into());
-                } else {
-                    s.repairs += 1;
-                    s.draft += 1;
-                    next = NextAction::GoTo("check".into());
-                }
-            }
-            "accept" => {
-                s.outcome = Some("accepted".into());
-                next = NextAction::End;
-            }
-            "handoff" => {
-                s.outcome = Some("needs_human".into());
-                next = NextAction::End;
-            }
-            _ => return Err(GraphError::TaskNotFound(self.0.into())),
-        }
-        ctx.set("review", s)?;
-        Ok(TaskResult::new(None, next))
-    }
+}
+
+async fn finish(outcome: &'static str, node: &'static str) -> Result<NodeOutput> {
+    Ok(NodeOutput::new()
+        .with_update("outcome", json!(outcome))
+        .with_update("trace", json!(node)))
 }
 // endregion nodes
 
 // region graph
-fn graph(automatic: bool) -> graph_flow::Result<Graph> {
-    let mut builder = GraphBuilder::new("review-v1").with_max_execution_steps(8);
-    for name in ["prepare", "check", "repair", "accept", "handoff"] {
-        builder = builder.add_task(Arc::new(Step(name, automatic)));
-    }
-    builder
+/// check 用条件边选择 accept / repair；repair 用 with_goto 选择 check / handoff。
+fn review_graph(improves: bool, counts: bool) -> Result<CompiledGraph> {
+    StateGraph::new(schema())
+        .add_node_fn("prepare", prepare)
+        .add_node_fn("check", check)
+        .add_node_fn("repair", repair(improves, counts))
+        .add_node_fn("accept", |_| finish("accepted", "accept"))
+        .add_node_fn("handoff", |_| finish("needs_human", "handoff"))
+        .add_edge(START, "prepare")
         .add_edge("prepare", "check")
-        .add_conditional_edge(
+        .add_conditional_edges(
             "check",
-            |ctx| {
-                // Invalid state fails closed at the next typed node; it never grants acceptance.
-                state(ctx).is_ok_and(|s| s.draft >= s.required)
+            |state: &State| {
+                // 两个等级都有效且达到要求才接受；读不出等级时不能落到 accept
+                match (level(state, "draft"), level(state, "required")) {
+                    (Ok(draft), Ok(required)) if draft >= required => "accept".into(),
+                    _ => "repair".into(),
+                }
             },
-            "accept",
-            "repair",
+            [("accept", "accept"), ("repair", "repair")],
         )
-        .set_start_task("prepare")
-        .build()
-}
-
-async fn drive(graph: &Graph, session: &mut Session) -> graph_flow::Result<usize> {
-    // A host limit covers GoTo/Continue across calls as well as graph-internal chains.
-    for call in 1..=16 {
-        let before = session.current_task_id.clone();
-        let result = graph.execute_session(session).await?;
-        let status = match result.status {
-            ExecutionStatus::Completed => "completed",
-            ExecutionStatus::Paused { .. } => "paused",
-            ExecutionStatus::WaitingForInput => {
-                return Err(GraphError::ContextError("unexpected input wait".into()));
-            }
-        };
-        println!(
-            "call={call} before={before} after={} status={status}",
-            session.current_task_id
-        );
-        if status == "completed" {
-            return Ok(call);
-        }
-    }
-    Err(GraphError::TaskExecutionFailed("host step budget".into()))
+        .add_edge("accept", END)
+        .add_edge("handoff", END)
+        .compile()
 }
 // endregion graph
 
-struct Action(&'static str, NextAction);
-#[async_trait]
-impl Task for Action {
-    fn id(&self) -> &str {
-        self.0
+// region run
+/// 用流式执行观察每个超步跑了哪些节点；结束后读最终状态。
+async fn run(
+    graph: &CompiledGraph,
+    required: u64,
+    thread: &str,
+) -> (Vec<String>, std::result::Result<State, GraphError>) {
+    let mut input = State::new();
+    input.insert("required".into(), json!(required));
+    let mut lines = Vec::new();
+    let mut last = None;
+    let mut stream =
+        Box::pin(graph.stream(input, ExecutionConfig::new(thread), StreamMode::Updates));
+    while let Some(event) = stream.next().await {
+        match event {
+            Ok(StreamEvent::StepComplete {
+                step,
+                nodes_executed,
+            }) => lines.push(format!("step={step} ran={}", nodes_executed.join(","))),
+            Ok(StreamEvent::Done { state, .. }) => last = Some(Ok(state)),
+            Ok(_) => {}
+            Err(error) => last = Some(Err(error)),
+        }
     }
-    async fn run(&self, ctx: Context) -> graph_flow::Result<TaskResult> {
-        ctx.set("touched", true)?;
-        Ok(TaskResult::new(None, self.1.clone()))
+    (
+        lines,
+        last.unwrap_or_else(|| Err(GraphError::InvalidGraph("no result".into()))),
+    )
+}
+// endregion run
+
+fn summary(name: &str, state: &State) -> String {
+    let trace: Vec<&str> = state["trace"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .collect();
+    format!(
+        "scenario={name} outcome={} repairs={} draft={}\ntrace={}",
+        state["outcome"].as_str().unwrap_or("none"),
+        level(state, "repairs").unwrap_or(0),
+        level(state, "draft").unwrap_or(0),
+        trace.join(">")
+    )
+}
+
+async fn scenario(name: &str) -> Result<String> {
+    let mut out = Vec::new();
+    match name {
+        "normal" | "exhausted" => {
+            let (required, improves) = if name == "normal" {
+                (2, true)
+            } else {
+                (4, false)
+            };
+            let graph = review_graph(improves, true)?;
+            let (lines, result) = run(&graph, required, name).await;
+            out.extend(lines);
+            out.push(summary(name, &result?));
+        }
+        "runaway" => {
+            // 忘了计数的 bug：业务额度永远到不了，只能靠框架的超步上限停下
+            let graph = review_graph(false, false)?
+                .with_recursion_limit(12)
+                .with_checkpointer(MemoryCheckpointer::new());
+            let (lines, result) = run(&graph, 4, name).await;
+            out.push(format!("steps_run={}", lines.len()));
+            match result {
+                Err(GraphError::RecursionLimitExceeded(limit)) => {
+                    let saved = graph.get_state(name).await?.unwrap_or_default();
+                    out.push(format!(
+                        "recursion_limit={limit} error=RecursionLimitExceeded"
+                    ));
+                    out.push(format!(
+                        "saved_state trace_len={} repairs={} outcome={}",
+                        saved["trace"].as_array().map_or(0, Vec::len),
+                        level(&saved, "repairs").unwrap_or(0),
+                        saved
+                            .get("outcome")
+                            .and_then(Value::as_str)
+                            .unwrap_or("none")
+                    ));
+                }
+                other => out.push(format!("unexpected {other:?}")),
+            }
+        }
+        "probes" => out.extend(probes().await?),
+        other => {
+            return Err(GraphError::InvalidGraph(format!(
+                "unknown scenario {other}"
+            )));
+        }
     }
+    Ok(out.join("\n"))
 }
 
 // region probes
-async fn probes() -> graph_flow::Result<()> {
-    let invalid = GraphBuilder::new("bad")
-        .add_task(Arc::new(Action("a", NextAction::End)))
+fn noop(_ctx: NodeContext) -> std::pin::Pin<Box<dyn Future<Output = Result<NodeOutput>> + Send>> {
+    Box::pin(async { Ok(NodeOutput::new()) })
+}
+
+fn write(
+    key: &'static str,
+    value: Value,
+) -> impl Fn(NodeContext) -> std::pin::Pin<Box<dyn Future<Output = Result<NodeOutput>> + Send>>
++ Send
++ Sync {
+    move |_ctx| {
+        let value = value.clone();
+        Box::pin(async move { Ok(NodeOutput::new().with_update(key, value)) })
+    }
+}
+
+async fn probes() -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    let cfg = |t: &str| ExecutionConfig::new(t);
+    // 1. 建图时能发现的：悬空边、缺少起点
+    let dangling = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", noop)
+        .add_edge(START, "a")
         .add_edge("a", "missing")
-        .build();
-    assert!(matches!(invalid, Err(GraphError::InvalidEdge(_))));
-    println!("probe=dangling_edge rejected=true");
-    let missing_start = GraphBuilder::new("bad")
-        .add_task(Arc::new(Action("a", NextAction::End)))
-        .set_start_task("unknown")
-        .build();
-    assert!(matches!(missing_start, Err(GraphError::TaskNotFound(_))));
-    println!("probe=missing_start rejected=true");
-    let orphan = GraphBuilder::new("orphan")
-        .add_task(Arc::new(Action("a", NextAction::Continue)))
-        .build()?;
-    let mut s = Session::new_from_task("s".into(), "a");
-    assert!(matches!(
-        orphan.execute_session(&mut s).await?.status,
-        ExecutionStatus::Paused { .. }
+        .compile();
+    out.push(format!(
+        "probe=dangling_edge rejected_at_compile={}",
+        dangling.is_err()
     ));
-    assert_eq!(s.current_task_id, "a");
-    println!("probe=no_edge status=paused cursor=a");
-    let jump = GraphBuilder::new("jump")
-        .add_task(Arc::new(Action("a", NextAction::GoTo("missing".into()))))
-        .build()?;
-    assert!(matches!(
-        jump.execute_session(&mut s).await,
-        Err(GraphError::TaskNotFound(_))
+    let no_start = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", noop)
+        .add_edge("a", END)
+        .compile();
+    out.push(format!(
+        "probe=missing_start rejected_at_compile={}",
+        no_start.is_err()
     ));
-    println!(
-        "probe=bad_goto rejected=true mutation_retained={}",
-        s.context.get::<bool>("touched") == Some(true)
-    );
-    let cycle = GraphBuilder::new("cycle")
-        .add_task(Arc::new(Action("a", NextAction::ContinueAndExecute)))
-        .add_edge("a", "a")
-        .with_max_execution_steps(2)
-        .build()?;
-    assert!(cycle.execute_session(&mut s).await.is_err());
-    println!("probe=cycle chained_limit_rejected=true");
-    let priority = GraphBuilder::new("priority")
-        .add_task(Arc::new(Action("a", NextAction::Continue)))
-        .add_task(Arc::new(Action("b", NextAction::End)))
-        .add_task(Arc::new(Action("c", NextAction::End)))
-        .add_conditional_edge("a", |_| true, "b", "c")
-        .add_conditional_edge("a", |_| true, "c", "b")
-        .build()?;
-    assert_eq!(
-        priority.find_next_task("a", &Context::new()).as_deref(),
-        Some("b")
-    );
-    println!("probe=overlapping_conditions first_matching=b");
-    let ctx = Context::new();
-    ctx.set("count", 1_u32)?;
-    let clone = ctx.clone();
-    clone.set("count", 2_u32)?;
-    assert_eq!(ctx.get::<u32>("count"), Some(2));
-    let snapshot: Context = serde_json::from_value(serde_json::to_value(&ctx).unwrap()).unwrap();
-    snapshot.set("count", 3_u32)?;
-    assert_eq!(ctx.get::<u32>("count"), Some(2));
-    println!("probe=context clone_shares=true serialized_snapshot_isolated=true");
-    let g = graph(false)?;
-    let mut malformed = Session::new_from_task("bad".into(), "prepare");
-    malformed.context.set("review", "wrong type")?;
-    assert!(g.execute_session(&mut malformed).await.is_err());
-    println!("probe=typed_state malformed_rejected=true");
-    Ok(())
+    // 2. 运行时才能发现的：with_goto 指向不存在的节点、条件路由返回未声明的键
+    let bad_goto = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", |_| async {
+            Ok(NodeOutput::new()
+                .with_update("x", json!(1))
+                .with_goto(["chek"]))
+        })
+        .add_edge(START, "a")
+        .compile()?;
+    let r = bad_goto.invoke(State::new(), cfg("bad_goto")).await;
+    out.push(format!(
+        "probe=bad_goto rejected_at_run={}",
+        matches!(r, Err(GraphError::UnknownRouteTarget { .. }))
+    ));
+    let unmapped = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", noop)
+        .add_node_fn("b", noop)
+        .add_edge(START, "a")
+        .add_conditional_edges("a", |_: &State| "c".to_string(), [("b", "b")])
+        .add_edge("b", END)
+        .compile()?;
+    let r = unmapped.invoke(State::new(), cfg("unmapped")).await;
+    out.push(format!(
+        "probe=unmapped_route rejected_at_run={}",
+        matches!(r, Err(GraphError::UnknownRouteTarget { .. }))
+    ));
+    // 3. 没有出边的节点：这条分支就此结束，运行正常完成
+    let no_edge = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", write("x", json!(1)))
+        .add_edge(START, "a")
+        .compile()?;
+    let s = no_edge.invoke(State::new(), cfg("no_edge")).await?;
+    out.push(format!("probe=no_edge completed=true x={}", s["x"]));
+    // 4. 一个节点两条普通出边：两个后继在下一个超步都运行（并行），不是二选一
+    let two = StateGraph::new(StateSchema::builder().list_channel("ran").build())
+        .add_node_fn("a", write("ran", json!("a")))
+        .add_node_fn("b", write("ran", json!("b")))
+        .add_node_fn("c", write("ran", json!("c")))
+        .add_edge(START, "a")
+        .add_edge("a", "b")
+        .add_edge("a", "c")
+        .add_edge("b", END)
+        .add_edge("c", END)
+        .compile()?;
+    let s = two.invoke(State::new(), cfg("two_edges")).await?;
+    out.push(format!("probe=two_edges ran={}", s["ran"]));
+    // 5. 写错通道名：默认按“覆盖”收下，不报错；打开严格通道才拒绝
+    let typo = || {
+        StateGraph::new(StateSchema::builder().list_channel("trace").build())
+            .add_node_fn("a", |_| async {
+                Ok(NodeOutput::new().with_update("trace", json!("a")))
+            })
+            .add_node_fn("b", |_| async {
+                // 把 trace 拼成了 traces：这一项进了一个新的覆盖通道，列表里少了 b
+                Ok(NodeOutput::new().with_update("traces", json!("b")))
+            })
+            .add_edge(START, "a")
+            .add_edge("a", "b")
+            .add_edge("b", END)
+    };
+    let s = typo().compile()?.invoke(State::new(), cfg("typo")).await?;
+    out.push(format!(
+        "probe=typo_channel trace={} traces={}",
+        s["trace"], s["traces"]
+    ));
+    let r = typo()
+        .compile()?
+        .with_strict_channels()
+        .invoke(State::new(), cfg("strict"))
+        .await;
+    out.push(format!(
+        "probe=strict_channels rejected={}",
+        matches!(r, Err(GraphError::UndeclaredChannel { .. }))
+    ));
+    // 6. 节点拿到的是状态的副本：改本地副本不影响图状态，只有 NodeOutput 里的更新才生效
+    let local = StateGraph::with_channels(&["x"])
+        .add_node_fn("a", |mut ctx: NodeContext| async move {
+            ctx.state.insert("x".into(), json!("changed locally"));
+            Ok(NodeOutput::new())
+        })
+        .add_edge(START, "a")
+        .add_edge("a", END)
+        .compile()?;
+    let mut input = State::new();
+    input.insert("x".into(), json!("original"));
+    let s = local.invoke(input, cfg("local")).await?;
+    out.push(format!("probe=local_mutation x={}", s["x"]));
+    // 7. 输入不符合契约：节点拒绝继续，运行以错误结束
+    let graph = review_graph(true, true)?;
+    let mut input = State::new();
+    input.insert("required".into(), json!("high"));
+    let r = graph.invoke(input, cfg("malformed")).await;
+    out.push(format!(
+        "probe=malformed_required rejected={}",
+        matches!(r, Err(GraphError::NodeExecutionFailed { .. }))
+    ));
+    // 8. 计数通道按浮点数累加
+    let counter = StateGraph::new(StateSchema::builder().counter_channel("n").build())
+        .add_node_fn("a", write("n", json!(1)))
+        .add_node_fn("b", write("n", json!(1)))
+        .add_edge(START, "a")
+        .add_edge("a", "b")
+        .add_edge("b", END)
+        .compile()?;
+    let s = counter.invoke(State::new(), cfg("counter")).await?;
+    out.push(format!("probe=counter_channel n={}", s["n"]));
+    Ok(out)
 }
 // endregion probes
 
-async fn run(scenario: &str) -> graph_flow::Result<()> {
-    if scenario == "probes" {
-        return probes().await;
-    }
-    let (required, automatic) = match scenario {
-        "normal" => (2, false),
-        "direct" => (2, true),
-        "exhausted" => (9, false),
-        _ => return Err(GraphError::ContextError("unknown scenario".into())),
-    };
-    let g = graph(automatic)?;
-    let mut session = Session::new_from_task("review".into(), g.start_task_id().unwrap())
-        .with_graph_id("review-v1");
-    session.context.set("review", initial(required))?;
-    let calls = drive(&g, &mut session).await?;
-    let s = state(&session.context)?;
-    println!(
-        "scenario={scenario} outcome={} repairs={} calls={calls}",
-        s.outcome.as_deref().unwrap(),
-        s.repairs
-    );
-    println!("trace={}", s.trace.join(">"));
-    Ok(())
-}
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let scenario = std::env::args().nth(1).unwrap_or_else(|| "normal".into());
-    if let Err(e) = run(&scenario).await {
-        eprintln!("{e}");
+    let name = std::env::args().nth(1).unwrap_or_else(|| "normal".into());
+    if !["normal", "exhausted", "runaway", "probes"].contains(&name.as_str()) {
+        eprintln!("usage: graph-state-lab normal|exhausted|runaway|probes");
         std::process::exit(2);
+    }
+    match scenario(&name).await {
+        Ok(text) => println!("{text}"),
+        Err(error) => {
+            eprintln!("error: {error}");
+            std::process::exit(1);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[tokio::test]
-    async fn normal_and_direct_have_identical_business_state() {
-        let mut a = Session::new_from_task("a".into(), "prepare");
-        let mut b = Session::new_from_task("b".into(), "prepare");
-        a.context.set("review", initial(2)).unwrap();
-        b.context.set("review", initial(2)).unwrap();
-        drive(&graph(false).unwrap(), &mut a).await.unwrap();
-        drive(&graph(true).unwrap(), &mut b).await.unwrap();
-        assert_eq!(state(&a.context).unwrap(), state(&b.context).unwrap());
+
+    async fn final_state(required: u64, improves: bool) -> State {
+        let graph = review_graph(improves, true).unwrap();
+        run(&graph, required, "test").await.1.unwrap()
     }
+
     #[tokio::test]
-    async fn repair_budget_hands_off() {
-        let mut s = Session::new_from_task("a".into(), "prepare");
-        s.context.set("review", initial(99)).unwrap();
-        drive(&graph(false).unwrap(), &mut s).await.unwrap();
-        let result = state(&s.context).unwrap();
-        assert_eq!(result.repairs, 2);
-        assert_eq!(result.outcome.as_deref(), Some("needs_human"));
+    async fn one_repair_reaches_the_requirement() {
+        let s = final_state(2, true).await;
+        assert_eq!(s["outcome"], "accepted");
+        assert_eq!(level(&s, "repairs").unwrap(), 1);
     }
+
     #[tokio::test]
-    async fn framework_edge_cases_are_explicit() {
-        probes().await.unwrap();
+    async fn the_business_budget_hands_off_and_the_graph_still_completes() {
+        let s = final_state(4, false).await;
+        assert_eq!(
+            (s["outcome"].as_str(), level(&s, "repairs").unwrap()),
+            (Some("needs_human"), 2)
+        );
     }
-    #[test]
-    fn missing_and_wrong_schema_fail_closed() {
-        let c = Context::new();
-        assert!(state(&c).is_err());
-        let mut s = initial(2);
-        s.schema = 9;
-        c.set("review", s).unwrap();
-        assert!(state(&c).is_err());
+
+    #[tokio::test]
+    async fn only_the_recursion_limit_stops_a_loop_that_never_counts() {
+        let graph = review_graph(false, false).unwrap().with_recursion_limit(12);
+        let (_, r) = run(&graph, 4, "runaway").await;
+        assert!(matches!(r, Err(GraphError::RecursionLimitExceeded(12))));
+    }
+
+    #[tokio::test]
+    async fn every_probe_reports_its_expected_boundary() {
+        let lines = probes().await.unwrap().join("\n");
+        for expected in [
+            "dangling_edge rejected_at_compile=true",
+            "missing_start rejected_at_compile=true",
+            "bad_goto rejected_at_run=true",
+            "unmapped_route rejected_at_run=true",
+            "no_edge completed=true",
+            "two_edges ran=[\"a\",\"b\",\"c\"]",
+            "strict_channels rejected=true",
+            "local_mutation x=\"original\"",
+            "malformed_required rejected=true",
+            "counter_channel n=2.0",
+        ] {
+            assert!(lines.contains(expected), "{expected}\n{lines}");
+        }
     }
 }

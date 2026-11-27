@@ -15,6 +15,9 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parent
+# ADK-Rust 3.0 章节（manifest 里 stack 为 adk3）的 .cargo/config.toml 指向章节目录旁边的 adk-rust/，
+# 也就是 chapters/adk-rust；用 `python3 run.py fetch-adk` 取一次固定提交的源码。
+ADK_SOURCE = ROOT / "chapters" / "adk-rust"
 
 
 def command(args, cwd, env):
@@ -40,6 +43,8 @@ def doctor():
         configured = os.environ.get(lesson + "_PG_BIN")
         binary = Path(configured) / "postgres" if configured else shutil.which("postgres")
         print("{} PostgreSQL 18: {}".format(lesson, binary or "MISSING (needed only for P01/P04)"))
+    adk = "present" if (ADK_SOURCE / "adk-core" / "Cargo.toml").is_file() else "MISSING (run: python3 run.py fetch-adk)"
+    print("ADK-Rust 3.0 source for adk3 chapters: {} ({})".format(adk, ADK_SOURCE))
     print("Install: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy")
     print("Platform: macOS/Linux/WSL; PostgreSQL labs need a non-root Unix user.")
 
@@ -59,6 +64,10 @@ def run_lesson(lesson, action, offline, keep):
         work = Path(directory)
         project = work / "project"
         shutil.copytree(source, project)
+        if lesson.get("stack") == "adk3":
+            if not (ADK_SOURCE / "adk-core" / "Cargo.toml").is_file():
+                raise ValueError("ADK-Rust source missing; run: python3 run.py fetch-adk")
+            (work / "adk-rust").symlink_to(ADK_SOURCE, target_is_directory=True)
         run = work / "run"
         run.mkdir()
         for name, content in lesson.get("inputs", {}).items():
@@ -77,6 +86,14 @@ def run_lesson(lesson, action, offline, keep):
                 command(["cargo", "clippy"] + flags + ["--all-targets", "--", "-D", "warnings"], project, env)
             command(["cargo", "build"] + flags, project, env)
             binary = target / "debug" / (lesson["binary"] + executable_suffix)
+            # ADK-Rust 3.0 子工程（例如专题 2 的 adk/）：各自带 .cargo/config.toml，在自己的目录里检查与构建
+            for config in sorted(project.glob("*/.cargo/config.toml")):
+                sub = config.parent.parent
+                if action == "test":
+                    command(["cargo", "fmt", "--check"], sub, env)
+                    command(["cargo", "test"] + flags + ["--", "--test-threads=1"], sub, env)
+                    command(["cargo", "clippy"] + flags + ["--all-targets", "--", "-D", "warnings"], sub, env)
+                command(["cargo", "build"] + flags, sub, env)
         else:
             source_file = project / (slug + ".rs")
             binary = work / ("lab" + executable_suffix)
@@ -101,7 +118,7 @@ def run_lesson(lesson, action, offline, keep):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=["list", "doctor", "integrity", "run", "test"])
+    parser.add_argument("action", choices=["list", "doctor", "fetch-adk", "integrity", "run", "test"])
     parser.add_argument("lesson", nargs="?", help="R00..R20, G01..G03, K01, D01..D08, P01..P06, or topic slug")
     parser.add_argument("--all", action="store_true", help="Run every chapter, including PostgreSQL labs")
     parser.add_argument("--offline", action="store_true", help="Require Cargo dependencies already cached")
@@ -112,13 +129,16 @@ def main():
     if args.action == "list":
         for row in lessons:
             chapter = "第 {} 章".format(row['chapter']) if 'chapter' in row else "专题 {}".format(int(row['id'][1:]))
-            print("{}  {:30} {} · {}{}".format(row["id"], row["slug"], chapter, row["title"], " [PostgreSQL 18]" if row["requires_postgres"] else ""))
+            print("{}  {:30} {} · {}{}{}".format(row["id"], row["slug"], chapter, row["title"], " [PostgreSQL 18]" if row["requires_postgres"] else "", " [ADK-Rust 3.0]" if row.get("stack") == "adk3" else ""))
         return
     if args.action == "doctor":
         doctor()
         return
     if args.action == "integrity":
         integrity()
+        return
+    if args.action == "fetch-adk":
+        subprocess.run([sys.executable, str(ROOT / "fetch-adk-rust.py"), str(ADK_SOURCE)], check=True)
         return
     if args.all == bool(args.lesson):
         parser.error("Choose either one lesson or --all")

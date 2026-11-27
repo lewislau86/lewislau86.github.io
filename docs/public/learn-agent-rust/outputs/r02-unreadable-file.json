@@ -1,0 +1,45 @@
+{
+  "scenario": "unreadable-file",
+  "equal": true,
+  "direct": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+      "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+      "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool 'read_file' failed: tool.unavailable (file.unreadable)\"}",
+      "[assistant] text    \"没能读到 README，任务未完成。\"",
+      "[assistant] final"
+    ],
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]",
+      "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+      "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+    ],
+    "model_calls": 3,
+    "tool_results": 2,
+    "error": null,
+    "answer": "没能读到 README，任务未完成。",
+    "verified": false
+  },
+  "graph": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+      "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+      "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool 'read_file' failed: tool.unavailable (file.unreadable)\"}",
+      "[assistant] text    \"没能读到 README，任务未完成。\"",
+      "[assistant] final"
+    ],
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]",
+      "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+      "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+    ],
+    "model_calls": 3,
+    "tool_results": 2,
+    "error": null,
+    "answer": "没能读到 README，任务未完成。",
+    "verified": false
+  },
+  "graph_check": false
+}

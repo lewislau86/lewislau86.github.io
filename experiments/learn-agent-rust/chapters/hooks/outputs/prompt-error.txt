@@ -1,0 +1,4 @@
+场景：prompt-error；模型：ScriptedLlm；策略：WritePolicy
+hook before_agent/input-log -> continue
+hook before_agent/input-check -> error
+统计：write_attempts=0 write_successes=0 hook_failures=1 result_status=none stop=hook.failed summary_written=false task_ok=false

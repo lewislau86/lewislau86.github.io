@@ -30,29 +30,30 @@ def arrow(points, color="#64748b"):
 
 
 def runtime_architecture():
-    body = text(480, 38, "Rust Agent 的目标架构：模型、工具与状态如何连接", 24, bold=True)
+    # ADK-Rust 3.0 版（2026-11 迁移）；全书迁移期间，尚未迁移的章节仍按旧版两库实现
+    body = text(480, 38, "Rust Agent 的目标架构：ADK-Rust 3.0 的各部分怎样连接", 24, bold=True)
     body += '<rect x="24" y="68" width="624" height="608" rx="16" fill="#eff6ff" stroke="#93c5fd" stroke-dasharray="7 5"/>'
     body += text(336, 98, "一个 Rust 进程 · 一个 Tokio runtime", 17, "#2563eb", True)
-    body += box(74, 116, 524, 76, "入口与应用策略", "CLI · 权限 · 预算 · 审批 · 停止条件")
+    body += box(74, 116, 524, 76, "应用：入口、策略与验收", "DeclarativePolicy · 预算 · 审批 · 任务是否完成")
     body += arrow("M336 192 V222")
-    body += box(74, 226, 524, 76, "graph-flow：图执行与会话", "Task · 路由 · Session · Storage")
+    body += box(74, 226, 524, 76, "Runner（adk-runner）", "加载会话 · 装入策略与预算 · 保存事件")
     body += arrow("M336 302 V332")
-    body += box(74, 336, 524, 76, "应用节点与消息状态", "ModelTurn · ExecuteTools · 调用 ID · 结果回传")
+    body += box(74, 336, 524, 76, "LlmAgent / 图（adk-agent · adk-graph）", "模型 ↔ 工具循环 · 行动前检查策略与预算")
     body += arrow("M336 412 V444")
     body += arrow("M74 374 H44 V612 H70")
-    body += box(74, 448, 524, 84, "langchain-rust", "模型 trait · 消息 · 结构化调用结果")
-    body += box(74, 570, 524, 84, "工具注册与执行", "参数校验 · 权限与超时 · 有界结果", "#0f766e")
+    body += box(74, 448, 524, 84, "Llm trait（adk-core · adk-model）", "ScriptedLlm / 规则模型 / 真实服务适配器")
+    body += box(74, 570, 524, 84, "FunctionTool（adk-tool）", "schema 校验 · 副作用声明 · 有界结果", "#0f766e")
     body += arrow("M598 493 H690")
-    body += box(694, 448, 238, 84, "模型提供方", "假模型或外部服务", "#0f766e")
+    body += box(694, 448, 238, 84, "模型提供方", "脚本模型或外部服务", "#0f766e")
     body += arrow("M598 264 H690")
-    body += box(694, 226, 238, 90, "会话存储", "内存 / 后续 PostgreSQL", "#b45309")
-    body += text(806, 344, "成功保存形成检查点", 16, "#b45309")
+    body += box(694, 226, 238, 90, "会话与账本", "内存 / SQLite / PostgreSQL", "#b45309")
+    body += text(806, 344, "adk-session：事件、检查点、账本", 15, "#b45309")
     body += arrow("M598 612 H690")
     body += box(694, 570, 238, 84, "限定工作区", "练习文件 / 外部工具", "#0f766e")
-    body += text(480, 726, "示意图：模块按章节逐步实现；外部服务与恢复能力分别验收。", 17, "#475569")
+    body += text(480, 726, "示意图：模块按章节逐步使用；外部服务与恢复能力分别验收。", 17, "#475569")
     svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="960" height="750" viewBox="0 0 960 750" role="img" aria-labelledby="title desc">'
            '<title id="title">Rust Agent 的课程目标架构</title>'
-           '<desc id="desc">应用策略和 graph-flow 推进模型与工具节点。模型接口连接模型提供方，工具操作限定工作区，会话通过存储保存。目标模块将逐章实现。</desc>'
+           '<desc id="desc">应用的策略与验收在最外层；Runner 管理会话并装入策略和预算；LlmAgent 与图运行模型和工具的循环，在行动前检查策略和预算；Llm trait 连接模型提供方，FunctionTool 操作限定工作区，会话与账本由 adk-session 保存。</desc>'
            '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="#64748b"/></marker></defs>'
            '<rect width="960" height="750" rx="16" fill="#f8fafc"/>'
            '<g font-family="PingFang SC, Microsoft YaHei, sans-serif">' + body + '</g></svg>\n')
@@ -87,7 +88,7 @@ def request_and_action():
     body += arrow("M245 164 V207")
     body += panel(48, 214, 390, 142, "模型返回：行动请求", ['read_file("README.md")', "此时只有名称、参数和调用 ID。"])
     body += arrow("M438 284 H513")
-    body += panel(522, 214, 390, 142, "程序执行：真实读取", ["检查策略，再调用 std::fs。", "文件内容或错误成为工具结果。"], "#0f766e")
+    body += panel(522, 214, 390, 142, "程序执行：真实读取", ["策略允许后，工具读取文件。", "文件内容或错误成为工具结果。"], "#0f766e")
     body += arrow("M717 356 V398 H245 V438")
     body += text(480, 425, "工具结果写回消息历史", 18, "#0f766e")
     body += panel(48, 446, 864, 92, "模型再次获得上下文", ["看到 README 的内容后，才能据此生成回答。"])
@@ -97,15 +98,17 @@ def request_and_action():
 
 def message_trace():
     evidence = json.loads((ROOT / "scripts/data/learn-agent-rust/r00-results.json").read_text())
-    source = ROOT / "docs/public/learn-agent-rust/code/architecture-and-setup.rs"
-    if hashlib.sha256(source.read_bytes()).hexdigest() != evidence["source_sha256"]:
-        raise ValueError("R00 evidence is stale; rerun verify-learn-agent-rust.py")
+    package = ROOT / "docs/public/learn-agent-rust/code/architecture-and-setup"
+    for name, digest in evidence["source_sha256"].items():
+        source = package / name if (package / name).exists() else ROOT / "scripts" / name
+        if hashlib.sha256(source.read_bytes()).hexdigest() != digest:
+            raise ValueError("R00 evidence is stale; rerun verify-learn-agent-rust.py")
     normal = evidence["scenarios"][0]
     names = ["提出问题", "请求读取 README", "回传文件内容", "给出启动命令"]
     body = ""
     for index, role in enumerate(normal["roles"]):
         y = 80 + 84 * index
-        color = "#0f766e" if role == "tool" else "#2563eb"
+        color = "#0f766e" if role == "function" else "#2563eb"
         body += '<rect x="48" y="{}" width="864" height="62" rx="10" fill="#fff" stroke="{}" stroke-width="2"/>'.format(y, color)
         body += text(255, y + 38, "{} · {}".format(index + 1, role), 21, color, True)
         body += text(638, y + 38, names[index], 21)
@@ -121,19 +124,19 @@ def message_trace():
         body += text(205, y, labels[row["name"]], 19)
         body += text(480, y, "{} / {}".format(row["read_attempts"], row["read_successes"]), 20, "#0f766e", True)
         body += text(752, y, row["outcome"], 19)
-    body += text(480, 658, "数据来自 R00 的固定规则模型与临时文件实验；未请求外部模型。", 17, "#475569")
+    body += text(480, 658, "数据来自 R00 的 ScriptedLlm 与临时文件实验；未请求外部模型。", 17, "#475569")
     save_figure("r00-message-trace.svg", "一次往返，消息历史逐条增加", "消息顺序与读取计数来自 R00 实际运行记录。拒绝时读取次数为零，缺失文件时读取尝试失败。", 688, body)
 
 
 def state_lifetimes():
     body = panel(32, 92, 280, 186, "消息历史", ["用户说了什么？", "请求了哪个工具？", "工具返回了什么？"])
-    body += panel(340, 92, 280, 186, "运行控制状态", ["已经调用几轮？", "是否允许读取？", "当前应该停止吗？"], "#0f766e")
+    body += panel(340, 92, 280, 186, "运行控制状态", ["已经调用几次模型？", "是否允许读取？", "当前应该停止吗？"], "#0f766e")
     body += panel(648, 92, 280, 186, "持久化检查点", ["保存恢复所需状态", "记录恢复位置与版本", "成功写入存储才成立"], "#b45309")
     body += '<path d="M48 326 H912" stroke="#94a3b8" stroke-dasharray="8 6" stroke-width="2"/>'
     body += text(480, 320, "当前进程退出", 20, "#475569", True)
-    body += text(326, 379, "本章的内存状态随进程结束而丢失", 20, "#2563eb")
+    body += text(326, 379, "本章的内存会话随进程结束而丢失", 20, "#2563eb")
     body += text(788, 379, "后续章节单独验证恢复", 18, "#b45309")
-    body += text(480, 436, "示意图：消息放进 Vec，并不会自动成为数据库中的检查点。", 18, "#475569")
+    body += text(480, 436, "示意图：会话放在内存里，并不会自动成为数据库中的检查点。", 18, "#475569")
     save_figure("r00-state-lifetimes.svg", "看过的内容、控制进度与恢复记录，分别放在哪里？", "消息历史和控制状态可以存放在内存。跨进程恢复需要成功保存恢复所需状态，本章不实现持久化。", 468, body)
 
 
@@ -154,42 +157,45 @@ def control_flow():
     body += arrow("M480 480 V584")
     body += text(480, 615, "最终回答 → 停止", 22, "#b45309", True)
     body += text(480, 667, "图节点也能承载这些分支；画成图本身不会产生模型决策。", 18, "#475569")
-    save_figure("r00-workflow-and-agent.svg", "写死一条业务路径，还是让模型参与选择下一步？", "上方为固定流程，下方为目标 Agent 循环。图执行器承载路由，应用解释模型的工具请求并检查执行条件。", 696, body)
+    save_figure("r00-workflow-and-agent.svg", "写死一条业务路径，还是让模型参与选择下一步？", "上方为固定流程，下方为 Agent 循环：LlmAgent 根据模型的结构化回复决定是否执行工具，策略检查执行条件。", 696, body)
 
 
 def permission_routes():
-    body = panel(180, 78, 600, 100, "模型提出 ToolCall", ["调用 ID + 工具类型 + 完整参数"])
+    # ADK-Rust 3.0 版：策略是应用实现的 ToolPolicy，装在 Runner 上，由 LlmAgent 在执行工具前检查
+    body = panel(180, 78, 600, 100, "模型提出工具调用", ["调用 ID + 工具名 + 完整参数"])
     body += arrow("M480 178 V210")
-    body += panel(180, 218, 600, 95, "应用执行 check_permission", ["按明确规则分类；未命中许可范围则拒绝"])
+    body += panel(180, 218, 600, 95, "LlmAgent 询问 SummaryPolicy（ToolPolicy）", ["只看请求，不做 I/O；未命中允许范围就拒绝"])
     body += arrow("M300 313 V343 H167 V373")
     body += arrow("M480 313 V373")
     body += arrow("M660 313 V343 H793 V373")
-    body += panel(28, 382, 278, 136, "Allow", ["读取 README.md", "直接调用文件工具"], "#0f766e")
-    body += panel(341, 382, 278, 136, "AskApproval", ["写入 notes/summary.txt", "保存请求，返回等待"], "#b45309")
-    body += panel(654, 382, 278, 136, "Deny", ["其他动作或超长内容", "生成 denied 工具结果"], "#b91c1c")
-    body += text(480, 562, "只有等待分支保留 pending；此时不生成写入工具结果。", 20, "#b45309", True)
-    body += text(480, 604, "示意图：本章使用固定文件规则，应用自己决定动作权限。", 18, "#475569")
-    save_figure("r03-permission-routes.svg", "一次请求，在执行前分成三条路径", "只读请求直接执行，指定写入等待审批，其余请求直接拒绝；等待期间没有写入结果。", 636, body)
+    body += panel(28, 382, 278, 136, "Allow", ["读取 README.md", "直接调用工具"], "#0f766e")
+    body += panel(341, 382, 278, 136, "RequireApproval", ["写入 notes/summary.txt", "挂起：记入审批记录"], "#b45309")
+    body += panel(654, 382, 278, 136, "Deny", ["其他已注册工具的请求", "结果状态 refused"], "#b91c1c")
+    body += text(480, 562, "挂起的调用得到 held 结果，本次运行结束；工具没有执行。未注册的工具在策略之前就是 not_run。", 18, "#b45309", True)
+    body += text(480, 604, "示意图：本章的策略是固定的文件规则，由应用自己编写。", 18, "#475569")
+    save_figure("r03-permission-routes.svg", "一次请求，在执行前分成三条路径", "只读请求直接执行，指定写入挂起等待批准，其余请求直接拒绝；挂起期间工具没有执行。", 636, body)
 
 
 def approval_binding():
-    body = panel(30, 86, 420, 226, "pending 保存完整快照", ["当前会话的工作区 scope", "审批序号 + call_id", "工具类型 + 路径 + 写入内容", "每个字段都参与相等比较"], "#b45309")
-    body += panel(510, 86, 420, 226, "可信入口提交人工决定", ["展示快照后选择批准或拒绝", "回复必须匹配保存的快照", "不匹配：保留等待状态", "批准身份由外层 UI 负责"])
+    body = panel(30, 86, 420, 226, "审批记录保存完整请求", ["会话范围：app / user / session", "指纹 = 执行的 Agent + 工具来源与声明", "+ 工具名 + 规范化参数", "调用 ID 不在指纹里"], "#b45309")
+    body += panel(510, 86, 420, 226, "审批人按指纹记下决定", ["只对 pending() 里的指纹做决定", "不一致：等待中的调用继续等待", "多出的决定会变成预先批准", "审批人的身份由外层系统负责"])
     body += arrow("M450 200 H501")
     body += arrow("M720 312 V363 H480 V378")
-    body += text(480, 347, "匹配后先 take()，移走 pending", 18, "#b45309", True)
-    body += panel(30, 390, 420, 130, "人工拒绝", ["不调用文件工具", "返回 declined + 原 call_id"], "#b91c1c")
-    body += panel(510, 390, 420, 130, "人工批准", ["执行保存的原始动作", "返回 ok 或 tool_error"], "#0f766e")
-    body += text(480, 563, "两条分支都消耗本次审批；执行失败也不恢复已用审批。", 20, bold=True)
-    body += text(480, 606, "示意图：状态只在当前进程；跨进程恢复与外部幂等在后续专题验证。", 17, "#475569")
-    save_figure("r03-approval-binding.svg", "批准绑定到哪一次动作？", "审批比较会话、序号、调用 ID、工具类型和全部参数；匹配后先消耗，再拒绝或执行保存的动作。", 638, body)
+    body += text(480, 347, "下一次运行开始时，取走决定（取走即用掉）", 18, "#b45309", True)
+    body += panel(30, 390, 420, 130, "拒绝", ["工具不执行", "结果 refused，带原调用 ID"], "#b91c1c")
+    body += panel(510, 390, 420, 130, "批准", ["执行原来那次调用：同一调用 ID、同一参数", "结果 ok 或 failed"], "#0f766e")
+    body += text(480, 563, "两条分支都用掉这次决定；执行失败也不退回。", 20, bold=True)
+    body += text(480, 606, "示意图：本章审批记录只在内存里；跨进程恢复在后续章节验证。", 17, "#475569")
+    save_figure("r03-approval-binding.svg", "批准绑定到哪一次调用？", "审批记录保存完整请求并合成指纹；决定按指纹记录，下一次运行取走决定后拒绝或执行原来那次调用。", 638, body)
 
 
 def permission_results():
     evidence = json.loads((ROOT / "scripts/data/learn-agent-rust/r03-results.json").read_text())
-    source = ROOT / "docs/public/learn-agent-rust/code/permissions.rs"
-    if hashlib.sha256(source.read_bytes()).hexdigest() != evidence["source_sha256"]:
-        raise ValueError("R03 evidence is stale; rerun verify-agent-permissions.py")
+    package = ROOT / "docs/public/learn-agent-rust/code/permissions"
+    for name, digest in evidence["source_sha256"].items():
+        source = package / name if (package / name).exists() else ROOT / "scripts" / name
+        if hashlib.sha256(source.read_bytes()).hexdigest() != digest:
+            raise ValueError("R03 evidence is stale; rerun verify-agent-permissions.py")
     body = text(480, 84, "每个场景都先完成一次 README 读取；下表只比较写入与审批状态。", 18, "#475569")
     for x, label in [(155, "场景"), (390, "写入尝试"), (540, "写入成功"), (695, "工具结果数"), (845, "仍在等待")]:
         body += text(x, 135, label, 20, bold=True)
@@ -201,9 +207,9 @@ def permission_results():
         for x, key in [(390, "write_attempts"), (540, "write_successes"), (695, "tool_results")]:
             body += text(x, y, str(row[key]), 21, "#0f766e", True)
         body += text(845, y, "是" if row["pending"] else "否", 19, "#b45309" if row["pending"] else "#475569")
-    body += text(480, 644, "工具结果包含读取结果；审批错配和重复回复不会再生成工具结果。", 18, "#475569")
-    body += text(480, 681, "数据来自 R03 的真实文件实验；模型请求与人工回复为固定测试输入。", 17, "#475569")
-    save_figure("r03-permission-results.svg", "规则是否生效，用文件调用次数核对", "实际运行的十个场景中，等待、拒绝和参数替换没有写入尝试；批准和重复批准只写一次；写入失败计一次尝试零次成功。", 710, body)
+    body += text(480, 644, "工具结果包含读取结果与“等待批准”的结果；“仍在等待”来自审批记录。", 18, "#475569")
+    body += text(480, 681, "数据来自 R03 的真实文件实验；模型请求与审批人的决定为固定输入。", 17, "#475569")
+    save_figure("r03-permission-results.svg", "规则是否生效，用文件调用次数核对", "实际运行的十个场景中，等待、拒绝和改了内容的批准都没有写入尝试；批准只写一次，再次提出同一写入又要等待；写入失败计一次尝试零次成功。", 710, body)
 
 
 def r02_figures():
@@ -211,57 +217,60 @@ def r02_figures():
     evidence = json.loads((ROOT / "scripts/data/learn-agent-rust/r02-results.json").read_text())
     package = ROOT / "docs/public/learn-agent-rust/code/tools-and-graph"
     for name, digest in evidence["source_sha256"].items():
-        if hashlib.sha256((package / name).read_bytes()).hexdigest() != digest:
+        # 下载包另外放进 fetch-adk-rust.py 与基线文件，它们的唯一来源在 scripts/
+        source = package / name if (package / name).exists() else ROOT / "scripts" / name
+        if hashlib.sha256(source.read_bytes()).hexdigest() != digest:
             raise ValueError("R02 evidence is stale; rerun verify-learn-agent-rust-r02.py")
 
-    body = panel(48, 82, 864, 128, "模型：看到可用工具的描述", ["名称 · 说明 · 参数 schema", "本例由脚本模型返回固定调用；真实服务另验收"])
+    # ADK-Rust 3.0 版（2026-11 迁移）：数据来自 r02-results.json 的事件轨迹与请求记录
+    body = panel(48, 82, 864, 128, "模型：看到每个工具的声明", ["名称 · 说明 · 由 PathArgs 生成的参数 schema", "本例由 ScriptedLlm 返回固定调用；真实服务另验收"])
     body += arrow("M480 272 V218")
-    body += text(681, 247, "definitions() 导出", 18, "#2563eb")
-    body += panel(48, 280, 864, 132, "Registry：同一条目保存描述与处理函数", ["list_files → list_files(root, args)", "read_file → read_file(root, args)"], "#0f766e")
+    body += text(690, 247, "LlmAgent 声明给模型", 18, "#2563eb")
+    body += panel(48, 280, 864, 132, "FunctionTool：一处定义，两种用途", ["read_file：名称 · 说明 · schema · 处理函数 · ReadOnly", "list_files：名称 · 说明 · schema · 处理函数 · ReadOnly"], "#0f766e")
     body += arrow("M480 420 V470")
-    body += text(705, 452, "dispatch() 按名称查找", 18, "#0f766e")
-    body += panel(48, 478, 864, 100, "程序：解析参数，运行处理函数", ["成功返回 data，失败返回 error；都保留调用 ID。"], "#b45309")
-    body += text(480, 621, "示意图：新增工具修改注册条目，循环继续使用共同入口。", 18, "#475569")
-    save_figure("r02-tool-registry.svg", "工具描述与执行入口来自同一份注册表", "注册表向模型导出描述，并按模型返回名称查找处理函数。", 650, body)
+    body += text(712, 452, "收到调用：按名称找到工具", 18, "#0f766e")
+    body += panel(48, 478, 864, 100, "FunctionTool 先按 schema 校验参数，再运行处理函数", ["取值规则（如只能读 README.md）仍写在处理函数里；结果带原调用 ID。"], "#b45309")
+    body += text(480, 621, "示意图：新增工具就是多注册一个 FunctionTool，循环由 LlmAgent 负责。", 18, "#475569")
+    save_figure("r02-tool-registry.svg", "工具描述与执行入口来自同一份定义", "FunctionTool 把名称、说明、schema 与处理函数放在一起；LlmAgent 向模型声明前三者，收到调用后由 FunctionTool 先校验参数再运行处理函数。", 650, body)
 
-    normal = next(row for row in evidence["scenarios"] if row["scenario"] == "normal")
-    messages = normal["state"]["messages"]
-    labels = {"human": "用户", "ai": "assistant", "tool": "tool"}
+    normal = next(row for row in evidence["scenarios"] if row["scenario"] == "normal")["direct"]
+    rows = [("1 · system + user", "Agent 指令与用户问题", "#2563eb")]
+    for line in normal["trace"]:
+        kind = line.split("]", 1)[1].split()[0]
+        ident = line.split("id=")[1].split(" ")[0] if "id=" in line else ""
+        if kind == "call":
+            tool = line.split(ident, 1)[1].split()[0]
+            rows.append(("{} · model".format(len(rows) + 1), "调用 {} · ID={}".format(tool, ident), "#2563eb"))
+        elif kind == "result":
+            detail = "目录结果" if "entries" in line else "README 正文"
+            rows.append(("{} · function".format(len(rows) + 1), "{} · ID={}".format(detail, ident), "#0f766e"))
+        elif kind == "text":
+            rows.append(("{} · model".format(len(rows) + 1), "最终回答：启动命令 cargo run", "#2563eb"))
     body = ""
-    for index, message in enumerate(messages):
+    for index, (label, detail, color) in enumerate(rows):
         y = 80 + index * 82
-        calls = message.get("tool_calls") or []
-        if calls:
-            call = calls[0]
-            detail = call["function"]["name"] + " · ID=" + call["id"]
-        elif message["message_type"] == "tool":
-            data = json.loads(message["content"])["data"]
-            detail = ("目录结果" if "entries" in data else "README 正文") + " · ID=" + message["id"]
-        else:
-            detail = "先列目录，再读 README" if index == 0 else message["content"]
-        color = "#0f766e" if message["message_type"] == "tool" else "#2563eb"
         body += '<rect x="48" y="{}" width="864" height="62" rx="10" fill="#fff" stroke="{}" stroke-width="2"/>'.format(y, color)
-        body += text(194, y + 38, "{} · {}".format(index + 1, labels[message["message_type"]]), 20, color, True)
+        body += text(194, y + 38, label, 20, color, True)
         body += text(625, y + 38, detail, 18)
-        if index < len(messages) - 1:
+        if index < len(rows) - 1:
             body += arrow("M480 {} V{}".format(y + 62, y + 76))
-    state = normal["state"]
-    body += text(480, 613, "真实运行：{} 轮模型调用 · {} 次工具分发 · {} 条消息".format(state["model_turns"], state["tool_dispatches"], len(messages)), 21, "#0f766e", True)
-    body += text(480, 654, "数据：固定脚本模型 + 真实临时文件；显式版与图版状态一致。", 17, "#475569")
-    save_figure("r02-message-history.svg", "两次工具往返怎样形成完整的消息历史？", "消息顺序、调用 ID 与计数均来自 R02 normal 实际运行记录。", 684, body)
+    y = 80 + len(rows) * 82
+    body += text(480, y + 20, "真实运行：{} 次模型调用 · {} 条工具结果 · 回答{}通过检查".format(
+        normal["model_calls"], normal["tool_results"], "" if normal["verified"] else "未"), 21, "#0f766e", True)
+    body += text(480, y + 60, "数据：ScriptedLlm + 真实临时文件；Runner 直接运行与放进图里运行的轨迹一致。", 17, "#475569")
+    save_figure("r02-message-history.svg", "两次工具往返怎样形成完整的消息历史？", "消息顺序、调用 ID 与计数均来自 R02 normal 实际运行记录。", y + 92, body)
 
-    body = panel(38, 96, 400, 142, "ModelTurn", ["检查轮次 → 调用模型", "记录请求，或写入停止原因"])
-    body += arrow("M438 164 H515")
-    body += text(480, 137, "有调用", 16, "#2563eb")
-    body += panel(524, 96, 398, 142, "ExecuteTools", ["按返回顺序分发待处理调用", "追加工具结果，清空 pending"], "#0f766e")
-    body += arrow("M724 238 V301 H350 V245")
-    body += text(480, 289, "Continue → Paused → 外层再次推进", 18, "#0f766e")
-    body += arrow("M238 238 V374", "#b45309")
-    body += text(135, 336, "已有停止原因", 17, "#b45309")
-    body += panel(38, 382, 400, 112, "End → Completed", ["应用仍需读取 stop 判断业务结果"], "#b45309")
-    body += panel(524, 382, 398, 112, "状态放在 Context 的 agent 键", ["消息 · pending · ID 集合 · 预算"], "#0f766e")
-    body += text(480, 552, "两个节点共用 State；Session 记录当前位置。本例仅在内存中推进。", 18, "#475569")
-    save_figure("r02-graph-routing.svg", "把同一循环映射为两个图节点", "ModelTurn 与 ExecuteTools 通过 Continue 交回外层驱动器，停止时返回 End。", 586, body)
+    body = panel(38, 96, 250, 112, "START", ["用户问题进入图状态"], "#475569")
+    body += arrow("M288 152 H345")
+    body += panel(354, 86, 300, 270, "assistant（AgentNode）", ["整个 LlmAgent：", "调用模型 → 执行工具", "→ 再调用模型 …", "直到回答或达到上限", "", "输出：answer · readme"], "#2563eb")
+    body += arrow("M654 152 H711")
+    body += panel(720, 96, 202, 112, "check_answer", ["普通函数节点", "写入 verified"], "#0f766e")
+    body += arrow("M821 208 V262")
+    body += panel(720, 270, 202, 86, "END", ["结论交回 Runner"], "#475569")
+    body += arrow("M504 356 V410", "#b45309")
+    body += panel(270, 418, 468, 96, "Agent 出错（预算、循环上限）", ["图停在 assistant，check_answer 不运行"], "#b45309")
+    body += text(480, 556, "图调度 Agent 和普通步骤；单次工具往返留在 LlmAgent 内部。", 18, "#475569")
+    save_figure("r02-graph-routing.svg", "把同一个 Agent 放进图节点", "图从 START 进入 assistant 节点，节点内部是 LlmAgent 完整的模型与工具往返；结束后进入 check_answer 函数节点核对回答，再到 END；Agent 出错时图停在 assistant。", 590, body)
 
 
 def main():

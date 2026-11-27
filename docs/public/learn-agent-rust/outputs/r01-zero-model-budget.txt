@@ -1,6 +1,5 @@
-场景：normal；模型：固定规则的脚本模型
-预算：model_turns=0 tool_calls=2
-消息 1 | user | 读取 README.md，告诉我如何启动项目。
-统计：model_turns=0 tool_calls=0 read_attempts=0 read_successes=0 messages=1
-停止：ModelBudget；fixture_goal_met=false
-原因：下一次模型调用前停止
+场景：normal；模型：RuleLlm（按规则读取请求内容的脚本模型）
+预算：model_calls=0 tool_calls=不限；循环上限：默认 100
+[assistant] stop    code=budget.model_calls
+统计：model_calls=0 tool_results=0 read_attempts=0 read_successes=0 session_events=2
+停止：budget.model_calls；fixture_goal_met=false

@@ -13,6 +13,16 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs/learn-agent-rust"
 MANIFEST = ROOT / "scripts/learn-agent-rust-lessons.json"
 ASSETS = ROOT / "scripts/learn-agent-rust-upstream-assets.json"
+STACKS = {"v1", "adk3"}
+
+
+def migrating(course):
+    """迁移开始（至少一章为 adk3）后，目录与路线图才标注每章的实验版本。"""
+    return any(row["stack"] == "adk3" for row in course["lessons"])
+
+
+def stack_note(row):
+    return "实验基于 ADK-Rust 3.0" if row["stack"] == "adk3" else "旧版实验，待迁移到 ADK-Rust 3.0"
 
 
 def load_course():
@@ -45,6 +55,9 @@ def load_course():
     for row in lessons:
         if row["part"] not in parts or row["status"] not in {"planned", "written"}:
             raise ValueError("Invalid lesson part/status: " + row["id"])
+        # stack: v1 = 旧版实验（graph-flow / langchain-rust / 标准库），adk3 = 已迁移到 ADK-Rust 3.0（见根目录 agent.md）
+        if row.get("stack") not in STACKS:
+            raise ValueError("Invalid or missing lesson stack: " + row["id"])
         if not re.fullmatch(r"[a-z]+(?:-[a-z]+)*", row["slug"]):
             raise ValueError("Invalid topic slug: " + row["slug"])
         visit(row["id"], set())
@@ -78,6 +91,8 @@ def render_catalog(course):
         for row in course["lessons"]:
             if row["part"] == part["id"]:
                 status = "规划中" if row["status"] == "planned" else "正文已成文；实验见章内说明"
+                if migrating(course) and row["status"] == "written":
+                    status += "；" + stack_note(row)
                 lines.append("| {} | {} | {} |".format(reference(row), row["question"], status))
         lines.append("")
     return "\n".join(lines).rstrip()
@@ -96,6 +111,8 @@ def render_timeline(course):
             lines.extend(["### {} {{#{}}}".format(label(row), row["id"].lower()), "",
                           ("**课程标识（实验待实现）：** `" if row["status"] == "planned" else "**实验标识：** `") + row['id'] + "`", ""])
             status = "规划中 · 正文与实验待完成" if row["status"] == "planned" else "正文已成文 · 实验状态见章内"
+            if migrating(course) and row["status"] == "written":
+                status += " · " + stack_note(row)
             lines.extend(["> {} · {}".format(row["domain"], status), "", "**本章问题：** " + row["question"], "", "**新增机制：** " + row["addition"], ""])
             dependencies = "、".join("[{}](#{})".format(item, item.lower()) for item in row["prerequisites"])
             lines.extend(["**前置与基础：** " + (dependencies or "Rust 基础、JSON 与基本 async/await；从本章建立全貌。"), "", "**验收目标：** " + row["outcome"], ""])
@@ -114,7 +131,7 @@ def sidebar(course):
         {"text": "返回知识库", "link": "/"},
         {"text": "课程总览", "link": "/learn-agent-rust/"},
         {"text": "概念导读 · Skills、MCP、RAG 与 Memory", "link": "/learn-agent-rust/knowledge-and-capabilities"},
-        {"text": "图编排导读 · LangGraph 与 graph-flow", "link": "/learn-agent-rust/graph-orchestration"},
+        {"text": "图编排导读 · LangGraph 与 adk-graph", "link": "/learn-agent-rust/graph-orchestration"},
         {"text": "学习路径 · 能力演化", "link": "/learn-agent-rust/learning-path"},
         {"text": "环境准备", "link": "/learn-agent-rust/setup"},
         {"text": "全书实验代码库", "link": "/learn-agent-rust/experiments"},

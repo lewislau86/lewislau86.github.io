@@ -21,10 +21,10 @@
         "transfer": true
       },
       "images": 6,
-      "snippets": 7,
-      "details": 8,
+      "snippets": 5,
+      "details": 7,
       "teaching_focus": "接线正确与推理有效",
-      "evidence_boundary": "标准库接线；模型采用固定脚本。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 接线；模型采用固定脚本。",
       "document_path": "docs/learn-agent-rust/architecture-and-setup.md"
     },
     {
@@ -42,10 +42,10 @@
         "transfer": true
       },
       "images": 3,
-      "snippets": 12,
+      "snippets": 14,
       "details": 6,
       "teaching_focus": "终止性是一种业务约束",
-      "evidence_boundary": "有界显式循环；真实 provider 另验。",
+      "evidence_boundary": "框架内的有界循环与规则模型；真实 provider 另验。",
       "document_path": "docs/learn-agent-rust/agent-loop.md"
     },
     {
@@ -63,10 +63,10 @@
         "transfer": true
       },
       "images": 5,
-      "snippets": 9,
+      "snippets": 7,
       "details": 6,
       "teaching_focus": "比较语义而非画法",
-      "evidence_boundary": "两库接线与脚本模型；同答案不等于状态等价。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 与脚本模型；同答案不等于状态等价。",
       "document_path": "docs/learn-agent-rust/tools-and-graph.md"
     },
     {
@@ -84,10 +84,10 @@
         "transfer": true
       },
       "images": 5,
-      "snippets": 7,
+      "snippets": 8,
       "details": 7,
       "teaching_focus": "授权绑定的是动作",
-      "evidence_boundary": "固定请求与模拟审批；身份服务另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 策略与审批记录；固定请求与决定，审批人身份另验。",
       "document_path": "docs/learn-agent-rust/permissions.md"
     },
     {
@@ -105,10 +105,10 @@
         "transfer": true
       },
       "images": 4,
-      "snippets": 10,
+      "snippets": 8,
       "details": 7,
       "teaching_focus": "观察者也会成为故障源",
-      "evidence_boundary": "固定 Hook 与直属 worker；整轮恢复另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 回调与策略；进程内回调，进程级隔离另验。",
       "document_path": "docs/learn-agent-rust/hooks.md"
     },
     {
@@ -126,10 +126,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 8,
+      "snippets": 9,
       "details": 6,
       "teaching_focus": "路由正确与业务完成分别检查",
-      "evidence_boundary": "真实 graph-flow 路由与固定等级规则；无模型质量结论。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-graph 路由、归并规则与超步上限；固定等级规则，无模型质量结论。",
       "document_path": "docs/learn-agent-rust/graph-state-routing.md"
     },
     {
@@ -147,10 +147,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 8,
+      "snippets": 9,
       "details": 6,
       "teaching_focus": "保存冲突与效果重放分别处理",
-      "evidence_boundary": "真实 SessionStorage 与 SQLite 跨进程恢复；单业务执行者，无外部发布。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-graph 的 SQLite 检查点与跨进程严格恢复；单业务执行者，无外部发布。",
       "document_path": "docs/learn-agent-rust/graph-pause-resume.md"
     },
     {
@@ -168,10 +168,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 8,
+      "snippets": 12,
       "details": 6,
       "teaching_focus": "并发安全与业务归并分别验证",
-      "evidence_boundary": "真实 FanOutTask、共享状态与隔离子图包装；持久化父子恢复另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-graph 超步并行、自动汇合、超时与隔离子图；无外部服务。",
       "document_path": "docs/learn-agent-rust/graph-parallel-subgraphs.md"
     },
     {
@@ -735,10 +735,10 @@
         "transfer": true
       },
       "images": 4,
-      "snippets": 9,
-      "details": 6,
+      "snippets": 12,
+      "details": 7,
       "teaching_focus": "业务身份比重试次数稳定",
-      "evidence_boundary": "两份 SQLite 与独立进程；远程服务合同另验。",
+      "evidence_boundary": "两份 SQLite 与独立进程，加 ADK-Rust 3.0 RC 动作账本的单机恢复；远程服务合同另验。",
       "document_path": "docs/learn-agent-rust/side-effect-reliability.md"
     },
     {

@@ -1,7 +1,7 @@
-call=1 before=prepare after=check status=paused
-call=2 before=check after=repair status=paused
-call=3 before=repair after=check status=paused
-call=4 before=check after=accept status=paused
-call=5 before=accept after=accept status=completed
-scenario=normal outcome=accepted repairs=1 calls=5
+step=0 ran=prepare
+step=1 ran=check
+step=2 ran=repair
+step=3 ran=check
+step=4 ran=accept
+scenario=normal outcome=accepted repairs=1 draft=2
 trace=prepare>check>repair>check>accept

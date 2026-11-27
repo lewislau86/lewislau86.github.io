@@ -1,3 +1,7 @@
-scenario=read source=scripted_tool_requests storage=in_memory
-tool_result call_id=read-1 status=ok content="启动命令：cargo run\n"
-stats read_attempts=1 write_attempts=0 write_successes=0 tool_results=1 pending=false summary_matches=false readme_unchanged=true
+场景：read；模型：ScriptedLlm；策略：SummaryPolicy；审批：InMemoryApprovalStore
+-- run 1
+[assistant] call    id=scripted_tc_0_0 read_file {"path":"README.md"}
+[assistant] result  id=scripted_tc_0_0 read_file status=ok {"text":"# 课程练习项目\n启动命令：cargo run\n"}
+[assistant] text    "启动命令是 cargo run。"
+[assistant] final
+统计：read_attempts=1 write_attempts=0 write_successes=0 tool_results=1 pending=0 summary_matches=false readme_unchanged=true

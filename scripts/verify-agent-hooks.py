@@ -1,182 +1,118 @@
-"""Run the R04 Rust hook lab; save or --check evidence and a standalone zip.
+"""Verify the R04 Cargo package (ADK-Rust 3.0): callback order and failure consequences.
 
-All scenarios run outside the checkout. Worker failures and timeouts are real
-child processes; prompt, tool request and prior approval are fixed fixtures.
+python3 scripts/verify-agent-hooks.py [--check]
+
+先取 ADK-Rust 源码：python3 scripts/fetch-adk-rust.py .cache/adk-rust（或设 ADK_RUST_SRC）。
+打包章节、在临时目录解压并在旁边放好 adk-rust/，然后 fmt、clippy、cargo test、离线构建；
+15 个场景各连跑两次必须逐字节相同（stdout），核对计数、结果状态、停止原因与回调顺序；非法参数以退出码 2 结束。
 """
 import argparse
 import hashlib
-import io
 import json
-from pathlib import Path
-import platform
 import re
-import subprocess
-import tempfile
-import zipfile
+import sys
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-PUBLIC = ROOT / "docs/public/learn-agent-rust"
-SOURCE = PUBLIC / "code/hooks.rs"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import learn_agent_rust_adk as adk  # noqa: E402
+from learn_agent_rust_adk import require  # noqa: E402
+
+ROOT = adk.ROOT
+SLUG = "hooks"
+OUTPUT = adk.PUBLIC / "outputs"
 DATA = ROOT / "scripts/data/learn-agent-rust/r04-results.json"
-ARCHIVE = PUBLIC / "hooks-lab.zip"
-# write attempts, successes, hook failures, result status, stop reason, task ok
-CASES = {
-    "normal": (1, 1, 0, "ok", "completed", True),
-    "prompt-block": (0, 0, 0, None, "prompt_blocked", False),
-    "permission-deny": (0, 0, 0, "permission_denied", "permission_denied", False),
-    "pre-block": (0, 0, 0, "hook_blocked", "pre_hook_blocked", False),
-    "pre-error": (0, 0, 1, "hook_error", "pre_hook_failed", False),
-    "pre-panic": (0, 0, 1, "hook_error", "pre_hook_failed", False),
-    "pre-timeout": (0, 0, 1, "hook_error", "pre_hook_failed", False),
-    "post-error": (1, 1, 1, "ok", "post_hook_failed", False),
-    "post-timeout": (1, 1, 1, "ok", "post_hook_failed", False),
-    "post-block": (1, 1, 1, "ok", "post_hook_failed", False),
-    "tool-error": (1, 0, 0, "tool_error", "tool_failed", False),
-    "stop-error": (1, 1, 1, "ok", "completed", False),
-    "stop-timeout": (1, 1, 1, "ok", "completed", False),
-    "stop-block": (1, 1, 1, "ok", "completed", False),
+ARCHIVE = adk.PUBLIC / "hooks.zip"
+OBSOLETE = [adk.PUBLIC / "hooks-lab.zip", adk.PUBLIC / "figures/r04-worker-timeout.svg"]
+FILES = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "README.md", ".gitignore",
+         ".cargo/config.toml", "src/main.rs", "src/trace.rs"]
+EXTRA = {"fetch-adk-rust.py": ROOT / "scripts/fetch-adk-rust.py",
+         "learn-agent-rust-adk.json": ROOT / "scripts/learn-agent-rust-adk.json"}
+# 场景：(写入尝试, 写入成功, 回调失败数, 结果状态, 停止原因, 任务通过)，以及必须 / 不能出现的回调
+SCENARIOS = {
+    "normal": ((1, 1, 0, "ok", "final_answer", True), ["after_agent/stop-log"], []),
+    "prompt-block": ((0, 0, 0, "none", "final_answer", False), ["after_agent/stop-log"], ["before_tool/"]),
+    "prompt-error": ((0, 0, 1, "none", "hook.failed", False), [], ["after_agent/", "before_tool/"]),
+    "permission-deny": ((0, 0, 0, "refused", "final_answer", False), ["before_tool/before-log"], ["after_tool/"]),
+    "pre-block": ((0, 0, 0, "not_run", "final_answer", False), ["after_tool/after-log"], ["before_tool/before-log"]),
+    "pre-error": ((0, 0, 1, "not_run", "final_answer", False), ["after_agent/stop-log"], ["before_tool/before-log", "after_tool/"]),
+    "pre-panic": ((0, 0, 1, "not_run", "final_answer", False), ["after_agent/stop-log"], ["before_tool/before-log", "after_tool/"]),
+    "pre-timeout": ((0, 0, 1, "not_run", "final_answer", False), ["after_agent/stop-log"], ["before_tool/before-log", "after_tool/"]),
+    "post-error": ((1, 1, 1, "withheld", "final_answer", False), ["after_agent/stop-log"], ["after_tool/after-log"]),
+    "post-timeout": ((1, 1, 1, "withheld", "final_answer", False), ["after_agent/stop-log"], ["after_tool/after-log"]),
+    "post-rewrite": ((1, 1, 0, "ok", "final_answer", True), ["after_agent/stop-log"], ["after_tool/after-log"]),
+    "tool-error": ((1, 0, 0, "failed", "final_answer", False), ["after_tool/after-log"], []),
+    "stop-error": ((1, 1, 1, "ok", "hook.failed", False), ["after_agent/stop-log"], []),
+    "stop-timeout": ((1, 1, 1, "ok", "hook.timeout", False), ["after_agent/stop-log"], []),
+    "stop-rewrite": ((1, 1, 0, "ok", "final_answer", True), ["after_agent/stop-log"], []),
 }
-README = """# R04 生命周期与 Hooks
-
-教程：https://lewislau86.github.io/learn-agent-rust/hooks
-最低 Rust 1.85，edition 2024；只依赖标准库。下载后从任意目录运行：
-
-    rustc --edition=2024 -D warnings hooks.rs -o hooks
-    ./hooks normal
-    ./hooks pre-block
-    ./hooks pre-panic
-    ./hooks pre-timeout
-    ./hooks post-error
-    ./hooks stop-timeout
-    rustc --edition=2024 -D warnings --test hooks.rs -o hook-tests
-    ./hook-tests
-
-Windows 将 ./hooks 和 ./hook-tests 换为对应 .exe 路径。
-全部场景见源码 SCENARIOS；不带参数默认为 normal。
-每次新建并清理临时工作区。请求和既有批准为固定输入，实际写文件。
-普通回调在进程内；panic/hang 实验启动本程序的固定 worker 模式。
-父进程超时后 kill + wait 回收直属 worker；不实现任意进程树管理或沙箱。
-后置回调失败会保留写入结果。Stop 只通知一次，不强制续跑。
-本包不提供模型服务、审批 UI、数据库或与 graph-flow 的集成。
-outputs/ 和 evidence.json 是生成本包时的实际记录。
-"""
+STATS = re.compile(r"统计：write_attempts=(\d+) write_successes=(\d+) hook_failures=(\d+) result_status=(\S+) "
+                   r"stop=(\S+) summary_written=(true|false) task_ok=(true|false)")
 
 
-def command(args, cwd, timeout=30):
-    return subprocess.run(args, cwd=cwd, capture_output=True, text=True,
-                          check=True, timeout=timeout).stdout
-
-
-def archive_bytes(files):
-    buffer = io.BytesIO()
-    with zipfile.ZipFile(buffer, "w") as archive:
-        for name, content in sorted(files.items()):
-            info = zipfile.ZipInfo("hooks-lab/" + name, (1980, 1, 1, 0, 0, 0))
-            info.external_attr = 0o644 << 16
-            archive.writestr(info, content)
-    return buffer.getvalue()
-
-
-def inspect(name, output):
-    lines = output.splitlines()
-    match = re.fullmatch(r"stats write_attempts=(\d+) write_successes=(\d+) stop_calls=(\d+) hook_failures=(\d+) summary_matches=(true|false) stop_reason=(\w+) task_ok=(true|false)", lines[-1])
-    if not match:
-        raise ValueError("Missing counters: " + name)
-    attempts, successes, stops, failures = map(int, match.groups()[:4])
-    summary, reason, ok = match.groups()[4:]
-    result = re.search(r"^result call_id=write-1 status=(\w+)$", output, re.M)
-    status = result[1] if result else None
-    expected = CASES[name]
-    if (attempts, successes, failures, status, reason, ok == "true") != expected:
-        raise ValueError("Unexpected result: " + name)
-    if stops != 1 or (summary == "true") != (successes == 1):
-        raise ValueError("Wrong file or stop state: " + name)
-    trace = [line.split("] ", 1)[1] for line in lines if line.startswith("trace[")]
-    events = [line[6:] for line in trace if line.startswith("event=")]
-    expected_events = ["UserPromptSubmit"]
-    if name not in ("prompt-block", "permission-deny"):
-        expected_events.append("PreToolUse")
-    if attempts:
-        expected_events.append("PostToolUse")
-    expected_events.append("Stop")
-    if events != expected_events:
-        raise ValueError("Wrong lifecycle ordering: " + name)
-    if name.startswith("pre-") and any("before-log" in line for line in trace):
-        raise ValueError("Pre hook chain did not short circuit")
-    if name.startswith("post-") and any("after-log" in line for line in trace):
-        raise ValueError("Post hook chain did not short circuit")
-    expected_fault = ("TimeoutReaped" if name.endswith("timeout") else
-                      "WorkerExited" if name == "pre-panic" else
-                      "InvalidDecision" if name in ("post-block", "stop-block") else
-                      "Reported" if name.endswith("error") and name != "tool-error" else None)
-    if expected_fault and not any(line.endswith(":" + expected_fault) for line in lines if line.startswith("hook_failure=")):
-        raise ValueError("Missing typed hook fault: " + name)
-    if name == "normal":
-        ordered = [line for line in trace if line.startswith("hook=")]
-        wanted = ["UserPromptSubmit/input-log", "PreToolUse/before-check", "PreToolUse/before-log",
-                  "PostToolUse/after-check", "PostToolUse/after-log", "Stop/stop-log"]
-        if ordered != ["hook=" + item + " outcome=continue" for item in wanted]:
-            raise ValueError("Registration order changed")
-    return dict(name=name, write_attempts=attempts, write_successes=successes, stop_calls=stops,
-                hook_failures=failures, result_status=status, stop_reason=reason, task_ok=ok == "true",
-                summary_matches=summary == "true", events=events, trace=trace,
-                stdout_sha256=hashlib.sha256(output.encode()).hexdigest())
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
-    files = {}
-    package = {"hooks.rs": SOURCE.read_bytes(), "README.md": README.encode()}
-    with tempfile.TemporaryDirectory(prefix="agent-r04-verify-") as directory:
-        binary = str(Path(directory) / "hooks")
-        test_binary = str(Path(directory) / "hook-tests")
-        command(["rustc", "--edition=2024", "-D", "warnings", str(SOURCE), "-o", binary], directory)
-        command(["rustc", "--edition=2024", "-D", "warnings", "--test", str(SOURCE), "-o", test_binary], directory)
-        tests_output = command([test_binary, "--test-threads=1"], directory)
-        tests = re.findall(r"^test tests::(\w+) \.\.\. ok$", tests_output, re.M)
-        if len(tests) != 8 or "test result: ok. 8 passed; 0 failed;" not in tests_output:
-            raise ValueError("Rust regression tests failed")
-        results = []
-        for name in CASES:
-            output = command([binary, name], directory, timeout=15)
-            results.append(inspect(name, output))
-            content = output.encode()
-            files[PUBLIC / "outputs" / ("r04-" + name + ".txt")] = content
-            package["outputs/" + name + ".txt"] = content
-        invalid = subprocess.run([binary, "invalid"], cwd=directory, capture_output=True, text=True, timeout=10)
-        if invalid.returncode != 2 or "usage:" not in invalid.stderr:
-            raise ValueError("Invalid CLI input must fail")
-        environment = dict(rustc=command(["rustc", "--version"], directory).strip(), platform=platform.platform())
+    files = adk.chapter_files(SLUG, FILES)
+    files.update({name: path.read_bytes() for name, path in EXTRA.items()})
+    packed = adk.pack(SLUG, files)
+    targets = {ARCHIVE: packed}
+    env = adk.cargo_env("learn-agent-r04-target")
+    rows = []
+    with adk.staged(SLUG, packed) as folder:
+        checks = adk.standard_checks(folder, env)
+        binary = Path(env["CARGO_TARGET_DIR"]) / "debug/learn-agent-r04"
+        for name, (expected, must, must_not) in SCENARIOS.items():
+            output = adk.repeat_identical([binary, name], folder, env, times=2)
+            m = STATS.search(output)
+            require(m is not None, f"{name}: no stats\n{output}")
+            got = (int(m.group(1)), int(m.group(2)), int(m.group(3)), m.group(4), m.group(5), m.group(7) == "true")
+            require(got == expected, f"{name}: {got} != {expected}")
+            hooks = [line[5:] for line in output.splitlines() if line.startswith("hook ")]
+            for item in must:
+                require(any(h.startswith(item) for h in hooks), f"{name}: expected hook {item}")
+            for item in must_not:
+                require(not any(h.startswith(item) for h in hooks), f"{name}: unexpected hook {item}")
+            if name == "normal":
+                order = [h.split(" ")[0] for h in hooks]
+                require(order == ["before_agent/input-log", "before_agent/input-check", "before_tool/before-check",
+                                  "before_tool/before-log", "after_tool/after-check", "after_tool/after-log",
+                                  "after_agent/stop-log"], f"normal order {order}")
+            stop_runs = sum(h.startswith("after_agent/stop-log") for h in hooks)
+            require(stop_runs <= 1, f"{name}: stop hook ran {stop_runs} times")
+            targets[OUTPUT / f"r04-{name}.txt"] = output.encode()
+            rows.append(dict(name=name, write_attempts=got[0], write_successes=got[1], hook_failures=got[2],
+                             result_status=got[3], stop=got[4], task_ok=got[5], summary_written=m.group(6) == "true",
+                             hooks=hooks, stdout_sha256=sha(output.encode())))
+        p = adk.run([binary, "nope"], folder, env, ok=(2,))
+        require("usage:" in p.stderr, "invalid scenario must print usage")
+        header = adk.evidence_header(folder, env)
+    evidence = dict(
+        scope="R04 on ADK-Rust 3.0 RC: agent and tool callbacks registered in order, an application ToolPolicy, "
+              "callbacks that continue / respond / fail / panic / time out, real temporary files, ScriptedLlm",
+        **header, source_sha256={name: sha(data) for name, data in sorted(files.items())},
+        archive_sha256=sha(packed), **checks, repeated_identical_runs=2, scenarios=rows)
     if args.check and DATA.exists():
-        environment = json.loads(DATA.read_text())["environment"]
-    evidence = dict(scope="R04 single tool round; fixed approved call; real file I/O and owned child workers; no LLM or graph integration",
-                    source_sha256=hashlib.sha256(SOURCE.read_bytes()).hexdigest(), environment=environment,
-                    regression_tests=tests, scenarios=results)
-    serialized = (json.dumps(evidence, ensure_ascii=False, indent=2) + "\n").encode()
-    files[DATA] = serialized
-    package["evidence.json"] = serialized
-    files[ARCHIVE] = archive_bytes(package)
-    # Use the actual published zip in check mode, not just a reconstructed copy.
-    archive_content = ARCHIVE.read_bytes() if args.check and ARCHIVE.exists() else files[ARCHIVE]
-    with tempfile.TemporaryDirectory(prefix="agent-r04-download-") as directory:
-        with zipfile.ZipFile(io.BytesIO(archive_content)) as archive:
-            archive.extractall(directory)
-        folder = Path(directory) / "hooks-lab"
-        binary = str(folder / "hooks")
-        command(["rustc", "--edition=2024", "-D", "warnings", "hooks.rs", "-o", binary], folder)
-        for name in ("normal", "pre-timeout", "post-error", "stop-timeout"):
-            if command([binary, name], folder).encode() != package["outputs/" + name + ".txt"]:
-                raise ValueError("Extracted download differs: " + name)
-    for path, content in files.items():
+        recorded = json.loads(DATA.read_text())
+        evidence["rustc"], evidence["cargo"] = recorded["rustc"], recorded["cargo"]
+    targets[DATA] = (json.dumps(evidence, ensure_ascii=False, indent=2) + "\n").encode()
+    stale = [p for p in OUTPUT.glob("r04-*.txt") if p not in targets] + [p for p in OBSOLETE if p.exists()]
+    for path, content in targets.items():
         if args.check:
-            if not path.exists() or path.read_bytes() != content:
-                raise SystemExit("Stale R04 artifact: " + str(path.relative_to(ROOT)))
+            require(path.exists() and path.read_bytes() == content, "Stale R04 artifact: " + str(path.relative_to(ROOT)))
         else:
-            path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(content)
-    print("R04: 14 scenarios, 8 regression tests and extracted download passed; " + ("artifacts checked" if args.check else "artifacts saved"))
+    if args.check:
+        require(not stale, "Obsolete R04 artifacts: " + ", ".join(p.name for p in stale))
+    else:
+        for path in stale:
+            path.unlink()
+    print(f"R04: {len(rows)} scenarios x2 identical, {checks['rust_tests_passed']} Rust tests, fmt, Clippy, usage error; "
+          + ("artifacts checked" if args.check else "artifacts saved"))
 
 
 if __name__ == "__main__":

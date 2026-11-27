@@ -1,21 +1,64 @@
 {
-  "scope": "R01 standard-library explicit loop; scripted model; real temporary file; no HTTP/framework/database",
-  "source_sha256": "61a4bb00da71cc662a2e84bf23d7cc5aa3defca9fccf6b00e9e5562949202d9f",
+  "scope": "R01 on ADK-Rust 3.0 RC: a rule-based Llm implementation that only reads its LlmRequest, FunctionTool on a real temporary README, RunBudget limits, in-memory session",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-  "host": "aarch64-apple-darwin",
-  "unit_tests_passed": 6,
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "edba27a6f686a1bb770b3affd70cd7bdee95e0079f56faefeebc748a4b1897aa",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "7732638b94ed7543941dda5fee0bf78a5d210f29bd106ed56dc2c605eb12398d",
+    "Cargo.toml": "d66a2577ba48053bf13f8075a44e5073ba1c7c7240a3a08a6e69799af90f2f72",
+    "README.md": "c2165c8e00cb2f9cd4dc6587c8772b45107dc0cc641506280967d2773ec8dedd",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "3776845b202ccce01c1a168185669eb0bb287b941fec0e662c07d346637f1e0d",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "483ac8fc6d1579cc24844831612fb10536ff3cb10d431c4db816e5cd307652c5",
+  "rust_tests_passed": 7,
+  "repeated_identical_runs": 2,
+  "invalid_cli_cases": 3,
   "scenarios": [
     {
       "name": "normal",
       "args": [],
-      "model_turns": 2,
-      "tool_calls": 1,
+      "model_calls": 2,
+      "tool_results": 1,
       "read_attempts": 1,
       "read_successes": 1,
-      "messages": 4,
-      "stop": "FinalAnswer",
+      "session_events": 4,
+      "stop": "final_answer",
       "fixture_goal_met": true,
-      "stdout_sha256": "0c15a2a148a709013b591d02abe12f91c89d03470cfcbdc487c53d346e5cbcaf"
+      "stdout_sha256": "41325937798d064484511c65529f01e34ea2f859f3cfb5f43b26904b88bab6e1"
     },
     {
       "name": "changed-readme",
@@ -23,14 +66,14 @@
         "--scenario",
         "changed-readme"
       ],
-      "model_turns": 2,
-      "tool_calls": 1,
+      "model_calls": 2,
+      "tool_results": 1,
       "read_attempts": 1,
       "read_successes": 1,
-      "messages": 4,
-      "stop": "FinalAnswer",
+      "session_events": 4,
+      "stop": "final_answer",
       "fixture_goal_met": true,
-      "stdout_sha256": "1e9e729bc6e4c86898f246509d32d141968c8ca0e6594a272f9553216a90d42c"
+      "stdout_sha256": "3d0bb8c81bf4d6d911177b7e240ef9bcf50cdf17bf3273f6baa7bc4aa8cfb1b9"
     },
     {
       "name": "missing-file",
@@ -38,44 +81,44 @@
         "--scenario",
         "missing-file"
       ],
-      "model_turns": 2,
-      "tool_calls": 1,
+      "model_calls": 2,
+      "tool_results": 1,
       "read_attempts": 1,
       "read_successes": 0,
-      "messages": 4,
-      "stop": "FinalAnswer",
+      "session_events": 4,
+      "stop": "final_answer",
       "fixture_goal_met": false,
-      "stdout_sha256": "d066d053be7733ad5c3dd33ea55a232064b5208c6c35abd31b0e9e87271e6cd1"
+      "stdout_sha256": "682bf0e03cd300408db0fe6465f3bb65b997a07e87525ca0edbbd0c9c8666d85"
     },
     {
       "name": "model-budget",
       "args": [
-        "--max-model-turns",
+        "--max-model-calls",
         "1"
       ],
-      "model_turns": 1,
-      "tool_calls": 1,
+      "model_calls": 1,
+      "tool_results": 1,
       "read_attempts": 1,
       "read_successes": 1,
-      "messages": 3,
-      "stop": "ModelBudget",
+      "session_events": 4,
+      "stop": "budget.model_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "bf4cf3cd8ba4434562c4ccce66bb6effa1dd013f090828f555998f627a4a5eee"
+      "stdout_sha256": "b7f7a938c7b9bfe7b636b3a077e016ed57045bebee1329f2e4cd6a50f8a02818"
     },
     {
       "name": "zero-model-budget",
       "args": [
-        "--max-model-turns",
+        "--max-model-calls",
         "0"
       ],
-      "model_turns": 0,
-      "tool_calls": 0,
+      "model_calls": 0,
+      "tool_results": 0,
       "read_attempts": 0,
       "read_successes": 0,
-      "messages": 1,
-      "stop": "ModelBudget",
+      "session_events": 2,
+      "stop": "budget.model_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "b5e4f1110b36db82ac36cd7885b1d6be0f88855c9d8d22381f543b09236838b7"
+      "stdout_sha256": "fce8bdd3091f696fefa79320dd5b9b06b481037d171decbeae52fed73ea861c4"
     },
     {
       "name": "tool-budget",
@@ -83,46 +126,65 @@
         "--max-tool-calls",
         "0"
       ],
-      "model_turns": 1,
-      "tool_calls": 0,
+      "model_calls": 1,
+      "tool_results": 1,
       "read_attempts": 0,
       "read_successes": 0,
-      "messages": 3,
-      "stop": "ToolBudget",
+      "session_events": 4,
+      "stop": "budget.tool_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "1a55a335e871f9be2f4f2865a9f6d4607a1683cf9cea5a53d72dba16a2292ec0"
+      "stdout_sha256": "dfed06c6987c5007366e95cee9c85454e1443b6e9090a8fb350763a92c78ae69"
     },
     {
       "name": "repeat",
       "args": [
         "--scenario",
-        "repeat"
+        "repeat",
+        "--max-tool-calls",
+        "2"
       ],
-      "model_turns": 3,
-      "tool_calls": 2,
+      "model_calls": 3,
+      "tool_results": 3,
       "read_attempts": 2,
       "read_successes": 2,
-      "messages": 7,
-      "stop": "ToolBudget",
+      "session_events": 8,
+      "stop": "budget.tool_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "4cf549e3322c062b8a45c99441edf550b645e1853a171a56786739697c209001"
+      "stdout_sha256": "5ffc5fe71923472e195a412f20c1e5613d6957abd09ab7b87ac07a14c04c3cf7"
     },
     {
       "name": "repeat-model-budget",
       "args": [
         "--scenario",
         "repeat",
-        "--max-model-turns",
+        "--max-model-calls",
         "2"
       ],
-      "model_turns": 2,
-      "tool_calls": 2,
+      "model_calls": 2,
+      "tool_results": 2,
       "read_attempts": 2,
       "read_successes": 2,
-      "messages": 5,
-      "stop": "ModelBudget",
+      "session_events": 6,
+      "stop": "budget.model_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "6602582c30d75c7bd8da5eed37ed4c0836cc2d2855711ae2db90c1d498922a52"
+      "stdout_sha256": "2622405cc94d4143e63fc7c5f5de0751030ce8579c96b12bf8350fce11384d61"
+    },
+    {
+      "name": "loop-limit",
+      "args": [
+        "--scenario",
+        "repeat",
+        "--max-iterations",
+        "3"
+      ],
+      "model_calls": 3,
+      "tool_results": 3,
+      "read_attempts": 3,
+      "read_successes": 3,
+      "session_events": 7,
+      "stop": "agent.legacy",
+      "fixture_goal_met": false,
+      "stdout_sha256": "b03035341824fe1fd13209ea6120151ed5dbdc844924a79ea87547da33266a2f"
     },
     {
       "name": "two-tools",
@@ -130,14 +192,14 @@
         "--scenario",
         "two-tools"
       ],
-      "model_turns": 2,
-      "tool_calls": 2,
+      "model_calls": 2,
+      "tool_results": 2,
       "read_attempts": 2,
       "read_successes": 2,
-      "messages": 5,
-      "stop": "FinalAnswer",
+      "session_events": 5,
+      "stop": "final_answer",
       "fixture_goal_met": true,
-      "stdout_sha256": "713ecb3dfa2e59d9794571d0e448186db92063c0460345886d66dc5146c28e2c"
+      "stdout_sha256": "655ebe73e327b282304cdb8efc352199c4b4ee8446920032f402a2180e124f0a"
     },
     {
       "name": "batch-budget",
@@ -147,14 +209,14 @@
         "--max-tool-calls",
         "1"
       ],
-      "model_turns": 1,
-      "tool_calls": 0,
+      "model_calls": 1,
+      "tool_results": 2,
       "read_attempts": 0,
       "read_successes": 0,
-      "messages": 4,
-      "stop": "ToolBudget",
+      "session_events": 4,
+      "stop": "budget.tool_calls",
       "fixture_goal_met": false,
-      "stdout_sha256": "d895c3a8a333874b897dcc57e2189d600e50a998890f33b8dd85bd474acd27f8"
+      "stdout_sha256": "bc89f8d77c6e9c9df5ef4e1b929d3a965fe67cc0448c147e1ac6e390c5afdd8e"
     },
     {
       "name": "duplicate-id",
@@ -162,14 +224,14 @@
         "--scenario",
         "duplicate-id"
       ],
-      "model_turns": 2,
-      "tool_calls": 1,
-      "read_attempts": 1,
-      "read_successes": 1,
-      "messages": 4,
-      "stop": "InvalidCall",
-      "fixture_goal_met": false,
-      "stdout_sha256": "5c8391f6abfd54054e420565d2e952ce7a7d01eb1b88b064e9ddafaae7ca0677"
+      "model_calls": 3,
+      "tool_results": 2,
+      "read_attempts": 2,
+      "read_successes": 2,
+      "session_events": 6,
+      "stop": "final_answer",
+      "fixture_goal_met": true,
+      "stdout_sha256": "85e52ebc886d937819e8578cc7439d0d850ed8d453da12a51b801d16f33ad332"
     },
     {
       "name": "unknown-tool",
@@ -177,14 +239,14 @@
         "--scenario",
         "unknown-tool"
       ],
-      "model_turns": 2,
-      "tool_calls": 1,
+      "model_calls": 2,
+      "tool_results": 1,
       "read_attempts": 0,
       "read_successes": 0,
-      "messages": 4,
-      "stop": "FinalAnswer",
+      "session_events": 4,
+      "stop": "final_answer",
       "fixture_goal_met": false,
-      "stdout_sha256": "90036be69026c87d8d2ca6288b73dacb19a0306ee25371087a8e5d674cce126e"
+      "stdout_sha256": "be065d75a7c28ed25c2ec4ab18b4d1d403148ae2746f4045a77119ac77b3dae6"
     },
     {
       "name": "invalid-path",
@@ -192,14 +254,14 @@
         "--scenario",
         "invalid-path"
       ],
-      "model_turns": 2,
-      "tool_calls": 1,
+      "model_calls": 2,
+      "tool_results": 1,
       "read_attempts": 0,
       "read_successes": 0,
-      "messages": 4,
-      "stop": "FinalAnswer",
+      "session_events": 4,
+      "stop": "final_answer",
       "fixture_goal_met": false,
-      "stdout_sha256": "44756ce5b00041217d4fee23d47070e7ee01c7837b01cf0742d05b5e46dfcf39"
+      "stdout_sha256": "bcf507dc8eb513c1eda50788692b0c8d1f32e040817e1d188efdef2ab08effae"
     }
   ]
 }

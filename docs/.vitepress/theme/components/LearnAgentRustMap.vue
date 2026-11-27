@@ -8,6 +8,10 @@ const current = computed(() => course.lessons.find(lesson => lesson.slug === pro
 const currentPart = computed(() => current.value?.part ?? course.parts.find(part => part.guide?.slug === props.active)?.id)
 const chapterLabel = (lesson: { id: string; chapter?: number }) => lesson.chapter !== undefined
   ? `第 ${lesson.chapter} 章` : `专题 ${Number(lesson.id.slice(1))}`
+// 迁移到 ADK-Rust 3.0 期间（至少一章 stack 为 adk3）标注每章实验版本；计划见仓库根目录 agent.md
+const migrating = course.lessons.some(lesson => lesson.stack === 'adk3')
+const stackLabel = (lesson: { stack?: string; status: string }) => !migrating || lesson.status !== 'written' ? ''
+  : lesson.stack === 'adk3' ? '实验基于 ADK-Rust 3.0' : '旧版实验，待迁移'
 const parts = computed(() => course.parts.map(part => ({
   ...part,
   lessons: course.lessons.filter(lesson => lesson.part === part.id)
@@ -17,7 +21,7 @@ const parts = computed(() => course.parts.map(part => ({
 <template>
   <nav class="agent-map" aria-label="Learn Agent by Rust 课程地图">
     <p class="map-title">本章在全书中的位置</p>
-    <p v-if="current" class="current">{{ chapterLabel(current) }} · {{ current.title }}：{{ current.question }}</p>
+    <p v-if="current" class="current">{{ chapterLabel(current) }} · {{ current.title }}：{{ current.question }}<template v-if="stackLabel(current)">（{{ stackLabel(current) }}）</template></p>
     <ol class="parts">
       <li v-for="part in parts" :key="part.id" :class="{ active: currentPart === part.id }">
         <a :href="withBase(part.guide ? '/learn-agent-rust/' + part.guide.slug + '.html' : '/learn-agent-rust/learning-path.html#' + part.lessons[0].id.toLowerCase())">
@@ -33,7 +37,7 @@ const parts = computed(() => course.parts.map(part => ({
            :href="withBase('/learn-agent-rust/' + lesson.slug + '.html')"
            :aria-current="lesson.slug === active ? 'page' : undefined"
            :class="{ selected: lesson.slug === active }">
-          {{ chapterLabel(lesson) }} {{ lesson.title }}{{ lesson.status === 'planned' ? '（规划）' : '' }}
+          {{ chapterLabel(lesson) }} {{ lesson.title }}{{ lesson.status === 'planned' ? '（规划）' : '' }}{{ migrating && lesson.stack === 'adk3' ? '（ADK 3.0）' : '' }}
         </a>
       </div>
     </details>

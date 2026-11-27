@@ -1,9 +1,17 @@
-status=initialized version=1
-status=paused cursor=approve version=2 approval_visits=0 report=false
-status=waiting cursor=approve version=3 approval_visits=1 report=false
-status=waiting cursor=approve version=4 approval_visits=2 report=false
-status=decision_saved revision=1 accepted=true
-status=paused cursor=render version=6 approval_visits=3 report=false
-status=completed cursor=render version=7 approval_visits=3 report=true
-status=already_completed cursor=render version=7
-cursor=render version=7 draft_visits=1 approval_visits=3 render_visits=1 report=upgrade report: review complete
+$ lab DB init
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB show
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=2 render=0 reject=0
+$ lab DB answer int_266c27ecacf46656c0fa3d518307f6cd approve
+status=completed outcome=approved revision=1 report=upgrade report: revision 1 approved
+trace=draft>approve>render
+node_runs draft=1 approve=3 render=1 reject=0
+$ lab DB show
+status=completed outcome=approved revision=1 report=upgrade report: revision 1 approved
+trace=draft>approve>render
+node_runs draft=1 approve=3 render=1 reject=0
+$ lab DB answer int_266c27ecacf46656c0fa3d518307f6cd approve
+status=refused reason=resume_rejected
+node_runs draft=1 approve=3 render=1 reject=0

@@ -44,13 +44,36 @@ def save_report(results, log_directory):
     return report
 
 
+def update_rows(results, log_directory):
+    """Replace only the given lessons' rows; each updated row records its own check time."""
+    report = json.loads(package.REPORT.read_text(encoding="utf-8"))
+    by_id = {row["id"]: row for row in package.configuration()}
+    rows = {row["id"]: row for row in report["lessons"]}
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    for result in results:
+        lesson = by_id[result["id"]]
+        text = (log_directory / (lesson["id"] + ".log")).read_text(encoding="utf-8")
+        rows[lesson["id"]] = dict(id=lesson["id"], slug=lesson["slug"], verifier=lesson["verifier"],
+                                  exit_code=result["exit_code"], elapsed_seconds=result["elapsed_seconds"],
+                                  summary=text.strip().splitlines()[-1] if text.strip() else "No verifier output",
+                                  inputs_sha256=package.inputs(lesson), checked_at=now)
+    report["lessons"] = [rows[row["id"]] for row in report["lessons"]]
+    report["passed"] = sum(r["exit_code"] == 0 for r in report["lessons"])
+    package.REPORT.write_bytes(package.encoded(report))
+    return report
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--logs", type=Path, default=ROOT / ".cache/agent-experiment-audit")
+    parser.add_argument("--lesson", action="append", help="Recheck only these lessons and update their audit rows "
+                        "(migration to ADK-Rust 3.0 merges chapter by chapter; see agent.md)")
     args = parser.parse_args()
     args.logs.mkdir(parents=True, exist_ok=True)
     results = []
     for lesson in package.configuration():
+        if args.lesson and lesson["id"] not in args.lesson:
+            continue
         started = time.monotonic()
         before = package.inputs(lesson)
         print("Checking {}: {} --check".format(lesson["id"], lesson["verifier"]), flush=True)
@@ -66,6 +89,13 @@ def main():
         result = dict(id=lesson["id"], exit_code=code, elapsed_seconds=round(time.monotonic() - started, 1))
         results.append(result)
         print("{} {} ({}s); log: {}".format("PASS" if code == 0 else "FAIL", lesson["id"], result["elapsed_seconds"], args.logs / (lesson["id"] + ".log")), flush=True)
+    if args.lesson:
+        report = update_rows(results, args.logs)
+        failed = [r["id"] for r in results if r["exit_code"] != 0]
+        print("Updated audit rows: {}; failed: {}".format(", ".join(args.lesson), ", ".join(failed) or "none"))
+        if failed:
+            raise SystemExit(1)
+        return
     report = save_report(results, args.logs)
     print("Full chapter audit: {}/{} passed".format(report["passed"], report["total"]))
     if report["passed"] != report["total"]:

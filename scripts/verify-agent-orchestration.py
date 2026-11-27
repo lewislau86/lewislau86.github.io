@@ -1,146 +1,196 @@
-"""Verify three real graph-flow labs and replay every independently extracted chapter archive."""
+"""Verify the three graph-orchestration labs (G01–G03) on ADK-Rust 3.0 / adk-graph.
+
+python3 scripts/verify-agent-orchestration.py [--check] [--lab G01|G02|G03]
+
+先取 ADK-Rust 源码：python3 scripts/fetch-adk-rust.py .cache/adk-rust（或设 ADK_RUST_SRC）。
+每个实验：打包章节、在临时目录解压并在旁边放好 adk-rust/，fmt、clippy -D warnings、cargo test、离线构建；
+场景各连跑两次必须逐字节相同，并逐项核对契约。G02 的每条命令是一个独立进程，状态只在 SQLite 检查点里。
+"""
 import argparse
 import hashlib
-import io
 import json
-import os
-from pathlib import Path
-import sqlite3
-import subprocess
+import re
+import sys
 import tempfile
-import zipfile
+from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-PUBLIC = ROOT / 'docs/public/learn-agent-rust'
-LABS = [('G01','graph-state-routing','graph-state-lab',4),
-        ('G02','graph-pause-resume','graph-resume-lab',4),
-        ('G03','graph-parallel-subgraphs','graph-parallel-lab',6)]
-NAMES = ['.gitignore','Cargo.toml','Cargo.lock','rust-toolchain.toml','README.md','src/main.rs']
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import learn_agent_rust_adk as adk  # noqa: E402
+from learn_agent_rust_adk import require  # noqa: E402
 
+ROOT = adk.ROOT
+OUTPUT = adk.PUBLIC / "outputs"
+FILES = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", "README.md", ".gitignore",
+         ".cargo/config.toml", "src/main.rs", "src/trace.rs"]
+EXTRA = {"fetch-adk-rust.py": ROOT / "scripts/fetch-adk-rust.py",
+         "learn-agent-rust-adk.json": ROOT / "scripts/learn-agent-rust-adk.json"}
 
-def run(command, cwd, env, code=0):
-    p = subprocess.run([str(c) for c in command],cwd=cwd,env=env,text=True,capture_output=True,timeout=120)
-    if p.returncode != code:
-        raise RuntimeError('Unexpected exit {}: {}\n{}\n{}'.format(p.returncode,command,p.stdout,p.stderr))
-    return p.stdout if code == 0 else p.stderr
-
-
-def check_resume(binary, source, env, work):
-    outputs={}
-    calls=0
-    def call(db,*args,code=0):
-        nonlocal calls
-        calls+=1
-        return run([binary,db,*args],source,env,code)
-    def init(db):
-        return call(db,'init')+call(db,'step')+call(db,'step')
-    db=work/'approved.db'; normal=init(db)
-    # Waiting re-enters approve, with no decision or report yet.
-    normal+=call(db,'step')
-    normal+=call(db,'approve','1','yes')+call(db,'step')+call(db,'step')
-    normal+=call(db,'step')+call(db,'show')
-    assert 'status=waiting cursor=approve' in normal
-    assert 'status=already_completed' in normal and 'render_visits=1' in normal
-    assert 'draft_visits=1 approval_visits=3' in normal
-    outputs['g02-approved.txt']=normal
-    with sqlite3.connect(db) as sql:
-        version,body=sql.execute('SELECT version,body FROM sessions').fetchone()
-        data=json.loads(body)
-        assert version == data['version'] and data['current_task_id']=='render'
-        assert data['context']['data']['report']=='upgrade report: review complete'
-        assert data['context']['data']['terminal'] is True
-    denied=work/'denied.db'; text=init(denied)
-    text+=call(denied,'approve','1','no')+call(denied,'step')+call(denied,'step')+call(denied,'show')
-    assert 'cursor=reject' in text and 'render_visits=0 report=none' in text
-    outputs['g02-denied.txt']=text
-    stale=work/'stale.db';init(stale)
-    with sqlite3.connect(stale) as sql: before=sql.execute('SELECT body FROM sessions').fetchone()[0]
-    assert 'stale approval' in call(stale,'approve','0','yes',code=2)
-    with sqlite3.connect(stale) as sql: assert before==sql.execute('SELECT body FROM sessions').fetchone()[0]
-    call(stale,'approve','1','yes')
-    assert 'already submitted' in call(stale,'approve','1','yes',code=2)
-    outputs['g02-approval-refusals.txt']='stale_revision=rejected_without_save\nduplicate_decision=rejected\n'
-    conflict=work/'conflict.db';call(conflict,'init')
-    outputs['g02-conflict.txt']=call(conflict,'conflict')
-    # Mutate stored records independently to check graph/schema/cursor and row identity validation.
-    for name in ['graph','schema','cursor','row-version','corrupt']:
-        bad=work/(name+'.db');call(bad,'init')
-        with sqlite3.connect(bad) as sql:
-            body=sql.execute('SELECT body FROM sessions').fetchone()[0]; data=json.loads(body)
-            if name=='graph': data['graph_id']='release-review-v2'
-            if name=='schema': data['context']['data']['schema']=2
-            if name=='cursor': data['current_task_id']='unknown'
-            if name=='row-version': data['version']=999
-            sql.execute('UPDATE sessions SET body=?',[('{broken' if name=='corrupt' else json.dumps(data))])
-        refusal=call(bad,'step',code=2)
-        assert refusal.strip()
-        with sqlite3.connect(bad) as sql:
-            persisted=sql.execute('SELECT body FROM sessions').fetchone()[0]
-            assert persisted==('{broken' if name=='corrupt' else json.dumps(data))
-    outputs['g02-invalid-snapshots.txt']='graph_version=rejected\nstate_schema=rejected\nunknown_cursor=rejected\nrow_version_mismatch=rejected\ncorrupt_json=rejected\n'
-    return outputs,dict(scenarios=10,independent_cli_processes=calls,scope='real SQLite SessionStorage and FlowRunner; single business executor; fixed CLI approval')
+G01 = {
+    "normal": ["scenario=normal outcome=accepted repairs=1 draft=2", "trace=prepare>check>repair>check>accept", "step=4 ran=accept"],
+    "exhausted": ["scenario=exhausted outcome=needs_human repairs=2", "trace=prepare>check>repair>check>repair>check>repair>handoff"],
+    "runaway": ["steps_run=12", "recursion_limit=12 error=RecursionLimitExceeded", "saved_state trace_len=12 repairs=0 outcome=none"],
+    "probes": ["dangling_edge rejected_at_compile=true", "missing_start rejected_at_compile=true",
+               "bad_goto rejected_at_run=true", "unmapped_route rejected_at_run=true", "no_edge completed=true",
+               'two_edges ran=["a","b","c"]', 'typo_channel trace=["a"] traces="b"', "strict_channels rejected=true",
+               'local_mutation x="original"', "malformed_required rejected=true", "counter_channel n=2.0"],
+}
+G03 = {
+    "normal": ["step=1 ran=license,security", "step=2 ran=merge", "verdict=ready security_runs=1 license_runs=1"],
+    "failure": ["first_run error=node_failed node=security security_runs=1 license_runs=1",
+                "resumed verdict=ready security_runs=2 license_runs=1"],
+    "collision": ["overwrite: count=1.0 expected=2", "counter: count=2.0 expected=2"],
+    "subgraph": ['parent risk="high" scratch_exported=false', "wrong_mapping rejected_at_compile=true"],
+    "timeout": ["on_timeout=fail error=node_timed_out node=license", "on_timeout=skip verdict=incomplete"],
+}
+LABS = {
+    "G01": ("graph-state-routing", "graph-state-lab", G01),
+    "G02": ("graph-pause-resume", "graph-resume-lab", None),
+    "G03": ("graph-parallel-subgraphs", "graph-parallel-lab", G03),
+}
 
 
-def verify(lesson,source,work):
-    id,slug,binary_name,tests=lesson
-    work.mkdir(parents=True)
-    env=dict(os.environ,RUSTUP_TOOLCHAIN='1.99.1',CARGO_TARGET_DIR=str(ROOT/'.cache/agent-orchestration-target'))
-    for cmd in [['cargo','fmt','--check'],['cargo','test','--locked','--offline'],
-                ['cargo','clippy','--locked','--offline','--all-targets','--','-D','warnings'],['cargo','build','--locked','--offline']]:
-        run(cmd,source,env)
-    binary=ROOT/'.cache/agent-orchestration-target/debug'/binary_name
-    if id=='G02': return check_resume(binary,source,env,work)
-    scenarios=['normal','direct','exhausted','probes'] if id=='G01' else ['normal','failure','collision','subgraph','timeout']
-    outputs={id.lower()+'-'+scenario+'.txt':run([binary,scenario],source,env) for scenario in scenarios}
-    all_text='\n'.join(outputs.values())
-    checks=(['outcome=accepted repairs=1 calls=5','outcome=accepted repairs=1 calls=2',
-             'outcome=needs_human repairs=2','probe=dangling_edge rejected=true',
-             'probe=no_edge status=paused cursor=a','probe=bad_goto rejected=true mutation_retained=true',
-             'probe=cycle chained_limit_rejected=true','first_matching=b','clone_shares=true serialized_snapshot_isolated=true','malformed_rejected=true']
-            if id=='G01' else ['child_end_ignored=true both_started=true',
-                               'sibling_result_retained=true merge_ran=false',
-                               'shared_counter=1 expected_sum=2 lost_update=true',
-                               'child_scratch_exported=false explicit_contract=true','graph_task_timeout=true'])
-    for text in checks: assert text in all_text,text+'\n'+all_text
-    run([binary,'unknown'],source,env,2)
-    return outputs,dict(scenarios=len(scenarios),cli_refusals=1,scope='real graph-flow; deterministic business rules; no model provider')
+def sha(data):
+    return hashlib.sha256(data).hexdigest()
 
 
-def archive_bytes(slug,files):
-    buffer=io.BytesIO()
-    with zipfile.ZipFile(buffer,'w',compression=zipfile.ZIP_DEFLATED) as archive:
-        for name,value in sorted(files.items()):
-            info=zipfile.ZipInfo(slug+'/'+name,(2020,1,1,0,0,0));info.compress_type=zipfile.ZIP_DEFLATED;info.external_attr=0o100644<<16
-            archive.writestr(info,value)
-    return buffer.getvalue()
+def scenario_lab(binary, folder, env, cases):
+    outputs = {}
+    for name, fragments in cases.items():
+        text = adk.repeat_identical([binary, name], folder, env, times=2)
+        for fragment in fragments:
+            require(fragment in text, f"{name}: missing {fragment!r}\n{text}")
+        outputs[name] = text
+    p = adk.run([binary, "unknown"], folder, env, ok=(2,))
+    require("usage:" in p.stderr, "unknown scenario must print usage")
+    return outputs
+
+
+# G02：每个流程在新的临时目录里依次运行独立进程；暂停 ID 由框架按线程、步骤、节点、问题算出，可复现
+FLOWS = ["approved", "rejected", "revised", "loose", "conflict", "tampered"]
+
+
+def resume_flow(binary, folder, env, flow):
+    lines, last_id = [], None
+    with tempfile.TemporaryDirectory(prefix="g02-") as work:
+        db = Path(work) / "review.db"
+
+        def call(*args, db_path=db):
+            text = adk.run([binary, db_path, *args], folder, env).stdout
+            lines.append("$ " + " ".join(["lab", Path(db_path).name, *args]))
+            lines.append(text.rstrip())
+            found = re.search(r"interrupt=(int_[0-9a-f]+)", text)
+            return text, (found.group(1) if found else None)
+
+        if flow == "approved":
+            _, pid = call("init")
+            call("show")
+            text, _ = call("answer", pid, "approve")
+            require("outcome=approved" in text and "render=1" in text, text)
+            text, _ = call("show")
+            require("approve=3" in text, "a completed thread must not rerun nodes")
+            text, _ = call("answer", pid, "approve")
+            require("resume_rejected" in text, "a second answer must be refused")
+        elif flow == "rejected":
+            _, pid = call("init")
+            text, _ = call("answer", pid, "reject")
+            require("outcome=rejected" in text and "render=0" in text, text)
+        elif flow == "revised":
+            _, pid = call("init")
+            text, new = call("answer", pid, "revise")
+            require("revision=2" in text and new and new != pid, text)
+            text, _ = call("answer", pid, "approve")
+            require("resume_rejected" in text, "an answer for the old pause must be refused")
+            text, _ = call("answer", new, "approve")
+            require("revision=2 report=upgrade report: revision 2 approved" in text, text)
+        elif flow == "loose":
+            _, pid = call("init")
+            text, _ = call("answer", pid, "maybe")
+            require("resume_rejected" in text, "an answer outside the schema must be refused")
+            call("answer", pid, "revise")
+            text, _ = call("answer-loose", "approve")
+            # 按节点名回答，批准落到了第 2 版——审批人只看过第 1 版
+            require("revision=2" in text and "outcome=approved" in text, text)
+        elif flow == "conflict":
+            _, pid = call("init")
+            text, _ = call("conflict", pid)
+            require("status=refused reason=checkpoint_conflict" in text and "render=1" in text, text)
+            require(text.count("status=completed") == 1, text)
+        elif flow == "tampered":
+            call("init")
+            text, _ = call("tamper", "rename")
+            require("reason=graph_version" in text and "approve=1" in text, text)
+            text, _ = call("tamper", "rename-unchecked")
+            require("outcome=none" in text and "trace=draft" in text, text)
+            db2 = Path(work) / "second" / "review.db"  # 新目录：runs.log 也从零开始
+            db2.parent.mkdir()
+            call("init", db_path=db2)
+            text, _ = call("tamper", "corrupt", db_path=db2)
+            require("kind=checkpoint_unreadable" in text, text)
+    return "\n".join(lines).replace("review.db", "DB") + "\n"
+
+
+def resume_lab(binary, folder, env):
+    outputs = {}
+    for flow in FLOWS:
+        first = resume_flow(binary, folder, env, flow)
+        require(first == resume_flow(binary, folder, env, flow), f"{flow}: output differs between two runs")
+        outputs[flow] = first
+    p = adk.run([binary], folder, env, ok=(2,))
+    require("usage:" in p.stderr, "missing arguments must print usage")
+    return outputs
+
+
+def verify_lab(lab, check):
+    slug, binary_name, cases = LABS[lab]
+    files = adk.chapter_files(slug, FILES)
+    files.update({name: path.read_bytes() for name, path in EXTRA.items()})
+    packed = adk.pack(slug, files)
+    archive = adk.PUBLIC / f"{slug}.zip"
+    targets = {archive: packed}
+    env = adk.cargo_env(f"learn-agent-{lab.lower()}-target")
+    with adk.staged(slug, packed) as folder:
+        checks = adk.standard_checks(folder, env)
+        binary = Path(env["CARGO_TARGET_DIR"]) / "debug" / binary_name
+        outputs = resume_lab(binary, folder, env) if cases is None else scenario_lab(binary, folder, env, cases)
+        header = adk.evidence_header(folder, env)
+    for name, text in outputs.items():
+        targets[OUTPUT / f"{lab.lower()}-{name}.txt"] = text.encode()
+    data = ROOT / f"scripts/data/learn-agent-rust/{lab.lower()}-results.json"
+    evidence = dict(
+        scope=f"{lab} on ADK-Rust 3.0 RC adk-graph: deterministic business nodes, no model provider"
+              + ("; independent CLI processes over a SQLite checkpointer" if cases is None else ""),
+        **header, source_sha256={n: sha(d) for n, d in sorted(files.items())}, archive_sha256=sha(packed),
+        **checks, repeated_identical_runs=2, scenarios=sorted(outputs),
+        outputs_sha256={n: sha(t.encode()) for n, t in sorted(outputs.items())})
+    if check and data.exists():
+        recorded = json.loads(data.read_text())
+        evidence["rustc"], evidence["cargo"] = recorded["rustc"], recorded["cargo"]
+    targets[data] = (json.dumps(evidence, ensure_ascii=False, indent=2) + "\n").encode()
+    stale = [p for p in OUTPUT.glob(f"{lab.lower()}-*.txt") if p not in targets]
+    for path, content in targets.items():
+        if check:
+            require(path.exists() and path.read_bytes() == content, f"Stale {lab} artifact: {path.relative_to(ROOT)}")
+        else:
+            path.write_bytes(content)
+    if check:
+        require(not stale, f"Obsolete {lab} outputs: " + ", ".join(p.name for p in stale))
+    else:
+        for path in stale:
+            path.unlink()
+    print(f"{lab}: {len(outputs)} scenarios x2 identical, {checks['rust_tests_passed']} Rust tests, fmt, Clippy; "
+          + ("artifacts checked" if check else "artifacts saved"), flush=True)
 
 
 def main():
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--check',action='store_true');args=parser.parse_args()
-    for lesson in LABS:
-        id,slug,_,tests=lesson;source=PUBLIC/'code'/slug
-        # First populate dependencies (also on a clean CI host); both source and
-        # independently extracted packages are then compiled and replayed offline.
-        run(['cargo','fetch','--locked'],source,dict(os.environ,RUSTUP_TOOLCHAIN='1.99.1'))
-        files={name:(source/name).read_bytes() for name in NAMES}
-        content=archive_bytes(slug,files);archive=PUBLIC/(slug+'.zip')
-        if args.check: assert archive.read_bytes()==content,'Archive stale: '+slug
-        with tempfile.TemporaryDirectory(prefix='agent-graph-') as temp:
-            work=Path(temp);outputs,record=verify(lesson,source,work/'source')
-            with zipfile.ZipFile(io.BytesIO(content)) as z: z.extractall(work/'extracted')
-            replay,replay_record=verify(lesson,work/'extracted'/slug,work/'replay')
-            assert outputs==replay and record==replay_record
-        evidence=dict(schema_version=1,rust='1.99.1',graph_revision='9bbca193f20a8c4ba23289621549ecb3d35fee64',rust_tests=tests,archive_replayed=True,**record,
-                      files_sha256={n:hashlib.sha256(b).hexdigest() for n,b in files.items()},
-                      outputs_sha256={n:hashlib.sha256(v.encode()).hexdigest() for n,v in outputs.items()})
-        targets={PUBLIC/'outputs'/n:v.encode() for n,v in outputs.items()}
-        targets[archive]=content
-        targets[ROOT/'scripts/data/learn-agent-rust'/(id.lower()+'-results.json')]=(json.dumps(evidence,ensure_ascii=False,indent=2)+'\n').encode()
-        for path,value in targets.items():
-            if args.check: assert path.read_bytes()==value,'Stale: '+str(path)
-            else: path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(value)
-        print(f'{id}: {tests} Rust tests, source and extracted archive replay passed',flush=True)
-    print('Graph orchestration verified: G01/G02/G03, real graph-flow routing, SQLite resume and parallel/subgraph boundaries')
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--check", action="store_true")
+    parser.add_argument("--lab", choices=sorted(LABS))
+    args = parser.parse_args()
+    for lab in ([args.lab] if args.lab else sorted(LABS)):
+        verify_lab(lab, args.check)
+    if not args.lab:
+        print("Graph orchestration verified: G01/G02/G03 on adk-graph")
 
 
-if __name__=='__main__': main()
+if __name__ == "__main__":
+    main()

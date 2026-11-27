@@ -1,10 +1,59 @@
 {
-  "scope": "R00 standard-library wiring; scripted model; no HTTP or database",
-  "source_sha256": "90aeb31e08a599d25e6114bf0f6549e74a53d755634adfe2fa08ddef5e8166cc",
+  "scope": "R00 on ADK-Rust 3.0 RC: ScriptedLlm, FunctionTool reading a real temporary README, DeclarativePolicy allow/deny, in-memory session",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-model": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "b1a1de68e110da7a7a7b8587925ce5c88e608bf2724ccc62001d675aa7bf500e",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "938a0237de3c9228095c9da8bf8f1ab2e3d71b5fdbfc8e9c627c79f234033d34",
+    "Cargo.toml": "5ce619d3dfc20708b8c4b998843b393924f5f79ffd6726f5d1ac67ba86b29533",
+    "README.md": "285d97297ace5afe89e73b732075b384c3b62816e8497d5515c5cbf33891580d",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "af85ffb682963fedeb8f8ae98a1a68c2bfa8d59cd58ac9588406f4e6bbc38b0f",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "2dacea0b2cf86513205740e5a67edf551e2860245e799264ae0b268191adf56c",
+  "rust_tests_passed": 3,
+  "repeated_identical_runs": 2,
   "scenarios": [
     {
       "name": "normal",
+      "args": [],
       "model_turns": 2,
       "tool_requests": 1,
       "read_attempts": 1,
@@ -12,16 +61,19 @@
       "messages": 4,
       "roles": [
         "user",
-        "assistant",
-        "tool",
-        "assistant"
+        "model",
+        "function",
+        "model"
       ],
       "outcome": "completed",
-      "stdout_sha256": "bfe697bd2aba98d3a61b03ed2f5ade2f9d4798037132aed800d4c0729967d900",
+      "stdout_sha256": "8bd1eacfae37e1200c4a1e4b01a1fdd579c3a4ff6ad20c83b5d4c2e00f44d6b0",
       "exit_code": 0
     },
     {
       "name": "deny",
+      "args": [
+        "--deny"
+      ],
       "model_turns": 2,
       "tool_requests": 1,
       "read_attempts": 0,
@@ -29,16 +81,19 @@
       "messages": 4,
       "roles": [
         "user",
-        "assistant",
-        "tool",
-        "assistant"
+        "model",
+        "function",
+        "model"
       ],
       "outcome": "denied",
-      "stdout_sha256": "67133849208b602f9303a5dcf52f6e31cf3917080b7a85949fd9784c7f73bab1",
+      "stdout_sha256": "22046c2527ec82db6ca242556480b0f2a881a82bd322b47826e990ecb6296fdd",
       "exit_code": 0
     },
     {
       "name": "missing-file",
+      "args": [
+        "--missing-file"
+      ],
       "model_turns": 2,
       "tool_requests": 1,
       "read_attempts": 1,
@@ -46,12 +101,12 @@
       "messages": 4,
       "roles": [
         "user",
-        "assistant",
-        "tool",
-        "assistant"
+        "model",
+        "function",
+        "model"
       ],
       "outcome": "missing_file",
-      "stdout_sha256": "f6324726302c4424c218b873f7ddad0b8f8f3d30058cb1329cbffefc6aad77e1",
+      "stdout_sha256": "3a64182b9c591780670e9bfbbb8008f2754c2f32fdc1e1cd1afa076e189f68e7",
       "exit_code": 0
     }
   ]

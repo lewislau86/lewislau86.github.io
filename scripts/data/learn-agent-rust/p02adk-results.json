@@ -1,0 +1,220 @@
+{
+  "scope": "P02 ADK-Rust 3.0 part: ScriptedLlm, SQLite session + SqliteActionLedger in one file, real process exits injected in/after a non-idempotent tool, file-backed provider that dedupes by operation",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-model": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": [
+        "sqlite"
+      ]
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "8485ffd865df123b81da51182dd49795be6daebf60eedd6a6f256ebaf5590595",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "ffe192da15db791696ba9ab8d4a880af06f7353a4051b2dc999c66f8213f09e8",
+    "Cargo.toml": "baff5151a95bb8d42e0c792031573d6da14a245d792adc863982eda693e47090",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "926520cad26a17aebc54c2c136b8c29bf3be4b3b6d97cc1f6a712cf3f8caa232",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "rust_tests_passed": 2,
+  "repeated_identical_suites": 2,
+  "scenarios": [
+    {
+      "scenario": "normal",
+      "steps": [
+        {
+          "command": "first",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {\"deduplicated\":false,\"ticket\":\"T-1\"}",
+        "[assistant] text    \"工单已创建。\"",
+        "[assistant] final",
+        "provider_attempts=1",
+        "provider_tickets=1"
+      ],
+      "last_status": "ok",
+      "provider_attempts": 1,
+      "provider_tickets": 1
+    },
+    {
+      "scenario": "crash-in-tool",
+      "steps": [
+        {
+          "command": "first --crash in-tool",
+          "exit_code": 9,
+          "stderr": "injected_exit=in-tool"
+        },
+        {
+          "command": "recover",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {\"detail\":\"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again\",\"status\":\"outcome_unknown\"}",
+        "provider_attempts=1",
+        "provider_tickets=1"
+      ],
+      "last_status": "outcome_unknown",
+      "provider_attempts": 1,
+      "provider_tickets": 1
+    },
+    {
+      "scenario": "crash-after-tool",
+      "steps": [
+        {
+          "command": "first --crash after-tool",
+          "exit_code": 9,
+          "stderr": "injected_exit=after-tool"
+        },
+        {
+          "command": "recover",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=succeeded {\"detail\":\"this call to 'create_ticket' completed before the run was recovered; it was not executed again\",\"result_digest\":\"fnv1a128:b92b64bbb1e274eb09d6455b150c9b90\",\"status\":\"already_succeeded\"}",
+        "provider_attempts=1",
+        "provider_tickets=1"
+      ],
+      "last_status": "succeeded",
+      "provider_attempts": 1,
+      "provider_tickets": 1
+    },
+    {
+      "scenario": "retry-call-key",
+      "steps": [
+        {
+          "command": "first --crash in-tool",
+          "exit_code": 9,
+          "stderr": "injected_exit=in-tool"
+        },
+        {
+          "command": "recover",
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "command": "retry",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {\"detail\":\"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again\",\"status\":\"outcome_unknown\"}",
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {\"deduplicated\":false,\"ticket\":\"T-2\"}",
+        "[assistant] text    \"工单已再次提交。\"",
+        "[assistant] final",
+        "provider_attempts=2",
+        "provider_tickets=2"
+      ],
+      "last_status": "ok",
+      "provider_attempts": 2,
+      "provider_tickets": 2
+    },
+    {
+      "scenario": "retry-business-key",
+      "steps": [
+        {
+          "command": "first --crash in-tool --key business",
+          "exit_code": 9,
+          "stderr": "injected_exit=in-tool"
+        },
+        {
+          "command": "recover",
+          "exit_code": 0,
+          "stderr": ""
+        },
+        {
+          "command": "retry --key business",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {\"detail\":\"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again\",\"status\":\"outcome_unknown\"}",
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {\"deduplicated\":true,\"ticket\":\"T-1\"}",
+        "[assistant] text    \"工单已再次提交。\"",
+        "[assistant] final",
+        "provider_attempts=2",
+        "provider_tickets=1"
+      ],
+      "last_status": "ok",
+      "provider_attempts": 2,
+      "provider_tickets": 1
+    },
+    {
+      "scenario": "memory-ledger",
+      "steps": [
+        {
+          "command": "first --crash after-tool --ledger memory",
+          "exit_code": 9,
+          "stderr": "injected_exit=after-tool"
+        },
+        {
+          "command": "recover --ledger memory",
+          "exit_code": 0,
+          "stderr": ""
+        }
+      ],
+      "trace": [
+        "[user] text    \"请创建工单：审查 Rust 超时处理。\"",
+        "[assistant] call    id=scripted_tc_0_0 create_ticket {\"title\":\"审查 Rust 超时处理\"}",
+        "[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {\"detail\":\"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again\",\"status\":\"outcome_unknown\"}",
+        "provider_attempts=1",
+        "provider_tickets=1"
+      ],
+      "last_status": "outcome_unknown",
+      "provider_attempts": 1,
+      "provider_tickets": 1
+    }
+  ]
+}

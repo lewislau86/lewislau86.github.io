@@ -1,74 +1,43 @@
 {
-  "equal": true,
-  "graph_nodes": [
-    "ModelTurn",
-    "ExecuteTools",
-    "ModelTurn"
-  ],
   "scenario": "batch",
-  "state": {
-    "max_turns": 4,
-    "messages": [
-      {
-        "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-        "id": null,
-        "images": null,
-        "message_type": "human",
-        "tool_calls": null
-      },
-      {
-        "content": "",
-        "id": null,
-        "images": null,
-        "message_type": "ai",
-        "tool_calls": [
-          {
-            "function": {
-              "arguments": "{\"path\":\".\"}",
-              "name": "list_files"
-            },
-            "id": "list-1",
-            "type": "function"
-          },
-          {
-            "function": {
-              "arguments": "{\"path\":\"README.md\"}",
-              "name": "read_file"
-            },
-            "id": "read-1",
-            "type": "function"
-          }
-        ]
-      },
-      {
-        "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
-        "id": "list-1",
-        "images": null,
-        "message_type": "tool",
-        "tool_calls": null
-      },
-      {
-        "content": "{\"data\":{\"text\":\"# Demo\\n启动命令：cargo run\\n\"},\"ok\":true}",
-        "id": "read-1",
-        "images": null,
-        "message_type": "tool",
-        "tool_calls": null
-      },
-      {
-        "content": "README 里的启动命令是：cargo run",
-        "id": null,
-        "images": null,
-        "message_type": "ai",
-        "tool_calls": null
-      }
+  "equal": true,
+  "direct": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] call    id=scripted_tc_0_1 read_file {\"path\":\"README.md\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+      "[assistant] result  id=scripted_tc_0_1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+      "[assistant] text    \"README 里的启动命令是：cargo run\"",
+      "[assistant] final"
     ],
-    "model_turns": 2,
-    "pending": [],
-    "seen_ids": [
-      "list-1",
-      "read-1"
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]",
+      "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
     ],
-    "stop": "completed",
-    "tool_dispatches": 2
-  }
+    "model_calls": 2,
+    "tool_results": 2,
+    "error": null,
+    "answer": "README 里的启动命令是：cargo run",
+    "verified": true
+  },
+  "graph": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] call    id=scripted_tc_0_1 read_file {\"path\":\"README.md\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+      "[assistant] result  id=scripted_tc_0_1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+      "[assistant] text    \"README 里的启动命令是：cargo run\"",
+      "[assistant] final"
+    ],
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]",
+      "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
+    ],
+    "model_calls": 2,
+    "tool_results": 2,
+    "error": null,
+    "answer": "README 里的启动命令是：cargo run",
+    "verified": true
+  },
+  "graph_check": true
 }

@@ -18,7 +18,7 @@ next:
 - 区分澄清输入、人工编辑和动作批准，明确人参与流程的位置。
 - 把批准绑定到待执行动作的具体修订，处理拒绝、变更与重复恢复。
 
-**前置与基础：** [D02 · 提示链与条件路由](./prompt-chaining-routing.md)、[G02 · 图暂停、会话存储与恢复](./graph-pause-resume.md)、[R03 · 工具权限与审批](./permissions.md)。
+**前置与基础：** [D02 · 提示链与条件路由](./prompt-chaining-routing.md)、[G02 · 图暂停、检查点与恢复](./graph-pause-resume.md)、[R03 · 工具权限与审批](./permissions.md)。
 :::
 
 <LearnAgentRustMap active="human-in-the-loop" />

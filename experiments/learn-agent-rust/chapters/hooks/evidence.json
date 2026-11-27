@@ -1,444 +1,331 @@
 {
-  "scope": "R04 single tool round; fixed approved call; real file I/O and owned child workers; no LLM or graph integration",
-  "source_sha256": "277cdf33ad8caed2c6d9329b31a55b14161fb895db3e4100a2a0c1c54779b4f9",
-  "environment": {
-    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
-    "platform": "macOS-27.2-arm64-arm-64bit"
+  "scope": "R04 on ADK-Rust 3.0 RC: agent and tool callbacks registered in order, an application ToolPolicy, callbacks that continue / respond / fail / panic / time out, real temporary files, ScriptedLlm",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
   },
-  "regression_tests": [
-    "empty_hook_list_keeps_authorization_mandatory",
-    "late_block_is_a_protocol_error_not_a_rollback",
-    "normal_order_and_context_are_preserved",
-    "post_error_preserves_result_and_actual_file",
-    "pre_block_and_error_short_circuit_before_io",
-    "prompt_block_has_no_tool_request_or_result_but_still_stops",
-    "stop_error_never_reenters_stop_or_overwrites_tool_result",
-    "tool_failure_still_runs_post_and_stop"
-  ],
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-model": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "b1a1de68e110da7a7a7b8587925ce5c88e608bf2724ccc62001d675aa7bf500e",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "f4fd5e61b5f0f9f962161bde141ca81dfaac56080295268e7897615ac7c5d126",
+    "Cargo.toml": "ba5d4eb32d634d3fea9b88bcf9837721fb922c7466cd1d2113fdd0222ab9eb21",
+    "README.md": "4285fcd9530fde3be12dc1e4ae4ad6a3b202355a3f1296171eb045db2d1b17d6",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "5de1be7e007336ea53367fdb384900624507c23e9f4d08fe12173630764810da",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "57a6b6a2db51d3a63de7962acf8dc287595070551d7503c24c6f8f7f290d37c6",
+  "rust_tests_passed": 7,
+  "repeated_identical_runs": 2,
   "scenarios": [
     {
       "name": "normal",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
       "hook_failures": 0,
       "result_status": "ok",
-      "stop_reason": "completed",
+      "stop": "final_answer",
       "task_ok": true,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=continue",
-        "hook=PostToolUse/after-log outcome=continue",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "2220e7b6cde15ebfea6bc4232d8df140abb1cf602f709e17ee390e3050eed293"
+      "stdout_sha256": "600f8bd5a3fdcb7d950a21d2057629df6ac890f1c28e923797360d6a89a16559"
     },
     {
       "name": "prompt-block",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 0,
-      "result_status": null,
-      "stop_reason": "prompt_blocked",
+      "result_status": "none",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> respond",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "hook=UserPromptSubmit/input-check outcome=block",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
+      "stdout_sha256": "57d1c4c90effe866c30a6d890d5219bac3a844c98a0869fc0f473fc596f6cb01"
+    },
+    {
+      "name": "prompt-error",
+      "write_attempts": 0,
+      "write_successes": 0,
+      "hook_failures": 1,
+      "result_status": "none",
+      "stop": "hook.failed",
+      "task_ok": false,
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> error"
       ],
-      "stdout_sha256": "adbe3c61f9c5dcafd5ffc31f66d42924445ac1f825c6456078704ef53b50f1a6"
+      "stdout_sha256": "e43fb37d8c3ec9bb0ec8733b2991dd3ee5e643d2ea9ffc9e1c8247edf57cea45"
     },
     {
       "name": "permission-deny",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 0,
-      "result_status": "permission_denied",
-      "stop_reason": "permission_denied",
+      "result_status": "refused",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=denied",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "f52b25342fb1b6d61ad7ac1caf92858ec9b3ad07a55061a7634b8aa873e22dfa"
+      "stdout_sha256": "34e8003f51814550fae56bcb50cea68dce6c0695c977273598240ff1d0b053cf"
     },
     {
       "name": "pre-block",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 0,
-      "result_status": "hook_blocked",
-      "stop_reason": "pre_hook_blocked",
+      "result_status": "not_run",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> respond",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=block",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "9df4c519a9cd2f6ea51514415b06c316806327763b1f668957fbc1fcf4757ede"
+      "stdout_sha256": "dbffa7b1d32668f00acaf26cdc2727bbc36be44de25be39e7fb524a459c9c980"
     },
     {
       "name": "pre-error",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 1,
-      "result_status": "hook_error",
-      "stop_reason": "pre_hook_failed",
+      "result_status": "not_run",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> error",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=error:Reported",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "f4b7352ebb69445e838a4fef725c151d87871a533681eb9ea8a3adf11a3d4a27"
+      "stdout_sha256": "6ba51e7a5c49272d83081d73526983042af42e1e888b13fb36d351bd505c9463"
     },
     {
       "name": "pre-panic",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 1,
-      "result_status": "hook_error",
-      "stop_reason": "pre_hook_failed",
+      "result_status": "not_run",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> panic",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=error:WorkerExited",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "c193eca5d654eb8468bf1eb4f3bfce5e75109ca7457cb6e262784d143fb2a30c"
+      "stdout_sha256": "3a28cd56e7681dba668cd8de3bccb3a58c3c886bc8d970237a520cd8cf6d4abc"
     },
     {
       "name": "pre-timeout",
       "write_attempts": 0,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 1,
-      "result_status": "hook_error",
-      "stop_reason": "pre_hook_failed",
+      "result_status": "not_run",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> timeout",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=error:TimeoutReaped",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "4a8406e2317f741be1b1a1ee3778fc8af0e11f73f1d9bb73337dd0ddeb2cbbdc"
+      "stdout_sha256": "222c29216d92d71acc0ad8429f8b6e675988f2b75c06919ed9997bbe25aea764"
     },
     {
       "name": "post-error",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
       "hook_failures": 1,
-      "result_status": "ok",
-      "stop_reason": "post_hook_failed",
+      "result_status": "withheld",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> error",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=error:Reported",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "efa82380d3d794a264d74aa78da4a129e1acfa1b17d731ac0886e8b12e356b17"
+      "stdout_sha256": "67d4170b26c14def2c84ac952197c1d7fe49f25e335f2ecc567c1f68f8d9fc62"
     },
     {
       "name": "post-timeout",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
       "hook_failures": 1,
-      "result_status": "ok",
-      "stop_reason": "post_hook_failed",
+      "result_status": "withheld",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> timeout",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=error:TimeoutReaped",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "e00f3c6c2160fb5d63019c5cc8fc61477b6ba6b9bb83a8ea835bc366dde659a0"
+      "stdout_sha256": "676c66c0c44daee8155d51d4aac9f8925217966822ff3a78f34ef6c5b8e07b7c"
     },
     {
-      "name": "post-block",
+      "name": "post-rewrite",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
-      "hook_failures": 1,
+      "hook_failures": 0,
       "result_status": "ok",
-      "stop_reason": "post_hook_failed",
-      "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "stop": "final_answer",
+      "task_ok": true,
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> respond",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=error:InvalidDecision",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "d26e9cba92fcbab172165d6f571360c5636a91f43db7e989ee9c729403bb40ae"
+      "stdout_sha256": "bf4dde9c3144b9294bbe551454d59748debc10ba6c22cc169128346541836b2f"
     },
     {
       "name": "tool-error",
       "write_attempts": 1,
       "write_successes": 0,
-      "stop_calls": 1,
       "hook_failures": 0,
-      "result_status": "tool_error",
-      "stop_reason": "tool_failed",
+      "result_status": "failed",
+      "stop": "final_answer",
       "task_ok": false,
-      "summary_matches": false,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": false,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> continue"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=tool_error",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=continue",
-        "hook=PostToolUse/after-log outcome=continue",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=continue"
-      ],
-      "stdout_sha256": "2f8effc4be7e038cf1cc886b782108d72b1b5a64801b9b1e5ac739676e665271"
+      "stdout_sha256": "91111924348c5a5240017b068167cfd73af8d5be22527b1e4e38007bb1ef796c"
     },
     {
       "name": "stop-error",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
       "hook_failures": 1,
       "result_status": "ok",
-      "stop_reason": "completed",
+      "stop": "hook.failed",
       "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> error"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=continue",
-        "hook=PostToolUse/after-log outcome=continue",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=error:Reported"
-      ],
-      "stdout_sha256": "99c9334cb4d76daa4e560d4d86e9de0fb6d2d210077792ac93cab226ee555a8a"
+      "stdout_sha256": "29454b84db9f87983a3387982e4e0b2bfb085817bcf97d1cfc0757730a98d23d"
     },
     {
       "name": "stop-timeout",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
       "hook_failures": 1,
       "result_status": "ok",
-      "stop_reason": "completed",
+      "stop": "hook.timeout",
       "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> timeout"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=continue",
-        "hook=PostToolUse/after-log outcome=continue",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=error:TimeoutReaped"
-      ],
-      "stdout_sha256": "50bfb0d00821ca28f0071dd91360cfaf936411b7584fde5eb6f3c207abcd8344"
+      "stdout_sha256": "927994aeb7c4ac7339ed83ca09e601c46f9aff49ecb6a7138f89f790b9b8f4ae"
     },
     {
-      "name": "stop-block",
+      "name": "stop-rewrite",
       "write_attempts": 1,
       "write_successes": 1,
-      "stop_calls": 1,
-      "hook_failures": 1,
+      "hook_failures": 0,
       "result_status": "ok",
-      "stop_reason": "completed",
-      "task_ok": false,
-      "summary_matches": true,
-      "events": [
-        "UserPromptSubmit",
-        "PreToolUse",
-        "PostToolUse",
-        "Stop"
+      "stop": "final_answer",
+      "task_ok": true,
+      "summary_written": true,
+      "hooks": [
+        "before_agent/input-log -> continue",
+        "before_agent/input-check -> continue",
+        "before_tool/before-check tool=write_summary -> continue",
+        "before_tool/before-log tool=write_summary -> continue",
+        "after_tool/after-check tool=write_summary -> continue",
+        "after_tool/after-log tool=write_summary -> continue",
+        "after_agent/stop-log -> respond"
       ],
-      "trace": [
-        "event=UserPromptSubmit",
-        "hook=UserPromptSubmit/input-log outcome=continue",
-        "scripted_request call_id=write-1",
-        "authorization=approved_exact_call",
-        "event=PreToolUse",
-        "hook=PreToolUse/before-check outcome=continue",
-        "hook=PreToolUse/before-log outcome=continue",
-        "tool=write_summary call_id=write-1",
-        "tool_result call_id=write-1 status=ok",
-        "event=PostToolUse",
-        "hook=PostToolUse/after-check outcome=continue",
-        "hook=PostToolUse/after-log outcome=continue",
-        "event=Stop",
-        "hook=Stop/stop-log outcome=error:InvalidDecision"
-      ],
-      "stdout_sha256": "9bd7b86d1e44ee505a539f5d6e06218a0776dd2f097cb605809d89c986a4bf61"
+      "stdout_sha256": "423a88f60060e076d0ce3d331c966678a9095c130899c48b3898d7cc6a8bf7b4"
     }
   ]
 }

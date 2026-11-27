@@ -77,14 +77,14 @@ pageClass: learn-agent-rust-course
 
 | 章节 | 图片 / 片段 / 折叠 | 迁移思考焦点 | 证据边界 |
 | --- | --- | --- | --- |
-| [第 0 章 · 整体架构与环境](./architecture-and-setup.md) | 6 / 7 / 8 | 接线正确与推理有效 | 标准库接线；模型采用固定脚本。 |
-| [第 1 章 · 最小 Agent 循环](./agent-loop.md) | 3 / 12 / 6 | 终止性是一种业务约束 | 有界显式循环；真实 provider 另验。 |
-| [第 2 章 · 工具注册与图调度](./tools-and-graph.md) | 5 / 9 / 6 | 比较语义而非画法 | 两库接线与脚本模型；同答案不等于状态等价。 |
-| [第 3 章 · 工具权限与审批](./permissions.md) | 5 / 7 / 7 | 授权绑定的是动作 | 固定请求与模拟审批；身份服务另验。 |
-| [第 4 章 · 生命周期与 Hooks](./hooks.md) | 4 / 10 / 7 | 观察者也会成为故障源 | 固定 Hook 与直属 worker；整轮恢复另验。 |
-| [第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md) | 1 / 8 / 6 | 路由正确与业务完成分别检查 | 真实 graph-flow 路由与固定等级规则；无模型质量结论。 |
-| [第 6 章 · 图暂停、会话存储与恢复](./graph-pause-resume.md) | 1 / 8 / 6 | 保存冲突与效果重放分别处理 | 真实 SessionStorage 与 SQLite 跨进程恢复；单业务执行者，无外部发布。 |
-| [第 7 章 · 图并行、归并与子图](./graph-parallel-subgraphs.md) | 1 / 8 / 6 | 并发安全与业务归并分别验证 | 真实 FanOutTask、共享状态与隔离子图包装；持久化父子恢复另验。 |
+| [第 0 章 · 整体架构与环境](./architecture-and-setup.md) | 6 / 5 / 7 | 接线正确与推理有效 | ADK-Rust 3.0 RC 接线；模型采用固定脚本。 |
+| [第 1 章 · 最小 Agent 循环](./agent-loop.md) | 3 / 14 / 6 | 终止性是一种业务约束 | 框架内的有界循环与规则模型；真实 provider 另验。 |
+| [第 2 章 · 工具注册与图调度](./tools-and-graph.md) | 5 / 7 / 6 | 比较语义而非画法 | ADK-Rust 3.0 RC 与脚本模型；同答案不等于状态等价。 |
+| [第 3 章 · 工具权限与审批](./permissions.md) | 5 / 8 / 7 | 授权绑定的是动作 | ADK-Rust 3.0 RC 策略与审批记录；固定请求与决定，审批人身份另验。 |
+| [第 4 章 · 生命周期与 Hooks](./hooks.md) | 4 / 8 / 7 | 观察者也会成为故障源 | ADK-Rust 3.0 RC 回调与策略；进程内回调，进程级隔离另验。 |
+| [第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md) | 1 / 9 / 6 | 路由正确与业务完成分别检查 | ADK-Rust 3.0 RC adk-graph 路由、归并规则与超步上限；固定等级规则，无模型质量结论。 |
+| [第 6 章 · 图暂停、检查点与恢复](./graph-pause-resume.md) | 1 / 9 / 6 | 保存冲突与效果重放分别处理 | ADK-Rust 3.0 RC adk-graph 的 SQLite 检查点与跨进程严格恢复；单业务执行者，无外部发布。 |
+| [第 7 章 · 图并行、归并与子图](./graph-parallel-subgraphs.md) | 1 / 12 / 6 | 并发安全与业务归并分别验证 | ADK-Rust 3.0 RC adk-graph 超步并行、自动汇合、超时与隔离子图；无外部服务。 |
 | [第 8 章 · 可见的任务清单](./todo-planning.md) | 4 / 7 / 6 | 计划不是完成证据 | 会话内计划；任务持久化见 R12。 |
 | [第 9 章 · 子 Agent 与上下文隔离](./subagents.md) | 3 / 12 / 7 | 隔离信息与回收执行者 | 独立历史与线程；进程沙箱另验。 |
 | [第 10 章 · 按需加载技能](./skill-loading.md) | 4 / 13 / 6 | 知识不携带执行权 | 两库技能加载；任意第三方技能另验。 |
@@ -111,7 +111,7 @@ pageClass: learn-agent-rust-course
 | [第 31 章 · MCP 外部工具](./mcp-tools.md) | 4 / 10 / 7 | 协议兼容与业务可靠性 | MCP 2025-11-25 的真实 stdio；新版与 HTTP 另验。 |
 | [第 32 章 · 完整 Agent 集成](./integrated-agent.md) | 4 / 14 / 6 | 接缝是新的故障位置 | 两库最小集成与脚本模型；完整生产系统另验。 |
 | [专题 1 · PostgreSQL 检查点](./postgres-checkpoints.md) | 4 / 12 / 6 | 检查点是可重建的承诺 | 真实 PostgreSQL 与进程恢复；物理断电另验。 |
-| [专题 2 · 外部操作的可靠性](./side-effect-reliability.md) | 4 / 9 / 6 | 业务身份比重试次数稳定 | 两份 SQLite 与独立进程；远程服务合同另验。 |
+| [专题 2 · 外部操作的可靠性](./side-effect-reliability.md) | 4 / 12 / 7 | 业务身份比重试次数稳定 | 两份 SQLite 与独立进程，加 ADK-Rust 3.0 RC 动作账本的单机恢复；远程服务合同另验。 |
 | [专题 3 · 模型协议与质量评估](./model-evaluation.md) | 3 / 14 / 6 | 指标衡量的是哪个对象 | 本地 HTTP fixture；真实服务、费用与泛化另验。 |
 | [专题 4 · 生产准入与演练](./production-readiness.md) | 3 / 10 / 6 | 恢复演练要闭合业务链 | 双 PostgreSQL 集群演练；生产 RTO/RPO 另验。 |
 | [专题 5 · 固定工作流与目标控制](./workflow-and-goal-control.md) | 4 / 11 / 6 | 继续必须消耗有限资源 | 单进程脚本执行者；跨进程续跑与真实模型另验。 |

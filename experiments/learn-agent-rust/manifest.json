@@ -8,20 +8,30 @@
       "part": "execution",
       "domain": "工具与执行",
       "status": "written",
-      "question": "模型、工具、图调度与应用策略分别放在哪里？",
-      "addition": "建立两库分工、进程边界与实验环境的全貌。",
+      "stack": "adk3",
+      "question": "模型、工具、Agent、Runner 与应用策略分别放在哪里？",
+      "addition": "建立模型、工具、Agent、Runner 与会话的分工，准备固定版本的 ADK-Rust 3.0 实验环境。",
       "outcome": "画出一次读取项目说明的调用链，准备不依赖密钥和数据库的运行环境。",
       "prerequisites": [],
       "chapter": 0,
-      "kind": "rustc",
-      "archive": null,
+      "kind": "cargo",
+      "archive": "architecture-and-setup.zip",
       "verifier": "scripts/verify-learn-agent-rust.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "--deny"
+        ],
+        [
+          "{binary}",
+          "--missing-file"
         ]
       ],
+      "binary": "learn-agent-r00",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -31,6 +41,7 @@
       "part": "execution",
       "domain": "工具与执行",
       "status": "written",
+      "stack": "adk3",
       "question": "模型怎样请求工具，看到执行结果后再继续？",
       "addition": "显式循环、结构化调用、消息配对与停止状态。",
       "outcome": "用脚本模型完成一次文件读取，核对消息、call_id、轮次和预算耗尽路径。",
@@ -38,15 +49,23 @@
         "R00"
       ],
       "chapter": 1,
-      "kind": "rustc",
-      "archive": null,
+      "kind": "cargo",
+      "archive": "agent-loop.zip",
       "verifier": "scripts/verify-learn-agent-rust-loop.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "--scenario",
+          "two-tools",
+          "--max-tool-calls",
+          "1"
         ]
       ],
+      "binary": "learn-agent-r01",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -56,9 +75,10 @@
       "part": "execution",
       "domain": "工具与执行",
       "status": "written",
-      "question": "增加工具后，怎样让循环保持清晰并映射到图？",
-      "addition": "工具注册表，以及 ModelTurn 与 ExecuteTools 的图节点映射。",
-      "outcome": "增加第二个只读工具，用相同用例比较显式版和图版的消息、调用与结果。",
+      "stack": "adk3",
+      "question": "增加工具后，描述与执行怎样保持一致，图又该调度什么？",
+      "addition": "用 FunctionTool 统一工具描述、schema 与处理函数，把同一个 LlmAgent 放进 adk-graph 的图节点。",
+      "outcome": "增加第二个只读工具，用 14 个场景比较 Runner 直接运行与放进图里运行的事件、请求和结果。",
       "prerequisites": [
         "R01"
       ],
@@ -82,23 +102,29 @@
       "part": "execution",
       "domain": "工具与执行",
       "status": "written",
+      "stack": "adk3",
       "question": "模型提出动作后，谁决定允许、拒绝或等待审批？",
-      "addition": "执行前权限判断与类型化审批状态。",
+      "addition": "用应用自己的 ToolPolicy 区分允许、拒绝与等待批准，由框架挂起、记录并恢复原来那次调用。",
       "outcome": "验证拒绝路径没有执行工具，批准后只执行被批准的动作；跨进程恢复另行验收。",
       "prerequisites": [
         "R02"
       ],
       "chapter": 3,
-      "kind": "rustc",
-      "archive": "permissions-lab.zip",
+      "kind": "cargo",
+      "archive": "permissions.zip",
       "verifier": "scripts/verify-agent-permissions.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}",
           "approve"
+        ],
+        [
+          "{binary}",
+          "tamper"
         ]
       ],
+      "binary": "learn-agent-r03",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -108,23 +134,29 @@
       "part": "execution",
       "domain": "工具与执行",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样在循环边界增加策略、记录与检查？",
-      "addition": "执行前后与停止阶段的生命周期扩展点。",
+      "addition": "把检查、记录与收尾挂到 ADK-Rust 的四个回调位置，验证顺序与每个阶段失败的后果。",
       "outcome": "观察 Hook 顺序，并验证拒绝、异常和超时的传播策略。",
       "prerequisites": [
         "R03"
       ],
       "chapter": 4,
-      "kind": "rustc",
-      "archive": "hooks-lab.zip",
+      "kind": "cargo",
+      "archive": "hooks.zip",
       "verifier": "scripts/verify-agent-hooks.py",
       "requires_postgres": false,
       "demo": [
         [
           "{binary}",
           "normal"
+        ],
+        [
+          "{binary}",
+          "post-error"
         ]
       ],
+      "binary": "learn-agent-r04",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -134,9 +166,10 @@
       "part": "orchestration",
       "domain": "图编排与会话",
       "status": "written",
+      "stack": "adk3",
       "question": "图怎样共享状态、选择分支，并让修复循环有上限？",
-      "addition": "类型化状态、条件边、GoTo、逐步与连续执行。",
-      "outcome": "运行真实 graph-flow，核对状态、游标、轨迹、调用数和错误跳转，区分图结束与业务通过。",
+      "addition": "带归并规则的状态通道、条件边、with_goto、超步与步数上限。",
+      "outcome": "运行真实 adk-graph，核对每个超步运行的节点、状态轨迹与修复额度，区分建图检查、运行时错误与业务通过。",
       "prerequisites": [
         "R02"
       ],
@@ -152,30 +185,35 @@
         ],
         [
           "{binary}",
-          "direct"
+          "exhausted"
         ],
         [
           "{binary}",
-          "exhausted"
+          "runaway"
         ],
         [
           "{binary}",
           "probes"
         ]
       ],
+      "verifier_args": [
+        "--lab",
+        "G01"
+      ],
       "binary": "graph-state-lab",
-      "run_scope": "4 组路由与循环演示"
+      "run_scope": "4 组路由、修复额度、超步上限与建图探针演示"
     },
     {
       "id": "G02",
       "slug": "graph-pause-resume",
-      "title": "图暂停、会话存储与恢复",
+      "title": "图暂停、检查点与恢复",
       "part": "orchestration",
       "domain": "图编排与会话",
       "status": "written",
+      "stack": "adk3",
       "question": "等待外部批准并退出后，新进程从哪里继续？",
-      "addition": "真实 SessionStorage、SQLite 版本事务、修订绑定与终态保护。",
-      "outcome": "通过独立 CLI 进程恢复会话，拒绝旧批准、旧写入和不兼容快照；外部效果与多执行者推进另验。",
+      "addition": "节点暂停、SQLite 检查点、按暂停 ID 严格恢复与答案格式校验。",
+      "outcome": "通过独立 CLI 进程恢复线程，拒绝旧暂停的回答、并发写入和不兼容的图版本；外部效果另验。",
       "prerequisites": [
         "G01",
         "R03"
@@ -194,34 +232,13 @@
         [
           "{binary}",
           "{run}/review.db",
-          "step"
+          "show"
         ],
         [
           "{binary}",
           "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "approve",
-          "1",
-          "yes"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
-        ],
-        [
-          "{binary}",
-          "{run}/review.db",
-          "step"
+          "answer-loose",
+          "approve"
         ],
         [
           "{binary}",
@@ -229,8 +246,12 @@
           "show"
         ]
       ],
+      "verifier_args": [
+        "--lab",
+        "G02"
+      ],
       "binary": "graph-resume-lab",
-      "run_scope": "跨进程批准、恢复与终态保护演示"
+      "run_scope": "跨进程暂停、检查点与按节点名恢复的对照演示"
     },
     {
       "id": "G03",
@@ -239,9 +260,10 @@
       "part": "orchestration",
       "domain": "图编排与会话",
       "status": "written",
+      "stack": "adk3",
       "question": "多项检查怎样并行执行，失败后保留什么，结果怎样汇总？",
-      "addition": "FanOutTask、显式归并、共享更新冲突与隔离子图包装。",
-      "outcome": "核对真实并发、局部成功、丢失更新和任务超时，用独立 Session 显式传递父子输入输出。",
+      "addition": "超步并行、自动汇合、业务归并、同步更新冲突、超时与隔离子图。",
+      "outcome": "核对并行与汇合、失败后只重跑失败节点、丢失更新与超时跳过，用通道映射隔离子图。",
       "prerequisites": [
         "G01",
         "G02"
@@ -272,6 +294,10 @@
           "{binary}",
           "timeout"
         ]
+      ],
+      "verifier_args": [
+        "--lab",
+        "G03"
       ],
       "binary": "graph-parallel-lab",
       "run_scope": "5 组并行、失败、子图与超时演示"
@@ -1207,6 +1233,7 @@
       "part": "reliability",
       "domain": "可靠性专题",
       "status": "written",
+      "stack": "adk3",
       "question": "工具已产生业务结果、检查点却未保存时，怎样重放？",
       "addition": "操作身份、业务幂等、Outbox 与对账。",
       "outcome": "在指定故障窗口重试，核对重复调用与最终业务结果。",

@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import sqlite3
 import subprocess
+import sys
 import tempfile
 import zipfile
 
@@ -18,7 +19,13 @@ CHAPTER = ROOT / "docs/learn-agent-rust/side-effect-reliability.md"
 DATA = ROOT / "scripts/data/learn-agent-rust/p02-results.json"
 ARCHIVE = PUBLIC / "side-effect-reliability.zip"
 FILES = ["Cargo.toml", "Cargo.lock", "rust-toolchain.toml", ".gitignore", "README.md",
-         "src/main.rs", "src/client.rs", "src/provider.rs", "src/tests.rs"]
+         "src/main.rs", "src/client.rs", "src/provider.rs", "src/tests.rs",
+         # ADK-Rust 3.0 部分（第 9 节）：独立 Cargo 工程，由 verify-agent-effects-adk.py 构建与验证
+         "adk/Cargo.toml", "adk/Cargo.lock", "adk/rust-toolchain.toml", "adk/.gitignore",
+         "adk/.cargo/config.toml", "adk/src/main.rs", "adk/src/trace.rs"]
+# 取 ADK-Rust 源码的脚本与基线，放在章节根目录：python3 fetch-adk-rust.py ../adk-rust
+EXTRA = {"fetch-adk-rust.py": ROOT / "scripts/fetch-adk-rust.py",
+         "learn-agent-rust-adk.json": ROOT / "scripts/learn-agent-rust-adk.json"}
 
 
 def require(condition, message):
@@ -279,6 +286,10 @@ def main():
     parser.add_argument("--check", action="store_true")
     args = parser.parse_args()
     files = {name: (SOURCE / name).read_bytes() for name in FILES}
+    files.update({name: path.read_bytes() for name, path in EXTRA.items()})
+    # 先验证 ADK 部分（它有自己的输出与证据），失败则整章失败
+    subprocess.run([sys.executable, str(ROOT / "scripts/verify-agent-effects-adk.py")] + (["--check"] if args.check else []),
+                   cwd=ROOT, check=True)
     env = os.environ.copy()
     env["CARGO_TARGET_DIR"] = str(ROOT / ".cache/learn-agent-p02-target")
     with tempfile.TemporaryDirectory(prefix="p02-source-") as directory:

@@ -1,1 +1,2 @@
-scenario=timeout graph_task_timeout=true cursor=never
+on_timeout=fail error=node_timed_out node=license
+on_timeout=skip verdict=incomplete

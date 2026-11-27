@@ -1,0 +1,13 @@
+场景：repeat；模型：RuleLlm（按规则读取请求内容的脚本模型）
+预算：model_calls=不限 tool_calls=不限；循环上限：3
+[assistant] call    id=read-1 read_file {"path":"README.md"}
+[assistant] result  id=read-1 read_file status=ok {"text":"# 课程练习项目\n启动命令：cargo run\n"}
+[assistant] call    id=read-2 read_file {"path":"README.md"}
+[assistant] result  id=read-2 read_file status=ok {"text":"# 课程练习项目\n启动命令：cargo run\n"}
+[assistant] call    id=read-3 read_file {"path":"README.md"}
+[assistant] result  id=read-3 read_file status=ok {"text":"# 课程练习项目\n启动命令：cargo run\n"}
+request 0: roles=system,user tools=[read_file]
+request 1: roles=system,user,model,function tools=[read_file]
+request 2: roles=system,user,model,function,model,function tools=[read_file]
+统计：model_calls=3 tool_results=3 read_attempts=3 read_successes=3 session_events=7
+停止：agent.legacy；fixture_goal_met=false

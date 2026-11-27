@@ -3,23 +3,21 @@ name: Check R03 permission experiment
 on:
   push:
     branches: [master]
-    paths:
+    paths: &paths
       - "docs/learn-agent-rust/permissions.md"
-      - "docs/public/learn-agent-rust/code/permissions.rs"
+      - "docs/public/learn-agent-rust/code/permissions/**"
       - "docs/public/learn-agent-rust/outputs/r03-*.txt"
-      - "docs/public/learn-agent-rust/permissions-lab.zip"
+      - "docs/public/learn-agent-rust/figures/r03-*.svg"
+      - "docs/public/learn-agent-rust/permissions.zip"
       - "scripts/data/learn-agent-rust/r03-results.json"
       - "scripts/verify-agent-permissions.py"
+      - "scripts/learn_agent_rust_adk.py"
+      - "scripts/fetch-adk-rust.py"
+      - "scripts/learn-agent-rust-adk.json"
+      - "scripts/snippets/adk-trace.rs"
       - ".github/workflows/check-agent-permissions.yml"
   pull_request:
-    paths:
-      - "docs/learn-agent-rust/permissions.md"
-      - "docs/public/learn-agent-rust/code/permissions.rs"
-      - "docs/public/learn-agent-rust/outputs/r03-*.txt"
-      - "docs/public/learn-agent-rust/permissions-lab.zip"
-      - "scripts/data/learn-agent-rust/r03-results.json"
-      - "scripts/verify-agent-permissions.py"
-      - ".github/workflows/check-agent-permissions.yml"
+    paths: *paths
   workflow_dispatch:
 
 permissions:
@@ -28,15 +26,22 @@ permissions:
 jobs:
   permissions:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Install the minimum supported edition 2024 toolchain
-        run: rustup toolchain install 1.85.0 --profile minimal
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/adk-rust
+          key: agent-adk-permissions-${{ runner.os }}-${{ hashFiles('scripts/learn-agent-rust-adk.json', 'docs/public/learn-agent-rust/code/permissions/Cargo.lock') }}
+      - name: Fetch the pinned ADK-Rust 3.0 source
+        run: python3 scripts/fetch-adk-rust.py .cache/adk-rust
       - name: Check scenarios, regression tests and extracted download
-        env:
-          RUSTUP_TOOLCHAIN: "1.85.0"
-        run: python scripts/verify-agent-permissions.py --check
+        run: python3 scripts/verify-agent-permissions.py --check

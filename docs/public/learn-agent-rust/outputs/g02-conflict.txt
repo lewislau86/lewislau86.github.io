@@ -1,1 +1,8 @@
-conflict=stale_writer_rejected
+$ lab DB init
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB conflict int_266c27ecacf46656c0fa3d518307f6cd
+status=completed outcome=approved revision=1 report=upgrade report: revision 1 approved
+trace=draft>approve>render
+status=refused reason=checkpoint_conflict
+node_runs draft=1 approve=3 render=1 reject=0

@@ -1,6 +1,6 @@
 ---
 title: "第 4 章：生命周期与 Hooks"
-description: "沿一次已批准的文件写入，建立执行前、执行后与停止阶段的扩展点，验证拒绝、失败和超时。"
+description: "沿一次文件写入，把检查、记录与收尾挂到 ADK-Rust 3.0 的四个回调位置上，验证顺序、拦下、出错、超时与改写的后果。"
 pageClass: learn-agent-rust-course
 prev:
   text: 第 3 章 · 工具权限与审批
@@ -12,25 +12,25 @@ next:
 
 # 第 4 章：生命周期与 Hooks
 
-[课程总览](./index.md) · [上一章：工具权限与审批](./permissions.md) · [下一章：图状态与路由](./graph-state-routing.md)
+[课程总览](./index.md) · [上一章](./permissions.md) · [学习路径](./learning-path.md) · [下一章](./graph-state-routing.md)
 
 ::: tip 本章学习目标
-- 沿一次工具轮次，解释输入提交、执行前、执行后和停止四个扩展点。
-- 按注册顺序运行回调，明确阻止与失败如何结束当前回调链。
-- 核对失败发生时文件已经产生什么结果，并终止、回收超时实验的直属子进程。
+- 找到一次工具调用经过的四个回调位置，知道它们和策略检查、工具执行的先后。
+- 区分回调的三种返回：继续、给出内容（拦下或改写）、出错，以及每种返回在不同位置的后果。
+- 验证执行前失败时调用不会执行，执行后失败时文件已经写入、结果被扣下，结束回调失败时运行以错误结束。
 
-**前置：** [第 3 章](./permissions.md)的“批准绑定具体动作”，Rust 的 `trait`、枚举、借用、`Result` 和 `Vec`。本章补充 `Box<dyn Hook>` 的用途。
+**前置：** 读过[第 3 章](./permissions.md)，知道策略在工具执行前检查；能读懂闭包、`Box<dyn Fn>` 和 `async`。
 
-**实践方式：** 下载[本章学习包](/learn-agent-rust/hooks-lab.zip)，使用 Rust 1.85 或更新版本编译。标准库独立实验，无需模型密钥、数据库或其他章节源码。
+**实践方式：** 下载 <a href="/learn-agent-rust/hooks.zip" download>本章 Rust 工程</a>，按[第 7 节](#hands-on)取一次 ADK-Rust 源码后运行。不需要模型密钥或数据库。
 :::
 
-上一章已经能确认：“这份摘要得到批准后，才能写入。”
+::: info 本章已迁移到 ADK-Rust 3.0
+本章实验基于 ADK-Rust 3.0 的发布候选版本（固定提交，尚未发布到 crates.io）。旧版本章用标准库实现了自己的 Hook 机制，可从 git 标签 `learn-agent-rust-v1` 取得。换成框架的回调以后，有几条结论变了：执行前的回调在策略检查之前运行；执行后的回调出错时，真实结果会被扣下而不是原样交给模型；执行后的回调可以改写模型看到的结果；结束回调不是每条路径都会运行。下文逐条验证。
+:::
 
-现在，工作区助手还要在写入前记录调用，在写入后检查结果，任务结束时整理停止原因。如果每增加一个要求，都往文件执行函数里塞一段代码，权限、日志、文件操作与收尾就会混在一起。
+上一章让写摘要先过策略。现在想在这条路上加几件“旁边的事”：收到请求时记一笔，执行前再做一道业务检查，执行后核对结果，结束时汇总。这些事不该写进工具本身，也不该写进策略。
 
-我们先保留同一个小任务：把“启动命令：cargo run”写入 `notes/summary.txt`。本章把额外行为挂到明确的边界上，这些回调就叫 **Hook**。
-
-先猜一个结果：文件写入成功后，负责记录结果的 Hook 报错了，文件还在吗？程序应该说“文件没写进去”，还是保留真实结果并报告检查失败？
+先猜一个问题：写入已经成功了，执行后的检查回调却出错了。摘要文件还在吗？模型会看到什么？
 
 <LearnAgentRustMap active="hooks" />
 
@@ -42,221 +42,204 @@ next:
 
 ## 1. 沿一次写入找到四个位置
 
-Hook 首先是一份调用约定：到达某个位置时，运行时提供什么信息，按什么顺序调用回调，如何解释返回值。
+ADK-Rust 的 `LlmAgent` 提供八种回调，本章用其中四种，它们在一次写入里依次出现：
 
-本章选择四个事件：
+| 回调 | 什么时候运行 | 本章挂的回调 |
+| --- | --- | --- |
+| `before_agent` | Agent 开始处理这次输入之前 | `input-log`、`input-check` |
+| `before_tool` | 每次工具调用、**策略检查之前** | `before-check`、`before-log` |
+| `after_tool` | 工具执行之后（成功或失败），以及工具被 `before_tool` 回调拦下之后；策略拒绝、挂起等待、`before_tool` 回调出错时不运行 | `after-check`、`after-log` |
+| `after_agent` | Agent 结束时：正常回答、转交、取消都会运行；以错误结束或有调用挂起等待时不运行 | `stop-log` |
 
-| 事件 | 触发位置 | 回调能看到什么 | 本章用途 |
-| --- | --- | --- | --- |
-| `UserPromptSubmit` | 收到输入之后、生成工具请求之前 | 输入文本 | 输入记录与拦截。 |
-| `PreToolUse` | 核对授权之后、真正调用工具之前 | 输入与完整动作 | 追加执行前检查。 |
-| `PostToolUse` | 工具返回成功或错误之后 | 原始动作与配对结果 | 观察结果与后置检查。 |
-| `Stop` | 本次任务准备返回时 | 已有结果与停止原因 | 收尾记录。 |
+另外四种是 `before_model`、`after_model`（模型调用前后）、`after_tool_full`（拿到工具参数和结果的执行后回调）和 `on_tool_error`（工具失败时）。
 
-![真实正常运行按输入提交、执行前、执行后与停止的顺序触发四个事件。](/learn-agent-rust/figures/r04-lifecycle-order.svg)
+![四个位置依次是 before_agent、before_tool、策略检查与执行、after_tool、after_agent；同一位置的多个回调按注册顺序运行。](/learn-agent-rust/figures/r04-lifecycle-order.svg)
 
-从上往下读，在 `PreToolUse` 与 `PostToolUse` 之间发生真实文件写入。同一事件有两个回调时，按注册先后执行。`Stop` 汇集本章控制流中各条返回路径，包括输入被挡住、权限拒绝、工具失败和正常完成。
+## 2. 回调能做什么：继续、给出内容、出错
 
-这里的“生命周期”指一次任务从输入到返回的推进过程；本章重点是回调触发位置，Rust 的借用规则帮助约束回调能访问的状态。
+四种回调的签名相同：拿到一个上下文（能读到会话、用户输入，在工具回调里还能读到工具名和参数），返回 `Result<Option<Content>>`。本章用一个函数生成所有回调，`Behavior` 决定它这次怎么返回：
 
-::: info 源码与实验范围
-完整代码只有一份：<a href="/learn-agent-rust/code/hooks.rs" download>下载 hooks.rs</a> · [GitHub 源码](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/learn-agent-rust/code/hooks.rs) · [学习包](/learn-agent-rust/hooks-lab.zip)。下文 Rust 片段直接从源码导入。
+<<< @/public/learn-agent-rust/code/hooks/src/main.rs#contracts
 
-实验覆盖一个固定工具轮次与收尾：输入和工具请求由程序生成，可信测试入口提供一份已批准动作，文件由 `std::fs` 真实写入。它位于上一章审批恢复后的执行边界，省略审批交互；没有在本章接入真实模型或 `graph-flow`。
-:::
+同一种返回，放在不同位置，后果不同：
 
-## 2. 让回调读到恰当的上下文
+| 返回 | `before_agent` | `before_tool` | `after_tool` | `after_agent` |
+| --- | --- | --- | --- | --- |
+| `Ok(None)` 继续 | 照常 | 照常 | 照常 | 照常 |
+| `Ok(Some(内容))` | 替 Agent 回答，不调用模型 | 拦下：工具不执行，内容作为结果 | 改写：模型看到的结果被替换 | 追加一条最终回答 |
+| `Err(…)` | 运行以错误结束 | 工具不执行（`not_run`），运行继续 | 结果扣下（`withheld`），运行继续 | 运行以错误结束 |
 
-先看事件、上下文与回调契约：
-
-<<< @/public/learn-agent-rust/code/hooks.rs#contracts
-
-`HookContext` 保存借用：执行前有 `call`，执行后增加 `result`，停止时增加 `stop_reason`。`Option` 让“这个阶段还没有工具结果”在类型里表达出来。
-
-`Hook::call` 获得的是只读引用。回调可以检查已批准动作，却不能通过这份上下文替换路径或写入内容。这样，上一章“批准对应原始动作”的约束继续保留。
-
-`Decision` 表示业务决定：继续，或阻止。`HookError` 则表示回调没有完成约定，例如主动返回错误、子进程异常退出、超时后已回收，或者在不允许阻止的阶段返回了 `Block`。
-
-两者要分开理解。一个检查正常运行后发现输入不符合要求，可以返回 `Block`；检查本身出错，则返回 `Err`。程序保留两种原因，便于后续解释与排查。
-
-`Box<dyn Hook>` 把不同回调放进同一列表：它们的实现可以不同，只要都提供 `name`、`event` 和 `call`。`dyn Hook` 表示调用时根据具体对象选择实现，`Box` 则让列表中的每一项具有确定的存放方式。
-
-普通回调在 Agent 进程内运行，因此它们仍属于受信任的应用代码。只读上下文约束这份接口，并不会限制回调自行访问文件或网络。
+工具回调出错不会结束运行：框架把它变成这次调用的结果，交给模型。Agent 回调出错会结束运行。
 
 ## 3. 注册顺序，就是执行顺序
 
-本实验给四个位置注册回调。正常情况下它们只返回 `Continue`；切换场景时，让一个回调阻止、报错或进入故障 worker：
+<<< @/public/learn-agent-rust/code/hooks/src/main.rs#registration
 
-<<< @/public/learn-agent-rust/code/hooks.rs#registration
-
-例如 `before-check` 先于 `before-log` 注册。若前一个回调阻止动作，后一个就不运行。我们把回调链固定为**遇到第一个阻止或错误，就结束当前事件的分发**。
-
-分发器集中实现这份约定：
-
-<<< @/public/learn-agent-rust/code/hooks.rs#dispatch
-
-`dispatch` 先按事件筛选，再按列表顺序调用。每次调用的名称与结果都进入 `trace`，运行输出因此能直接核对顺序。
-
-为什么 `PostToolUse` 和 `Stop` 返回 `Block` 会变成 `InvalidDecision`？前者触发时，文件工具已经结束；后者负责收尾。本章不赋予这两个位置撤销动作或强制续跑的含义，返回值不符合本章契约时就报告协议错误。
-
-这只是本实验选择的明确语义。接入别的 Hook 系统前，需要重新核对它的事件、允许的返回值与失败处理。
-
-### 权限判断继续是必经步骤
-
-可选回调适合扩展检查，但工具仍应保留必经的授权边界：
-
-<<< @/public/learn-agent-rust/code/hooks.rs#authorize
-
-测试入口给出 `approved`，表示上一章已经确认的完整动作。这里比较 `call_id`、路径与内容，并再次限制固定目标与字节上限。缺少匹配批准时返回权限拒绝，省略了重新发起审批的流程。
-
-回调注册表为空时，这份检查仍然存在。对应测试会先移除所有 Hook，确认没有批准就不会写入；再提供匹配批准，确认工具可以执行。Hook 可以追加限制，移除 Hook 不会移除这条授权边界。
-
-## 4. 执行前失败，文件工具不会收到调用
-
-先看授权检查到 `PreToolUse` 的这一段：
-
-<<< @/public/learn-agent-rust/code/hooks.rs#before_tool
-
-授权未通过，返回 `permission_denied`。授权通过后，才进入执行前回调链：
-
-- 回调正常放行，继续走向文件工具。
-- 回调返回 `Block`，生成 `hook_blocked` 工具结果。
-- 回调报错或超时，生成 `hook_error` 工具结果。
-
-后两条路径都会保留原 `call_id`，然后进入统一收尾。文件执行函数没有运行，因此不会触发 `PostToolUse`。
-
-输入提交阶段还要更早：若 `UserPromptSubmit` 阻止输入，程序尚未生成工具请求，也就没有工具结果。本章的 `prompt-block` 场景会输出 `result none`，不会凭空创建一次工具调用。
-
-## 5. 执行后失败，保留已经发生的事实
-
-真正写入后，运行时先保存工具结果，再分发后置回调：
-
-<<< @/public/learn-agent-rust/code/hooks.rs#after_tool
-
-`write_attempts` 紧挨 `fs::write` 增加；成功返回后才增加 `write_successes`。无论文件操作成功还是失败，都有一个实际工具结果，再交给 `PostToolUse`。
-
-如果后置检查报错，`stop_reason` 变成 `post_hook_failed`，但原工具结果保持原样。成功写入仍然是 `ok`，写入失败仍然是 `tool_error`。
-
-程序还会读取最终摘要核对内容。因此开场问题可以用文件检查回答：后置 Hook 失败时，成功写入的文件仍在。本次运行应同时报告“工具成功”和“后续检查失败”。
-
-![实测计数显示执行前阻止不会写入，执行后和停止回调失败则保留已经成功的写入。](/learn-agent-rust/figures/r04-failure-results.svg)
-
-先比较 `pre-timeout` 与 `post-timeout`：同样是超时，写入次数分别为零和一次。再看 `stop-error`：工具结果是 `ok`，任务通过检查却为“否”。失败位置决定了动作已经推进到哪里。
-
-### 所有受控返回，都汇合到一次 Stop
-
-<<< @/public/learn-agent-rust/code/hooks.rs#finish
-
-`finish` 接收已经确定的停止原因，触发一次 `Stop` 后返回。停止回调出错时，错误进入 `failures`；程序不会再次触发 `Stop`，也不会悄悄启动下一轮。
-
-因此 `stop-error` 中 `stop_reason=completed` 表示执行流程原本到达完成位置；`task_ok=false` 则表示加上收尾检查后，本次运行没有全部通过。最终判定同时检查停止原因与回调错误列表。
-
-这里的统一出口覆盖本程序显式处理的业务返回。进程被强制终止、内联回调发生未处理 panic 或程序崩溃时，无法依赖普通 `Stop` 回调完成清理。
-
-## 6. 超时之后，还要结束和回收回调
-
-仅仅把“超时”写进结果里，阻塞回调可能仍在后台运行。对普通同步 Rust 函数，外层计时也无法自动抢占正在执行的函数。
-
-本章专门把两个故障回调放到直属子进程：
-
-| worker 模式 | 实际行为 | 父进程如何观察 |
-| --- | --- | --- |
-| `panic` | 执行真实 `panic!` 并异常退出 | 映射为 `WorkerExited`。 |
-| `hang` | 持续等待 | 达到预算后终止并等待回收，映射为 `TimeoutReaped`。 |
-
-普通记录、阻止与返回错误的回调仍在进程内。worker 是本程序的固定故障入口，不接受模型提供的任意命令。
-
-![父进程检测固定 worker 的退出与预算，超时后先终止再等待回收，最后返回错误。](/learn-agent-rust/figures/r04-worker-timeout.svg)
-
-沿图中父进程读：先启动 worker，再用 `try_wait` 检查退出；达到预算后，调用 `kill` 和 `wait`。只有等待成功，程序才返回 `TimeoutReaped`。
-
-<<< @/public/learn-agent-rust/code/hooks.rs#worker
-
-`kill` 与 `wait` 负责不同事情：前者请求终止，后者等待子进程结束并回收相关资源。Rust 的 `Child` 不会在被丢弃时自动替我们完成这一生命周期，详细约定见 [Child 官方文档](https://doc.rust-lang.org/std/process/struct.Child.html)。
-
-完整源码中的 `OwnedWorker` 还为提前返回的 I/O 错误提供尽力清理。实验没有创建 worker 的后代进程，因此这里验证的是直属子进程回收。
-
-故障场景使用 40 毫秒预算、2 毫秒轮询间隔；panic 场景给出 5 秒预算，避免把正常启动开销当作 panic。这些是教学配置，预算从 `spawn` 返回后开始计时，调度和回收仍有额外开销。实验不报告毫秒级性能结论，也不把它描述成实时终止保证。
-
-## 7. 动手：从一条正常轨迹开始
-
-在学习包解压后的目录运行：
+正常场景（准备步骤见[第 7 节](#hands-on)）：
 
 ```sh
-rustc --edition=2024 -D warnings hooks.rs -o hooks
-./hooks normal
+cargo run --locked
 ```
-
-Windows 原生终端把 `./hooks` 换成 `.\hooks.exe`。每次运行新建临时工作区，退出时清理。本文输出记录的环境为 macOS arm64、`rustc 1.99.1`；同时使用 Rust 1.85.0 复核。完整环境保存在包内 `evidence.json`。
-
-[正常场景的完整输出](/learn-agent-rust/outputs/r04-normal.txt)如下：
 
 <<< @/public/learn-agent-rust/outputs/r04-normal.txt
 
-沿编号核对：授权检查在执行前回调之前；两个前置回调结束后才写文件；得到工具结果后运行两个后置回调；最后触发一次 `Stop`。
+每个位置的回调按注册顺序运行，各运行一次。（如果还在 `Runner` 上装了插件，同一位置的插件回调先于 Agent 自己的回调运行；本章没有装插件。）同一位置里，只要有一个回调给出内容，后面的同类回调就不再运行：`pre-block` 场景里 `before-check` 拦下了写入，`before-log` 就没有出现。拦下的内容成为这次调用的结果（`status=not_run`），工具没有执行。
 
-再比较三个失败位置：
+### 权限仍来自策略
+
+<<< @/public/learn-agent-rust/code/hooks/src/main.rs#policy
+
+注意顺序：`before_tool` 回调在策略检查**之前**运行。`permission-deny` 场景里，模型要写 README.md，两个 `before_tool` 回调都放行了，随后策略拒绝，结果 `refused`，写入次数为 0：
+
+<<< @/public/learn-agent-rust/outputs/r04-permission-deny.txt
+
+这说明两件事。第一，回调能拦下调用，但放不行被策略拒绝的调用：权限只来自策略。第二，执行前的日志回调会记下最后被拒绝的调用，日志里“出现过”不等于“执行过”。被策略拒绝的调用也不会触发 `after_tool`。要留下拒绝记录，可以给 `Runner` 配审计日志（`audit_log`）：框架会为每次拒绝写一条带策略引用和理由的审计记录；不配审计时，要在策略或结束回调里自己记。
+
+反过来也要小心：`before_tool` 回调如果返回一个工具结果形式的内容，这个结果会保留它自己写的状态，模型可能看到一个“成功”的结果，而工具根本没有执行，也没有经过策略。这不会让动作发生，但能让模型误以为动作发生了，所以执行前的回调同样需要审查。
+
+## 4. 执行前失败：失败即关闭
+
+`before-check` 出错、panic、超时，三个场景的结果相同：工具不执行，结果 `not_run`，运行继续，模型看到“before-tool callback failed”。
 
 ```sh
-./hooks pre-timeout
-./hooks post-error
-./hooks stop-timeout
+cargo run --locked -- pre-timeout
 ```
-
-先预测每个场景的写入次数，再看[前置超时输出](/learn-agent-rust/outputs/r04-pre-timeout.txt)：
 
 <<< @/public/learn-agent-rust/outputs/r04-pre-timeout.txt
 
-`before-check` 超时后，`before-log` 被短路，工具没有执行，后置事件也没有出现；`Stop` 仍然触发一次。
+一个坏掉的检查回调不会让本该被检查的动作溜过去，这叫“失败即关闭”。panic 也一样：框架接住 `before_tool` 回调里的 panic，变成 `callback.panicked` 错误（`pre-panic` 场景会在标准错误输出打印一条 panic 信息，那是故意制造的）。注意只有 `before_tool` 回调有这层保护；`after_tool`、`before_agent`、`after_agent` 回调里的 panic，框架不接。出错以后，后面的 `before-log` 和全部 `after_tool` 回调都不运行。
 
-打开[后置错误输出](/learn-agent-rust/outputs/r04-post-error.txt)和[停止超时输出](/learn-agent-rust/outputs/r04-stop-timeout.txt)，会看到摘要已匹配、工具仍为 `ok`，同时存在回调错误。它们印证了“真实执行结果”和“完整运行通过”需要分别记录。
+框架不给回调限时。`pre-timeout` 的回调自己用 `tokio::time::timeout` 设了 40 毫秒上限，超时就返回错误，交给框架按“出错”处理。
 
-### 把剩余路径也跑一遍
+## 5. 执行后失败：文件已经写了
 
-```sh
-./hooks prompt-block
-./hooks permission-deny
-./hooks pre-block
-./hooks pre-error
-./hooks pre-panic
-./hooks post-timeout
-./hooks post-block
-./hooks tool-error
-./hooks stop-error
-./hooks stop-block
-rustc --edition=2024 -D warnings --test hooks.rs -o hook-tests
-./hook-tests
-```
-
-`tool-error` 先在摘要路径创建目录，让文件写入真实失败；仍然会触发后置与停止事件。`post-block` 和 `stop-block` 故意违反返回值契约，验证 `InvalidDecision`。`pre-panic` 使用异常退出的子进程，验证主进程能得到失败结果并继续收尾；它没有证明所有内联 Rust panic 都会被隔离。
-
-八个 Rust 测试覆盖注册顺序、只读上下文、无 Hook 时的授权边界、输入拦截、前置短路、后置错误保留文件、文件失败后的事件、停止错误与非法后置决定。
-
-维护者在网站仓库中重建与检查产物：
+回到开头的问题。`post-error` 场景里写入成功，`after-check` 出错：
 
 ```sh
-python3 scripts/verify-agent-hooks.py
-python3 scripts/generate-learn-agent-rust-figures.py --lesson R04
-python3 scripts/verify-agent-hooks.py --check
+cargo run --locked -- post-error
 ```
 
-验证器在仓库外运行 14 个场景和 8 个测试，核对事件次序、结果关联、文件计数、错误类型与停止次数。它还会独立解压学习包，重新编译并运行正常、前置超时、后置错误和停止超时场景。
+<<< @/public/learn-agent-rust/outputs/r04-post-error.txt
 
-## 8. 接回循环时，哪些约定要保持
+摘要文件已经写进去了（`summary_written=true`），执行后的回调撤不回已经发生的事。但模型看不到真实结果：这次调用的状态是 `withheld`，模型被告知“工具运行了，但执行后的处理失败了，结果被扣下，不要再调用它”；后面的 `after-log` 也不再运行。任务算失败（`task_ok=false`）。
 
-本章把 Hook 放到应用运行时的边界。在第 2 章的目标结构中，输入事件位于进入循环之前，前置与后置事件围绕 `ExecuteTools` 的真实派发，停止事件由外层根据停止原因统一触发。
+这一点和旧版本章相反：旧版保留真实结果、另记一笔回调失败；ADK-Rust 选择扣下结果。框架的文档和源码都写了理由：执行后的回调可能是脱敏或筛查的一环，它没有完成，后面的环节就可能拿到未经筛查的结果，所以一处失败就结束整条执行后流水线并扣下结果（[工具授权文档第 10 步](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/security/tool-authorization.md)）。动作已经发生、模型却不知道结果，后续要靠应用自己核对（例如重新读取文件），而不是让模型再做一次。
 
-接入 `graph-flow` 时，要用相同用例重新验证顺序与返回状态。图节点正常返回或暂停，并不自动对应这里的业务 `Stop`；每个工具也必须继续携带自己的 `call_id`。本章标准库实验的通过不能代替这项集成验收。
+**执行后的回调可以改写结果。** `post-rewrite` 场景里，`after-check` 返回了一段内容，模型看到的结果变成了它，真实的 `{"written": …}` 没有交给模型：
 
-想给新检查增加一个实现时，先确定它属于哪个事件，再决定允许的返回值和失败策略。日志回调如果只是内存记录，就按内存记录理解；若业务要求审计记录必须可靠保存，还要引入存储与保存失败的处理。
+<<< @/public/learn-agent-rust/outputs/r04-post-rewrite.txt
+
+这是过滤和脱敏的正当用法，也意味着执行后的回调和策略一样需要审查：它能决定模型看到什么。顺带一提，轨迹和表格里的 `ok` 是轨迹片段在结果没有状态注解时写的标签，不是框架给的状态；被改写的结果没有注解，所以即使改写的是一次失败，这里也会显示 `ok`。
+
+**工具失败时，执行后的回调照常运行。** `tool-error` 场景里目标位置是一个目录，写入失败（`failed`），两个 `after_tool` 回调都运行了。
+
+### 结束回调：不是每条路径都运行
+
+| 场景 | 发生了什么 | `stop-log` | 停止原因 |
+| --- | --- | --- | --- |
+| `stop-error` | 回答已经发出，结束回调出错 | 运行，出错 | `hook.failed` |
+| `stop-timeout` | 结束回调超时 | 运行，超时 | `hook.timeout` |
+| `stop-rewrite` | 结束回调返回内容，多出一条最终回答 | 运行 | `final_answer` |
+| `prompt-block` | 输入回调拦下，替 Agent 回答 | 运行 | `final_answer` |
+| `prompt-error` | 输入回调出错 | **不运行** | `hook.failed` |
+
+结束回调出错时，最终回答已经发给了调用方，运行却以错误结束：调用方会先看到回答，再看到错误。`prompt-error` 说明结束回调不是“每条路径都会经过”：这里是 `before_agent` 回调出错，Agent 以错误结束，`after_agent` 不运行。调用被挂起等待审批时它也要等到恢复的那次运行才执行。（转交给别的 Agent、被取消时它会运行；调用方中途丢弃事件流时也会运行，但它返回的内容会被丢掉。）所以，必须释放的资源不能只靠结束回调。
+
+![一次工具调用依次经过 before_tool 回调、策略检查、执行、after_tool 回调；每一站失败的后果不同。](/learn-agent-rust/figures/r04-tool-pipeline.svg)
+
+## 6. 超时之后，回调真的停了吗？
+
+`tokio::time::timeout` 只在 `.await` 的地方生效：回调卡在一个 `await` 上（等网络、等锁），超时后这个 future 被丢弃，回调停下。如果回调做的是阻塞线程的同步计算，或者调用了阻塞的系统接口，超时就打断不了它，整个运行会跟着卡住。
+
+所以，对不可信或可能卡死的代码，回调里只做“发起和等待”，真正的工作放到单独的进程里：等待超时就结束并回收那个进程，再返回错误。旧版本章（git 标签 `learn-agent-rust-v1`）用子进程做过这个实验：超时后先 `kill` 再 `wait`，确认子进程已经回收才报告超时。本章不重复这部分。
+
+## 7. 动手实验 {#hands-on}
+
+下载并解压<a href="/learn-agent-rust/hooks.zip" download>本章工程</a>，先取一次 ADK-Rust 源码，再运行：
+
+```sh
+cd hooks
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked                       # normal
+cargo run --locked -- pre-timeout
+cargo run --locked -- post-error
+cargo run --locked -- stop-error
+```
+
+命令要在 `hooks` 目录里运行。编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0），不影响运行和检查。
+
+![九个代表场景中，执行前拦下和超时都没有写入；执行后回调出错时文件已写入但结果被扣下；结束回调出错时运行以错误结束。](/learn-agent-rust/figures/r04-failure-results.svg)
+
+| 场景 | 写入尝试 / 成功 | 结果状态 | 停止原因 | 任务通过 |
+| --- | --- | --- | --- | --- |
+| `normal` | 1 / 1 | `ok` | `final_answer` | 是 |
+| `prompt-block` | 0 / 0 | — | `final_answer` | 否 |
+| `prompt-error` | 0 / 0 | — | `hook.failed` | 否 |
+| `permission-deny` | 0 / 0 | `refused` | `final_answer` | 否 |
+| `pre-block` | 0 / 0 | `not_run` | `final_answer` | 否 |
+| `pre-error` / `pre-panic` / `pre-timeout` | 0 / 0 | `not_run` | `final_answer` | 否 |
+| `post-error` / `post-timeout` | 1 / 1 | `withheld` | `final_answer` | 否 |
+| `post-rewrite` | 1 / 1 | `ok`（内容被改写） | `final_answer` | 是 |
+| `tool-error` | 1 / 0 | `failed` | `final_answer` | 否 |
+| `stop-error` / `stop-timeout` | 1 / 1 | `ok` | `hook.failed` / `hook.timeout` | 否 |
+| `stop-rewrite` | 1 / 1 | `ok` | `final_answer` | 是 |
+
+脚本模型每次都说“摘要已写入”，不管实际发生了什么，所以任务是否通过由程序判断：摘要真的写进去了、得到了最终回答、没有回调失败。
+
+### 与旧版场景的对应
+
+旧版有 14 个场景、8 个测试，新版 15 个场景、7 个测试：
+
+| 旧版场景 | 新版 | 说明 |
+| --- | --- | --- |
+| `post-block`、`stop-block` | 删除 | 旧版规定“执行后、结束时的回调不能拦下”，返回内容算违规；ADK-Rust 里这两个位置返回内容是合法的改写，所以换成 `post-rewrite`、`stop-rewrite`。 |
+| — | 新增 `prompt-error` | 验证 `before_agent` 出错时 `after_agent` 不运行。 |
+| `pre-panic` | 保留，机制变了 | 旧版是真实崩溃的子进程；新版是回调里的 panic，被框架的 `guard_callback` 接住。 |
+| `pre-timeout`、`post-timeout`、`stop-timeout` | 保留，机制变了 | 旧版超时后结束并回收子进程；新版回调用 `tokio::time::timeout` 自己限时，框架不限时。子进程隔离见第 6 节。 |
+| “结束回调只执行一次” | 不再成立 | 旧版保证每次运行结束回调恰好执行一次；ADK-Rust 在出错或挂起时不运行它（见上表）。 |
+
+其余场景（`normal`、`permission-deny`、`prompt-block`、`pre-block`、`pre-error`、`post-error`、`stop-error`、`tool-error`）名称和用意保留，结论按 ADK-Rust 的行为重新核对。
+
+网站维护者运行 `python3 scripts/verify-agent-hooks.py`：它打包章节、在临时目录解压并在旁边放好 `adk-rust/`，执行格式检查、Clippy 和 7 个 Rust 测试；15 个场景各连跑两次输出必须逐字节相同；逐个核对计数、结果状态、停止原因，以及哪些回调必须出现、哪些不能出现；正常场景还核对完整的回调顺序。加 `--check` 检查产物是否过期。
+
+## 框架替你做了什么、没做什么
+
+| 框架做了 | 仍归应用 |
+| --- | --- |
+| 在四个位置按注册顺序调用回调；有一个给出内容，后面的同类回调不再运行。 | 决定每个位置挂什么、按什么顺序。 |
+| 工具前回调出错或 panic 时不执行工具（失败即关闭）。 | 让检查回调本身可靠；给回调设时间上限。 |
+| 工具后回调出错时扣下结果，告诉模型不要再调用。 | 核对已经发生的动作（结果被扣下，文件可能已经写了）。 |
+| 策略检查始终在执行前运行，回调放行不了被拒绝的调用。 | 不要把权限写进回调。 |
+| 配置了审计日志时，为每次拒绝写一条审计记录（策略引用与理由）。 | 不配审计时，自己在策略或结束回调里记录拒绝。 |
+| 接住 `before_tool` 回调里的 panic。 | 其他回调里的 panic 框架不接，回调要自己保证不 panic。 |
+| — | 必须释放的资源不能只靠结束回调；隔离会卡死的代码要用单独进程。 |
+
+<!-- adk-refs:start -->
+
+## 在 ADK-Rust 源码里
+
+本章观察到的回调顺序与失败后果，在 ADK-Rust 里分布在这几处：
+
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 工具前回调的签名 | [`adk-core/src/callbacks.rs` 第 129 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/callbacks.rs#L129) | 返回 `None` 继续，返回内容表示拦下并用它代替结果，返回错误表示回调自己失败 |
+| Agent 结束回调的签名 | [`adk-core/src/callbacks.rs` 第 69 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/callbacks.rs#L69) | 返回内容会追加一条最终回答；返回错误会让运行以错误结束 |
+| 注册工具前回调 | [`adk-agent/src/llm_agent.rs` · `LlmAgentBuilder::before_tool_callback`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L1645-L1648) | 可以注册多个，按注册顺序运行；有一个给出内容，后面的同类回调就不再运行 |
+| 回调 panic 的处理 | [`adk-core/src/callbacks.rs` · `guard_callback`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/callbacks.rs#L35-L57) | 把 panic 变成 `callback.panicked` 错误；只有工具前回调经过它，其他回调里的 panic 框架不接 |
+| 执行后流水线失败时交给模型的结果 | [`adk-core/src/tool_response.rs` 第 414 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/tool_response.rs#L414) | 结果被扣下（withheld），并告诉模型不要再调用这个工具 |
+| 工具调用的受控路径 | [`adk-core/src/governance.rs` · `authorize_tool_call`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/governance.rs#L2286-L2605) | 策略、护栏、审批在这里依次检查；它在工具前回调之后运行 |
+
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
+
+<!-- adk-refs:end -->
 
 ::: warning 常见误区
-- 把 Hook 当成权限来源。它可以追加检查，必经授权与审批绑定仍由应用保证。
-- 以为所有回调都会执行。本章遇到第一个阻止或错误就结束当前事件的链；统一收尾另行执行。
-- 在后置 Hook 出错时改写真实工具结果。文件可能已经写入，应保留工具结果并另外记录检查失败。
-- 把 `Stop` 当成目标完成。本章停止事件负责通知，`task_ok` 还要结合错误；强制续跑属于[目标控制专题](./workflow-and-goal-control.md)。
-- 以为 timeout 会停止任意内联代码。本章故障回调使用直属子进程，验证其终止与回收，不提供通用沙箱或进程树管理。
-- 依赖 Stop 完成所有资源清理。显式收尾只覆盖受控返回，资源本身仍应管理所有权与退出清理。
+- 把回调当作权限来源。回调能拦下，不能放行；权限来自策略。但执行前的回调能伪造一个“成功”的结果给模型看，它本身也要审查。
+- 以为每个回调都会运行。同一位置有一个给出内容或出错，后面的就不运行；Agent 出错时结束回调也不运行。
+- 以为执行后的回调失败会保留真实结果。ADK-Rust 会扣下结果，模型看到的是 `withheld`。
+- 忘了执行后的回调能改写模型看到的结果，它需要和策略一样被审查。
+- 以为 `tokio::time::timeout` 能停下任何代码。它只在 `.await` 处生效。
+- 把结束回调当作目标完成。是否完成任务要单独判断，继续执行的策略见[专题 5](./workflow-and-goal-control.md)。
 :::
 
 <!-- transfer-thinking:start -->
@@ -277,71 +260,69 @@ python3 scripts/verify-agent-hooks.py --check
 
 <!-- transfer-thinking:end -->
 
+在 ADK-Rust 里，这道题多了一层：执行后的日志回调出错，框架会把结果扣下，模型不知道写入成功了。如果模型或应用据此“重跑整轮”，非幂等的写入就会再做一次。所以日志、审计这类观察回调，要么保证不出错（出错时自己吞掉并另行报告），要么放到不影响结果的位置。
+
 ## 本章结论
 
-Hook 为稳定的执行流程提供扩展位置：运行时决定何时触发、传入什么上下文和怎样解释结果，回调实现具体检查或记录。
+ADK-Rust 在一次工具调用的路上留了几个回调位置：Agent 开始前、工具执行前、工具执行后、Agent 结束时。同一位置的回调按注册顺序运行，返回值决定后果：继续、拦下或改写、出错。
 
-本章保留强制授权，按注册顺序运行回调；前置失败阻止工具派发，后置失败保留真实结果，统一 Stop 只执行一次。超时实验通过直属子进程验证终止与回收。将来接入图调度或可靠存储时，继续用这些正常与失败路径核对边界。
+执行前出错时调用不执行，执行后出错时动作已经发生、结果被扣下，结束回调出错时运行以错误结束，Agent 本身出错时结束回调不运行。权限始终来自策略。下一章离开单个 Agent，学习用图组织多个步骤。
 
 ## 检查理解
 
-1. `PreToolUse` 注册了检查和日志两个回调，检查返回 `Block`，日志还会运行吗？
+1. `before-check` 拦下了写入，`before-log` 还会运行吗？
 
    <details><summary>参考答案</summary>
 
-   不会。本章回调链遇到阻止或错误就短路，工具也不会执行；程序产生配对的阻止结果，然后进入统一 Stop。若需要记录所有拒绝，应该设计明确的拒绝事件或在统一结果处记录，而不是假设后续回调一定执行。
+   不会。同一位置里有一个回调给出内容，后面的同类回调就不再运行。想记录“被拦下”，可以在拦下它的回调里记，或者在执行后、结束时的回调里记（`pre-block` 场景里 `after_tool` 回调仍然运行）。
 
    </details>
 
-2. 为什么移除所有 Hook 后，未批准动作仍然不能写入？
+2. 一个回调都不注册，模型要写 README.md，能写进去吗？
 
    <details><summary>参考答案</summary>
 
-   `authorized` 是实际派发前的必经步骤，独立于可选回调。它验证固定路径、内容上限与完整批准快照。对应 Rust 测试会移除注册表并检查文件没有产生。
+   不能。权限来自策略：`WritePolicy` 只允许写 `notes/summary.txt`，策略检查在每次工具调用执行前都会运行，和有没有回调无关。
 
    </details>
 
-3. 文件成功写入，后置 Hook 超时，应该怎样记录？
+3. 写入成功后 `after-check` 超时了，文件、模型看到的结果、任务结果分别是什么？
 
    <details><summary>参考答案</summary>
 
-   保留原 `ok` 工具结果和 `call_id`，同时记录 `TimeoutReaped` 与 `post_hook_failed`，任务通过检查为假。超时后的回调终止不会撤销已经写入的文件。
+   文件已经写入；模型看到的是 `withheld`，被告知结果被扣下、不要再调用；任务未通过（有回调失败）。应用要自己核对文件，而不是让模型再写一次。
 
    </details>
 
-4. 为什么超时处理既有 `kill` 又有 `wait`？
+4. 回调里用了 `tokio::time::timeout`，为什么还说它不一定能停下回调？
 
    <details><summary>参考答案</summary>
 
-   终止请求与进程回收是两个步骤。父进程等待直属 worker 结束并回收后，才返回本实验的 `TimeoutReaped`。本例没有创建后代进程，因此不能扩展为任意进程树回收的结论。
+   它只在 `.await` 处取消 future。回调如果在做阻塞线程的同步工作，超时到了也打断不了，运行会一直卡住。对这种代码，要放到单独的进程里，超时后结束并回收进程。
 
    </details>
 
-5. `Stop` 回调报错后，为什么不再触发一次 Stop？
+5. 结束回调能不能用来保证“每次运行结束都释放资源”？
 
    <details><summary>参考答案</summary>
 
-   Stop 已经在处理收尾。如果报错后递归调用同一收尾，可能无限重复。本章把错误追加到失败列表，保留原工具结果与停止原因，然后直接返回；后续是否继续需要独立的目标控制策略。
+   不能完全保证。Agent 以错误结束时 `after_agent` 不运行（`prompt-error`），调用被挂起等待审批时它也要等恢复后才运行。必须释放的资源应该用 Rust 的作用域（`Drop`）或外层的清理逻辑来保证。
 
    </details>
 
 ## 参考资料
 
-- <a href="/learn-agent-rust/code/hooks.rs" download>本章完整源码</a>、[学习包](/learn-agent-rust/hooks-lab.zip)和[正常运行记录](/learn-agent-rust/outputs/r04-normal.txt)。
-- [Rust：使用 trait 对象](https://doc.rust-lang.org/book/ch18-02-trait-objects.html)，理解 `Box<dyn Hook>`。
-- [Rust：Child](https://doc.rust-lang.org/std/process/struct.Child.html)，核对 `try_wait`、`kill`、`wait` 与资源生命周期。
-- [Learn Claude Code：Hooks](https://learn.shareai.run/zh/s04/)，参考事件位置；本章采用独立的返回值契约与 Rust 实验。
+- <a href="/learn-agent-rust/code/hooks/README.md" download>本章工程 README（下载）</a>与[正常场景输出](/learn-agent-rust/outputs/r04-normal.txt)。
+- ADK-Rust（固定提交）：[回调文档](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/callbacks/callbacks.md)、[工具授权文档中的检查顺序](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/security/tool-authorization.md#combining-mechanisms)、[插件](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/core/plugins.md)。
+- [Tokio：time::timeout](https://docs.rs/tokio/latest/tokio/time/fn.timeout.html)。
+- [Learn Claude Code：Hooks](https://learn.shareai.run/zh/s04/)。
 
-<details><summary>保留的参考原图与来源</summary>
-
-以下原图来自参考课程的 Python/Claude 教学实现，接口、事件语义和编号按原图理解，不作为本章 Rust 实验结果。
+<details><summary>参考课程原图与来源</summary>
 
 ![参考课程原图展示围绕模型与工具轮次设置的生命周期扩展位置。](/learn-agent-rust/figures/upstream/r04-hooks-overview.svg)
 
-图源：[参考章节](https://learn.shareai.run/zh/s04/) · [原图](https://learn.shareai.run/course-assets/s04_hooks/hooks-overview.svg)。先关注扩展点的位置，再对照本章源码中的短路和失败规则；本章 Stop 只通知一次。
-
-来源版本与许可见[课程架构中的参考资料说明](./architecture.md#reference-assets)。
+图源：[参考章节](https://learn.shareai.run/zh/s04/) · [原图](https://learn.shareai.run/course-assets/s04_hooks/hooks-overview.svg)。先关注扩展点的位置，再对照本章实验里的顺序和失败规则。来源版本与许可见[课程架构中的参考资料说明](./architecture.md#reference-assets)。
 
 </details>
 
-下一章：[第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md)，先把工作流的状态、分支与循环组织清楚，再进入长任务计划。
+下一章：[第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md)。

@@ -48,7 +48,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             .cache/agent-download-target
-          key: agent-book-${{ runner.os }}-${{ hashFiles('docs/public/learn-agent-rust/code/**/Cargo.lock') }}
+          key: agent-book-${{ runner.os }}-${{ hashFiles('docs/public/learn-agent-rust/code/**/Cargo.lock', 'scripts/learn-agent-rust-adk.json') }}
       - name: Install PostgreSQL 18 server tools
         run: |
           sudo install -d /usr/share/postgresql-common/pgdg

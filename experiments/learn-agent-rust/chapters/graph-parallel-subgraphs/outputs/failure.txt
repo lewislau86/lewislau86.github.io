@@ -1,1 +1,3 @@
-scenario=failure parent_error=true sibling_result_retained=true merge_ran=false cursor=checks
+step=0 ran=plan
+first_run error=node_failed node=security security_runs=1 license_runs=1
+resumed verdict=ready security_runs=2 license_runs=1

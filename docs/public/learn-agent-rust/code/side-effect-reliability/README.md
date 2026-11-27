@@ -56,3 +56,15 @@ Outbox 的本地事务没有覆盖 provider DB；发送与外部业务提交之�
 `committed_apply_calls` 只计 provider 事务已提交的 apply 行；提交前被终止的调用不在该计数中。累计客户端尝试、服务端调用提交、业务工单数量和检查点数量分别报告。
 
 在网站仓库运行 `python3 scripts/verify-agent-effects.py` 会执行 29 个独立进程场景、11 项 Rust 测试、Clippy、独立 SQL 核验与最终下载包复验。`--check` 检查产物是否过期。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson P02` 生成。
+
+## ADK-Rust 3.0 部分（adk/ 子目录）
+
+正文第 9 节的实验是独立 Cargo 工程：脚本模型、SQLite 会话与动作账本、工具内和工具后的真实进程退出。
+ADK-Rust 3.0 尚未发布到 crates.io，`adk/.cargo/config.toml` 把依赖指向本目录旁边的 `adk-rust/`：
+
+```sh
+python3 fetch-adk-rust.py ../adk-rust     # 在本目录运行一次；需要 git，不行时加 --method cdn
+cd adk && cargo test --locked
+```
+
+场景与命令见正文第 9 节；网站维护者用 `python3 scripts/verify-agent-effects-adk.py` 验证（本章验证器会先调用它）。

@@ -1,0 +1,13 @@
+$ lab DB init
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB answer int_266c27ecacf46656c0fa3d518307f6cd revise
+status=waiting step=3 interrupt=int_07794f6847ceec1ccff8a8e0da6bf1b9 revision=2
+node_runs draft=2 approve=3 render=0 reject=0
+$ lab DB answer int_266c27ecacf46656c0fa3d518307f6cd approve
+status=refused reason=resume_rejected
+node_runs draft=2 approve=3 render=0 reject=0
+$ lab DB answer int_07794f6847ceec1ccff8a8e0da6bf1b9 approve
+status=completed outcome=approved revision=2 report=upgrade report: revision 2 approved
+trace=draft>approve>draft>approve>render
+node_runs draft=2 approve=4 render=1 reject=0

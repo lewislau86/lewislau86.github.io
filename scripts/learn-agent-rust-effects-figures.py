@@ -7,7 +7,9 @@ def generate(root, text, panel, arrow, save):
     evidence = json.loads((root / "scripts/data/learn-agent-rust/p02-results.json").read_text())
     source = root / "docs/public/learn-agent-rust/code/side-effect-reliability"
     for name, digest in evidence["source_sha256"].items():
-        if hashlib.sha256((source / name).read_bytes()).hexdigest() != digest:
+        # 下载包另外放进 fetch-adk-rust.py 与基线文件，它们的唯一来源在 scripts/
+        path = source / name if (source / name).exists() else root / "scripts" / name
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             raise ValueError("Stale P02 evidence; run verify-agent-effects.py")
     rows = {r["scenario"]: r for r in evidence["scenarios"]}
 

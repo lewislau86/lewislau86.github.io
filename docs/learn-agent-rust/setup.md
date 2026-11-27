@@ -14,6 +14,10 @@ next:
 
 [课程总览](./index.md) · [学习路径](./learning-path.md) · [下一篇：课程架构](./architecture.md)
 
+::: info 正在迁移到 ADK-Rust 3.0
+全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–7 章与[专题 2](./side-effect-reliability.md)；其余章节仍是旧版实验。已迁移章节的准备步骤见[第 4 节](#install-adk)，尚未迁移章节的两库安装步骤见第 5 节。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
+:::
+
 ::: tip 本章学习目标
 - 准备 Rust、Cargo、格式化工具、Clippy 和系统链接器。
 - 编译运行一个没有第三方依赖的小程序，确认基础工具链可用。
@@ -42,7 +46,8 @@ next:
 | Rust、Cargo、rustfmt、Clippy | 现在 | 编译、运行、格式化与静态检查。 |
 | 系统 C 编译工具与链接器 | 现在 | 链接可执行程序，支持需要编译本地代码的依赖。 |
 | Git、终端和文本编辑器 | 现在 | 阅读源码、记录修改并执行命令。 |
-| `graph-flow`、`langchain-rust` 与课程工程 | 完成基础自检后，按本页第 4 节准备 | 下载 R02 工程，通过 Cargo 获取并编译固定依赖；R00、R01 仍可独立运行标准库示例。 |
+| ADK-Rust 3.0 源码 | 运行已迁移章节前，按本页[第 4 节](#install-adk)准备 | 已迁移章节通过 path patch 使用固定提交的源码。 |
+| `graph-flow`、`langchain-rust` | 运行尚未迁移的章节前，按本页第 5 节准备 | 旧版章节通过 Cargo 获取并编译固定依赖。 |
 | 支持工具调用的模型服务与凭据 | 真实模型实验前 | 在脚本模型实验通过后，验证请求、响应和工具协议。 |
 | PostgreSQL 18 服务端工具 | [P01 检查点实验](./postgres-checkpoints.md)前 | 在专用临时集群验证保存与跨进程恢复。 |
 
@@ -131,7 +136,36 @@ Environment check passed: Rust + Cargo + rustfmt + Clippy.
 
 这里的通过条件是程序输出符合预期，并且格式检查与 Clippy 均成功退出。失败时脚本会停在具体命令处，可按下节的排查表处理。
 
-## 4. 安装 graph-flow 与 langchain-rust {#install-frameworks}
+## 4. 已迁移章节：准备 ADK-Rust 3.0 源码 {#install-adk}
+
+已迁移的章节使用 ADK-Rust 3.0。它还没有发布到 crates.io，所以每个章节工程里带一个 `.cargo/config.toml`，用 path patch 把 `adk-core`、`adk-agent` 等依赖指向**章节目录旁边**的 `adk-rust/` 源码。所有章节用同一个固定提交，登记在网站仓库的 `scripts/learn-agent-rust-adk.json`。
+
+取一次源码即可，之后所有已迁移章节共用：
+
+```sh
+# 单章下载包：解压后进入章节目录，脚本随包提供
+cd tools-and-graph
+python3 fetch-adk-rust.py ../adk-rust              # 用 git 浅取固定提交，需要 GitHub 访问
+python3 fetch-adk-rust.py ../adk-rust --check      # 核对提交和文件
+
+# 全书代码库：在代码库根目录运行，源码放到 chapters/adk-rust/
+python3 run.py fetch-adk
+```
+
+访问不了 GitHub 的 git 服务时，加 `--method cdn` 改为按文件下载（较慢，可以重复运行直到报告 0 个缺失文件）。目录布局是这样的：
+
+```text
+某个目录/
+├── adk-rust/            ← 固定提交的 ADK-Rust 源码
+├── tools-and-graph/     ← 章节工程，.cargo/config.toml 指向 ../adk-rust/...
+└── permissions/
+```
+
+cargo 只读取当前目录及上级目录里的 `.cargo/config.toml`，所以 `cargo run`、`cargo test` 都要在章节目录里运行。锁文件不记录源码路径，所以只要放在旁边，任何机器上 `--locked` 都能通过。
+
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告：上游固定 Rust 1.95.0，课程用 1.99.1。它们不影响运行，也不影响章节代码的 `clippy -D warnings`。3.0.0 正式发布到 crates.io 后，各章会删除 `.cargo/config.toml`，改用正式版本，届时不再需要这一步。
+
+## 5. 尚未迁移的章节：安装 graph-flow 与 langchain-rust {#install-frameworks}
 
 基础自检通过后，接下来把架构图中的两个库接进一个实际工程。这里的“安装”是**把库声明为项目依赖，由 Cargo 下载并编译**。`cargo install` 用于安装命令行可执行程序；本课程通过 `Cargo.toml` 使用这两个库。
 
@@ -142,7 +176,7 @@ Environment check passed: Rust + Cargo + rustfmt + Clippy.
 
 这些是当前课程工程验证过的源码版本。依赖名中的连字符在 Rust `use` 路径里写成下划线；版本核对以课程文件为准。
 
-### 4.1 下载并解压课程工程
+### 5.1 下载并解压课程工程
 
 推荐先使用 <a href="/learn-agent-rust/tools-and-graph.zip" download>R02 章节工程 tools-and-graph.zip</a>。它已经包含源码、`Cargo.toml`、`Cargo.lock`、`rust-toolchain.toml` 和 README，无需提前克隆两个上游仓库。
 
@@ -158,7 +192,7 @@ Windows 原生环境可通过上面的下载链接保存 zip，使用资源管�
 
 如果已经克隆网站源码，直接进入仓库中的 `docs/public/learn-agent-rust/code/tools-and-graph/`，不必再下载一份。
 
-### 4.2 选择工程固定的 Rust 工具链
+### 5.2 选择工程固定的 Rust 工具链
 
 在工程目录执行：
 
@@ -174,7 +208,7 @@ rustc --version
 
 在没有环境变量或显式命令覆盖时，进入这个目录，rustup 会按该文件选择 `1.99.1`。若仍显示 `stable` 或其他版本，先检查是否设置过 `RUSTUP_TOOLCHAIN`；也可用 `cargo +1.99.1 …` 为单条命令明确选择工具链。本页先前的 `RUSTUP_TOOLCHAIN=stable bash check-environment.sh` 只对那次脚本调用生效。
 
-### 4.3 获取两个库及其传递依赖
+### 5.3 获取两个库及其传递依赖
 
 仍在同一个工程根目录执行：
 
@@ -197,7 +231,7 @@ cargo build --locked
 
 Cargo 通常把下载的 registry 与 Git 源码缓存在 `~/.cargo/`，编译产物放在工程的 `target/`；配置了 `CARGO_HOME` 或 `CARGO_TARGET_DIR` 时位置会改变。读者无需手工把库复制进工程。
 
-### 4.4 核对版本，再运行一次两库集成
+### 5.4 核对版本，再运行一次两库集成
 
 先检查依赖树，确认当前工程实际使用的是哪两个库：
 
@@ -241,7 +275,7 @@ cargo run --locked --offline
 
 专题 2 提供独立的<a href="/learn-agent-rust/side-effect-reliability.zip" download>外部操作可靠性工程</a>。进入 `side-effect-reliability` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 和 `cargo test --locked`。它固定 Rust 1.99.1，使用随工程编译的 SQLite，需要本机 C 编译工具链；无需安装数据库服务或配置 API Key。默认演示仅操作自建临时目录，独立客户端与 provider 进程通过本机 CLI JSON 通信；详细故障实验见[专题 2](./side-effect-reliability.md)。
 
-### 4.5 自己新建项目时，怎样添加这两个库？
+### 5.5 自己新建项目时，怎样添加这两个库？
 
 这一节用于想从空项目开始练习的读者。已完成上面课程工程安装的读者可直接进入下一节。在一个新的学习目录执行：
 
@@ -255,7 +289,7 @@ cargo +1.99.1 build --locked
 
 `cargo add` 将依赖写入新项目的 `Cargo.toml` 并解析依赖。此时新项目仍只有 Cargo 生成的 Hello World；还需要按 R02 接入模型、工具和图节点。新项目生成的传递依赖锁定结果可能与课程包不同，完整复现课程实验时使用原包及其 `Cargo.lock`，后续引入模型服务或数据库 feature 时再核对新增依赖。
 
-## 5. 模型与数据库按实验阶段配置
+## 6. 模型与数据库按实验阶段配置
 
 首批最小循环计划使用脚本模型：输入固定时返回预设的工具请求或最终消息，帮助观察控制流。真实服务实验会另行确认模型是否支持工具定义、结构化调用、调用 ID 和工具结果回传。
 
@@ -272,7 +306,7 @@ cargo +1.99.1 build --locked
 
 PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起给出。内存运行、脚本模型通过、真实模型通过和数据库恢复通过分别记录。
 
-## 6. 常见安装问题
+## 7. 常见安装问题
 
 | 现象 | 先检查什么 |
 | --- | --- |
@@ -322,11 +356,11 @@ PostgreSQL 的版本、连接串和初始化步骤将在数据库实验中一起
 
    </details>
 
-4. 自检通过后，能否认为两库组合的 Agent 循环已经通过？
+4. 自检通过后，能否认为 Agent 循环已经验证通过？
 
    <details><summary>参考答案</summary>
 
-   自检只执行 Cargo 生成的小程序。还要按第 4 节获取固定依赖、编译并运行 R02 两库工程，核对模型与工具消息、图路由和停止条件。R00、R01 的标准库示例可独立运行。
+   自检只执行 Cargo 生成的小程序。还要按第 4 节取 ADK-Rust 源码，编译并运行已迁移的章节工程（例如第 1 章），核对模型与工具的事件轨迹、请求记录和停止条件。
 
    </details>
 

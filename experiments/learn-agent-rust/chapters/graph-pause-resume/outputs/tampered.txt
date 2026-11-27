@@ -1,0 +1,16 @@
+$ lab DB init
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB tamper rename
+status=refused reason=graph_version saved=release-review-v1 running=release-review-v2
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB tamper rename-unchecked
+status=completed outcome=none revision=1 report=none
+trace=draft
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB init
+status=waiting step=1 interrupt=int_266c27ecacf46656c0fa3d518307f6cd revision=1
+node_runs draft=1 approve=1 render=0 reject=0
+$ lab DB tamper corrupt
+status=error kind=checkpoint_unreadable
+node_runs draft=1 approve=1 render=0 reject=0

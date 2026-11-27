@@ -1,51 +1,33 @@
 {
-  "equal": true,
-  "graph_nodes": [
-    "ModelTurn",
-    "ExecuteTools",
-    "ModelTurn"
-  ],
   "scenario": "turn-limit",
-  "state": {
-    "max_turns": 1,
-    "messages": [
-      {
-        "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-        "id": null,
-        "images": null,
-        "message_type": "human",
-        "tool_calls": null
-      },
-      {
-        "content": "",
-        "id": null,
-        "images": null,
-        "message_type": "ai",
-        "tool_calls": [
-          {
-            "function": {
-              "arguments": "{\"path\":\".\"}",
-              "name": "list_files"
-            },
-            "id": "list-1",
-            "type": "function"
-          }
-        ]
-      },
-      {
-        "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
-        "id": "list-1",
-        "images": null,
-        "message_type": "tool",
-        "tool_calls": null
-      }
+  "equal": true,
+  "direct": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}"
     ],
-    "model_turns": 1,
-    "pending": [],
-    "seen_ids": [
-      "list-1"
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]"
     ],
-    "stop": "turn_limit",
-    "tool_dispatches": 1
-  }
+    "model_calls": 1,
+    "tool_results": 1,
+    "error": "agent.legacy",
+    "answer": null,
+    "verified": false
+  },
+  "graph": {
+    "trace": [
+      "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+      "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}"
+    ],
+    "requests": [
+      "request 0: roles=system,user tools=[read_file,list_files]"
+    ],
+    "model_calls": 1,
+    "tool_results": 1,
+    "error": "agent.legacy",
+    "answer": null,
+    "verified": false
+  },
+  "graph_check": null
 }

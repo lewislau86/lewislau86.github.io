@@ -17,6 +17,10 @@ on:
       - 'scripts/learn-agent-rust-lessons.json'
       - 'scripts/sync-learn-agent-rust-course.py'
       - 'scripts/review-learn-agent-rust.py'
+      - 'scripts/learn_agent_rust_adk.py'
+      - 'scripts/fetch-adk-rust.py'
+      - 'scripts/learn-agent-rust-adk.json'
+      - 'scripts/snippets/adk-trace.rs'
       - '.github/workflows/check-agent-orchestration.yml'
   pull_request:
     paths: *paths
@@ -28,15 +32,24 @@ permissions:
 jobs:
   graph-orchestration:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
-      - name: Prepare Rust tools
+          python-version: "3.12"
+      - name: Install the course toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
-      - name: Verify real graph-flow labs and independently extracted packages
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/adk-rust
+          key: agent-adk-graph-orchestration-${{ runner.os }}-${{ hashFiles('scripts/learn-agent-rust-adk.json', 'docs/public/learn-agent-rust/code/graph-*/Cargo.lock') }}
+      - name: Fetch the pinned ADK-Rust 3.0 source
+        run: python3 scripts/fetch-adk-rust.py .cache/adk-rust
+      - name: Verify the adk-graph labs and independently extracted packages
         run: python3 scripts/verify-agent-orchestration.py --check
       - name: Check navigation and teaching structure
         run: |

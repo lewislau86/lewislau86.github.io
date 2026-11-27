@@ -1,24 +1,49 @@
 {
-  "schema_version": 1,
-  "rust": "1.99.1",
-  "graph_revision": "9bbca193f20a8c4ba23289621549ecb3d35fee64",
-  "rust_tests": 4,
-  "archive_replayed": true,
-  "scenarios": 4,
-  "cli_refusals": 1,
-  "scope": "real graph-flow; deterministic business rules; no model provider",
-  "files_sha256": {
-    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-    "Cargo.toml": "a53715d9f5631c37185a8168b83085dc39d31e9dcb1dbb5e0bcfc02ae1bba190",
-    "Cargo.lock": "d22917715569ee17ec6ead7383a6f37de0a7c000794be017c41c0bec9de6be91",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "README.md": "d7c7698800c5521776259e3271d16372ea4ee116cca3e303d7a38b5aedeca5f6",
-    "src/main.rs": "94c3030937cb9eec84ef6b647579699e616dece78fe09d868b93f610be19855a"
+  "scope": "G01 on ADK-Rust 3.0 RC adk-graph: deterministic business nodes, no model provider",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
   },
+  "adk_dependencies": {
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-graph": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "3b376dd8761b4f817b9b2c627ecad998b1b8716b7bf8f398567be4bae4407814",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "8041264ad394720ec8985c633af75b44f06093db148d6c7edbc571c9710325e2",
+    "Cargo.toml": "3a021f307829ee47fa6cbeab88da0dbd5a435afd54bad4c8fbc9778e3740f383",
+    "README.md": "e25b796ee25ad592306792de11654c7e825347f98a66b2f08965d9db416c9a76",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "61c115b0aeed606a5407ce8645e80e5217dbc1a8b03463ead6d8c9ec3b97f721",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "d4be925b5feebe6d323aa52d4bddbb127afbc96d436f55b2581ff9b6b7d9517f",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
+    "exhausted",
+    "normal",
+    "probes",
+    "runaway"
+  ],
   "outputs_sha256": {
-    "g01-normal.txt": "61ef37ab47f557e53a2db35905e0a1ff6496e76d5acce6b3cb9f8a247b310984",
-    "g01-direct.txt": "8d8bc62719abde26adf74d51ec45dd390654342025a199544e05dbd955b20b4f",
-    "g01-exhausted.txt": "f7545c2f2b1213a6966ff1379055519a6ef1bf62fcba0fa069dadd4faa30fd13",
-    "g01-probes.txt": "3d2569cee350d6c3e17a9c1c2d60338c6744c728258e9424448cedad5296c950"
+    "exhausted": "b11b5c5504f88fe97e52eaf91a4c8dc4cfb1590ab0ceab682bd1aae7807cd04d",
+    "normal": "e262434854ff4280ca587f08357370ac64279fd9208983a79c4cd3b3aa37c728",
+    "probes": "ce1a238fbf86c0163cf920a11c01212c030e4c42c97657389cc9816cd3a1a46a",
+    "runaway": "e81f5ca5bf32d760b31b93627885b5601747577cd99045ec4f0503d9c6f8deae"
   }
 }

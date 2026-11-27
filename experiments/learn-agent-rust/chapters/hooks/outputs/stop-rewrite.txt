@@ -1,0 +1,15 @@
+场景：stop-rewrite；模型：ScriptedLlm；策略：WritePolicy
+hook before_agent/input-log -> continue
+hook before_agent/input-check -> continue
+hook before_tool/before-check tool=write_summary -> continue
+hook before_tool/before-log tool=write_summary -> continue
+hook after_tool/after-check tool=write_summary -> continue
+hook after_tool/after-log tool=write_summary -> continue
+hook after_agent/stop-log -> respond
+[assistant] call    id=scripted_tc_0_0 write_summary {"path":"notes/summary.txt"}
+[assistant] result  id=scripted_tc_0_0 write_summary status=ok {"written":"notes/summary.txt"}
+[assistant] text    "摘要已写入。"
+[assistant] final
+[assistant] text    "（回答已被 stop-log 改写）"
+[assistant] final
+统计：write_attempts=1 write_successes=1 hook_failures=0 result_status=ok stop=final_answer summary_written=true task_ok=true

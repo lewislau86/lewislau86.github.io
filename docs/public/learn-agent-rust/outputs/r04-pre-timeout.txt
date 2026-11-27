@@ -1,12 +1,10 @@
-scenario=pre-timeout source=scripted_request approval=trusted_fixture
-trace[1] event=UserPromptSubmit
-trace[2] hook=UserPromptSubmit/input-log outcome=continue
-trace[3] scripted_request call_id=write-1
-trace[4] authorization=approved_exact_call
-trace[5] event=PreToolUse
-trace[6] hook=PreToolUse/before-check outcome=error:TimeoutReaped
-trace[7] event=Stop
-trace[8] hook=Stop/stop-log outcome=continue
-result call_id=write-1 status=hook_error
-hook_failure=PreToolUse/before-check:TimeoutReaped
-stats write_attempts=0 write_successes=0 stop_calls=1 hook_failures=1 summary_matches=false stop_reason=pre_hook_failed task_ok=false
+场景：pre-timeout；模型：ScriptedLlm；策略：WritePolicy
+hook before_agent/input-log -> continue
+hook before_agent/input-check -> continue
+hook before_tool/before-check tool=write_summary -> timeout
+hook after_agent/stop-log -> continue
+[assistant] call    id=scripted_tc_0_0 write_summary {"path":"notes/summary.txt"}
+[assistant] result  id=scripted_tc_0_0 write_summary status=not_run code=hook.timeout {"error":"tool 'write_summary' was not run: a before-tool callback failed with agent.timeout (hook.timeout)"}
+[assistant] text    "摘要已写入。"
+[assistant] final
+统计：write_attempts=0 write_successes=0 hook_failures=1 result_status=not_run stop=final_answer summary_written=false task_ok=false

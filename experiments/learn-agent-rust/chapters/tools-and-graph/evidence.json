@@ -1,530 +1,619 @@
 {
-  "scope": "R02 pinned two-library integration; scripted LLM; real temporary filesystem; memory only",
-  "source_sha256": {
-    "Cargo.toml": "5ce4a3c87aa3bdcdd3d80dcee4f9088bdf50750b99673e0a061a5114c15251fc",
-    "Cargo.lock": "612dae4398578aad139de171994b0009c12f5d8ff59090fae6783cb1d72a4c7f",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "README.md": "3ab3fd13c2110f1dae3b3bf6c839bd99fc2ba47b5b1987cf662e668639a9c73b",
-    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-    "src/main.rs": "f51fab47e6223dd4e94a17f80c1e158924510d5e249416177dcaaf1ea6ffbbe5"
+  "scope": "R02 on ADK-Rust 3.0 RC: ScriptedLlm, real temporary directory, in-memory sessions; Runner(LlmAgent) compared with Runner(GraphAgent wrapping the same agent)",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
   },
-  "archive_sha256": "5555bceb8dd6753c443de14c22fb0ac1e690a05d7222275e1b1b9f0adbd3e6e8",
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-graph": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-model": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
   "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "3dd23dcd8dff6cb98445033f581e85a52d59c271183e53a8380983065903d08d",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "491153b678be308c37d775f31a841287dfa5bd56d0166fc73d740b849182531e",
+    "Cargo.toml": "b3fe592a8839794f76488501ebd0c4f6177066c3cbae51affa1bf193ec5b3ede",
+    "README.md": "05cf4a97f4f7b22ce87814d25a47786acd877e57c10b7178290fd276afae9334",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "ece2409a3cb13550f6ba95853af3a558617e9ab7b702c5472a5b92535004a6d5",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "5a129fb4983f66de86e36c11ba363af7a9e5fd05cacb08a64ce30f0aa057e8c9",
+  "rust_tests_passed": 9,
+  "repeated_identical_runs": 3,
   "scenarios": [
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
       "scenario": "normal",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\".\"}",
-                  "name": "list_files"
-                },
-                "id": "list-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
-            "id": "list-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\"README.md\"}",
-                  "name": "read_file"
-                },
-                "id": "read-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"data\":{\"text\":\"# Demo\\n启动命令：cargo run\\n\"},\"ok\":true}",
-            "id": "read-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "README 里的启动命令是：cargo run",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
         ],
-        "model_turns": 3,
-        "pending": [],
-        "seen_ids": [
-          "list-1",
-          "read-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
         ],
-        "stop": "completed",
-        "tool_dispatches": 2
-      }
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph_check": true
     },
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
       "scenario": "batch",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\".\"}",
-                  "name": "list_files"
-                },
-                "id": "list-1",
-                "type": "function"
-              },
-              {
-                "function": {
-                  "arguments": "{\"path\":\"README.md\"}",
-                  "name": "read_file"
-                },
-                "id": "read-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
-            "id": "list-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "{\"data\":{\"text\":\"# Demo\\n启动命令：cargo run\\n\"},\"ok\":true}",
-            "id": "read-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "README 里的启动命令是：cargo run",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] call    id=scripted_tc_0_1 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] result  id=scripted_tc_0_1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
         ],
-        "model_turns": 2,
-        "pending": [],
-        "seen_ids": [
-          "list-1",
-          "read-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
         ],
-        "stop": "completed",
-        "tool_dispatches": 2
-      }
+        "model_calls": 2,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] call    id=scripted_tc_0_1 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] result  id=scripted_tc_0_1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph_check": true
     },
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
       "scenario": "unknown-tool",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{}",
-                  "name": "delete_file"
-                },
-                "id": "bad-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"error\":\"unknown_tool\",\"ok\":false}",
-            "id": "bad-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "工具返回错误，任务未完成。",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 search_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 search_files status=not_run {\"error\":\"Tool search_files not found\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
         ],
-        "model_turns": 2,
-        "pending": [],
-        "seen_ids": [
-          "bad-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
         ],
-        "stop": "tool_error",
-        "tool_dispatches": 1
-      }
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 search_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 search_files status=not_run {\"error\":\"Tool search_files not found\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
     },
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
-      "scenario": "invalid-json",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{",
-                  "name": "read_file"
-                },
-                "id": "bad-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"error\":\"invalid_json\",\"ok\":false}",
-            "id": "bad-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "工具返回错误，任务未完成。",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
-        ],
-        "model_turns": 2,
-        "pending": [],
-        "seen_ids": [
-          "bad-1"
-        ],
-        "stop": "tool_error",
-        "tool_dispatches": 1
-      }
-    },
-    {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
       "scenario": "invalid-args",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":42}",
-                  "name": "read_file"
-                },
-                "id": "bad-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"error\":\"invalid_arguments\",\"ok\":false}",
-            "id": "bad-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "工具返回错误，任务未完成。",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"path\":42}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': /path: 42 is not of type \\\"string\\\". Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
         ],
-        "model_turns": 2,
-        "pending": [],
-        "seen_ids": [
-          "bad-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
         ],
-        "stop": "tool_error",
-        "tool_dispatches": 1
-      }
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"path\":42}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': /path: 42 is not of type \\\"string\\\". Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
     },
     {
+      "scenario": "extra-field",
       "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"mode\":\"raw\",\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': arguments: Additional properties are not allowed ('mode' was unexpected). Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"mode\":\"raw\",\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': arguments: Additional properties are not allowed ('mode' was unexpected). Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
+      "scenario": "invalid-json",
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"adk_invalid_tool_arguments\":{\"raw\":\"{\\\"path\\\": \",\"reason\":\"arguments are not valid JSON\"}}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=not_run {\"error\":\"tool 'read_file' was not run: arguments are not valid JSON. Call it again with arguments that are one JSON object matching its parameters.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"adk_invalid_tool_arguments\":{\"raw\":\"{\\\"path\\\": \",\"reason\":\"arguments are not valid JSON\"}}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=not_run {\"error\":\"tool 'read_file' was not run: arguments are not valid JSON. Call it again with arguments that are one JSON object matching its parameters.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
+      "scenario": "not-an-object",
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file \"{\\\"path\\\": \"",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': arguments: \\\"{\\\\\\\"path\\\\\\\": \\\" is not of type \\\"object\\\". Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file \"{\\\"path\\\": \"",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=tool.invalid_arguments {\"error\":\"tool.invalid_input: invalid arguments for 'read_file': arguments: \\\"{\\\\\\\"path\\\\\\\": \\\" is not of type \\\"object\\\". Correct the arguments to match the tool's parameters schema and call it again.\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
+      "scenario": "outside-path",
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"path\":\"../secret.txt\"}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=path.not_allowed {\"error\":\"tool 'read_file' failed: tool.forbidden (path.not_allowed): path \\\"../secret.txt\\\" is outside this tool's scope\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 read_file {\"path\":\"../secret.txt\"}",
+          "[assistant] result  id=scripted_tc_0_0 read_file status=failed code=path.not_allowed {\"error\":\"tool 'read_file' failed: tool.forbidden (path.not_allowed): path \\\"../secret.txt\\\" is outside this tool's scope\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 1,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
       "scenario": "missing-file",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\".\"}",
-                  "name": "list_files"
-                },
-                "id": "list-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"data\":{\"entries\":[\"Cargo.toml\"]},\"ok\":true}",
-            "id": "list-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\"README.md\"}",
-                  "name": "read_file"
-                },
-                "id": "read-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"error\":\"file_unavailable\",\"ok\":false}",
-            "id": "read-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          },
-          {
-            "content": "工具返回错误，任务未完成。",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.missing {\"error\":\"tool 'read_file' failed: tool.not_found (file.missing): README.md does not exist\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
         ],
-        "model_turns": 3,
-        "pending": [],
-        "seen_ids": [
-          "list-1",
-          "read-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
         ],
-        "stop": "tool_error",
-        "tool_dispatches": 2
-      }
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.missing {\"error\":\"tool 'read_file' failed: tool.not_found (file.missing): README.md does not exist\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
     },
     {
+      "scenario": "unreadable-file",
       "equal": true,
-      "graph_nodes": [
-        "ModelTurn"
-      ],
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool 'read_file' failed: tool.unavailable (file.unreadable)\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool 'read_file' failed: tool.unavailable (file.unreadable)\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
+      "scenario": "unreadable-file-exposed",
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool.unavailable: read README.md: Is a directory (os error 21)\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] call    id=scripted_tc_1_0 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=scripted_tc_1_0 read_file status=failed code=file.unreadable {\"error\":\"tool.unavailable: read README.md: Is a directory (os error 21)\"}",
+          "[assistant] text    \"没能读到 README，任务未完成。\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function tools=[read_file,list_files]",
+          "request 2: roles=system,user,model,function,model,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 3,
+        "tool_results": 2,
+        "error": null,
+        "answer": "没能读到 README，任务未完成。",
+        "verified": false
+      },
+      "graph_check": false
+    },
+    {
       "scenario": "duplicate-id",
-      "state": {
-        "max_turns": 4,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=call-1 list_files {\"path\":\".\"}",
+          "[assistant] call    id=call-1 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=call-1 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] result  id=call-1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
         ],
-        "model_turns": 1,
-        "pending": [],
-        "seen_ids": [],
-        "stop": "invalid_call_id",
-        "tool_dispatches": 0
-      }
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=call-1 list_files {\"path\":\".\"}",
+          "[assistant] call    id=call-1 read_file {\"path\":\"README.md\"}",
+          "[assistant] result  id=call-1 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}",
+          "[assistant] result  id=call-1 read_file status=ok {\"text\":\"# Demo\\n启动命令：cargo run\\n\"}",
+          "[assistant] text    \"README 里的启动命令是：cargo run\"",
+          "[assistant] final"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]",
+          "request 1: roles=system,user,model,function,function tools=[read_file,list_files]"
+        ],
+        "model_calls": 2,
+        "tool_results": 2,
+        "error": null,
+        "answer": "README 里的启动命令是：cargo run",
+        "verified": true
+      },
+      "graph_check": true
     },
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn"
-      ],
       "scenario": "zero-budget",
-      "state": {
-        "max_turns": 0,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[run] stop    code=budget.model_calls"
         ],
-        "model_turns": 0,
-        "pending": [],
-        "seen_ids": [],
-        "stop": "turn_limit",
-        "tool_dispatches": 0
-      }
+        "requests": [],
+        "model_calls": 0,
+        "tool_results": 0,
+        "error": "budget.model_calls",
+        "answer": null,
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[run] stop    code=budget.model_calls"
+        ],
+        "requests": [],
+        "model_calls": 0,
+        "tool_results": 0,
+        "error": "budget.model_calls",
+        "answer": null,
+        "verified": false
+      },
+      "graph_check": null
     },
     {
-      "equal": true,
-      "graph_nodes": [
-        "ModelTurn",
-        "ExecuteTools",
-        "ModelTurn"
-      ],
       "scenario": "turn-limit",
-      "state": {
-        "max_turns": 1,
-        "messages": [
-          {
-            "content": "先列出练习目录，再读取 README.md，告诉我如何启动项目。",
-            "id": null,
-            "images": null,
-            "message_type": "human",
-            "tool_calls": null
-          },
-          {
-            "content": "",
-            "id": null,
-            "images": null,
-            "message_type": "ai",
-            "tool_calls": [
-              {
-                "function": {
-                  "arguments": "{\"path\":\".\"}",
-                  "name": "list_files"
-                },
-                "id": "list-1",
-                "type": "function"
-              }
-            ]
-          },
-          {
-            "content": "{\"data\":{\"entries\":[\"Cargo.toml\",\"README.md\"]},\"ok\":true}",
-            "id": "list-1",
-            "images": null,
-            "message_type": "tool",
-            "tool_calls": null
-          }
+      "equal": true,
+      "direct": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}"
         ],
-        "model_turns": 1,
-        "pending": [],
-        "seen_ids": [
-          "list-1"
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]"
         ],
-        "stop": "turn_limit",
-        "tool_dispatches": 1
-      }
+        "model_calls": 1,
+        "tool_results": 1,
+        "error": "agent.legacy",
+        "answer": null,
+        "verified": false
+      },
+      "graph": {
+        "trace": [
+          "[assistant] call    id=scripted_tc_0_0 list_files {\"path\":\".\"}",
+          "[assistant] result  id=scripted_tc_0_0 list_files status=ok {\"entries\":[\"Cargo.toml\",\"README.md\"]}"
+        ],
+        "requests": [
+          "request 0: roles=system,user tools=[read_file,list_files]"
+        ],
+        "model_calls": 1,
+        "tool_results": 1,
+        "error": "agent.legacy",
+        "answer": null,
+        "verified": false
+      },
+      "graph_check": null
     }
   ]
 }

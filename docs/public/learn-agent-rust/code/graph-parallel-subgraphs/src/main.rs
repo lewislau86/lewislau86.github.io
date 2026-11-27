@@ -1,277 +1,409 @@
-use async_trait::async_trait;
-use graph_flow::{
-    Context, ExecutionStatus, FanOutTask, Graph, GraphBuilder, GraphError, NextAction, Session,
-    Task, TaskResult,
+//! G03（ADK-Rust 3.0 / adk-graph）：图并行、归并与子图。
+//!
+//! 发布前的两项检查（安全、许可证）并行运行，归并节点等两项都到齐后给出结论。
+//! 节点是确定性规则，不调用模型。用法：graph-parallel-lab normal|failure|collision|subgraph|timeout
+mod trace;
+
+use std::{
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+    time::Duration,
 };
-use std::sync::Arc;
-use tokio::sync::Barrier;
-fn error(s: &str) -> GraphError {
-    GraphError::TaskExecutionFailed(s.into())
+
+use adk_graph::{
+    checkpoint::MemoryCheckpointer,
+    edge::{END, START},
+    error::{GraphError, Result},
+    graph::{CompiledGraph, NodeDefaults, StateGraph},
+    node::{ExecutionConfig, NodeContext, NodeOutput},
+    state::{State, StateSchema},
+    stream::{StreamEvent, StreamMode},
+    subgraph::SubgraphNode,
+    timeout::{OnTimeout, TimeoutPolicy},
+};
+use futures::StreamExt;
+use serde_json::{Value, json};
+
+/// 记录每个检查节点真正执行了几次，用来观察失败后恢复时哪些节点重跑。
+#[derive(Default)]
+struct Runs {
+    security: AtomicUsize,
+    license: AtomicUsize,
 }
 
-// region worker
-struct Check {
-    id: &'static str,
-    fail: bool,
-    barrier: Arc<Barrier>,
-    overwrite: Option<u32>,
-}
-#[async_trait]
-impl Task for Check {
-    fn id(&self) -> &str {
-        self.id
-    }
-    async fn run(&self, ctx: Context) -> graph_flow::Result<TaskResult> {
-        // The barrier proves both tasks are active; it does not measure speed.
-        let previous = ctx.get::<u32>("shared_counter").unwrap_or(0);
-        self.barrier.wait().await;
-        if let Some(value) = self.overwrite {
-            ctx.set("shared_counter", previous + value)?;
-        }
-        ctx.set(format!("observed.{}", self.id), true)?;
-        if self.fail {
-            return Err(error("injected check failure"));
-        }
-        Ok(TaskResult::new(
-            Some(format!("{}:pass", self.id)),
-            NextAction::End,
-        ))
-    }
+/// 检查节点的行为：正常通过、第一次执行失败、或者执行得很慢。
+#[derive(Clone, Copy, PartialEq)]
+enum Mode {
+    Pass,
+    FailOnce,
+    Slow,
 }
 
-fn fan(fail: bool, collide: bool) -> Arc<FanOutTask> {
-    let barrier = Arc::new(Barrier::new(2));
-    let children: Vec<Arc<dyn Task>> = ["compatibility", "tests"]
-        .iter()
-        .enumerate()
-        .map(|(i, id)| {
-            Arc::new(Check {
-                id,
-                fail: fail && i == 1,
-                barrier: barrier.clone(),
-                overwrite: collide.then_some(1),
-            }) as Arc<dyn Task>
-        })
-        .collect();
-    FanOutTask::new("checks", children).with_prefix("checks")
-}
-// endregion worker
-
-struct Merge;
-// region merge
-#[async_trait]
-impl Task for Merge {
-    fn id(&self) -> &str {
-        "merge"
-    }
-    async fn run(&self, ctx: Context) -> graph_flow::Result<TaskResult> {
-        let mut outputs = Vec::new();
-        // Membership and order are application contracts, independent of finish order.
-        for id in ["compatibility", "tests"] {
-            let value = ctx
-                .get::<String>(&format!("checks.{id}.response"))
-                .ok_or_else(|| error("incomplete check set"))?;
-            outputs.push(value);
-        }
-        ctx.set("report", outputs.join(" | "))?;
-        Ok(TaskResult::new(None, NextAction::End))
-    }
-}
-fn graph(fail: bool, collide: bool) -> graph_flow::Result<Graph> {
-    GraphBuilder::new("parallel-v1")
-        .add_task(fan(fail, collide))
-        .add_task(Arc::new(Merge))
-        .add_edge("checks", "merge")
-        .with_task_timeout(std::time::Duration::from_secs(2))
+// region checks
+fn schema() -> StateSchema {
+    StateSchema::builder()
+        .channel("release")
+        .channel("security")
+        .channel("license")
+        .channel("verdict")
+        .list_channel("trace")
         .build()
+}
+
+/// 每项检查只写自己的通道，互不覆盖；归并节点读两个通道。
+fn security(
+    runs: Arc<Runs>,
+    mode: Mode,
+) -> impl Fn(NodeContext) -> std::pin::Pin<Box<dyn Future<Output = Result<NodeOutput>> + Send>>
++ Send
++ Sync {
+    move |_ctx| {
+        let runs = runs.clone();
+        Box::pin(async move {
+            let attempt = runs.security.fetch_add(1, Ordering::SeqCst) + 1;
+            if mode == Mode::FailOnce && attempt == 1 {
+                return Err(GraphError::NodeExecutionFailed {
+                    node: "security".into(),
+                    message: "scanner unavailable".into(),
+                });
+            }
+            Ok(NodeOutput::new()
+                .with_update(
+                    "security",
+                    json!({ "ok": true, "detail": "no known advisories" }),
+                )
+                .with_update("trace", json!("security")))
+        })
+    }
+}
+
+fn license(
+    runs: Arc<Runs>,
+    mode: Mode,
+) -> impl Fn(NodeContext) -> std::pin::Pin<Box<dyn Future<Output = Result<NodeOutput>> + Send>>
++ Send
++ Sync {
+    move |_ctx| {
+        let runs = runs.clone();
+        Box::pin(async move {
+            runs.license.fetch_add(1, Ordering::SeqCst);
+            if mode == Mode::Slow {
+                tokio::time::sleep(Duration::from_millis(300)).await;
+            }
+            Ok(NodeOutput::new()
+                .with_update("license", json!({ "ok": true, "detail": "Apache-2.0" }))
+                .with_update("trace", json!("license")))
+        })
+    }
+}
+// endregion checks
+
+// region merge
+/// 归并是业务规则：两项都通过才是 ready；有一项不通过是 blocked；缺了一项是 incomplete，
+/// 不能把“没有结果”当成“通过”。
+async fn merge(ctx: NodeContext) -> Result<NodeOutput> {
+    let ok = |key: &str| {
+        ctx.get(key)
+            .and_then(|v| v.get("ok"))
+            .and_then(Value::as_bool)
+    };
+    let verdict = match (ok("security"), ok("license")) {
+        (Some(true), Some(true)) => "ready",
+        (Some(false), _) | (_, Some(false)) => "blocked",
+        _ => "incomplete",
+    };
+    Ok(NodeOutput::new()
+        .with_update("verdict", json!(verdict))
+        .with_update("trace", json!("merge")))
 }
 // endregion merge
 
-struct Upper;
-#[async_trait]
-impl Task for Upper {
-    fn id(&self) -> &str {
-        "upper"
+// region graph
+/// plan 有两条出边：security 和 license 在同一个超步里并行运行；
+/// merge 有两条入边，框架把它标成“等待节点”，两项都到齐后只运行一次。
+fn release_graph(
+    runs: Arc<Runs>,
+    security_mode: Mode,
+    license_mode: Mode,
+) -> Result<CompiledGraph> {
+    StateGraph::new(schema())
+        .add_node_fn("plan", |_| async {
+            Ok(NodeOutput::new().with_update("trace", json!("plan")))
+        })
+        .add_node_fn("security", security(runs.clone(), security_mode))
+        .add_node_fn("license", license(runs, license_mode))
+        .add_node_fn("merge", merge)
+        .add_edge(START, "plan")
+        .add_edge("plan", "security")
+        .add_edge("plan", "license")
+        .add_edge("security", "merge")
+        .add_edge("license", "merge")
+        .add_edge("merge", END)
+        .compile()
+}
+// endregion graph
+
+async fn run(
+    graph: &CompiledGraph,
+    thread: &str,
+) -> (Vec<String>, std::result::Result<State, GraphError>) {
+    let mut input = State::new();
+    input.insert("release".into(), json!("v3.0.0"));
+    let mut lines = Vec::new();
+    let mut last = None;
+    let mut stream =
+        Box::pin(graph.stream(input, ExecutionConfig::new(thread), StreamMode::Updates));
+    while let Some(event) = stream.next().await {
+        match event {
+            Ok(StreamEvent::StepComplete {
+                step,
+                nodes_executed,
+            }) => lines.push(format!("step={step} ran={}", nodes_executed.join(","))),
+            Ok(StreamEvent::Done { state, .. }) => last = Some(Ok(state)),
+            Ok(_) => {}
+            Err(error) => last = Some(Err(error)),
+        }
     }
-    async fn run(&self, ctx: Context) -> graph_flow::Result<TaskResult> {
-        let input = ctx
-            .get::<String>("input")
-            .ok_or_else(|| error("missing child input"))?;
-        ctx.set("output", input.to_uppercase())?;
-        ctx.set("child_private", "scratch")?;
-        Ok(TaskResult::new(None, NextAction::End))
+    (
+        lines,
+        last.unwrap_or_else(|| Err(GraphError::InvalidGraph("no result".into()))),
+    )
+}
+
+fn verdict(result: &std::result::Result<State, GraphError>) -> String {
+    match result {
+        Ok(state) => format!(
+            "verdict={}",
+            state
+                .get("verdict")
+                .and_then(Value::as_str)
+                .unwrap_or("none")
+        ),
+        Err(GraphError::NodeExecutionFailed { node, .. }) => {
+            format!("error=node_failed node={node}")
+        }
+        Err(GraphError::NodeTimedOut { node, .. }) => format!("error=node_timed_out node={node}"),
+        Err(error) => format!("error={error}"),
     }
 }
 
-// region subgraph
-struct ChildGraph {
-    graph: Arc<Graph>,
+fn counts(runs: &Runs) -> String {
+    format!(
+        "security_runs={} license_runs={}",
+        runs.security.load(Ordering::SeqCst),
+        runs.license.load(Ordering::SeqCst)
+    )
 }
-#[async_trait]
-impl Task for ChildGraph {
-    fn id(&self) -> &str {
-        "review_subgraph"
-    }
-    async fn run(&self, parent: Context) -> graph_flow::Result<TaskResult> {
-        // New Session => new Context. Only explicit inputs and outputs cross the boundary.
-        let mut child = Session::new_from_task("child".into(), "upper");
-        child.context.set(
-            "input",
-            parent
-                .get::<String>("request")
-                .ok_or_else(|| error("missing request"))?,
-        )?;
-        for _ in 0..4 {
-            match self.graph.execute_session(&mut child).await?.status {
-                ExecutionStatus::Completed => {
-                    let result = child
-                        .context
-                        .get::<String>("output")
-                        .ok_or_else(|| error("missing child output"))?;
-                    parent.set("subgraph_result", result)?;
-                    parent.set(
-                        "child_private_exported",
-                        parent.get::<String>("child_private").is_some(),
-                    )?;
-                    return Ok(TaskResult::new(None, NextAction::End));
-                }
-                ExecutionStatus::WaitingForInput => {
-                    return Err(error("child wait requires a parent resume contract"));
-                }
-                ExecutionStatus::Paused { .. } => {}
+
+async fn scenario(name: &str) -> Result<Vec<String>> {
+    let mut out = Vec::new();
+    let runs = Arc::new(Runs::default());
+    match name {
+        "normal" => {
+            let graph = release_graph(runs.clone(), Mode::Pass, Mode::Pass)?;
+            let (lines, result) = run(&graph, name).await;
+            out.extend(lines);
+            out.push(format!("{} {}", verdict(&result), counts(&runs)));
+        }
+        // region failure
+        "failure" => {
+            // 安全检查第一次失败：这一步的运行以错误结束，merge 没有运行；
+            // 已经完成的许可证检查作为“待写入”记进检查点。同一线程再运行一次，只重跑失败的节点。
+            let graph = release_graph(runs.clone(), Mode::FailOnce, Mode::Pass)?
+                .with_checkpointer(MemoryCheckpointer::new());
+            let (lines, first) = run(&graph, name).await;
+            out.extend(lines);
+            out.push(format!("first_run {} {}", verdict(&first), counts(&runs)));
+            let resumed = graph.invoke(State::new(), ExecutionConfig::new(name)).await;
+            out.push(format!("resumed {} {}", verdict(&resumed), counts(&runs)));
+        }
+        // endregion failure
+        // region collision
+        "collision" => {
+            // 两个并行节点各自读到 count=0、各写 old+1：覆盖通道只留下一个值，丢了一次更新
+            for (channel_kind, label) in [("overwrite", "overwrite"), ("counter", "counter")] {
+                let schema = if channel_kind == "overwrite" {
+                    StateSchema::builder().channel("count").build()
+                } else {
+                    StateSchema::builder().counter_channel("count").build()
+                };
+                let add_one = move |ctx: NodeContext| async move {
+                    let old = ctx.get("count").and_then(Value::as_f64).unwrap_or(0.0);
+                    let write = if channel_kind == "overwrite" {
+                        json!(old + 1.0)
+                    } else {
+                        json!(1)
+                    };
+                    Ok(NodeOutput::new().with_update("count", write))
+                };
+                let graph = StateGraph::new(schema)
+                    .add_node_fn("a", add_one)
+                    .add_node_fn("b", add_one)
+                    .add_edge(START, "a")
+                    .add_edge(START, "b")
+                    .add_edge("a", END)
+                    .add_edge("b", END)
+                    .compile()?;
+                let mut input = State::new();
+                input.insert("count".into(), json!(0));
+                let state = graph.invoke(input, ExecutionConfig::new(label)).await?;
+                out.push(format!("{label}: count={} expected=2", state["count"]));
             }
         }
-        Err(error("child step budget"))
-    }
-}
-// endregion subgraph
-
-struct Never;
-#[async_trait]
-impl Task for Never {
-    fn id(&self) -> &str {
-        "never"
-    }
-    async fn run(&self, _: Context) -> graph_flow::Result<TaskResult> {
-        std::future::pending().await
-    }
-}
-
-async fn run(scenario: &str) -> graph_flow::Result<()> {
-    match scenario {
-        "normal" | "failure" | "collision" => {
-            let g = graph(scenario == "failure", scenario == "collision")?;
-            let mut s = Session::new_from_task("s".into(), "checks");
-            let result = g.execute_session(&mut s).await;
-            if scenario == "failure" {
-                assert!(result.is_err());
-                assert!(
-                    s.context
-                        .get::<String>("checks.compatibility.response")
-                        .is_some()
-                );
-                assert!(s.context.get::<String>("report").is_none());
-                println!(
-                    "scenario=failure parent_error=true sibling_result_retained=true merge_ran=false cursor={}",
-                    s.current_task_id
-                );
-            } else {
-                assert!(matches!(result?.status, ExecutionStatus::Paused { .. }));
-                assert_eq!(s.current_task_id, "merge");
-                assert!(matches!(
-                    g.execute_session(&mut s).await?.status,
-                    ExecutionStatus::Completed
-                ));
-                assert_eq!(
-                    s.context
-                        .get::<String>("checks.compatibility.next_action")
-                        .as_deref(),
-                    Some("End")
-                );
-                println!(
-                    "scenario={scenario} child_end_ignored=true both_started=true report={}",
-                    s.context.get::<String>("report").unwrap()
-                );
-                if scenario == "collision" {
-                    assert_eq!(s.context.get::<u32>("shared_counter"), Some(1));
-                    println!("shared_counter=1 expected_sum=2 lost_update=true");
-                }
-            }
-        }
+        // endregion collision
+        // region subgraph
         "subgraph" => {
-            let child = Arc::new(
-                GraphBuilder::new("child")
-                    .add_task(Arc::new(Upper))
-                    .build()?,
+            // 子图有自己的通道；isolated() 以后只交换显式写出的通道
+            let inner = StateGraph::with_channels(&["text", "scratch", "score"])
+                .add_node_fn("tokenize", |ctx: NodeContext| async move {
+                    let text = ctx
+                        .get("text")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_string();
+                    Ok(NodeOutput::new()
+                        .with_update("scratch", json!(text.split_whitespace().count())))
+                })
+                .add_node_fn("score", |ctx: NodeContext| async move {
+                    let words = ctx.get("scratch").and_then(Value::as_u64).unwrap_or(0);
+                    Ok(NodeOutput::new()
+                        .with_update("score", json!(if words > 3 { "high" } else { "low" })))
+                })
+                .add_edge(START, "tokenize")
+                .add_edge("tokenize", "score")
+                .add_edge("score", END)
+                .compile()?;
+            let inner = Arc::new(inner);
+            let parent = |output: &'static str| {
+                StateGraph::with_channels(&["notes", "risk", "scratch"])
+                    .add_node(
+                        SubgraphNode::new("assess", inner.clone())
+                            .isolated()
+                            .with_input("notes", "text")
+                            .with_output(output, "risk"),
+                    )
+                    .add_edge(START, "assess")
+                    .add_edge("assess", END)
+                    .compile()
+            };
+            let mut input = State::new();
+            input.insert(
+                "notes".into(),
+                json!("breaking change in tool authorization path"),
             );
-            let parent = GraphBuilder::new("parent")
-                .add_task(Arc::new(ChildGraph { graph: child }))
-                .build()?;
-            let mut s = Session::new_from_task("parent".into(), "review_subgraph");
-            s.context.set("request", "upgrade")?;
-            s.context.set("parent_private", "secret")?;
-            parent.execute_session(&mut s).await?;
-            assert_eq!(
-                s.context.get::<String>("subgraph_result").as_deref(),
-                Some("UPGRADE")
-            );
-            assert_eq!(s.context.get::<bool>("child_private_exported"), Some(false));
-            println!(
-                "scenario=subgraph result=UPGRADE child_scratch_exported=false explicit_contract=true"
-            );
+            let state = parent("score")?
+                .invoke(input, ExecutionConfig::new("subgraph"))
+                .await?;
+            out.push(format!(
+                "parent risk={} scratch_exported={}",
+                state["risk"],
+                state.get("scratch").is_some_and(|v| !v.is_null())
+            ));
+            // 输出映射写错了子图的通道名：父图编译时就被拒绝，不会等到运行时才发现值是空的
+            let wrong = parent("scor");
+            out.push(format!(
+                "wrong_mapping rejected_at_compile={}",
+                matches!(wrong, Err(GraphError::SubgraphChannelMismatch { .. }))
+            ));
         }
+        // endregion subgraph
+        // region timeout
         "timeout" => {
-            let g = GraphBuilder::new("timeout")
-                .add_task(Arc::new(Never))
-                .with_task_timeout(std::time::Duration::from_millis(10))
-                .build()?;
-            let mut s = Session::new_from_task("s".into(), "never");
-            let e = g.execute_session(&mut s).await.unwrap_err();
-            assert!(e.to_string().contains("timed out"));
-            println!(
-                "scenario=timeout graph_task_timeout=true cursor={}",
-                s.current_task_id
-            );
+            for (on_timeout, label) in [(OnTimeout::Fail, "fail"), (OnTimeout::Skip, "skip")] {
+                let policy = TimeoutPolicy {
+                    run_timeout: Some(Duration::from_millis(50)),
+                    idle_timeout: None,
+                    on_timeout,
+                };
+                let graph = release_graph(Arc::new(Runs::default()), Mode::Pass, Mode::Slow)?
+                    .with_node_defaults(NodeDefaults::new().with_timeout(policy));
+                let (_, result) = run(&graph, label).await;
+                out.push(format!("on_timeout={label} {}", verdict(&result)));
+            }
         }
-        _ => return Err(error("unknown scenario")),
+        // endregion timeout
+        other => {
+            return Err(GraphError::InvalidGraph(format!(
+                "unknown scenario {other}"
+            )));
+        }
     }
-    Ok(())
+    Ok(out)
 }
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let scenario = std::env::args().nth(1).unwrap_or_else(|| "normal".into());
-    if let Err(e) = run(&scenario).await {
-        eprintln!("{e}");
+    let name = std::env::args().nth(1).unwrap_or_else(|| "normal".into());
+    if !["normal", "failure", "collision", "subgraph", "timeout"].contains(&name.as_str()) {
+        eprintln!("usage: graph-parallel-lab normal|failure|collision|subgraph|timeout");
         std::process::exit(2);
+    }
+    match scenario(&name).await {
+        Ok(lines) => println!("{}", lines.join("\n")),
+        Err(error) => {
+            eprintln!("error: {error}");
+            std::process::exit(1);
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[tokio::test]
-    async fn parallel_success_and_child_actions() {
-        run("normal").await.unwrap();
+
+    async fn text(name: &str) -> String {
+        scenario(name).await.unwrap().join("\n")
     }
+
     #[tokio::test]
-    async fn failed_child_keeps_sibling_data() {
-        run("failure").await.unwrap();
+    async fn both_checks_run_in_one_step_and_merge_runs_once() {
+        let t = text("normal").await;
+        assert!(t.contains("ran=license,security"), "{t}");
+        assert!(
+            t.contains("verdict=ready security_runs=1 license_runs=1"),
+            "{t}"
+        );
     }
+
     #[tokio::test]
-    async fn shared_read_modify_write_loses_update() {
-        run("collision").await.unwrap();
+    async fn a_failed_step_keeps_the_finished_sibling_and_reruns_only_the_failed_node() {
+        let t = text("failure").await;
+        assert!(
+            t.contains("first_run error=node_failed node=security security_runs=1 license_runs=1"),
+            "{t}"
+        );
+        assert!(
+            t.contains("resumed verdict=ready security_runs=2 license_runs=1"),
+            "{t}"
+        );
     }
+
     #[tokio::test]
-    async fn private_child_context() {
-        run("subgraph").await.unwrap();
+    async fn an_overwrite_channel_loses_a_parallel_update() {
+        let t = text("collision").await;
+        assert!(t.contains("overwrite: count=1.0 expected=2"), "{t}");
+        assert!(t.contains("counter: count=2.0 expected=2"), "{t}");
     }
+
     #[tokio::test]
-    async fn real_task_timeout() {
-        run("timeout").await.unwrap();
+    async fn the_subgraph_exports_only_its_declared_outputs() {
+        let t = text("subgraph").await;
+        assert!(
+            t.contains("parent risk=\"high\" scratch_exported=false"),
+            "{t}"
+        );
+        assert!(t.contains("wrong_mapping rejected_at_compile=true"), "{t}");
     }
+
     #[tokio::test]
-    async fn merge_rejects_incomplete_set() {
-        assert!(Merge.run(Context::new()).await.is_err());
+    async fn a_timeout_fails_or_skips_and_merge_does_not_mistake_absence_for_success() {
+        let t = text("timeout").await;
+        assert!(
+            t.contains("on_timeout=fail error=node_timed_out node=license"),
+            "{t}"
+        );
+        assert!(t.contains("on_timeout=skip verdict=incomplete"), "{t}");
     }
 }

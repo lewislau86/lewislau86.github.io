@@ -1,6 +1,6 @@
 ---
 title: "第 3 章：工具权限与审批"
-description: "用独立 Rust 实验区分允许、拒绝和等待审批，把批准绑定到具体动作。"
+description: "用 ADK-Rust 3.0 的工具策略与审批记录，区分允许、拒绝和等待批准，并验证批准只放行原来那一次调用。"
 pageClass: learn-agent-rust-course
 prev:
   text: 第 2 章 · 工具注册与图调度
@@ -12,23 +12,27 @@ next:
 
 # 第 3 章：工具权限与审批
 
-[课程总览](./index.md) · [上一章：工具注册与图调度](./tools-and-graph.md) · [下一章：生命周期与 Hooks](./hooks.md)
+[课程总览](./index.md) · [上一章](./tools-and-graph.md) · [学习路径](./learning-path.md) · [下一章](./hooks.md)
 
 ::: tip 本章学习目标
-- 把工具请求分成允许、拒绝和等待审批三条路径。
-- 保存待审批动作，核对批准后执行的工具、参数与调用 ID。
-- 用文件计数验证拒绝与等待没有写入，批准只执行指定动作一次。
+- 写一个应用自己的工具策略，把同一类请求分成允许、拒绝、等待批准三条路径。
+- 观察等待批准时框架做了什么：调用被挂起、请求记进审批记录、本次运行结束，工具没有执行。
+- 验证批准绑定的是原来那一次调用：参数变了不算、用过一次就失效、执行失败也不退回。
 
-**前置：** Rust 的枚举、`match`、`Option`、所有权与 `Result`；先理解[整体架构](./architecture-and-setup.md)中模型与工具的分工，以及[第 2 章](./tools-and-graph.md)的工具派发边界。本章另提供独立入口，可以单独运行实验。
+**前置：** 读过[第 1 章](./agent-loop.md)与[第 2 章](./tools-and-graph.md)，知道调用 ID、工具结果状态和 `Runner` 的作用；能读懂 trait 实现和 `match`。
 
-**实践方式：** 下载[本章学习包](/learn-agent-rust/permissions-lab.zip)，解压后使用支持 edition 2024 的 Rust 工具链编译。只依赖标准库，无需模型密钥、数据库或其他课程工程。
+**实践方式：** 下载 <a href="/learn-agent-rust/permissions.zip" download>本章 Rust 工程</a>，按[第 5 节](#hands-on)取一次 ADK-Rust 源码后运行。不需要模型密钥或数据库。
 :::
 
-给工作区助手一个任务：“读取项目说明，把启动命令写进一份摘要。”
+::: info 本章已迁移到 ADK-Rust 3.0
+本章实验基于 ADK-Rust 3.0 的发布候选版本（固定提交，尚未发布到 crates.io）。旧版本章用标准库手写了权限判断、等待与批准，可从 git 标签 `learn-agent-rust-v1` 取得。新版里，判断规则仍由应用写，挂起、记录与恢复交给框架。
+:::
 
-读取与写入都表现为工具调用，但它们对工作区的影响不同：读错文件可能泄露内容，写错文件可能覆盖已有工作。模型给出工具名称与参数后，应用还需要回答：**这一次具体动作，当前是否允许执行？**
+上一章的助手只读文件。现在让它多做一步：
 
-本章先把问题缩小：程序自己创建一份 README 和一个空的 `notes` 目录，只允许读取这份 README；写摘要需要人工批准；其他动作直接拒绝。先猜一下：程序打印“等待审批”后，磁盘上应该已经有摘要文件了吗？
+> 读一下 README，把一句话摘要写进 notes/summary.txt。
+
+读文件没什么风险；写文件不一样，写错了位置、写进了不该写的内容，都会留下后果。我们希望读直接放行，写摘要先问人，其他写入一律拒绝。先猜一个问题：程序打印出“等待批准”的时候，摘要文件已经存在了吗？
 
 <LearnAgentRustMap active="permissions" />
 
@@ -40,194 +44,192 @@ next:
 
 ## 1. 同一份请求，先走权限分支
 
-练习工作区中的 `README.md` 只有一行：“启动命令：cargo run”。请求来源固定提出两个结构化动作：先读取 README，再把同一行写入 `notes/summary.txt`。我们用固定输入观察运行时行为，把注意力放在权限和审批上。
+模型提出的每一次工具调用，在执行之前都要先过策略这一关。策略回答三种之一：
 
-| 请求 | 决策 | 后续行为 |
+| 请求 | 决定 | 之后发生什么 |
 | --- | --- | --- |
-| 读取 `README.md` | `Allow` | 立即调用文件工具。 |
-| 写入 `notes/summary.txt`，内容不超过 1024 字节 | `AskApproval` | 保存动作，向可信入口返回审批请求。 |
-| 其他读取、其他写入、未知工具或超长内容 | `Deny` | 返回拒绝结果。 |
+| `read_file`，路径是 `README.md` | 允许 | 直接执行 |
+| `write_summary`，路径是 `notes/summary.txt`，内容不超过 1024 字节 | 需要批准 | 调用被挂起，等人决定 |
+| 其他已注册工具的请求（写 README、写到目录外、超长内容） | 拒绝 | 不执行，结果状态 `refused` |
+| 未注册的工具（例如 `bash`） | 轮不到策略 | 框架先拦下，结果状态 `not_run` |
 
-1024 是应用选择的字节上限，`String::len()` 按 UTF-8 字节计数；它不是性能实验得到的阈值。中文字符通常占多个字节，不能把它读成“1024 个汉字”。
+![模型的工具调用先交给应用的策略判断：读 README 直接执行，写摘要挂起等待批准，其余拒绝；挂起期间工具没有执行。](/learn-agent-rust/figures/r03-permission-routes.svg)
 
-![工具调用在执行前进入允许、等待审批或拒绝分支，等待分支保存请求而不写入文件。](/learn-agent-rust/figures/r03-permission-routes.svg)
+在 ADK-Rust 里，策略是任何实现了 `ToolPolicy` 的类型，只需实现一个方法 `evaluate`：给它一个请求（工具名、参数、执行的 Agent 等），它回答 `PolicyDecision::Allow`、`Deny` 或 `RequireApproval`。（trait 里另有带默认实现的 `evaluate_call` 等方法，受控路径实际调用的是 `evaluate_call`，默认转给 `evaluate`。）本章的策略：
 
-沿中间分支读：`AskApproval` 的输出是待处理请求，应用此时把控制权交还给入口。沿右侧分支读：`Deny` 直接生成工具结果，向后续模型说明拒绝原因。两者的写入次数都应为零，但控制状态不同。
+<<< @/public/learn-agent-rust/code/permissions/src/main.rs#policy
 
-::: info 源码与实验范围
-本文 Rust 片段直接引用同一个完整文件：<a href="/learn-agent-rust/code/permissions.rs" download>下载 permissions.rs</a>；也可在 [GitHub 查看源码](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/learn-agent-rust/code/permissions.rs)。[学习包](/learn-agent-rust/permissions-lab.zip)包含源码、运行说明、实际输出和证据文件。
+几点值得注意：
 
-本章用固定工具请求和模拟人工回复，实际调用 `std::fs` 读写临时文件。实验验证同步、单进程的权限控制流；模型 HTTP、`langchain-rust` / `graph-flow` 集成与跨进程恢复分别在后续课程验收。
-:::
+- **策略只看请求，不做 I/O。** 它不读文件、不检查磁盘，只根据工具名和参数分类。这样它可以在任何动作发生之前运行，也容易测试。
+- **默认拒绝是本章策略自己的选择。** 没有被明确允许或要求批准的请求，最后一个分支一律 `deny`。新加一个工具，如果忘了写规则，它就用不了，而不是没人管。注意框架本身不是这样：`Runner` 上不装策略时，所有工具调用都放行；框架自带的 `DeclarativePolicy` 才是“没匹配到规则就拒绝”。
+- **路径按原样比较。** `notes/../README.md` 和 `notes/summary.txt` 不相等，会被拒绝；这里没有做路径规范化，靠的是“只接受一个确切的值”。
 
-<<< @/public/learn-agent-rust/code/permissions.rs#calls
+策略装在 `Runner` 上：
 
-`Action` 把工具类型与参数放在一起：读取需要路径，写入还需要内容。`ToolCall` 再加上 `call_id`，供请求与结果配对。
+<<< @/public/learn-agent-rust/code/permissions/src/main.rs#wiring
 
-`check_permission` 只分类，不做文件 I/O。它精确比较允许的文件名，所有未匹配输入都落到最后的拒绝分支。即使输入是 `notes/../README.md`，也不会因为“看起来在 notes 里”而得到许可。
+每次工具调用都要经过框架的受控路径（`authorize_tool_call`），策略是其中一站；`LlmAgent` 在执行工具之前调用它。处理函数被调用时，已经通过了策略和审批两关，所以写摘要的处理函数只管写：
 
-如果以后允许用户选择任意子目录，就要重新设计路径解析、符号链接处理和文件访问边界。本章选择两个固定路径，先把审批控制流程讲清。
+<<< @/public/learn-agent-rust/code/permissions/src/main.rs#tools
 
-## 2. 等待审批，应该保存什么
+## 2. 等待批准时，框架做了什么
 
-假设用户看到的是“向摘要写入 cargo run”，点击批准后执行的内容却变成另一段文字。虽然工具名仍叫写文件，这次批准已经失去了原来的含义。因此，我们保存完整请求：
-
-<<< @/public/learn-agent-rust/code/permissions.rs#states
-
-这里有三种身份：
-
-| 字段 | 用途 |
-| --- | --- |
-| `ApprovalId.scope` | 这份审批属于哪个运行实例的工作区？ |
-| `ApprovalId.sequence` | 这个实例里是第几份审批请求？ |
-| `ToolCall.call_id` | 这份结果对应哪一次工具请求？ |
-
-`ApprovalRequest` 还保存 `Action`，所以工具类型、路径和内容都在快照里。`PartialEq` / `Eq` 让比较覆盖全部字段。
-
-本实验用独占创建的临时工作区路径区分实例。序号和路径用于关联请求；真实服务还需要在入口验证登录身份与审批权限。**知道审批 ID，只解决“对应哪份请求”，不会自动赋予批准资格。**
-
-`Step` 区分三个出口：
-
-- `ToolResult`：请求已有结果，包括成功、策略拒绝、人工拒绝和工具错误。
-- `AwaitingApproval`：请求尚未执行完，入口需要展示待审批内容。
-- `RejectedInput`：输入违反运行时协议，例如回复了另一份审批。它是入口错误，不会为原工具调用制造新结果。
-
-接着看接收请求的入口：
-
-<<< @/public/learn-agent-rust/code/permissions.rs#submit
-
-`submit` 先检查是否正在等待。教学运行时一次只处理一个待审批动作，等待期间的新请求返回 `approval_pending`，调用者应先处理已有审批。
-
-随后检查 `call_id` 是否用过。允许、拒绝和进入等待都会登记本次 ID；相同 ID 再提交会被拒绝，避免同一调用在当前实例中重复派发。
-
-`AskApproval` 把请求放进 `pending`，返回一份快照给入口。此时尚未调用 `execute`，也没有生成写入工具结果。入口应暂停推进模型循环，等人工处理。`Option<ApprovalRequest>` 表示“没有等待”或“有一份等待”，只保留本章需要的状态。
-
-## 3. 批准后，执行保存的原始动作
-
-入口展示工作区、路径和完整写入内容，拿到人工决定后调用 `resume`。本实验用 `main` 中的固定场景模拟可信入口；审批方法没有注册成模型可以调用的工具。
-
-![待审批快照与人工回复逐字段比较，匹配后先消耗审批，再拒绝或执行原始动作。](/learn-agent-rust/figures/r03-approval-binding.svg)
-
-先看左右两框：回复必须对应保存的快照。再看下方：人工拒绝与批准都会移走 `pending`，批准路径执行保存的调用。
-
-<<< @/public/learn-agent-rust/code/permissions.rs#resume
-
-三个细节值得停下来核对。
-
-第一，回复不匹配时返回 `approval_mismatch`，原始 `pending` 继续保留。用户可以重新处理正确请求，被替换的参数不会流入工具。
-
-第二，`take()` 在执行前发生。它取出保存的值，并把原位置变成 `None`。同一份回复第二次到达时，会得到 `no_pending_approval`。
-
-第三，批准分支执行 `saved.call`。入口快照用于比较，执行数据仍来自运行时保存的原始请求：审批针对的是已展示的那个动作。
-
-如果写入失败，审批也已经消耗。若决定重试，应生成新的调用与审批请求，重新判断。本章把这条规则固定下来，便于观察状态。
-
-## 4. 授权通过，工具仍可能失败
-
-`Allow` 与人工批准最终汇合到同一个文件执行器：
-
-<<< @/public/learn-agent-rust/code/permissions.rs#execute
-
-读取与写入都访问当前实例的工作区。计数紧挨真实文件调用：调用 `fs::write` 前增加 `write_attempts`，只有成功返回才增加 `write_successes`。
-
-结果保留原 `call_id`。策略拒绝使用 `denied`，人工拒绝使用 `declined`，文件失败使用 `tool_error`。上层拿到这些状态后，才能分别解释“没有得到许可”与“得到许可但执行失败”。
-
-为构造确定的失败，`write-error` 先在摘要路径创建一个目录。随后写文件会真实失败，返回稳定的教学错误名。程序省略不同操作系统的错误文案，方便核对同一控制流。
-
-接入完整循环时，权限检查应位于实际工具派发之前。映射到课程目标架构，可以放在 `ExecuteTools` 的执行边界：许可就执行，拒绝就写回配对结果，等待就返回应用。审批恢复时也回到这一边界。图路由怎样调用入口与保存状态，仍需要框架工程的独立验证。
-
-## 5. 动手：先看等待，再看批准
-
-在学习包解压后的目录运行以下终端命令。源码使用 edition 2024，至少需要 Rust 1.85。本文证据环境为 macOS arm64、`rustc 1.99.1`，完整版本保存在包内 `evidence.json`。
+运行 `wait` 场景（准备步骤见[第 5 节](#hands-on)）：
 
 ```sh
-rustc --edition=2024 -D warnings permissions.rs -o permissions
-./permissions wait
-./permissions approve
+cargo run --locked -- wait
 ```
-
-Windows 原生终端将 `./permissions` 换成 `.\permissions.exe`。每次运行创建独立临时工作区，退出时清理；程序不读取当前目录的 README。
-
-先打开[等待场景的完整输出](/learn-agent-rust/outputs/r03-wait.txt)：
 
 <<< @/public/learn-agent-rust/outputs/r03-wait.txt
 
-此时只有读取的工具结果，`pending=true`，写入尝试为零。回到开场的问题：打印等待时，摘要文件还没有产生。
+逐行看：
 
-再打开[批准场景的完整输出](/learn-agent-rust/outputs/r03-approve.txt)：
+1. 读 README，允许，`status=ok`。
+2. 模型请求写摘要，策略要求批准。框架没有执行工具，而是给这次调用一条 `status=held` 的结果，内容是“requires confirmation: 写入摘要需要人工批准”。
+3. 接着出现一行文本 “Tool confirmation required…”。它不是模型说的，是框架在挂起后补的一条提示，随后本次运行结束。按 ADK-Rust 的说明，这条提示不会发给模型。
+4. `pending …` 行来自审批记录：框架把完整请求（调用 ID、工具名、参数）记进了 `InMemoryApprovalStore`，等人来决定。
+
+所以开头那个问题的答案是：没有。`write_attempts=0`，摘要文件不存在。等待不是结果，挂起的调用也不会在后台偷偷执行。
+
+## 3. 批准之后，执行原来那次调用
+
+`approve` 场景在 `wait` 之后，让审批人批准，再运行一次：
+
+<<< @/public/learn-agent-rust/code/permissions/src/main.rs#approve
+
+审批人从审批记录里取出等待中的请求，按请求的**指纹**记下决定。然后应用发起第二次运行，用户消息是空文本，意思是“只为处理等待中的调用而运行”：
 
 <<< @/public/learn-agent-rust/outputs/r03-approve.txt
 
-`awaiting_approval` 与写入结果之间，`main` 用固定 `Approve` 模拟用户点击批准。实验没有读取键盘，也没有把自然语言“同意”交给模型判断。
+第二次运行开始时、调用模型之前，`LlmAgent` 先从会话里找出挂起的调用，到审批记录里查有没有决定。有批准，就执行原来那次调用：同一个调用 ID（`scripted_tc_1_0`）、同一份参数，结果 `status=ok`，然后才请求模型。模型没有被要求重新提出这次调用。
 
-注意：两条命令分别创建新会话。`approve` 在同一进程内完成“提出请求 → 等待 → 模拟批准 → 执行”，没有恢复上一条 `wait` 命令退出前的状态。
+指纹由这几部分合成：执行的 Agent、工具的来源与声明、工具名、规范化后的参数。任何一项变了，指纹就变。**调用 ID 不在其中**：同一个 Agent 换一个调用 ID、用同样的参数再请求一次，指纹相同。恢复时执行的仍是原来那个调用 ID，那是因为框架恢复的是会话里挂起的那条调用，不是因为批准绑定了调用 ID。
 
-### 改一个条件，核对动作次数
+![审批记录保存完整请求并合成指纹；决定按指纹记录，下一次运行取走决定后拒绝或执行原来那次调用；两条分支都用掉这次决定。](/learn-agent-rust/figures/r03-approval-binding.svg)
 
-继续运行：
+## 4. 批准绑定的是动作，而且只用一次
 
-```sh
-./permissions deny
-./permissions invalid-path
-./permissions unknown
-./permissions decline
-./permissions tamper
-./permissions replay
-./permissions write-error
-```
+三个场景检验“批准”的边界。
 
-每个场景先读一次 README，随后改变写入请求或人工回复。先预测 `tamper` 与 `replay` 的写入次数，再看下图。
-
-![十个真实运行场景中，拒绝、等待和参数替换没有写入，重复批准也只产生一次写入。](/learn-agent-rust/figures/r03-permission-results.svg)
-
-“工具结果数”包含已经成功的 README 读取，所以等待时是 1。`tamper` 替换写入内容，回复不匹配，继续等待。`replay` 先正常批准，再重复回复，累计只写一次。`write-error` 已尝试写入，成功次数却为零。
-
-可打开[参数替换记录](/learn-agent-rust/outputs/r03-tamper.txt)、[重复批准记录](/learn-agent-rust/outputs/r03-replay.txt)和[写入失败记录](/learn-agent-rust/outputs/r03-write-error.txt)核对原因。程序还会检查 README 保持原样，并读取最终摘要核对内容；写入成功数来自文件执行结果。
-
-### 自动验证哪些边界
-
-在解压目录运行 Rust 回归测试：
+**改了内容的批准不算数（`tamper`）。** 审批人批准的请求和等待中的不一样：内容被改成了“改过的摘要”。指纹对不上，这个决定放行不了等待中的调用：
 
 ```sh
-rustc --edition=2024 -D warnings --test permissions.rs -o permission-tests
-./permission-tests
+cargo run --locked -- tamper
 ```
 
-六个测试覆盖：未许可路径与未知工具在 I/O 前拒绝；等待期间不派发新工具；审批每个字段的绑定；其他会话的同序号审批无法混用；人工拒绝不写入；写入失败后审批不可重放。
+<<< @/public/learn-agent-rust/outputs/r03-tamper.txt
 
-维护者在网站仓库中重跑实验、打包和检查证据：
+第二次运行里，挂起的调用还在等待（最后仍有一条 `pending`），工具没有执行；模型看到的仍是“需要确认”的结果。审批记录接受了这条决定，但它对应的是另一个指纹，不会被等待中的那次调用取走。
+
+这里有一个容易忽略的后果：审批记录不要求决定对应一条等待中的请求，而框架在一次调用**第一次**需要批准时就会先查审批记录。所以这条多出来的批准会留在那里，变成一张预先批准：如果模型之后真的请求写入“改过的摘要”，它会直接执行，不再问任何人。审批界面只应对从 `pending()` 里取出的指纹做决定。
+
+**一次批准，一次执行（`replay`）。** 批准、恢复、写入成功以后，第三次运行里模型又提出同一个写入。它的指纹和第一次相同，但那条决定在恢复时已经被取走，审批记录里没有可用的决定，于是又挂起等待：
+
+<<< @/public/learn-agent-rust/outputs/r03-replay.txt
+
+审批记录里的决定在恢复时已经被取走，所以 `write_successes=1`，又多了一条等待。
+
+**执行失败，批准也不退回（`write-error`）。** 目标位置事先放了一个同名目录。批准以后执行，写入失败，`status=failed code=file.write_failed`；第三次运行再提出同一写入，又要等待。批准只说明“允许做”，不保证“做成了”；做失败了，重试需要新的批准。完整输出见[实验输出](/learn-agent-rust/outputs/r03-write-error.txt)。
+
+还有拒绝：`decline` 场景审批人拒绝，恢复时这次调用得到 `refused` 结果（“execution denied by confirmation policy”），工具没有执行，模型可以据此换个做法。恢复的调用会重新走一遍完整的受控路径，包括再问一次策略；本章策略对同一请求的回答不变，所以只是又走到审批这一站。
+
+## 5. 动手实验 {#hands-on}
+
+下载并解压<a href="/learn-agent-rust/permissions.zip" download>本章工程</a>，先取一次 ADK-Rust 源码，再运行：
 
 ```sh
-python3 scripts/verify-agent-permissions.py
-python3 scripts/generate-learn-agent-rust-figures.py --lesson R03
-python3 scripts/verify-agent-permissions.py --check
+cd permissions
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked                       # 默认 approve
+cargo run --locked -- wait
+cargo run --locked -- tamper
+cargo run --locked -- replay
 ```
 
-验证器从仓库外的临时目录运行 10 个场景和 6 个测试，保存源码哈希、文件计数和输出校验值；再独立解压下载包，重新编译并核对批准输出。正文导入保存的输出，配图读取同一份实验数据。
+命令要在 `permissions` 目录里运行。编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0），不影响运行和检查。
+
+![十个场景中，等待、拒绝和改了内容的批准都没有写入尝试；批准只写一次，再次提出同一写入又要等待；写入失败计一次尝试零次成功。](/learn-agent-rust/figures/r03-permission-results.svg)
+
+| 场景 | 做了什么 | 写入尝试 / 成功 | 写入调用最后的状态 | 仍在等待 |
+| --- | --- | --- | --- | --- |
+| `read` | 只读 README | 0 / 0 | — | 0 |
+| `deny` | 写 README.md | 0 / 0 | `refused` | 0 |
+| `invalid-path` | 写 `../outside.txt` | 0 / 0 | `refused` | 0 |
+| `unknown` | 调用不存在的 `bash` | 0 / 0 | `not_run` | 0 |
+| `wait` | 写摘要，没人决定 | 0 / 0 | `held` | 1 |
+| `approve` | 批准后恢复 | 1 / 1 | `ok` | 0 |
+| `decline` | 拒绝后恢复 | 0 / 0 | `refused` | 0 |
+| `tamper` | 批准了改过的请求 | 0 / 0 | `held` | 1 |
+| `replay` | 批准、写入，再提出同一写入 | 1 / 1 | `held`（新的一次） | 1 |
+| `write-error` | 批准，但写入失败，再提出同一写入 | 1 / 0 | `held`（新的一次） | 1 |
+
+### 与旧版场景的对应
+
+旧版本章的 10 个场景名称全部保留，但有几处含义变了：
+
+| 场景 | 旧版 | 新版 | 说明 |
+| --- | --- | --- | --- |
+| `unknown` | 策略拒绝 | 框架先拦下，`not_run` | 不存在的工具在策略之前就被拦下（“Tool bash not found”），结果一样，没有执行任何动作。 |
+| `wait` | 工具结果 1 条 | 2 条 | 新版把挂起的写入也算作一条结果（`held`）。 |
+| `replay` | 同一个批准回复两次 | 批准用掉后，模型再提出同一写入 | 测的不是同一件事：旧版测“重复回复不重复执行”，新版测“决定取走即用掉”。 |
+| 其他会话的审批不能混用 | 有单独的测试 | 删除 | 由框架提供：审批记录按会话范围（`ApprovalScope`：应用 / 用户 / 会话）分开存放。 |
+| 超长内容 | 有场景覆盖 | 只在策略里保留规则 | 本章没有场景单独测试这条规则。 |
+
+`approve`、`decline`、`deny`、`invalid-path`、`read`、`tamper`、`write-error` 含义不变。
+
+网站维护者运行 `python3 scripts/verify-agent-permissions.py`：它打包章节、在临时目录解压并在旁边放好 `adk-rust/`，执行格式检查、Clippy 和 6 个 Rust 测试；10 个场景各连跑两次必须逐字节相同；逐个核对读写计数、等待数、写入调用的最后状态，以及恢复时执行的确实是原来那个调用 ID。加 `--check` 检查产物是否过期。
 
 ## 6. 谁持有哪份状态
 
-现在沿一次写入串起职责：
-
-| 持有者 | 输入与输出 | 本章状态生命周期 |
+| 状态 | 谁持有 | 本章放在哪里 |
 | --- | --- | --- |
-| 请求来源 | 提出 `ToolCall` | 固定代码生成；真实模型适配后续接入。 |
-| 应用策略 | 分类为允许、拒绝或审批 | 固定规则随当前程序版本生效。 |
-| 运行时 | `pending`、已用调用 ID 与计数 | 保存在当前 `Runtime` 内存中。 |
-| 可信入口 | 展示请求，提交人工决定 | 本实验在同进程内模拟；认证由真实入口实现。 |
-| 文件工具 | 执行授权动作，返回结果 | 操作本次新建工作区；退出后清理。 |
+| 允许什么、拒绝什么 | 应用（`SummaryPolicy`） | 代码里的规则 |
+| 挂起的调用 | 会话事件里那条 `held` 结果 | `InMemorySessionService` |
+| 等待中的请求与决定 | 审批记录 | `InMemoryApprovalStore` |
+| 审批人是谁、有没有资格批准 | 应用外层（界面、身份系统） | 本章没有实现，决定由程序直接写入 |
+| 文件内容 | 工具与文件系统 | 程序自建的临时目录 |
 
-待审批动作属于运行控制状态。模型上下文可以包含“程序正在等待人工处理”的说明，但这段文字不会创建批准资格。可信入口送回匹配回复后，`resume` 才推进状态。
+审批记录和会话都只在内存里，进程退出就没了。ADK-Rust 提供 `SqliteApprovalStore`、`PostgresApprovalStore` 等持久版本，同一个决定可以跨进程、跨重启使用；跨进程挂起与恢复在[第 6 章](./graph-pause-resume.md)和[第 21 章](./human-in-the-loop.md)验证。
 
-单进程中“用过一次审批”只覆盖内存生命周期。退出后继续，需要保存请求身份、策略版本、待审批动作、可信决定和恢复位置。文件已写入而保存失败时，还要检查重复动作。[PostgreSQL 检查点](./postgres-checkpoints.md)与[外部操作的可靠性](./side-effect-reliability.md)会分别讨论。
+## 框架替你做了什么、没做什么
+
+| 框架做了 | 仍归应用 |
+| --- | --- |
+| 装了策略时，每次工具调用都在执行前询问它；拒绝就不执行，结果 `refused`。 | 写策略：允许什么、拒绝什么、什么要批准；不装策略就全部放行。 |
+| 需要批准时挂起调用、记录请求、结束本次运行，工具不执行。 | 把等待中的请求展示给有资格的人。 |
+| 按指纹匹配决定：参数、Agent、工具来源变了都不算同一次；调用 ID 不参与。 | 确认审批人的身份和权限（本章没有实现）；只对等待中的请求做决定，避免留下预先批准。 |
+| 下次运行开始时恢复有决定的调用，执行原来那次调用；决定取走即用掉。 | 决定执行失败后要不要重试，重试需要新的批准。 |
+| 不存在的工具直接 `not_run`。 | 选择审批记录放在哪里，并验证跨进程恢复。 |
+
+<!-- adk-refs:start -->
+
+## 在 ADK-Rust 源码里
+
+本章的策略、挂起与审批，在 ADK-Rust 里分布在这几处：
+
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 应用的策略接口 | [`adk-core/src/policy.rs` · `ToolPolicy`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/policy.rs#L309-L375) | 只需实现 `evaluate`：给一个请求，回答允许、拒绝或需要批准；受控路径调用的 `evaluate_call` 默认转给它 |
+| 三种决定 | [`adk-core/src/policy.rs` · `PolicyDecision`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/policy.rs#L31-L44) | `Allow` / `Deny` / `RequireApproval`，后两种带理由 |
+| 每次工具调用都经过的受控路径 | [`adk-core/src/governance.rs` · `authorize_tool_call`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/governance.rs#L2286-L2605) | 熔断器在它之前；它内部依次检查总开关、同意、恢复绑定、出口、策略、护栏、确认（审批），没通过就不执行 |
+| 请求的指纹 | [`adk-core/src/context.rs` · `ToolConfirmationRequest::fingerprint`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/context.rs#L1385-L1413) | 由执行的 Agent、工具来源与声明、工具名和规范化参数合成；参数变了，指纹就变 |
+| 审批记录的接口 | [`adk-core/src/governance.rs` · `ApprovalStore`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/governance.rs#L1040-L1182) | 记下等待的请求、按指纹记录决定、取走决定（取走即用掉） |
+| 找出等待中的调用 | [`adk-core/src/governance.rs` · `held_tool_calls`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/governance.rs#L3536-L3538) | 每次运行开始时，从会话事件里找出挂起的调用，有决定的就恢复 |
+| 需要批准时先查审批记录 | [`adk-core/src/governance.rs` · `resolve_confirmation`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/governance.rs#L3135-L3255) | 调用第一次需要批准时就先取审批记录里的决定，所以预先写入的决定会直接生效 |
+
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
+
+<!-- adk-refs:end -->
 
 ::: warning 常见误区
-- 把工具注册或提示词里的“请先询问”当成权限控制。策略必须覆盖文件调用前的执行路径；示例 `execute` 是模块内实现，真实应用应通过封装收紧它的调用入口。
-- 把 `call_id` 或审批序号当成凭据。入口需要确认审批身份与权限，并展示完整路径和内容。
-- 把等待当成成功结果。人工处理后才产生本次动作的工具结果。
-- 把批准当成执行成功。批准后仍可能得到 `tool_error`，示例会消耗审批并返回错误。
-- 把固定路径规则当成通用沙箱。本实验使用自己管理的新建工作区，没有验证恶意进程并发替换路径、符号链接竞态或任意 shell 命令隔离。
-- 把进程内去重当成跨进程恰好执行一次。本章没有数据库、远程授权服务或故障恢复，测试结论限于当前实例。
+- 把“注册了这个工具”或“提示词里说要先问”当成权限控制。权限来自执行前的策略检查。
+- 把调用 ID 当作凭证。审批按指纹绑定完整请求，调用 ID 不在指纹里，知道一个调用 ID 不等于能批准它。
+- 对没有在等待的请求写下批准。框架第一次遇到需要批准的调用就会查审批记录，多出来的批准等于预先批准。
+- 把等待当成成功。挂起的调用没有执行，摘要文件不存在。
+- 把批准当成执行成功。`write-error` 里批准了，写入照样失败。
+- 把固定的路径规则当成通用沙箱。本章只比较确切的路径字符串。
+- 以为批准能反复用。决定被取走以后，同样的写入要重新批准。
 :::
 
 <!-- transfer-thinking:start -->
@@ -250,57 +252,56 @@ python3 scripts/verify-agent-permissions.py --check
 
 ## 本章结论
 
-工具执行前增加应用决策：立即允许、明确拒绝，或保存完整动作等待人工处理。等待时工具尚未派发；批准后先消耗审批，再执行保存的原始动作，结果继续携带原 `call_id`。
+同一份工具请求，在执行之前先由应用的策略分成三条路：允许、拒绝、等待批准。ADK-Rust 负责把策略放在每次调用的必经之路上，负责挂起、记录和恢复；应用负责写规则、展示请求、确认审批人。
 
-本章用文件调用计数、最终内容和失败测试核对这些行为。接入循环或图调度时，保留同样的检查边界，并单独验证框架的暂停与恢复。
+批准绑定的是原来那一次调用：参数变了就不算，用过一次就失效，执行失败也不退回。下一章把“执行前检查、执行后记录、结束时收尾”放到清晰的扩展点里。
 
 ## 检查理解
 
-1. 用户批准了一次写文件，为什么不能允许后续所有写文件请求？
+1. 一次写摘要被批准了，为什么后面的写入不能沿用？
 
    <details><summary>参考答案</summary>
 
-   不同调用的路径和内容可能不同。批准绑定到当前实例、审批序号、`call_id` 和完整动作；新动作重新判断权限。本章实现的是一次动作审批。
+   决定按指纹记在审批记录里，恢复时被取走、用掉。后面的写入即使参数完全相同、指纹也相同，审批记录里已经没有可用的决定，所以要重新批准，`replay` 场景就是这样。如果想让一类写入长期放行，应该改策略，或者使用框架的常设批准（`RunConfig::tool_approvals`，在一次运行内覆盖所有指纹相同的调用），而不是复用一次批准。
 
    </details>
 
-2. `wait` 有一条工具结果，为什么写入次数为零？
+2. `wait` 场景有两条工具结果，为什么写入次数是 0？
 
    <details><summary>参考答案</summary>
 
-   结果来自先前的 README 读取。写入返回 `AwaitingApproval`，保存在 `pending` 中，尚未派发文件工具，也没有对应写入结果。
+   第一条是读 README 的结果；第二条是写摘要的 `held` 结果，它表示“这次调用在等待”，不是执行结果。工具没有被调用，所以写入尝试为 0，摘要文件不存在。
 
    </details>
 
-3. 审批回复换了内容，原请求还能批准吗？
+3. 审批人批准了改过内容的请求，原来那次调用还能被批准吗？
 
    <details><summary>参考答案</summary>
 
-   比较失败返回 `approval_mismatch`，不执行工具，也不移走 `pending`。可信入口仍可提交匹配原快照的回复，测试覆盖这一过程。
+   能。改过内容的请求指纹不同，那个决定放行不了原来的调用，原来的调用仍在等待（`tamper` 场景最后仍有一条 `pending`）。审批人可以再按原来的指纹批准或拒绝它。
 
    </details>
 
-4. 为什么写入失败后，同一个批准会被拒绝？
+4. 写入失败以后，为什么同一个批准不能再用一次？
 
    <details><summary>参考答案</summary>
 
-   `take()` 在文件调用前已移走待审批状态，失败也不会放回。重复回复得到 `no_pending_approval`。需要重试时，使用新的调用身份重新处理；跨进程重放还需持久化和幂等设计。
+   决定在恢复时就被取走了，执行失败也不会退回。批准表示“允许做这一次”，不保证做成；做失败了要不要重试、重试是否安全，应由人重新判断，所以需要新的批准。
 
    </details>
 
-5. 想关闭程序第二天再批准，保存一个 `bool approved` 够吗？
+5. 想让人第二天再批准，只保存一个 `approved = true` 够吗？
 
    <details><summary>参考答案</summary>
 
-   还要保存完整动作、会话与调用身份、策略版本和恢复位置，验证审批者身份，并处理执行成功而状态保存失败的窗口。布尔值无法说明批准了哪个动作，这些能力需要独立恢复实验。
+   不够。至少要保存：完整的请求（工具、参数）、它属于哪个会话和哪次调用、按什么策略要求批准、恢复时从哪里继续、审批人是谁。ADK-Rust 的审批记录保存了请求和指纹，会话里保存了挂起的调用；审批人的身份、策略版本仍要应用自己管。另外还要考虑“写入成功了、保存状态失败了”的窗口，见[专题 2](./side-effect-reliability.md)。
 
    </details>
 
 ## 参考资料
 
-- <a href="/learn-agent-rust/code/permissions.rs" download>本章源码</a>、[学习包](/learn-agent-rust/permissions-lab.zip)与[实际批准输出](/learn-agent-rust/outputs/r03-approve.txt)。
-- [Rust：枚举与模式匹配](https://doc.rust-lang.org/book/ch06-00-enums.html)。
-- [Rust：Option::take](https://doc.rust-lang.org/std/option/enum.Option.html#method.take)。
+- <a href="/learn-agent-rust/code/permissions/README.md" download>本章工程 README（下载）</a>与[实际批准输出](/learn-agent-rust/outputs/r03-approve.txt)。
+- ADK-Rust（固定提交）：[工具授权文档](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/security/tool-authorization.md)（策略、挂起与恢复、审批记录、指纹）。
 - [Learn Claude Code：权限与审批](https://learn.shareai.run/zh/s03/)。下方保留原图作为对照，本章 Rust 实现与实验独立提供。
 
 <details><summary>参考课程原图与来源</summary>

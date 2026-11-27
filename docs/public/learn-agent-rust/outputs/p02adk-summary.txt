@@ -1,0 +1,67 @@
+== normal
+$ first  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {"deduplicated":false,"ticket":"T-1"}
+[assistant] text    "工单已创建。"
+[assistant] final
+provider_attempts=1
+provider_tickets=1
+
+== crash-in-tool
+$ first --crash in-tool  # exit=9 injected_exit=in-tool
+$ recover  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {"detail":"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again","status":"outcome_unknown"}
+provider_attempts=1
+provider_tickets=1
+
+== crash-after-tool
+$ first --crash after-tool  # exit=9 injected_exit=after-tool
+$ recover  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=succeeded {"detail":"this call to 'create_ticket' completed before the run was recovered; it was not executed again","result_digest":"fnv1a128:b92b64bbb1e274eb09d6455b150c9b90","status":"already_succeeded"}
+provider_attempts=1
+provider_tickets=1
+
+== retry-call-key
+$ first --crash in-tool  # exit=9 injected_exit=in-tool
+$ recover  # exit=0
+$ retry  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {"detail":"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again","status":"outcome_unknown"}
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {"deduplicated":false,"ticket":"T-2"}
+[assistant] text    "工单已再次提交。"
+[assistant] final
+provider_attempts=2
+provider_tickets=2
+
+== retry-business-key
+$ first --crash in-tool --key business  # exit=9 injected_exit=in-tool
+$ recover  # exit=0
+$ retry --key business  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {"detail":"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again","status":"outcome_unknown"}
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=ok {"deduplicated":true,"ticket":"T-1"}
+[assistant] text    "工单已再次提交。"
+[assistant] final
+provider_attempts=2
+provider_tickets=1
+
+== memory-ledger
+$ first --crash after-tool --ledger memory  # exit=9 injected_exit=after-tool
+$ recover --ledger memory  # exit=0
+[user] text    "请创建工单：审查 Rust 超时处理。"
+[assistant] call    id=scripted_tc_0_0 create_ticket {"title":"审查 Rust 超时处理"}
+[assistant] result  id=scripted_tc_0_0 create_ticket status=outcome_unknown {"detail":"the process running 'create_ticket' stopped before the call recorded an outcome, so it may have taken effect; check its result before calling it again","status":"outcome_unknown"}
+provider_attempts=1
+provider_tickets=1
+

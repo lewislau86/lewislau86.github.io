@@ -5,10 +5,15 @@ edition = "2024"
 publish = false
 
 [dependencies]
-async-trait = "0.1"
+adk-agent = { version = "3.0.0", default-features = false }
+adk-core = { version = "3.0.0", default-features = false }
+adk-graph = { version = "3.0.0", default-features = false }
+adk-model = { version = "3.0.0", default-features = false }
+adk-runner = { version = "3.0.0", default-features = false }
+adk-session = { version = "3.0.0", default-features = false }
+adk-tool = { version = "3.0.0", default-features = false }
 futures = "0.3"
-graph-flow = { git = "https://github.com/a-agmon/rs-graph-llm.git", rev = "9bbca193f20a8c4ba23289621549ecb3d35fee64", default-features = false }
-langchain-rust = { git = "https://github.com/Abraxas-365/langchain-rust.git", rev = "5fc3f5aca4380da48829f95d6e2fd0217b1f2013", default-features = false }
+schemars = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"

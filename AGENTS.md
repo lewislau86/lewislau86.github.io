@@ -2,6 +2,7 @@
 
 本仓库是 VitePress 文档站（https://lewislau86.github.io/），包含 TinyLLM、mini-redis、Burn 三个系列教程。
 任何人或 AI 助手修改本仓库前，先读这份文件，再读完整规范 `docs/guide/course-conventions.md`。
+Learn Agent by Rust 正在迁移到 ADK-Rust 3.0，改动该课程前先读迁移计划与进度 [agent.md](./agent.md)。
 
 ## 必须遵守的约束
 

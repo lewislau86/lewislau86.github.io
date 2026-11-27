@@ -1,6 +1,6 @@
 ---
 title: "第 1 章：最小 Agent 循环"
-description: "用可独立运行的 Rust 程序，让模型提出文件读取请求、看到真实结果后回答，并验证消息配对与预算停止。"
+description: "用 ADK-Rust 3.0 让模型提出文件读取请求、看到真实结果后回答，从事件和请求记录里看清循环的每一步，并验证调用配对与预算停止。"
 pageClass: learn-agent-rust-course
 prev:
   text: 第 0 章 · 整体架构与环境
@@ -16,19 +16,23 @@ next:
 
 ::: tip 本章学习目标
 - 沿一次文件读取，说明模型请求、工具执行、结果回传与再次调用的顺序。
-- 用 Rust 类型区分最终回答、工具请求和工具结果，并用调用 ID 关联请求与结果。
+- 认识 ADK-Rust 里表达这些步骤的类型：模型回复里的调用与文本、工具结果、调用 ID，以及模型的边界 `Llm` trait。
 - 运行正常、工具失败和预算耗尽实验，区分“循环结束”与“练习目标达成”。
 
-**前置：** 完成[环境准备](./setup.md)，读过[课程架构](./architecture.md)；能阅读结构体、枚举、`match`、`Vec` 和 `Result`。
+**前置：** 完成[环境准备](./setup.md)和[第 0 章](./architecture-and-setup.md)；能阅读结构体、枚举、`match`、`Vec`、`Result` 和基本 `async/await`。
 
-**实践方式：** 下载本章<a href="/learn-agent-rust/code/agent-loop.rs" download>完整 Rust 源码</a>，使用支持 edition 2024 的 Rust 工具链编译。只有标准库依赖，运行时无需模型密钥、GPU 或数据库。
+**实践方式：** 下载 <a href="/learn-agent-rust/agent-loop.zip" download>本章 Rust 工程</a>，按[第 5 节](#hands-on)取一次 ADK-Rust 源码后运行。固定 Rust 1.99.1 与 ADK-Rust 3.0 的一个固定提交；运行时无需模型密钥、GPU 或数据库。
 :::
 
-上一章把模型、工具和应用策略放在了一张架构图中。现在让它们围绕一个问题真正往返一次：
+::: info 本章已迁移到 ADK-Rust 3.0
+本章实验基于 ADK-Rust 3.0 的发布候选版本（固定提交，尚未发布到 crates.io）。旧版本章用标准库手写了整个循环，可从 git 标签 `learn-agent-rust-v1` 取得；新版不再手写循环，改为从框架的事件和请求记录里把每一步看清楚。和旧版相比，有一处结论变了：旧版的应用会拒绝重复的调用 ID，ADK-Rust 不检查（第 2 节）。
+:::
+
+上一章把模型、工具、应用策略和会话放在了一张架构图中。现在让它们围绕一个问题真正往返一次：
 
 > 读取 README.md，告诉我如何启动项目。
 
-如果程序只把问题交给模型，再打印模型的回答，文件读取发生在哪里？这一章把中间的每一步都写出来：模型先提出行动请求，应用执行工具，把工具结果追加到历史，再次调用模型。等模型给出最终回答，或者应用触及执行上限，循环才停止。
+如果程序只把问题交给模型，再打印模型的回答，文件读取发生在哪里？在 ADK-Rust 里，这段往返由 `LlmAgent` 在 `Runner` 里完成：模型先提出行动请求，框架执行工具，把结果写进历史，再次调用模型。等模型给出最终回答，或者触及运行上限，循环才停止。框架没有“只走一步”的接口，所以本章换一种方式看清它：记下框架产生的每一个事件，以及模型收到的每一次请求。
 
 <LearnAgentRustMap active="agent-loop" />
 
@@ -39,262 +43,280 @@ next:
 <!-- experiment-library:end -->
 
 ::: info 本章实验状态
-正文与独立 Rust 实验已完成。脚本模型用固定规则返回工具请求或最终回答，文件工具实际读取程序新建的临时目录；验证脚本会核对全部实验输出。
-
-本章先用标准库显式展开控制流。`langchain-rust`、`graph-flow`、HTTP 工具协议和真实模型尚未接入本章示例；后续接入时要保留这里的消息与停止契约，再分别验收。
+正文与独立 Rust 实验已完成。模型是本章自己写的 `RuleLlm`：它实现 ADK-Rust 的 `Llm` trait，只根据收到的请求内容按固定规则回复；文件工具实际读取程序新建的临时目录。验证脚本核对全部 14 个场景的输出、计数和停止原因。后续章节多用 ADK-Rust 自带的 `ScriptedLlm`；本章写规则模型的原因见第 3 节。
 :::
 
-## 1. 先跑一次：为什么只有一次读取，却有两轮模型调用？
+## 1. 先跑一次：为什么只有一次读取，却有两次模型调用？
 
-程序创建一个专用临时目录，向其中的 `README.md` 写入项目名和启动命令。模型收到的是用户问题，文件内容要经工具读取后才进入消息历史。运行结束时，临时目录由 `Workspace` 的 `Drop` 清理。
-
-::: info 代码出处
-下文 Rust 代码直接引用同一个源文件，终端输出也从实际运行记录导入。
-
-<a href="/learn-agent-rust/code/agent-loop.rs" download>下载完整 agent-loop.rs</a> · [在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/learn-agent-rust/code/agent-loop.rs)
-:::
-
-把文件下载到一个练习目录，在该目录打开终端。以下是编译和运行命令：
+在解压后的 `agent-loop` 目录里运行（准备步骤见[第 5 节](#hands-on)）：
 
 ```sh
-rustc --edition=2024 -D warnings agent-loop.rs -o agent-r01
-./agent-r01
+cargo run --locked
 ```
-
-Windows 原生终端编译后运行 `./agent-r01.exe`；使用 WSL 时沿用上述命令。
-
-先预测一下：消息历史里应该出现几条消息？模型分别在什么时候被调用？再核对完整输出：
 
 <<< @/public/learn-agent-rust/outputs/r01-normal.txt
 
-第一轮模型只知道用户要读取 README，于是返回 `read_file` 请求。应用读取成功后，第二轮模型才看到文件内容，提取启动命令并回答。**工具执行发生在两轮模型调用之间。**
+先看前四行轨迹：
 
-这里的“脚本模型”是我们编写的确定性替身：它按规则选择返回类型，从工具结果里寻找“启动命令：”这一行。它让每次实验的控制流相同，便于检查程序；真实语言模型的推理与任务质量留到后续实验。
+1. `call id=read-1 read_file {"path":"README.md"}`：第一次调用模型，它没有回答，而是请求读取文件。
+2. `result id=read-1 read_file status=ok …`：框架执行工具，把文件内容作为结果记下，带着同一个调用 ID。
+3. `text "README 里的启动命令是：cargo run"`：第二次调用模型，它看到了文件内容，给出回答。
+4. `final`：这是最终回答，循环结束。
 
-![正常实验中，用户、工具请求、工具结果与最终回答依次进入历史；一次读取需要两轮模型调用。](/learn-agent-rust/figures/r01-message-cycle.svg)
+轨迹里的 `status=ok` 是本书轨迹片段在结果没有状态注解时写的标签；失败、未执行等情况，框架会在结果上注明状态（`failed`、`not_run` 等）。
 
-顺着图中的消息顺序阅读。`read-1` 同时出现在请求和结果上；右侧的计数来自本章实际运行，模型轮次、工具执行次数与消息条数分别统计。
+再看最后两行 `request`：这是模型实际收到的两次请求，按顺序列出请求里每条消息的角色。第一次只有 `system`（Agent 的指令）和 `user`（问题）；第二次多了 `model`（它自己上次提出的调用）和 `function`（工具结果）。工具执行发生在两次模型调用之间，它本身不算一次模型调用。所以一次读取对应两次模型调用：一次提出请求，一次读结果回答。
+
+统计里的 `session_events=4` 是会话里保存的事件数：用户问题、调用、结果、回答。
 
 ## 2. 模型返回的究竟是什么？
 
-看输出中的第二条消息：`read_file(path="README.md")`。这行文字是程序为了展示而格式化出来的日志；运行时持有的是包含 ID、名称和参数的 `ToolCall`。
+ADK-Rust 用同一个类型 `Content` 表示一条消息，它由若干 `Part` 组成。和本章有关的有三种：
 
-<<< @/public/learn-agent-rust/code/agent-loop.rs#messages
+| Part | 谁产生 | 含义 |
+| --- | --- | --- |
+| `FunctionCall { name, args, id }` | 模型 | 请求调用某个工具，`id` 是这次调用的标识 |
+| `FunctionResponse { function_response, id }` | 框架执行工具后 | 工具结果，带回原调用的 `id` |
+| `Text { text }` | 模型 | 文本；不含调用的文本回复就是最终回答 |
 
-先看两个枚举，再看历史消息：
-
-- `ModelReply::ToolCalls` 携带一批工具请求，应用接下来要处理这些请求。
-- `ModelReply::Final` 携带最终文本，表示模型这一轮决定结束。
-- `Message` 记录会话中已经发生的事：用户输入、模型响应、工具结果。
-
-`ToolResult.output` 用 `Result<String, String>` 保存成功内容或错误说明。文件不存在时，也能形成明确的结果，而不用把“失败”混进一段看起来像文件内容的文本中。
-
-注意 `ToolCalls` 里装的是 `Vec<ToolCall>`：同一轮模型可以提出多个请求。一个 assistant 消息可能包含两个调用，因此消息条数与调用次数要分别计算。本章按列表顺序执行它们。
+模型的一次回复可以只有文本（回答），也可以有一个或多个 `FunctionCall`（行动请求）。消息条数和调用次数因此不同：`two-tools` 场景里，一条模型回复带了两个调用。
 
 ### 调用 ID 关联哪两件事？
 
-同一个工具可以调用很多次。若两次请求都叫 `read_file`，仅靠名称无法判断某份结果属于哪次请求。`id` 标识一次请求，`call_id` 将结果关联回来。
+工具名说明调用哪种能力，调用 ID 说明是哪一次请求。同一个工具可以在同一轮或不同轮出现多次，结果靠 ID 对应到具体请求。框架执行工具时，把原调用的 ID 原样写进结果；后面的预算实验会看到，即使工具没有执行，框架也为每个调用写一条带原 ID 的结果。
 
-本章约定：同一次运行里，调用 ID 非空且唯一；每个被接受的请求都产生一个同 ID 的结果，成功和失败都要回传。再次调用模型之前，先把这一批的结果全部写回历史。
+ADK-Rust 3.0 不检查 ID 是否重复。`duplicate-id` 场景里，模型第二轮又用了 `read-1`，框架照常执行了第二次读取：
 
-<<< @/public/learn-agent-rust/code/agent-loop.rs#validation
+<<< @/public/learn-agent-rust/outputs/r01-duplicate-id.txt
 
-校验在工具执行前完成。如果模型重复使用旧 ID，应用以 `InvalidCall` 停止；原始异常响应留在本地历史供诊断，也不会再发送给模型。本章没有实现修复这种响应后继续执行的策略。
+这项检查不在框架里。真实模型服务通常保证 ID 唯一；需要防御时，可以在模型回复之后、工具执行之前加检查（[第 4 章](./hooks.md)）。
 
 ### 这些类型和模型服务的 JSON 是什么关系？
 
-这是课程应用内部的消息表示。真实服务适配器还要把它们转换成提供方要求的请求与响应格式。例如 Claude 的客户端工具调用使用 `tool_use` 块，以 `tool_use_id` 关联结果，并把 `tool_result` 放在后续的 `user` 消息中。详见官方的 [Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)。
-
-因此，日志中的 `tool` 是本章的内部消息类别。以后对接服务时，既要保留请求与结果的对应关系，也要验证具体的角色、字段和排列规则。
+`Content` 和 `Part` 是框架内部的类型，与具体模型服务无关。接真实服务时，`adk-model` 里的适配器负责转换：例如 Anthropic 的 `tool_use` / `tool_result` 块、OpenAI 的 `tool_calls` / `tool` 消息，都映射到 `FunctionCall` / `FunctionResponse`。请求记录里的 `model`、`function` 角色也是框架的内部叫法。本章不验证任何真实服务的协议，那是[专题 3](./model-evaluation.md)的内容。
 
 ## 3. 把模型与工具各写成一个可观察的边界
 
-现在已经知道模型返回哪两种结果，再来看“调用模型”本身。循环只需要一个能力：给它当前消息历史，取得下一份响应。
+### 模型：只能看到请求
 
-<<< @/public/learn-agent-rust/code/agent-loop.rs#model
+ADK-Rust 里，模型就是任何实现了 `Llm` trait 的类型。必需的方法只有两个：返回名字的 `name`，以及根据一个 `LlmRequest` 生成回复的 `generate_content`。本章自己写了一个：
 
-`Model` trait 是循环依赖的接口，`ScriptedModel` 是本章的实现。它接收不可变的消息切片 `&[Message]`，返回 `ModelReply`；历史的追加由应用完成。
+<<< @/public/learn-agent-rust/code/agent-loop/src/main.rs#model
 
-顺着正常路径读这段代码：
-
-1. 最后一条是用户消息，返回 `read-1` 这次读取请求。
-2. 最后一条是工具结果，检查 `output`。
-3. 读取成功时，从结果中提取启动命令；读取失败时，生成“任务未完成”的说明。
-
-其中 `repeat`、`two-tools` 等分支用于后面的故障实验。模型替身可以故意不断请求工具，让我们验证应用会不会按预算停下来。
-
-### 文件读取在哪里真正发生？
-
-接下来是唯一的文件工具：
-
-<<< @/public/learn-agent-rust/code/agent-loop.rs#tool
-
-`execute` 先检查工具名和路径，再调用 `fs::read_to_string`。其返回类型本身就是 `Result`，文件缺失等错误会进入失败分支；函数行为可对照 [Rust 标准库文档](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)。
-
-这里刻意分开三个计数：
-
-| 计数 | 何时增加 | 用来回答什么问题 |
-| --- | --- | --- |
-| `tool_calls` | 进入一次工具分派时，名称、路径或读取失败也计入 | 应用实际处理了多少次工具执行尝试？ |
-| `read_attempts` | 名称与路径通过检查，准备调用文件读取时 | 有没有触及文件系统读取？ |
-| `read_successes` | 文件内容成功读出时 | 实际得到了几次文件内容？ |
-
-本章只接收精确路径 `README.md`，并只读取程序自己创建的小型练习文件。`Workspace` 持有临时目录，工具借用它；读出的 `String` 进入结果，再进入会话历史。
-
-<<< @/public/learn-agent-rust/code/agent-loop.rs#workspace
-
-读取本机文件属于操作系统文件访问。本章的模型接口、循环和工具函数都在同一个 Rust 进程内，调用之间没有网络传输；状态只保存在内存。若要支持任意工作区文件，路径解析、符号链接、大小限制和超时等机制还需要扩展，见[工具权限与审批](./permissions.md)。
-
-## 4. 将这些步骤接成一个循环
-
-在写循环之前，先列出它要持有的东西：消息历史、已用预算、读取计数、停止原因，以及已经使用的调用 ID。
-
-<<< @/public/learn-agent-rust/code/agent-loop.rs#state
-
-`Limits` 是应用配置，`Run` 是本次执行的状态和结果。`StopReason` 让调用者知道循环为什么返回。模型只返回 `ModelReply`，预算与停止策略由应用解释和执行。
-
-现在看完整的显式循环：
-
-<<< @/public/learn-agent-rust/code/agent-loop.rs#agent-loop
-
-第一次阅读只盯住主线：检查模型预算，调用模型，记录响应；如果是最终回答就返回，如果是工具请求就校验、执行、追加结果，然后回到循环顶部。
-
-![显式循环在调用模型前检查轮次，在执行工具前校验调用与工具预算，结果追加到历史后再进入下一轮。](/learn-agent-rust/figures/r01-loop-control.svg)
-
-先沿蓝色主线读一遍，再观察橙色停止分支。箭头回到模型预算检查，意味着每轮都会重新检查剩余额度。图中是本章代码的控制流；后续可以把模型步骤与工具步骤映射到图节点。
-
-第二次阅读，检查顺序为什么这样安排：
-
-1. **先检查模型预算，再增加轮次并调用。** `model_turns` 计的是尝试次数，模型接口报错也消耗一轮。
-2. **先记录模型的工具请求，再追加结果。** 下一轮能同时看到“要求做什么”和“实际得到了什么”。
-3. **整批检查工具预算。** 同轮两个请求、只剩一次额度时，整批拒绝；两个请求都得到应用生成的 `tool_budget` 错误结果，实际工具调用次数保持不变。
-4. **拿齐这一批结果，再返回循环顶部。** 本章顺序执行；还没有加入并发或逐工具检查点。
-
-这里选择整批拒绝，是为了让初版的预算行为容易预测。应用拒绝的结果也带回原调用 ID，但它表示策略决定，没有执行文件工具。以后引入逐工具审批或恢复时，再重新定义批内执行边界。
-
-### 什么东西会活到下一轮？
-
-`run_agent` 持有 `Run` 和 `seen`，直到返回；模型对象和 `Workspace` 由外层创建，再以借用传入。每轮增加的消息保存在同一个 `Vec<Message>` 中，第二轮才能看到第一轮的结果。
-
-函数返回后，调用者可以读取完整 `Run`。程序退出后，内存历史结束，临时文件被清理。本章还没有保存或恢复会话的入口；涉及重启恢复时，需要继续处理[检查点](./postgres-checkpoints.md)与[外部操作重放](./side-effect-reliability.md)。
-
-## 5. 动手实验：改一个条件，看循环在哪一步停下
-
-先做预测，再运行。以下实验复用同一个二进制，每次启动都会创建独立的练习目录。
-
-### 实验 A：答案是否真的来自文件？
-
-```sh
-./agent-r01 --scenario changed-readme
-```
-
-该场景只将练习文件的启动命令改为 `cargo run --release`，脚本模型的提取规则与循环都相同。
+`RuleLlm` 不联网，也不读文件。它只能从 `LlmRequest` 里看到历史消息：还没有工具结果，就请求读取；已经有结果，就从最后一条结果里找“启动命令：”那一行来回答，找不到就报告未完成。所以 `changed-readme` 场景把 README 改成 `cargo run --release` 以后，回答跟着变，这说明回答来自真实读到的内容：
 
 <<< @/public/learn-agent-rust/outputs/r01-changed-readme.txt
 
-观察工具结果和最终回答是否一起变化。答案变化说明这条实验路径使用了实际读取的内容；这项验证针对固定规则替身的数据流。
+真实模型也是同样的边界：它看不到磁盘，看到的只是框架交给它的请求。后续章节多用 ADK-Rust 自带的 `ScriptedLlm`（按预先写好的脚本逐条回复），本章写一个规则模型，是为了看清这个边界。
 
-### 实验 B：文件不存在，循环会怎样回答？
+### 文件读取在哪里真正发生？
+
+<<< @/public/learn-agent-rust/code/agent-loop/src/main.rs#tool
+
+处理函数只接受 `README.md`，并自己记两个计数。它们和框架的事件分开记录，用来核对“请求了”“尝试读了”“读成功了”是三件不同的事：
+
+| 计数 | 含义 | 例子 |
+| --- | --- | --- |
+| `tool_results` | 事件流里出现了几条工具结果（含失败和未执行的） | `unknown-tool` 为 1，但工具没有运行 |
+| `read_attempts` | 处理函数真的去读了几次 | `invalid-path` 为 0：路径检查先拒绝了 |
+| `read_successes` | 读成功了几次 | `missing-file` 为 0：尝试了，文件不存在 |
+
+工具在同一个进程里运行，读取的是程序用 `tempfile` 新建的临时目录，进程结束时自动删除。限制路径的规则来自应用，第 3 章再讲谁有权决定一个动作能不能执行。
+
+## 4. 将这些步骤接成一个循环
+
+把模型、工具交给 `LlmAgent`，再交给 `Runner`：
+
+<<< @/public/learn-agent-rust/code/agent-loop/src/main.rs#wiring
+
+循环本身在 `LlmAgent` 里。`Runner` 负责会话，并把预算、策略这些运行规则装进这次运行；真正在行动之前检查它们的是 `LlmAgent`。从实验结果和源码（见本章“在 ADK-Rust 源码里”一节）可以确认这几条顺序：
+
+- **每次调用模型之前先检查上限。** 循环上限 `max_iterations`（默认 100 轮，每轮调用一次模型）和运行预算 `RunBudget` 的模型调用次数，都在请求模型之前检查；超了就不再调用。
+- **一条回复里的工具调用按整批放行。** 这一批要多少次工具调用额度就一次申请多少；不够就一个都不执行，每个调用都得到一条 `not_run` 结果，然后运行停止。
+- **整批结果都写进历史以后，才发下一次请求。** `two-tools` 场景的第二次请求里，两条 `function` 结果都已经在了。
+- **四种停止方式：** 模型给出不含调用的回复（最终回答）、触及循环上限（实验 F）、预算用完（实验 C、D、E）、模型出错（只在 Rust 测试里覆盖）。后三种运行以错误结束，错误码就是停止原因；其中循环上限的错误码是笼统的 `agent.legacy`，不如预算的 `budget.*` 具体。框架还有别的结束方式（取消、等待审批、交接给其他 Agent），它们不以错误结束，后面的章节再讲。本章只有看到 `assistant` 的最终文本才记作 `final_answer`。
+
+`wiring` 片段里还有一行 `without_intra_compaction()`：ADK-Rust 3.0 默认会在请求快接近模型上下文窗口时自动压缩历史，本章把它关掉，保证每次请求都带上未经删减的完整历史，输出也可重复。压缩在[第 12 章](./context-compaction.md)专门讨论。
+
+预算装在 `Runner` 上：
+
+<<< @/public/learn-agent-rust/code/agent-loop/src/main.rs#limits
+
+读取事件流时，正常事件进轨迹，错误码作为停止原因：
+
+<<< @/public/learn-agent-rust/code/agent-loop/src/main.rs#events
+
+预算用完时，框架还会往会话里写一条没有正文的事件，带着错误码、错误说明和触及的是哪项限制，说明为什么停（轨迹里的 `stop code=…` 行）。`zero-model-budget` 的 `session_events=2`（用户问题加这条事件）可以印证它确实进了会话。保存这条事件是尽力而为：保存失败时框架只记一条警告，不会让运行失败。
+
+### 什么东西会活到下一轮？
+
+模型每次收到的是完整的历史：系统指令、用户问题，加上此前所有的调用和结果，请求记录里的角色序列一次比一次长。这里有两份历史：一次运行开始时，`LlmAgent` 从会话里取出历史，之后在内存里自己维护一份，每次请求都用它；同时，`Runner` 把每个事件写进会话。所以同一次运行里的下一次请求来自 `LlmAgent` 内存里的那份，下一次运行（例如用户再问一句）才从会话里重新读取。本章的会话用的是 `InMemorySessionService`，进程退出就没了。跨进程保存与恢复在[第 6 章](./graph-pause-resume.md)和[专题 1](./postgres-checkpoints.md)讨论，工具已经执行、结果却没保存的窗口在[专题 2](./side-effect-reliability.md)讨论。
+
+## 5. 动手实验 {#hands-on}
+
+下载并解压<a href="/learn-agent-rust/agent-loop.zip" download>本章工程</a>。ADK-Rust 3.0 还没有发布到 crates.io，工程里的 `.cargo/config.toml` 把 ADK 依赖指向本目录旁边的 `adk-rust/`，先取一次固定提交的源码：
 
 ```sh
-./agent-r01 --scenario missing-file
+cd agent-loop
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked
+```
+
+命令要在 `agent-loop` 目录里运行。编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0），不影响运行和检查。
+
+### 实验 A：答案来自读到的文件
+
+```sh
+cargo run --locked -- --scenario changed-readme
+```
+
+输出见第 3 节。改了 README，回答跟着变。
+
+### 实验 B：读取失败，循环照样结束
+
+```sh
+cargo run --locked -- --scenario missing-file
 ```
 
 <<< @/public/learn-agent-rust/outputs/r01-missing-file.txt
 
-读取尝试为 1，成功为 0。错误仍然作为 `read-1` 的结果交给模型，因此第二轮可以说明失败。
+工具失败了，结果仍然带着 `read-1` 交回模型，模型据此报告“任务未完成”。停止原因是 `final_answer`，`fixture_goal_met=false`：循环正常结束，不等于练习目标达成。
 
-特别看最后一行：停止原因是 `FinalAnswer`，练习目标却为 `false`。`FinalAnswer` 只表示模型给出了最终响应；本例的目标断言还要求实际读到文件，并回答练习文件中约定的启动命令。这个 `fixture_goal_met` 是针对本练习的检查规则，后续通用任务评估见[模型协议与质量评估](./model-evaluation.md)。
-
-### 实验 C：只给一轮模型预算
+### 实验 C：只给一次模型调用
 
 ```sh
-./agent-r01 --max-model-turns 1
+cargo run --locked -- --max-model-calls 1
 ```
 
 <<< @/public/learn-agent-rust/outputs/r01-model-budget.txt
 
-文件已经读出，但模型还没有第二次看到它。历史停在第三条工具消息，停止原因为 `ModelBudget`。按本章规则，模型轮次限制只拦截下一次模型调用；本轮已获工具预算的请求仍然执行。
+第一次调用提出读取，工具执行并留下结果；准备第二次调用时预算用完，运行以 `budget.model_calls` 结束。文件已经读出来了，但没有人根据它回答，目标未达成。预算拦住的是下一次模型调用，已经放行的工具照常执行。
 
-再试 `--max-model-turns 0`：用户消息会保留，模型和工具都不被调用。
+### 实验 D：模型一直请求，靠什么停下？
 
-### 实验 D：模型一直要求再读一次
+`repeat` 场景的模型不管看到什么都再读一次。给它两次工具调用额度：
 
 ```sh
-./agent-r01 --scenario repeat
+cargo run --locked -- --scenario repeat --max-tool-calls 2
 ```
 
 <<< @/public/learn-agent-rust/outputs/r01-repeat.txt
 
-默认允许 3 轮模型调用、2 次工具执行。第三轮还在请求读取时，应用产生带原 ID 的预算拒绝结果，以 `ToolBudget` 停止；实际读取次数保持为 2。
+前两次读取成功，额度正好用完。注意框架还是发起了第三次模型调用：调用模型前只在工具调用“已经超出”上限时才拒绝，“刚好用完”不拦。第三次回复里的 `read-3` 申请额度时被拒绝，得到 `not_run`，运行以 `budget.tool_calls` 结束。每一次读取都合法，整段执行却没有进展，所以需要累计的上限。只设 `--max-model-calls 2` 的话，就由模型调用预算在第三次调用前停下（`repeat-model-budget`）。
 
-同一个场景再加 `--max-model-turns 2`，会先触及 `ModelBudget`。两个限制保护不同的边界：哪个条件先满足，就从对应位置返回。本章尚未计量 token、费用、总耗时或工具超时。
-
-### 实验 E：同一轮两个调用，ID 怎样配对？
+### 实验 E：一轮两个调用，只剩一次额度
 
 ```sh
-./agent-r01 --scenario two-tools
-./agent-r01 --scenario two-tools --max-tool-calls 1
+cargo run --locked -- --scenario two-tools
+cargo run --locked -- --scenario two-tools --max-tool-calls 1
 ```
 
-第一条命令中，同一个 assistant 消息携带 `read-1` 和 `read-2`，各自得到结果后才调用第二轮模型。第二条命令额度不足，整批拒绝，两次文件读取都不发生。
+<<< @/public/learn-agent-rust/outputs/r01-two-tools.txt
 
-![同轮两个工具请求分别通过 read-1 和 read-2 关联结果；额度不足时整批返回预算拒绝，文件读取次数为零。](/learn-agent-rust/figures/r01-call-pairing.svg)
+<<< @/public/learn-agent-rust/outputs/r01-batch-budget.txt
 
-先看同一条 assistant 消息怎样展开为两个结果，再比较左右两种预算条件。消息与调用计数来自 `two-tools` 和 `batch-budget` 的实际运行。
+额度充足时，一条回复里的 `read-1`、`read-2` 都执行，第二次请求的角色序列里有两条 `function`，两条结果都在。只剩一次额度时，整批一个都不执行，两个调用各得到一条带原 ID 的 `not_run` 结果，读取次数为 0。会话事件数也不同：执行了的两个结果各写一个事件（`two-tools` 共 5 个），整批拒绝时两条 `not_run` 结果合在一个事件里（`batch-budget` 加上停止事件共 4 个）。
 
-还可以运行 `--scenario duplicate-id`、`--scenario unknown-tool` 和 `--scenario invalid-path`。先猜测各自会不会发生文件读取，再对照下面的统一结果表。
+### 实验 F：不设预算，循环上限怎样停下？
+
+`repeat` 场景如果什么限制都不加，会一直读到默认的 100 轮上限。把循环上限设成 3：
+
+```sh
+cargo run --locked -- --scenario repeat --max-iterations 3
+```
+
+<<< @/public/learn-agent-rust/outputs/r01-loop-limit.txt
+
+三轮各调用一次模型、各读一次文件；准备第四次调用模型时超限，运行以 `agent.legacy` 结束。和预算不同，这种停止不会往会话里写停止事件（轨迹里没有 `stop code=…` 行，会话事件 7 个：用户问题加三对调用和结果）。循环上限是 Agent 自己的设置，预算是整次运行的规则；后者更具体，也能限制工具、费用和时间。
+
+![左侧额度充足，两个调用各自读取一次；右侧只剩一次额度，整批不执行，两条结果都保留原调用 ID。](/learn-agent-rust/figures/r01-call-pairing.svg)
 
 ## 6. 核对实验记录与验证范围
 
-以下表格由 `scripts/verify-learn-agent-rust-loop.py` 实际运行后生成。工具执行尝试沿用前文 `tool_calls` 的口径；应用在预算入口拒绝的请求不计入执行尝试。
+![正常路径中用户问题、模型请求、工具结果和模型回答依次出现，共两次模型调用、一条工具结果、四条会话事件。](/learn-agent-rust/figures/r01-message-cycle.svg)
+
+![LlmAgent 在每次调用模型前检查循环上限和预算，工具调用按整批申请额度，结果写回后进入下一次请求。](/learn-agent-rust/figures/r01-loop-control.svg)
+
+全部场景的实际记录（由验证脚本生成）：
 
 <!-- r01-results:start -->
 
-| 场景 | 模型轮次 | 工具执行尝试 | 文件读取尝试 / 成功 | 停止原因 | 练习目标达成 |
-| --- | --- | --- | --- | --- | --- |
-| `normal` | 2 | 1 | 1 / 1 | `FinalAnswer` | 是 |
-| `changed-readme` | 2 | 1 | 1 / 1 | `FinalAnswer` | 是 |
-| `missing-file` | 2 | 1 | 1 / 0 | `FinalAnswer` | 否 |
-| `model-budget` | 1 | 1 | 1 / 1 | `ModelBudget` | 否 |
-| `zero-model-budget` | 0 | 0 | 0 / 0 | `ModelBudget` | 否 |
-| `tool-budget` | 1 | 0 | 0 / 0 | `ToolBudget` | 否 |
-| `repeat` | 3 | 2 | 2 / 2 | `ToolBudget` | 否 |
-| `repeat-model-budget` | 2 | 2 | 2 / 2 | `ModelBudget` | 否 |
-| `two-tools` | 2 | 2 | 2 / 2 | `FinalAnswer` | 是 |
-| `batch-budget` | 1 | 0 | 0 / 0 | `ToolBudget` | 否 |
-| `duplicate-id` | 2 | 1 | 1 / 1 | `InvalidCall` | 否 |
-| `unknown-tool` | 2 | 1 | 0 / 0 | `FinalAnswer` | 否 |
-| `invalid-path` | 2 | 1 | 0 / 0 | `FinalAnswer` | 否 |
+| 场景 | 参数 | 模型调用 | 工具结果 | 读取尝试 / 成功 | 会话事件 | 停止原因 | 练习目标 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `normal` | `—` | 2 | 1 | 1 / 1 | 4 | `final_answer` | 达成 |
+| `changed-readme` | `--scenario changed-readme` | 2 | 1 | 1 / 1 | 4 | `final_answer` | 达成 |
+| `missing-file` | `--scenario missing-file` | 2 | 1 | 1 / 0 | 4 | `final_answer` | 未达成 |
+| `model-budget` | `--max-model-calls 1` | 1 | 1 | 1 / 1 | 4 | `budget.model_calls` | 未达成 |
+| `zero-model-budget` | `--max-model-calls 0` | 0 | 0 | 0 / 0 | 2 | `budget.model_calls` | 未达成 |
+| `tool-budget` | `--max-tool-calls 0` | 1 | 1 | 0 / 0 | 4 | `budget.tool_calls` | 未达成 |
+| `repeat` | `--scenario repeat --max-tool-calls 2` | 3 | 3 | 2 / 2 | 8 | `budget.tool_calls` | 未达成 |
+| `repeat-model-budget` | `--scenario repeat --max-model-calls 2` | 2 | 2 | 2 / 2 | 6 | `budget.model_calls` | 未达成 |
+| `loop-limit` | `--scenario repeat --max-iterations 3` | 3 | 3 | 3 / 3 | 7 | `agent.legacy` | 未达成 |
+| `two-tools` | `--scenario two-tools` | 2 | 2 | 2 / 2 | 5 | `final_answer` | 达成 |
+| `batch-budget` | `--scenario two-tools --max-tool-calls 1` | 1 | 2 | 0 / 0 | 4 | `budget.tool_calls` | 未达成 |
+| `duplicate-id` | `--scenario duplicate-id` | 3 | 2 | 2 / 2 | 6 | `final_answer` | 达成 |
+| `unknown-tool` | `--scenario unknown-tool` | 2 | 1 | 0 / 0 | 4 | `final_answer` | 未达成 |
+| `invalid-path` | `--scenario invalid-path` | 2 | 1 | 0 / 0 | 4 | `final_answer` | 未达成 |
 
 <!-- r01-results:end -->
 
-记录的编译器与目标平台见 <a href="/learn-agent-rust/outputs/r01-environment.txt" download>实验环境</a>。所有场景都使用标准库、脚本模型和临时文件，无第三方 crate；首次准备 Rust 工具链是否需要联网，与本章运行时是否请求模型服务分别看待。
+“工具结果”包括失败和未执行的结果；“练习目标”要求真的读到了文件，并且最终回答和读到的启动命令一致。
 
-在网站仓库根目录，可以重新生成或核对全部证据：
+网站维护者运行 `python3 scripts/verify-learn-agent-rust-loop.py`：它打包章节、在临时目录解压并在旁边放好 `adk-rust/`，执行 `cargo fmt --check`、`cargo clippy -D warnings`、`cargo test`；14 个场景各连跑两次，输出必须逐字节相同；逐个核对计数、停止原因、调用与结果的 ID 一一对应、预算停止事件（以及循环上限不写停止事件）；三种非法参数必须以退出码 2 结束；最后生成上面的表。7 个 Rust 测试分别检查：零模型预算不调用模型、整批超额一个都不执行、重复 ID 会被再次执行、回答来自读到的文件、最终回答不等于目标达成、循环上限在下一次调用模型前停下、模型出错时停止且不执行工具。加 `--check` 检查产物是否过期。
 
-```sh
-python3 scripts/verify-learn-agent-rust-loop.py
-python3 scripts/verify-learn-agent-rust-loop.py --check
-```
+### 与旧版场景的对应
 
-验证脚本会把单个源码复制到独立临时目录编译运行，核对统计、调用 ID 配对、完整输出及正文结果表，并运行源码内的 6 个 Rust 契约测试。测试覆盖零轮次、整批工具额度、同批异常 ID、跨轮重复 ID、直接最终回答与模型接口失败；另外检查错误命令行参数会以非零状态退出。
+旧版（标准库手写循环）有 13 个场景，外加一份记录编译环境的 `environment` 输出（现在环境信息记在证据文件里）。新版保留这 13 个场景名，另加 `loop-limit`，有几处口径变了：
 
-单独下载源码后，也可以运行其内置测试：
+| 变化 | 旧版 | 新版 | 原因 |
+| --- | --- | --- | --- |
+| 计数口径 | “工具执行尝试” | “工具结果”（含失败与未执行） | 框架为每个调用都写结果，未执行的也有；`tool-budget` 因此从 0 变成 1，`batch-budget` 从 0 变成 2，`repeat` 从 2 变成 3。实际读取次数另由 `read_attempts` 记录。 |
+| 默认上限 | 3 次模型调用、2 次工具调用 | 不设预算 | 框架默认没有运行预算；`repeat` 需要显式加 `--max-tool-calls 2`。 |
+| 参数名 | `--max-model-turns` | `--max-model-calls` | 与框架的 `RunBudget` 用词一致。 |
+| 停止原因 `invalid_call_id` | 应用拒绝重复或空的调用 ID | 删除 | 框架不检查重复 ID（`duplicate-id` 结论相反）；空 ID 由框架自动补上 `adk-call-…`。 |
+| 循环上限 | 手写的轮次上限 | 新增 `loop-limit` | 由 `LlmAgent` 的 `max_iterations` 提供。 |
+| 测试“提前给出最终回答不会触发读取” | 有 | 删除 | 规则模型的回复只取决于请求内容，`missing-file` 等场景已覆盖“回答不等于目标”。 |
 
-```sh
-rustc --edition=2024 -D warnings --test agent-loop.rs -o agent-r01-tests
-./agent-r01-tests
-```
+## 框架替你做了什么、没做什么
 
-程序正常展示一次失败场景时，进程退出码仍为 0，表示实验执行完毕；具体任务结果看停止原因与目标断言。非法参数、编译失败等才属于运行入口失败。
+| 框架做了 | 仍归应用 |
+| --- | --- |
+| 运行“调用模型 → 执行工具 → 结果写回 → 再调用”的循环，每次请求都带上历史（默认会自动压缩，本章关掉了）。 | 写清楚 Agent 指令和工具说明。 |
+| 每个调用的结果都带原调用 ID，包括未执行的。 | 检查调用 ID 是否重复（框架不查）。 |
+| 循环上限、模型调用预算、工具调用预算；工具按整批放行。 | 选合适的上限；判断模型给出的回答是否真的完成了任务。 |
+| 用错误码报告停止原因，并把预算停止写进会话。 | 区分“循环结束”和“目标达成”，给任务结果单独的判断。 |
+| — | 决定一个动作该不该执行（第 3 章）。 |
+
+<!-- adk-refs:start -->
+
+## 在 ADK-Rust 源码里
+
+本章观察到的循环，在 ADK-Rust 里分布在这几处（按一次运行的先后）：
+
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 运行入口 | [`adk-runner/src/runner.rs` · `Runner::run_with_config`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-runner/src/runner.rs#L989-L1000) | 加载会话、交给 Agent 运行，并把 Agent 产生的每个事件逐条写进会话 |
+| 从会话取出历史 | [`adk-agent/src/llm_agent.rs` · `prepare_conversation`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L406-L578) | 运行开始时把会话事件整理成本次运行在内存里维护的对话历史 |
+| 循环本身 | [`adk-agent/src/llm_agent.rs` 第 4451 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L4451) | 每一轮：检查上限与预算 → 组装请求 → 调用模型 → 执行工具 → 结果写回历史 |
+| 循环上限 | [`adk-agent/src/llm_agent.rs` 第 4464 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L4464) | 每次调用模型前先加一，超过 `max_iterations` 就以错误结束（`agent.legacy`） |
+| 组装一次请求 | [`adk-agent/src/llm_agent.rs` 第 4577 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L4577) | 把对话历史和工具声明放进 `LlmRequest`；本章记录的 `request` 行就是它 |
+| 模型的回复写进历史 | [`adk-agent/src/llm_agent.rs` 第 5304 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L5304) | 带调用的回复先写进历史，下一次请求里的 `model` 角色就是它 |
+| 执行这一批调用 | [`adk-agent/src/llm_agent.rs` 第 5642 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L5642) | 按策略执行同一条回复里的全部调用 |
+| 工具结果写回历史 | [`adk-agent/src/llm_agent.rs` 第 5700 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L5700) | 结果带原调用 ID 写回历史，下一次请求里的 `function` 角色就是它 |
+| 模型的边界 | [`adk-core/src/model.rs` 第 20 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/model.rs#L20) | 必需的只有 `name` 和这个 `generate_content`；本章的 RuleLlm 就实现它 |
+| 模型调用预算 | [`adk-core/src/budget.rs` · `BudgetTracker::begin_model_call`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/budget.rs#L711-L727) | 在请求模型之前计数；用完就返回 `budget.model_calls` |
+| 整批申请工具额度 | [`adk-core/src/budget.rs` · `BudgetTracker::begin_tool_calls`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/budget.rs#L845-L851) | 一条回复里的全部调用一起申请：要么全部计入，要么一个都不计入，不够时每个调用得到 `not_run` |
+
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
+
+<!-- adk-refs:end -->
 
 ::: warning 常见误区
-- **把工具请求当作执行证据。** 实际是否访问文件，要看执行路径、读取计数与工具结果。
-- **只保留工具结果，丢掉 assistant 请求。** 请求、参数和调用 ID 也是下一轮上下文的一部分。
-- **把 `FinalAnswer` 当作任务成功。** 文件缺失实验也能正常生成最终响应；本章另用练习目标断言检查结果。
-- **把调用 ID 当作业务幂等键。** 本章只在单次内存运行里检查 ID 唯一。跨进程重试和外部副作用仍需专门的恢复契约。
-- **把固定规则实验当作真实模型验证。** 本章验证的是控制流、文件数据流和停止行为，真实协议、模型选择工具的能力与任务质量需要后续证据。
+- 把工具请求当作执行证据：模型提出了 `read_file`，不等于文件被读了，要看结果和计数。
+- 只看最终回答：会话里的调用和结果才说明回答从哪来。
+- 把 `final_answer` 当作任务成功：`missing-file` 正常结束，目标未达成。
+- 把调用 ID 当作业务幂等键：它只用来配对；框架甚至不检查它是否重复。
+- 把规则模型的实验当作真实模型验证：这里只证明循环、计数、配对和停止条件。
 :::
 
 <!-- transfer-thinking:start -->
@@ -315,62 +337,61 @@ rustc --edition=2024 -D warnings --test agent-loop.rs -o agent-r01-tests
 
 <!-- transfer-thinking:end -->
 
-## 本章结论：主线采用有界的显式循环
+## 本章结论：循环在框架里，证据在事件里
 
-本章形成了一个可观察的往返：模型返回结构化请求，应用校验并执行工具，结果按调用 ID 写回历史，再由模型生成下一份响应。应用持有消息与累计计数，并在调用前检查预算，用类型化原因报告停止。
+本章形成了一个可观察的往返：模型返回结构化的调用，框架执行工具，结果按调用 ID 写回历史，再由模型生成下一份回复。循环由 `LlmAgent` 运行；预算装在 `Runner` 上，由 `LlmAgent` 在行动之前检查；停止原因以错误码报告，预算停止还会写进会话。
 
-这一章只提供一个文件工具。下一步增加工具注册表，再将模型步骤和工具步骤映射到图节点。映射后仍要核对相同任务中的消息、调用、结果和停止原因。
+框架接手了循环，判断任务是否完成仍是应用的事：本章用 `fixture_goal_met` 单独检查。下一章增加第二个工具，看工具描述和执行入口怎样保持一致，再把同一个 Agent 放进图里调度。
 
 ## 检查理解
 
-1. 正常实验中，为什么 1 次工具读取需要 2 轮模型调用？
+1. 正常实验中，为什么 1 次工具读取需要 2 次模型调用？
 
    <details><summary>参考答案</summary>
 
-   第一轮模型产生读取请求。应用执行后才有文件内容；第二轮模型获得工具结果，据此生成最终回答。工具执行本身不计为模型轮次。
+   第一次调用模型产生读取请求。框架执行工具后才有文件内容；第二次调用时模型在请求里看到工具结果，据此生成最终回答。工具执行本身不算一次模型调用。
 
    </details>
 
-2. 两个请求都叫 `read_file`，结果为什么还要携带 `call_id`？
+2. 两个请求都叫 `read_file`，结果为什么还要带调用 ID？
 
    <details><summary>参考答案</summary>
 
-   工具名称说明调用哪种能力，调用 ID 标识哪一次请求。相同工具可以在同轮或不同轮出现多次，结果需用 ID 与具体请求对应。本章还要求单次运行内 ID 非空且唯一。
+   工具名说明调用哪种能力，调用 ID 标识哪一次请求。相同工具可以在同一轮或不同轮出现多次，结果要靠 ID 对应到具体请求。框架会把原 ID 写进结果，但不检查 ID 是否重复，`duplicate-id` 场景里重复的 ID 照样被执行。
 
    </details>
 
-3. 只给 1 轮模型预算，文件已经读出，为什么练习目标仍未达成？
+3. 只给 1 次模型调用预算，文件已经读出，为什么练习目标仍未达成？
 
    <details><summary>参考答案</summary>
 
-   第一轮的请求及工具结果已经写入历史，但应用在下一次模型调用前停止，还没有基于结果生成最终回答。本章的目标断言要求成功读取并给出对应启动命令。
+   第一次调用的请求和工具结果已经写入历史，但框架在下一次调用模型之前因预算停止，没有人根据结果生成最终回答。练习目标要求成功读取并给出对应的启动命令。
 
    </details>
 
-4. 模型同轮提出两个请求，只剩一次工具额度，本章执行几个？怎样记录结果？
+4. 模型同一轮提出两个请求，只剩一次工具额度，执行几个？怎样记录结果？
 
    <details><summary>参考答案</summary>
 
-   执行 0 个。本章在执行前检查整批额度，分别为两个调用 ID 追加 `tool_budget` 错误结果，以 `ToolBudget` 停止。错误结果由应用生成，实际工具计数不增加。
+   执行 0 个。框架按整批申请额度，不够就整批不执行，两个调用各得到一条带原 ID 的 `not_run` 结果，运行以 `budget.tool_calls` 停止。读取计数不增加。
 
    </details>
 
-5. `missing-file` 的停止原因是 `FinalAnswer`，这项实验验证了什么？
+5. `missing-file` 的停止原因是 `final_answer`，这项实验验证了什么？
 
    <details><summary>参考答案</summary>
 
-   它验证读取失败后仍能形成匹配的工具结果，并交给脚本模型生成失败说明。协议流程结束，但读取任务未完成，所以目标断言为 `false`。它没有验证真实服务协议或真实模型面对错误时的行为。
+   它验证读取失败后仍有一条带原 ID 的工具结果交回模型，模型据此报告失败。循环正常结束，但读取任务没完成，所以目标为 `false`。它没有验证真实模型面对错误时会怎样做。
 
    </details>
 
 ## 参考资料
 
+- <a href="/learn-agent-rust/code/agent-loop/README.md" download>本章工程 README（下载）</a>：运行命令与实验边界。
+- ADK-Rust（固定提交）：[LlmAgent 与 Runner](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-runner/README.md)、[2.x → 3.0 迁移指南](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/docs/official_docs/migration/2.x-to-3.0.md)。
 - [Learn Claude Code：s01 Agent Loop](https://learn.shareai.run/zh/s01/)：参考课程的模型、工具与结果回传主线；本章 Rust 实现、实验及预算策略由本站维护。
-- [Rust Book：Defining an Enum](https://doc.rust-lang.org/book/ch06-01-defining-an-enum.html)：用枚举表达不同返回类型。
-- [Rust Book：Recoverable Errors with Result](https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html)：成功值与可恢复错误。
-- [Rust 标准库：fs::read_to_string](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)：文件读取与错误。
-- [Claude 官方文档：Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)：提供方的工具请求、关联 ID 与结果消息格式。
+- [Claude 官方文档：Handle tool calls](https://platform.claude.com/docs/en/agents-and-tools/tool-use/handle-tool-calls)：真实服务的工具请求、关联 ID 与结果消息格式。
 
-参考课程的[原始循环图](/learn-agent-rust/figures/upstream/r01-agent-loop.svg)继续保留，图中使用其 Python/Claude 语境；来源版本与许可见[课程架构](./architecture.md#reference-assets)。本章正文中的 Rust 图由本站脚本生成。
+参考课程的[原始循环图](/learn-agent-rust/figures/upstream/r01-agent-loop.svg)继续保留，图中使用其 Python/Claude 语境；来源版本与许可见[课程架构](./architecture.md#reference-assets)。本章正文中的图由本站脚本生成。
 
-下一章：[第 2 章：工具注册与图调度](./tools-and-graph.md)。将单工具分派扩展为注册表，再比较显式循环与图执行的行为。
+下一章：[第 2 章：工具注册与图调度](./tools-and-graph.md)。增加第二个工具，再把同一个 Agent 放进图里调度。
