@@ -10,7 +10,7 @@ description: 从 Transformer 到自我进化 Agent 的论文研读。
 本书沿两条相互交织的主线阅读论文：大语言模型的结构、效率与推理，以及 Agent 的行动、反馈与自我改进。每个专题关注论文要解决的问题、方法、实验和结论边界。
 
 ::: tip 当前进度
-本书正在编写：已成文 Transformer 论文解读（第 1 章）与 Agent 记忆精读（第 11 章，附原文中文编译），其余章节仍在规划中，顺序与范围可能调整。
+本书正在编写：已成文 Transformer 论文解读（第 1 章）与 Agent 记忆精读（第 11 章及 Claude Code、Codex、ChatGPT 的案例对照），其余章节仍在规划中，顺序与范围可能调整。
 :::
 
 ## 阅读路线
@@ -35,7 +35,8 @@ description: 从 Transformer 到自我进化 Agent 的论文研读。
 - ReAct：推理、行动与环境反馈（规划中）
 - Reflexion：语言反馈与反思记忆（规划中）
 - 工具使用、规划与上下文管理（规划中）
-- [第 11 章 · Agent 记忆：笔记、做梦与记忆层级](./agent-memory.md)（已成文，精读 Anthropic《The components of agent memory》；附[原文中文编译](./agent-memory-digest.md)）
+- [第 11 章 · Agent 记忆：笔记、做梦与记忆层级](./agent-memory.md)。精读 Anthropic 的四层记忆、记忆写入、做梦纠错和 wiki 实验
+- [第 11 章案例 · Claude Code 为什么用 Markdown 做记忆](./claude-code-memory.md)。从人工笔记和外部检索讲到模型主动读写，并对照本地 Codex 与 ChatGPT 的记忆演进
 
 ## 第四部分 · Agent 自我改进
 

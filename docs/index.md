@@ -30,7 +30,7 @@ Hugging Face《The Ultimate MoE Training Handbook》的中文社区译本，按�
 
 ### [思考与行动之间 · Agent 与大模型论文研读](./thinking-and-acting/index.md)
 
-从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。第 1 章重读 Transformer 论文：它的核心论证依赖什么前提、实验证明了什么，以及作者在 2017 年下的判断九年后哪些应验了。第 11 章精读 Anthropic 的《The components of agent memory》：Agent 该记什么、记错了怎么办、离线“做梦”如何整理记忆，并附原文中文编译。其余章节正在规划。
+从 Transformer、GPT 和 FlashAttention 出发，沿着推理、行动、反馈与自我改进，研读大模型和 Agent 的经典论文与近期研究。第 1 章重读 Transformer 论文：它的核心论证依赖什么前提、实验证明了什么，以及作者在 2017 年下的判断九年后哪些应验了。第 11 章精读 Anthropic 的《The components of agent memory》：Agent 该记什么、记错了怎么办、离线“做梦”如何整理记忆。后续案例对照 Claude Code、Codex 与 ChatGPT 的记忆演进。其余章节正在规划。
 
 [进入论文研读 →](./thinking-and-acting/index.md) · [阅读第 1 章：重读 Transformer →](./thinking-and-acting/transformer.md) · [阅读第 11 章：Agent 记忆 →](./thinking-and-acting/agent-memory.md)
 

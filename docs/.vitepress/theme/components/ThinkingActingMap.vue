@@ -11,7 +11,7 @@ const props = withDefaults(defineProps<{ active?: number; label?: string }>(), {
 const parts = [
   { name: 'Transformer 与 GPT', written: ['Transformer'] },
   { name: '模型效率与推理', written: [] as string[] },
-  { name: 'Agent 基础', written: ['Agent 记忆'] },
+  { name: 'Agent 基础', written: ['Agent 记忆', 'Claude Code 记忆案例'] },
   { name: 'Agent 自我改进', written: [] as string[] },
   { name: '评测与开放问题', written: [] as string[] },
 ]
