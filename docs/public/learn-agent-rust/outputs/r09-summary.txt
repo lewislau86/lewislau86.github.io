@@ -1,0 +1,14 @@
+new-process: processes=2 steps=[remember:saved; recall:found 中文 from session-A versions=1 answer=中文]
+update: processes=3 steps=[remember:saved; remember:saved; recall:found English from session-C versions=2 answer=English]
+repeat: processes=3 steps=[remember:saved; remember:unchanged; recall:found 中文 from session-A versions=1 answer=中文]
+naive-load: processes=4 steps=[remember:saved; remember:saved; load_memory:count=2 first=中文 answer=中文; recall:found English from session-C versions=2 answer=English]
+preload: processes=3 steps=[remember:saved; preload:injected=0 answer=default; preload:injected=1 answer=中文]
+scope: processes=4 steps=[remember:saved; recall:missing answer=default; recall:missing answer=default; recall:found 中文 from session-A versions=1 answer=中文]
+eager-model: processes=2 steps=[remember:rejected not_from_user; recall:missing answer=default]
+tool-origin: processes=3 steps=[remember:saved; read_note remember:rejected not_from_user; recall:found 中文 from session-A versions=1 answer=中文]
+unknown-key: processes=1 steps=[remember:rejected unknown_key] file_has_abc123=no
+forget: processes=4 steps=[remember:saved; remember:saved; forget:removed=2; recall:missing answer=default] file_has_English=yes
+erase: processes=5 steps=[remember:saved; remember:saved; erase:removed=2 compact=false; erase:removed=0 compact=true; recall:missing answer=default] after_delete_file_has_English=yes after_compact_file_has_English=no
+corrupt: processes=1 steps=[error migration registry creation failed: (code: 26) file is not a database] bytes_unchanged=yes
+truncated: processes=2 steps=[remember:saved; error migration registry creation failed: (code: 11) database disk image is malformed] bytes_unchanged=yes
+schema-newer: processes=2 steps=[remember:saved; error schema version mismatch: database is at v99 but code only knows up to v3] bytes_unchanged=yes

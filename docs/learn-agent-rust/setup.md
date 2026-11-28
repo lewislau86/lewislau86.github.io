@@ -15,7 +15,7 @@ next:
 [课程总览](./index.md) · [学习路径](./learning-path.md) · [下一篇：课程架构](./architecture.md)
 
 ::: info 正在迁移到 ADK-Rust 3.0
-全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–7 章与[专题 2](./side-effect-reliability.md)；其余章节仍是旧版实验。已迁移章节的准备步骤见[第 4 节](#install-adk)，尚未迁移章节的两库安装步骤见第 5 节。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
+全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–14 章与[专题 2](./side-effect-reliability.md)；其余章节仍是旧版实验。已迁移章节的准备步骤见[第 4 节](#install-adk)，尚未迁移章节的两库安装步骤见第 5 节。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
 :::
 
 ::: tip 本章学习目标
@@ -263,11 +263,9 @@ cargo run --locked --offline
 
 基础自检通过、两库编译通过、两库集成运行通过分别记录；以上步骤完成后，才可认为本机已准备好 R02 的课程环境。
 
-第 5–7 章提供三个[图编排独立工程](./graph-orchestration.md)：状态路由、暂停恢复、并行子图。它们只接入固定 graph-flow，以确定性业务规则学习编排；其中恢复章编译 SQLite，需要本页的 C 编译工具，不需要数据库服务。依次进入各章工程执行 `cargo fetch --locked`、`cargo run --locked -- <场景>` 与 `cargo test --locked`，具体参数见包内 README。
+第 5–7 章的三个[图编排独立工程](./graph-orchestration.md)已迁移到 ADK-Rust 3.0 的 adk-graph，按[第 4 节](#install-adk)准备源码后运行；其中恢复章编译 SQLite，需要本页的 C 编译工具，不需要数据库服务。
 
-第 10 章提供另一个可独立下载的<a href="/learn-agent-rust/skill-loading.zip" download>技能加载工程</a>，使用相同两库源码版本与工具链，并增加 YAML 解析和 SHA-256 依赖。进入其 `skill-loading` 目录，沿用本节的 `cargo fetch --locked`、构建与运行流程；具体场景见[第 10 章](./skill-loading.md)。
-
-第 12 章提供独立的<a href="/learn-agent-rust/context-compaction.zip" download>上下文压缩工程</a>，使用相同工具链与两库源码版本。进入 `context-compaction` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。Agent 与摘要器使用脚本模型，归档只写入自建临时目录；具体预算、对照场景和运行边界见[第 12 章](./context-compaction.md)。
+第 8–14 章（会话内清单、子任务、技能加载、RAG、上下文压缩、跨会话记忆、系统提示词组装）的工程都已迁移到 ADK-Rust 3.0，按[第 4 节](#install-adk)准备源码后运行，下载链接和场景见各章。第 13 章编译自带的 SQLite 源码，需要本页的 C 编译工具，不需要数据库服务。
 
 第 27 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 27 章](./agent-teams.md)。
 

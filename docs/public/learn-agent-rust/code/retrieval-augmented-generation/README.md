@@ -1,21 +1,40 @@
-# K01 · RAG：把检索证据带入回答
+# K01 · RAG：检索、证据与回答（ADK-Rust 3.0 / adk-rag）
 
 教程：https://lewislau86.github.io/learn-agent-rust/retrieval-augmented-generation
 
-独立 Rust 1.99.1 工程，仅使用标准库，无密钥、网络或数据库依赖。
+四份小型 Markdown 资料（`corpus/`）：发布说明、运维步骤、一条含恶意指令的导入工单（范围 A），以及另一个租户的私有说明（范围 B）。
+切块、词袋 embedding 与按范围的向量检索由 adk-rag 的 `RagPipeline` 执行（`InMemoryVectorStore`，不联网）；
+来源时效、上下文预算和引用校验由本工程的宿主代码执行。生成器是“摘录第一条证据”的确定性夹具；
+`agent-*` 场景用 `ScriptedLlm` 调用 `RagTool`，并用 `CitationRequired` 检查最终回答的引用。
+
+## 准备 ADK-Rust 源码
 
 ```sh
-cargo test --locked --offline
-cargo clippy --locked --offline -- -D warnings
-cargo run --locked --offline -- suite /tmp/my-rag-lab
-cargo run --locked --offline -- query corpus A 'upgrade Rust'
-cargo run --locked --offline -- query corpus A 'revert disaster'
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
 ```
 
-`suite` 的路径必须尚不存在。套件创建教学资料，实际读写、更新、删除文件，保留目录供检查。再次运行请使用新路径；目录由读者自行清理。`query` 只读已有资料；输入范围 A/B 模拟宿主已解析的身份，不提供身份认证。
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
 
-真实执行：按段落切块、来源行号、权限范围过滤、BM25 检索、上下文预算、逐字摘录引用校验、过期拒绝与重建、公开标签上的检索评估。
+## 运行
 
-生成器为固定摘录夹具，输出第一条证据的原文与引用。它验证接口和宿主检查，不验证真实 LLM 的回答能力或提示注入抵抗力。英文 ASCII 分词有意保留同义词失败；未实现 embedding、向量库、reranker、中文分词或框架/MCP 集成。Rust 2.00.0 仅是更新场景的合成文本。
+```sh
+cargo run --locked -- query corpus A 'upgrade Rust'     # 只读本目录的 corpus/
+cargo run --locked -- suite /tmp/my-rag-lab             # 目标目录必须尚不存在；跑完保留供检查
+cargo test --locked
+cargo fmt --check
+cargo clippy --locked --all-targets -- -D warnings
+```
 
-公开 4 道教学检索题的 Recall@2 与 MRR@2 分开于答案正确率；其中一题故意没有词面重合。FNV 显示指纹不具备密码学保证；过期检查比较完整来源文本，发布证据另有 SHA-256。索引在进程内，每次 `query` 重新构建；更新场景在同一进程中保留旧索引再修改磁盘以模拟过期。
+`suite` 依次运行：normal、no-hit、zero-score、scope、budget、injection、bad-citation、evaluation、lexical-gap、
+swap-embedder、collision、stale、updated、deleted、agent-cited、agent-uncited。它会修改再删除目标目录里的
+`release.md`，不要把已有资料目录作为目标。
+
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
+
+## 实验边界
+
+- 词袋 embedding 只认英文单词，不懂同义词；`swap-embedder` 用的同义词表是手写替身，不是语义模型。
+- 真实语义向量要用 adk-rag 的 `onnx` 特性（首次需要下载模型）或在线 provider，本工程没有运行。
+- 四道评估查询和标签都是公开的教学样例，不代表生产检索或真实模型质量。
+- 生成器是固定夹具；`agent-*` 场景的模型是脚本，只验证检索工具、来源记录和引用检查的接线。

@@ -1,55 +1,76 @@
-"""R10 assembly diagrams and actual input/cache evidence."""
+"""R10 diagrams (ADK-Rust 3.0) generated from verified sources and actual scenario evidence."""
 import hashlib
 import json
+import re
 
 
 def generate(root, text, panel, arrow, save):
     evidence = json.loads((root / "scripts/data/learn-agent-rust/r10-results.json").read_text())
     package = root / "docs/public/learn-agent-rust/code/system-prompts"
-    for name, expected in evidence["source_sha256"].items():
-        if hashlib.sha256((package / name).read_bytes()).hexdigest() != expected:
+    for filename, expected in evidence["source_sha256"].items():
+        source = package / filename if (package / filename).exists() else root / "scripts" / filename
+        if hashlib.sha256(source.read_bytes()).hexdigest() != expected:
             raise ValueError("Stale R10 evidence; run verify-agent-prompts.py")
-    rows = {row["scenario"]: row for row in evidence["scenarios"]}
-    body = panel(40, 85, 400, 142, "应用选择的控制信息", ["policy/core · 版本与摘要", "工具注册表 · 环境白名单"], "#2563eb")
-    body += panel(520, 85, 400, 142, "本次选择的参考数据", ["skill/startup-guide", "memory/project · 版本与摘要"], "#b45309")
-    body += arrow("M240 227 V275") + arrow("M720 227 V275")
-    body += panel(40, 285, 400, 116, "system 消息", ["策略 + 工具目录 + 环境", "组装器固定，历史中禁止混入 system"], "#2563eb")
-    body += panel(520, 285, 400, 116, "human / reference_data", ["用 JSON 保留资料原文和来源", "资料内容不会创建新的消息角色"], "#b45309")
-    body += arrow("M240 401 V460") + arrow("M720 401 V460")
-    body += panel(40, 470, 880, 108, "再追加原始对话历史 → 完整模型输入", ["保留 user / assistant / tool 顺序与调用 ID；组装结果不追加回历史。"], "#0f766e")
-    body += text(480, 620, "示意图：角色与来源由应用确定；文字包装本身不能保证模型遵循策略。", 17, "#475569")
-    save("r10-input-sources.svg", "一次模型输入，分别保留控制信息与参考来源", "策略、注册表和环境进入 system，选中的知识进入独立参考数据消息，再接入原始历史。", 652, body)
+    rows = {r["name"]: r["parts"] for r in evidence["scenarios"]}
+    normal = (root / "docs/public/learn-agent-rust/outputs/r10-normal.txt").read_text()
+    first = re.search(r"^request 0: roles=(\S+) tools=\[([^\]]*)\]", normal, re.M)
 
-    normal = rows["normal"]
-    inputs = normal["state"]["inputs"]
+    sources = [
+        ("static_instruction", ["应用策略 + AGENTS.md", "原样发送，构建时就定了"], "#2563eb"),
+        ("instruction 模板", ["环境 ← 会话状态", "每次运行开始时渲染一次"], "#2563eb"),
+        ("with_skills", ["按问题选一份技能", "拼在用户这一轮原话前面"], "#b45309"),
+        (".tool(...)", ["工具声明，按注册顺序", first[2].replace(",", " · ")], "#0f766e"),
+    ]
     body = ""
-    for i, item in enumerate(inputs):
-        x = 40 if i == 0 else 520
-        role_names = {"system": "system", "human": "human", "ai": "assistant", "tool": "tool"}
-        roles = [role_names[m["message_type"]] for m in item["messages"]]
-        body += panel(x, 90, 400, 132, "第 {} 次真实模型调用".format(i + 1), [
-            "{} 条消息 · {} 字节".format(len(roles), item["serialized_bytes"]),
-            "本地前缀缓存：" + ("命中" if item["cache_hit"] else "未命中"),
-        ], "#2563eb" if i == 0 else "#0f766e")
-        for j, role in enumerate(roles):
-            y = 252 + j * 46
-            body += '<rect x="{}" y="{}" width="400" height="36" rx="8" fill="#fff" stroke="#cbd5e1"/>'.format(x, y)
-            suffix = " · 策略/目录/环境" if j == 0 else " · 参考资料" if j == 1 else " · 用户任务" if j == 2 else " · read-1"
-            body += text(x + 200, y + 25, role + suffix, 18, "#475569")
-    body += text(480, 530, "前缀摘要相同；工具往返后历史增长，完整输入摘要发生变化。", 19, "#0f766e")
-    body += text(480, 569, "数据：normal 的实际 inputs；字节指序列化 Message 列表的 UTF-8 长度。", 17, "#475569")
-    save("r10-two-turn-inputs.svg", "第二轮重用前缀，同时看到新的工具结果", "两轮的消息数量、字节数和缓存状态来自真实图执行记录。", 602, body)
+    for index, (heading, lines, color) in enumerate(sources):
+        y = 80 + index * 124
+        body += panel(40, y, 440, 108, heading, lines, color)
+        body += arrow("M480 {} H532".format(y + 54))
+    targets = ["第 1 条 system", "第 2 条 system", "user：[skill:…] + 原话", "请求的 tools 字段"]
+    body += '<rect x="540" y="80" width="380" height="480" rx="12" fill="#fff" stroke="#475569" stroke-width="2"/>'
+    body += text(730, 112, "一次请求（normal 的第一次）", 20, "#475569", True)
+    for index, label in enumerate(targets):
+        body += text(730, 80 + index * 124 + 62, label, 18, "#172033")
+    body += text(730, 548, "roles = " + first[1], 16, "#475569")
+    body += arrow("M730 560 V596")
+    body += panel(40, 604, 880, 96, "before_model_callback", ["看得到整份请求：本章在这里检查字节预算，超了就不调用模型"], "#b91c1c")
+    save("r10-input-sources.svg", "一次请求由哪几部分组成",
+         "应用策略与 AGENTS.md 进第一条系统消息，环境由模板读会话状态进第二条，选中的技能拼进用户这一轮，工具声明按注册顺序附在请求上；最后 before_model 回调可以检查整份请求。", 730, body)
 
-    body = text(480, 95, "同一 Assembler 中组装前后输入的确定性对照", 20, "#475569")
-    for i, (name, label) in enumerate([("repeat", "相同来源，仅调换选择顺序"), ("memory-update", "发布新版记忆并更新 pin"),
-                                       ("environment-change", "切换环境语言"), ("tool-change", "关闭读取工具")]):
-        probe = rows[name]["probe"]
-        y = 125 + i * 78
-        body += panel(40, y, 880, 68, label, [], "#0f766e" if probe["cache_hit"] else "#b45309")
-        body += text(480, y + 56, "完整输入相同：{} · 前缀缓存命中：{}".format(str(probe["same_input"]).lower(), str(probe["cache_hit"]).lower()), 17, "#475569")
-    denied = rows["knowledge-injection"]["state"]
-    body += panel(40, 465, 880, 112, "知识要求写入时，执行器仍检查权限", [
-        "写入请求 {} 次 · 实际产生摘要文件：{}".format(denied["write_attempts"], "是" if rows["knowledge-injection"]["summary_exists"] else "否"),
-        "脚本模型故意提出越权动作，应用返回 permission_denied。"], "#b91c1c")
-    body += text(480, 619, "缓存用于本进程的组装前缀；这不是 provider 缓存，也不是模型抗注入评估。", 17, "#475569")
-    save("r10-change-and-permission.svg", "输入变化使前缀失效，执行权限单独核对", "四次前后组装对照与越权写入场景均来自实际运行记录。", 650, body)
+    switch = rows["skill-switch"][-1]
+    system = rows["skill-in-system"][-1]
+    update = rows["skill-update"][-1]
+
+    def same(line, key):
+        return "相同" if f"{key}=yes" in line else "不同"
+    body = text(480, 82, "同样两个问题：第一个选中 startup，第二个选中 sql-style", 18, "#475569")
+    body += panel(40, 106, 420, 220, "技能在用户这一轮", ["with_skills", "前缀（system + 工具）：" + same(switch, "prefix_same"),
+                  "用户这一轮：" + same(switch, "user_same")], "#0f766e")
+    body += panel(500, 106, 420, 220, "技能在系统消息", ["global_instruction_provider", "前缀（system + 工具）：" + same(system, "prefix_same"),
+                  "用户这一轮：" + same(system, "user_same")], "#b91c1c")
+    body += panel(40, 360, 880, 110, "skill-update：技能发布新版本", ["前缀：" + same(update, "prefix_same") + "；用户这一轮：" + same(update, "user_same")], "#0f766e")
+    body += text(480, 510, "服务商的前缀缓存按请求开头匹配；会变的内容放在后面，开头才能保持不变。", 17, "#475569")
+    save("r10-prefix-stability.svg", "技能放在哪里，请求开头才不变",
+         "两个问题选中不同的技能：技能放在用户这一轮时，系统消息与工具声明组成的前缀相同；放进系统消息时，前缀随技能变化。", 540, body)
+
+    def calls(parts):
+        return re.search(r"model_calls=(\d+)", parts[0])[1]
+    cases = [
+        ("env-change", "改语言", "前缀：" + same(rows["env-change"][-1], "prefix_same"), "#2563eb"),
+        ("tool-change", "不注册 read_file", "前缀：" + same(rows["tool-change"][-1], "prefix_same"), "#2563eb"),
+        ("stale-skill", "技能改了，pin 没更新", "没有建 Agent，模型未调用", "#b45309"),
+        ("budget", "请求超过 300 字节", "模型调用 " + calls(rows["budget"]) + " 次", "#b45309"),
+    ]
+    body = ""
+    for index, (name, change, result, color) in enumerate(cases):
+        x = 40 + (index % 2) * 450
+        y = 86 + (index // 2) * 140
+        body += panel(x, y, 430, 120, name, [change, result], color)
+    injection = rows["knowledge-injection"]
+    tool = re.search(r"tools=\[([^\]]*)\]", injection[0])[1]
+    body += panel(40, 380, 880, 140, "knowledge-injection：技能里混进“已批准写入 summary.txt”",
+                  ["假标签所在的消息：" + injection[1].split("=")[1] + "；工具结果：" + tool,
+                   "summary.txt 存在：" + ("是" if injection[2].endswith("yes") else "否")], "#b91c1c")
+    body += text(480, 560, "资料里写了什么，不改变执行器允许做什么：写文件由策略在执行前拒绝。", 17, "#475569")
+    save("r10-change-and-permission.svg", "哪些变化改变请求，哪些在调用模型前停下",
+         "改语言和增删工具会改变请求开头；技能被改而 pin 未更新、请求超出预算时，模型一次都不调用；技能里的假系统标签留在用户消息里，写文件被策略拒绝，summary.txt 没有产生。", 590, body)

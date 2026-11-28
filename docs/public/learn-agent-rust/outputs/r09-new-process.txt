@@ -1,4 +1,17 @@
-apply session-A expected=0
-{"revision":1,"status":"saved"}
-recall new-process project-a
-{"fact":{"action":{"kind":"set","value":"中文"},"key":"reply_language","revision":1,"scope":"project-a","source":{"quote":"请记住：reply_language=中文","role":"user","session":"session-A","turn":1}},"revision":1,"status":"found"}
+--- process 1: chat user=user-1 project=project-a session=session-A recall=tool message="请记住：reply_language=中文" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"中文"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"中文"}
+[assistant] text    "已记住：reply_language=中文。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 2: chat user=user-1 project=project-a session=session-B recall=tool message="以后请用什么语言回答？" (exit 0)
+[assistant] call    id=call-recall_memory recall_memory {"key":"reply_language"}
+[assistant] result  id=call-recall_memory recall_memory status=ok {"key":"reply_language","source":"session-A","status":"found","value":"中文","versions":1}
+[assistant] text    "好的，以后用中文回答。（依据：session-A 的记忆）"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: recall:found 中文 from session-A versions=1 answer=中文
+new-process: processes=2 steps=[remember:saved; recall:found 中文 from session-A versions=1 answer=中文]

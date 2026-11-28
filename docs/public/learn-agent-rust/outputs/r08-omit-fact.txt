@@ -1,6 +1,28 @@
-R08 | scenario=omit-fact | scripted LLM + graph-flow + real temporary files
-measure=serialized Message JSON UTF-8 bytes; reserve=1024 hard=7500
-artifact=a1 kind=transcript bytes=12192 integrity=true
-artifact=a2 kind=tool_output bytes=7180 integrity=true
-stats summary_calls=1 agent_calls=0 reloads=0 reads=0 retrievals=0 stop=summary_facts
-checks pinned=true pairs=true source_unchanged=true rollback=true transcript_roundtrip=true
+--- run: 审查 src/first.rs：先读审查规范和 docs 下的三份资料。禁止修改文件；没有运行测试时要说明“未运行测试”。
+[reviewer] call    id=skill-1 load_skill {}
+[reviewer] result  id=skill-1 load_skill status=ok {"body":"# Rust 函数审查\n先给结论，再列证据；没有运行测试时写明“未运行测试”。\n","skill":"rust-review"}
+[reviewer] call    id=read-2 read_file {"path":"src/first.rs"}
+[reviewer] result  id=read-2 read_file status=ok {"path":"src/first.rs","text":"pub fn first(values: &[u8]) -> u8 { values[0] }\n"}
+[reviewer] call    id=doc-a-3 read_doc {"name":"a"}
+[reviewer] result  id=doc-a-3 read_doc status=ok (1494 bytes)
+[reviewer] call    id=doc-b-4 read_doc {"name":"b"}
+[reviewer] result  id=doc-b-4 read_doc status=ok (1494 bytes)
+[reviewer] call    id=doc-c-5 read_doc {"name":"c"}
+[reviewer] result  id=doc-c-5 read_doc status=ok (1494 bytes)
+[reviewer] text    "资料已读完，等待下一步。"
+[reviewer] final
+--- run: 继续，给出结论。
+[reviewer] call    id=read-7 read_file {"path":"src/first.rs"}
+[reviewer] result  id=read-7 read_file status=ok {"path":"src/first.rs","text":"pub fn first(values: &[u8]) -> u8 { values[0] }\n"}
+[reviewer] text    "结论：空输入会触发索引越界。证据：src/first.rs 直接使用 values[0]。未运行测试。"
+[reviewer] final
+request 0: roles=system,user tools=[load_skill,read_file,read_doc] est_tokens=43
+request 1: roles=system,user,model,function tools=[load_skill,read_file,read_doc] est_tokens=82
+request 2: roles=system,user,model,function,model,function tools=[load_skill,read_file,read_doc] est_tokens=113
+request 3: roles=system,user,model,function,model,function,model,function tools=[load_skill,read_file,read_doc] est_tokens=494
+request 4: roles=system,user,model,function,model,function,model,function,model,function tools=[load_skill,read_file,read_doc] est_tokens=874
+request 5: roles=system,user,model,function,model,function,model,function,model,function,model,function tools=[load_skill,read_file,read_doc] est_tokens=1255
+request 6: roles=system,user,model,function,model,function,model,function,model,function,model,function,model,user tools=[load_skill,read_file,read_doc] est_tokens=1270
+request 7: roles=system,user,model,function,model,function,model,function,model,function,model,function,model,user,model,function tools=[load_skill,read_file,read_doc] est_tokens=1300
+answer: 结论：空输入会触发索引越界。证据：src/first.rs 直接使用 values[0]。未运行测试。
+omit-fact: summary_calls=[rejected compaction.summary_facts,rejected compaction.summary_facts] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true

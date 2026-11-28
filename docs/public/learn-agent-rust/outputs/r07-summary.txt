@@ -1,0 +1,15 @@
+normal: catalog=2 load_skill_calls=1 skill_text_bytes=276 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=0
+no-skill: catalog=2 load_skill_calls=0 skill_text_bytes=0 reads=1 writes=0 review_txt=false injected_up_front=false review_format=false errors=0
+repeat: catalog=2 load_skill_calls=2 skill_text_bytes=552 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=0
+two-skills: catalog=2 load_skill_calls=2 skill_text_bytes=671 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=0
+unknown: catalog=2 load_skill_calls=1 skill_text_bytes=0 reads=0 writes=0 review_txt=false injected_up_front=false review_format=false errors=1
+invalid-name: catalog=2 load_skill_calls=1 skill_text_bytes=0 reads=0 writes=0 review_txt=false injected_up_front=false review_format=false errors=1
+changed: catalog=2 load_skill_calls=1 skill_text_bytes=276 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=0
+broken-skill: catalog=2 load_skill_calls=1 skill_text_bytes=276 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=0
+truncated: catalog=2 load_skill_calls=1 skill_text_bytes=36 reads=1 writes=0 review_txt=false injected_up_front=false review_format=false errors=0
+permission: catalog=2 load_skill_calls=1 skill_text_bytes=341 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=1
+resource: catalog=2 load_skill_calls=1 skill_text_bytes=276 reads=1 writes=0 review_txt=false injected_up_front=false review_format=true errors=2
+resource-compatible: catalog=2 load_skill_calls=0 skill_text_bytes=0 reads=1 writes=0 review_txt=false injected_up_front=false review_format=false errors=0
+resource-escape: catalog=2 load_skill_calls=0 skill_text_bytes=0 reads=0 writes=0 review_txt=false injected_up_front=false review_format=false errors=1
+empty-catalog: catalog=0 load_skill_calls=1 skill_text_bytes=0 reads=0 writes=0 review_txt=false injected_up_front=false review_format=false errors=1
+auto-inject: catalog=2 load_skill_calls=0 skill_text_bytes=307 reads=1 writes=0 review_txt=false injected_up_front=true review_format=true errors=0

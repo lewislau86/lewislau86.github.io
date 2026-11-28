@@ -35,19 +35,19 @@
 - 设计模式章节按问题、适用范围、业务场景与流程、状态及控制契约、框架实现、正常与故障验收、证据边界组织。已有机制实验只能作为基础，不能代替新模式或模式组合的验证。审查报告分列已成文与规划状态；独立导读不计入实验数量。
 - 该课程用 `<LearnAgentRustMap active="章节主题名" />` 展示章节位置，课程地图从同一章节清单读取状态。R00 标准库源码在 `docs/public/learn-agent-rust/code/`，运行 `python3 scripts/verify-learn-agent-rust.py` 更新输出与配图输入，`--check` 重新执行并检查是否过期；该脚本当前只验证 R00，不代表两库集成通过。 R02 两库工程用 `python3 scripts/verify-learn-agent-rust-r02.py` 在临时解压目录运行，生成输出、证据与章节 zip；`--check` 检查产物是否过期，自制图用 `python3 scripts/generate-learn-agent-rust-figures.py --r02` 刷新。
 
-R05 会话内清单使用 `python3 scripts/verify-learn-agent-rust-r05.py` 生成独立下载工程、20 个场景的输出与源码校验记录；`--check` 从下载包解压后重新执行并检查产物是否过期。运行 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R05` 刷新本章自制图。实验使用脚本模型与真实临时文件读取，清单只存在于当前运行时内存中。
+R05 会话内清单基于 ADK-Rust 3.0，使用 `python3 scripts/verify-learn-agent-rust-r05.py` 生成独立下载工程、24 个场景的摘要与轨迹及证据；`--check` 在解压目录重跑 8 项 Rust 测试、Clippy 与两次逐字节一致的场景。运行 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R05` 刷新本章自制图。清单存在内存会话服务的会话状态里，模型是规则模型，文件读取真实执行。
 
 R04 的 Hook 实验基于 ADK-Rust 3.0 的回调与插件，用 `python3 scripts/verify-agent-hooks.py` 更新学习包、输出与实验数据，`--check` 重新运行并检查产物；配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R04`。它用脚本模型验证回调顺序与失败后果，不代表真实模型集成通过。
 
-R06 子任务实验使用 `python3 scripts/verify-agent-subagents.py` 生成 16 个场景输出、证据与独立标准库学习包；`--check` 重新运行 9 个 Rust 测试、检查片段与结果表，并独立解压编译下载包。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R06` 刷新。实验验证脚本模型的消息分离、共享预算、工具权限与协作取消；线程与工作区清理单独检查，不代表真实模型、进程沙箱或框架集成通过。
+R06 子任务实验基于 ADK-Rust 3.0，使用 `python3 scripts/verify-agent-subagents.py` 生成 15 个场景的摘要与轨迹、证据与独立工程包，并把结果表写回正文；`--check` 在解压目录重跑 7 个 Rust 测试、Clippy 与两次逐字节一致的场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R06` 刷新。主线是 AgentTool（新会话、只回传最终回答），对照 transfer_to_agent；父子模型是规则模型，文件读取真实执行。
 
-R09 跨会话事实存储使用 `python3 scripts/verify-agent-memory.py` 生成独立 Cargo 工程下载包、22 个场景输出与源码校验记录；`--check` 运行 8 个 Rust 测试，通过独立 CLI 进程核对保存、召回、版本冲突、逻辑遗忘、损坏与保存失败，并实际解压重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R09`。提取采用确定性规则，实验范围为真实磁盘与跨进程事实读取，未接入真实模型、框架会话恢复或数据库。
+R09 跨会话记忆基于 ADK-Rust 3.0，使用 `python3 scripts/verify-agent-memory.py` 生成 14 个场景的摘要与轨迹、证据与独立工程包，并把结果表写回正文；`--check` 在解压目录重跑 6 项 Rust 测试、Clippy 与两次逐字节一致的场景，再按 README 手动跑一遍 `chat` 与 `erase`。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R09`。记忆服务是 adk-memory 的 `SqliteMemoryService`，场景的每一步都是独立子进程；写入来源、版本选择与清除由应用工具负责，模型为规则模型。
 
-R10 提示词组装使用 `python3 scripts/verify-agent-prompts.py` 生成两库独立下载工程、14 个场景输出与来源摘要记录；`--check` 复核 8 个 Rust 测试、完整消息输入、角色、配对、前缀缓存以及最终下载包的离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R10`。实验验证真实框架接线与临时来源文件，模型采用确定性脚本，未验证真实 provider 或知识召回质量。
+R10 系统提示词组装基于 ADK-Rust 3.0，使用 `python3 scripts/verify-agent-prompts.py` 生成 13 个场景的摘要与轨迹、证据与独立工程包，并把结果表写回正文；`--check` 在解压目录重跑 6 项 Rust 测试、Clippy 与两次逐字节一致的场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R10`。规则模型记录每一次收到的完整请求，结论来自这些记录；前缀指纹是本章自己的 SHA-256，没有调用服务商的前缀缓存。
 
 R11 错误恢复实验使用 `python3 scripts/verify-agent-recovery.py` 生成 21 个场景输出、证据与标准库独立学习包；`--check` 重跑 13 个 Rust 测试、核对正文结果表与实际文件，并解压下载包重跑全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R11` 刷新。故障与时间由程序注入，文件操作真实；恢复只在同一进程内转移原状态并复用累计账本。
 
-R08 上下文压缩使用 `python3 scripts/verify-agent-compaction.py` 生成两库独立工程下载包、17 个场景输出和证据；`--check` 运行 Rust 测试、Clippy，核对配对、事实、预算、回滚与归档，并独立解压最终包离线运行。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R08`。预算按序列化消息字节计数，Agent 与摘要器均为脚本模型；临时归档不提供跨进程恢复。
+R08 上下文压缩基于 ADK-Rust 3.0，使用 `python3 scripts/verify-agent-compaction.py` 生成 10 个场景的摘要与轨迹、证据与独立工程包，并把结果表写回正文；`--check` 在解压目录重跑 5 项 Rust 测试、Clippy 与两次逐字节一致的场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R08`。压缩由框架执行（运行之间、运行之内、只装入最近事件），摘要器由应用自写并核对事实清单；token 为框架估算，模型为规则模型。
 
 R12 持久化任务系统使用 `python3 scripts/verify-agent-tasks.py` 生成 26 个场景输出、独立 Cargo 学习包与源码校验记录；`--check` 重跑 14 个 Rust 测试、Clippy 和每轮 119 次独立 CLI 进程，并解压最终下载包重新编译、复验全部场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson R12`。实验使用真实本地文件与检查点终止子进程，验证任务元数据、依赖与保存边界；不执行任务标题、不恢复完整 Agent，也不证明物理断电耐久性。
 
@@ -79,7 +79,7 @@ P06 Agent RSI 使用 `python3 scripts/verify-agent-rsi.py` 生成有限策略实
 
 全书教学覆盖表用 `python3 scripts/review-learn-agent-rust.py` 更新，`--check` 检查章结构、配图 / 片段入口、折叠格式及逐章迁移题；这些检查不运行历史章节实验。迁移题作者数据在 `scripts/data/learn-agent-rust/review-prompts.json`，修改相应内容时两处同步。技术更新记录一手资料、查阅日期、版本和未验收边界，见课程技术跟踪页。
 
-RAG 主线章（稳定实验标识 K01）使用 `python3 scripts/verify-agent-rag.py` 生成独立标准库 Rust 工程包、11 个场景的轨迹与源码摘要；`--check` 重跑 8 项 Rust 测试、Clippy、4 道公开标签检索题及最终 zip 解压复验。真实执行词法切块 / BM25、范围过滤、预算与来源更新删除，生成器是固定摘录夹具；真实模型、embedding、框架与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
+RAG 主线章（稳定实验标识 K01）基于 ADK-Rust 3.0 的 adk-rag，使用 `python3 scripts/verify-agent-rag.py` 生成独立工程包、16 个场景的轨迹与证据；`--check` 在解压目录重跑 9 项 Rust 测试、Clippy 与两次逐字节一致的场景。切块入库、向量检索、范围隔离、`RagTool` 与 `CitationRequired` 真实执行，embedding 是自写词袋向量，生成器是固定摘录夹具；真实模型、语义 embedding 与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
 
 G01–G03 图编排三章基于 ADK-Rust 3.0 的 adk-graph，用 `python3 scripts/verify-agent-orchestration.py [--lab G01|G02|G03]` 生成独立工程包、12 项 Rust 测试和 15 组场景（G02 为 6 个多进程流程）的输出与证据；`--check` 检查源码与章节包的独立编译、格式、Clippy 和两次运行逐字节一致。运行前先取 ADK-Rust 源码（`python3 scripts/fetch-adk-rust.py .cache/adk-rust`）。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson G01`（同时刷新三章与导读图）。固定业务规则，无模型；G02 用框架的 SQLite 检查点跨 CLI 进程恢复，图版本检查由宿主完成，限定单业务执行者；G03 用 `SubgraphNode` 隔离子图，子图内暂停恢复另验。
 

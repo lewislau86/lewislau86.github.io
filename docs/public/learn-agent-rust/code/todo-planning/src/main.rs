@@ -1,14 +1,51 @@
+//! R05（ADK-Rust 3.0）：可见的任务清单。
+//!
+//!   cargo run --locked                    全部场景的摘要
+//!   cargo run --locked -- normal          某个场景的完整轨迹（场景名见 CASES）
+//!
+//! 清单存在会话状态（session state）的 `plan` 键里，由 `todo_write` 工具整批校验后通过
+//! `state_delta` 写入；每次请求模型之前，before_model 回调把最新清单放进请求。
+//! 模型是按规则回复的 PlanLlm（只看得到请求内容），文件工具真实读取临时目录。
+mod trace;
+
+use std::{
+    collections::{HashMap, HashSet},
+    fs,
+    path::PathBuf,
+    sync::{
+        Arc, Mutex,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
+
+use adk_agent::LlmAgentBuilder;
+use adk_core::{
+    AdkError, BeforeModelCallback, BeforeModelResult, CallbackContext, Content, DeclarativePolicy,
+    ErrorCategory, ErrorComponent, FinishReason, Llm, LlmRequest, LlmResponse, LlmResponseStream,
+    Part, ToolContext, ToolEffect,
+};
+use adk_runner::Runner;
+use adk_session::{CreateRequest, GetRequest, InMemorySessionService, SessionService};
+use adk_tool::FunctionTool;
+use async_trait::async_trait;
+use futures::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{collections::HashSet, fs, path::Path};
+
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 const GOAL: &str = "读取 README，整理启动说明";
 const README: &str = "项目：Rust Agent 练习\n启动命令：cargo run --release\n要求：Rust 1.99.1\n";
+const PLAN_KEY: &str = "plan";
+/// 清单在请求里的标记：模型从 system 内容里最后一处标记后面读清单。
+const PLAN_MARK: &str = "当前清单：";
 const CASES: &[&str] = &[
     "normal",
     "claims-only",
     "read-error",
     "budget-stop",
+    "template-only",
+    "next-run",
     "fresh-session",
     "two-active",
     "skip-completion",
@@ -23,7 +60,9 @@ const CASES: &[&str] = &[
     "append-step",
     "yield-step",
     "permission-denied",
-    "invalid-json",
+    "same-batch-naive",
+    "same-batch",
+    "wrong-type",
     "unknown-field",
 ];
 
@@ -44,7 +83,7 @@ struct Item {
     status: Status,
 }
 
-#[derive(Clone, Debug, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 struct Plan {
     goal: String,
     revision: u64,
@@ -81,12 +120,13 @@ impl Plan {
     }
 
     // region validate
-    fn write(&mut self, args: WriteArgs) -> Result<(), &'static str> {
+    /// 整份候选清单逐项检查，全部通过才替换；任何一项失败，原清单和版本都不变。
+    fn write(&mut self, args: WriteArgs) -> std::result::Result<(), &'static str> {
         if args.expected_revision != self.revision {
-            return Err("revision_conflict");
+            return Err("todo.revision_conflict");
         }
         if args.items.is_empty() || args.items.len() > 8 {
-            return Err("item_count");
+            return Err("todo.item_count");
         }
         let mut ids = HashSet::new();
         let mut active = 0;
@@ -98,35 +138,35 @@ impl Plan {
                     .bytes()
                     .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
             {
-                return Err("invalid_id");
+                return Err("todo.invalid_id");
             }
             if !ids.insert(item.id.as_str()) {
-                return Err("duplicate_id");
+                return Err("todo.duplicate_id");
             }
             if item.content.trim().is_empty() || item.content.chars().count() > 120 {
-                return Err("invalid_content");
+                return Err("todo.invalid_content");
             }
             active += usize::from(item.status == Status::InProgress);
             match self.items.iter().find(|old| old.id == item.id) {
                 Some(old) => {
                     if old.content != item.content {
-                        return Err("content_changed");
+                        return Err("todo.content_changed");
                     }
                     if !can_move(old.status, item.status) {
-                        return Err("invalid_transition");
+                        return Err("todo.invalid_transition");
                     }
                 }
-                None if item.status != Status::Pending => return Err("new_item_not_pending"),
+                None if item.status != Status::Pending => return Err("todo.new_item_not_pending"),
                 None => {}
             }
         }
         if active > 1 {
-            return Err("multiple_active");
+            return Err("todo.multiple_active");
         }
         if self.items.iter().any(|old| !ids.contains(old.id.as_str())) {
-            return Err("removed_item");
+            return Err("todo.removed_item");
         }
-        // Commit only after the complete candidate passes every check.
+        // 前面任何一项失败都已经返回；走到这里才提交
         self.items = args.items;
         self.revision += 1;
         Ok(())
@@ -134,111 +174,185 @@ impl Plan {
     // endregion validate
 }
 
-// region messages
-#[derive(Clone, Debug, Serialize)]
-struct Call {
-    call_id: String,
-    tool: String,
-    arguments: String,
+// region tools
+fn todo_error(code: &'static str) -> AdkError {
+    AdkError::new(
+        ErrorComponent::Tool,
+        ErrorCategory::InvalidInput,
+        code,
+        format!("清单更新被拒绝：{code}"),
+    )
 }
 
-#[derive(Clone, Debug, Serialize)]
-struct ToolResult {
-    call_id: String,
-    ok: bool,
-    code: String,
-    data: Value,
-}
-
-#[derive(Serialize)]
-struct ModelInput {
-    goal: String,
-    plan: Plan,
-    history: Vec<Value>,
-}
-
-struct Runtime {
-    plan: Plan,
-    history: Vec<Value>,
-    reads: usize,
-}
-
-impl Runtime {
-    fn new() -> Self {
-        Self {
-            plan: Plan::new(),
-            history: vec![],
-            reads: 0,
-        }
+/// 读出会话状态里的清单；还没有建单时是一份空清单（版本 0）。
+/// 状态里的值读不出来时报错，而不是当成空清单——那样下一次按版本 0 的写入会把它覆盖掉。
+fn stored_plan(ctx: &dyn ToolContext) -> std::result::Result<Plan, AdkError> {
+    match ctx
+        .session()
+        .and_then(|session| session.state().get(PLAN_KEY))
+    {
+        None => Ok(Plan::new()),
+        Some(value) => serde_json::from_value(value).map_err(|_| {
+            AdkError::new(
+                ErrorComponent::Tool,
+                ErrorCategory::Internal,
+                "todo.state_corrupt",
+                "会话状态里的清单无法解析",
+            )
+        }),
     }
+}
 
-    fn model_input(&self) -> ModelInput {
-        ModelInput {
-            goal: self.plan.goal.clone(),
-            plan: self.plan.clone(),
-            history: self.history.clone(),
+/// 同一批工具调用的事件要等整批执行完才产出，会话状态那时才合并；
+/// 所以这里按本次运行记下 todo_write 刚写的清单，同一批里后面的调用读它。
+type Written = Arc<Mutex<HashMap<String, Plan>>>;
+
+/// `todo_write`：读当前清单，整批校验候选清单，通过后把新清单写进这次调用的 state_delta。
+/// 这次调用的事件产出时，Runner 把 state_delta 合并进会话状态。
+/// `remember_batch = false` 只用于对照场景 same-batch-naive。
+fn todo_write(remember_batch: bool) -> FunctionTool {
+    let written: Written = Arc::default();
+    let handler = move |ctx: Arc<dyn ToolContext>, args: Value| {
+        let written = written.clone();
+        async move {
+            let args: WriteArgs =
+                serde_json::from_value(args).map_err(|_| todo_error("todo.invalid_arguments"))?;
+            let stored = stored_plan(ctx.as_ref())?;
+            let mut plan = match written.lock().unwrap().get(ctx.invocation_id()) {
+                Some(recent) if remember_batch && recent.revision > stored.revision => {
+                    recent.clone()
+                }
+                _ => stored,
+            };
+            plan.write(args).map_err(todo_error)?;
+            written
+                .lock()
+                .unwrap()
+                .insert(ctx.invocation_id().to_string(), plan.clone());
+            let mut actions = ctx.actions();
+            actions.state_delta.insert(PLAN_KEY.into(), json!(plan));
+            ctx.set_actions(actions);
+            Ok(json!(plan))
         }
-    }
-    // endregion messages
+    };
+    FunctionTool::new(
+        "todo_write",
+        "提交完整的候选清单：expected_revision 是你看到的清单版本，items 是全部条目。",
+        handler,
+    )
+}
 
-    // region dispatch
-    fn execute(&mut self, call: &Call, root: &Path) -> ToolResult {
-        let operation = || -> Result<Value, &'static str> {
-            match call.tool.as_str() {
-                "todo_read" => {
-                    #[derive(Deserialize)]
-                    #[serde(deny_unknown_fields)]
-                    struct EmptyArgs {}
-                    let _: EmptyArgs =
-                        serde_json::from_str(&call.arguments).map_err(|_| "invalid_arguments")?;
-                    Ok(json!(self.plan))
-                }
-                "todo_write" => {
-                    let args: WriteArgs =
-                        serde_json::from_str(&call.arguments).map_err(|_| "invalid_arguments")?;
-                    self.plan.write(args)?;
-                    Ok(json!(self.plan))
-                }
-                "read_file" => {
-                    #[derive(Deserialize)]
-                    #[serde(deny_unknown_fields)]
-                    struct ReadArgs {
-                        path: String,
-                    }
-                    let args: ReadArgs =
-                        serde_json::from_str(&call.arguments).map_err(|_| "invalid_arguments")?;
-                    if args.path != "README.md" {
-                        return Err("permission_denied");
-                    }
-                    let content =
-                        fs::read_to_string(root.join("README.md")).map_err(|_| "read_error")?;
-                    self.reads += 1;
-                    Ok(json!({"content": content}))
-                }
-                "write_file" => Err("permission_denied"),
-                _ => Err("unknown_tool"),
+fn todo_read() -> FunctionTool {
+    let handler = |ctx: Arc<dyn ToolContext>, _args: Value| async move {
+        Ok(json!(stored_plan(ctx.as_ref())?))
+    };
+    FunctionTool::new("todo_read", "读取当前清单。", handler).with_effect(ToolEffect::ReadOnly)
+}
+
+#[derive(Default)]
+struct Reads(AtomicUsize);
+
+fn read_file(root: Arc<PathBuf>, reads: Arc<Reads>) -> FunctionTool {
+    let handler = move |_ctx: Arc<dyn ToolContext>, args: Value| {
+        let (root, reads) = (root.clone(), reads.clone());
+        async move {
+            if args["path"] != "README.md" {
+                return Err(AdkError::new(
+                    ErrorComponent::Tool,
+                    ErrorCategory::Forbidden,
+                    "path.not_allowed",
+                    "只允许读取练习目录的 README.md",
+                ));
             }
-        }();
-        let result = match operation {
-            Ok(data) => ToolResult {
-                call_id: call.call_id.clone(),
-                ok: true,
-                code: "ok".into(),
-                data,
-            },
-            Err(code) => ToolResult {
-                call_id: call.call_id.clone(),
-                ok: false,
-                code: code.into(),
-                data: Value::Null,
-            },
-        };
-        self.history
-            .push(json!({"role": "assistant", "call": call}));
-        self.history.push(json!({"role": "tool", "result": result}));
-        result
-    }
-    // endregion dispatch
+            let content = fs::read_to_string(root.join("README.md")).map_err(|_| {
+                AdkError::new(
+                    ErrorComponent::Tool,
+                    ErrorCategory::NotFound,
+                    "file.missing",
+                    "练习目录中不存在 README.md",
+                )
+            })?;
+            reads.0.fetch_add(1, Ordering::SeqCst);
+            Ok(json!({ "content": content }))
+        }
+    };
+    FunctionTool::new("read_file", "读取练习目录的 README.md。", handler)
+        .with_effect(ToolEffect::ReadOnly)
+}
+
+/// 真的会写文件的工具。应用策略拒绝它：清单里写着“写入 summary.txt”也不等于获得了权限。
+fn write_file(root: Arc<PathBuf>) -> FunctionTool {
+    let handler = move |_ctx: Arc<dyn ToolContext>, args: Value| {
+        let root = root.clone();
+        async move {
+            let text = args["content"].as_str().unwrap_or_default().to_owned();
+            fs::write(root.join("summary.txt"), text).map_err(|e| {
+                AdkError::new(
+                    ErrorComponent::Tool,
+                    ErrorCategory::Internal,
+                    "file.write_failed",
+                    e.to_string(),
+                )
+            })?;
+            Ok(json!({ "written": true }))
+        }
+    };
+    FunctionTool::new("write_file", "写入练习目录的 summary.txt。", handler)
+}
+// endregion tools
+
+// region visibility
+/// 每次请求模型之前，读会话状态里的最新清单，作为一条 system 内容放进请求。
+/// 回调里的 `ctx.state()` 是会话的当前状态：上一轮工具写入的清单这里已经看得到。
+fn inject_latest_plan() -> BeforeModelCallback {
+    Box::new(|ctx: Arc<dyn CallbackContext>, mut request: LlmRequest| {
+        Box::pin(async move {
+            let plan = ctx
+                .state()
+                .and_then(|state| state.get(PLAN_KEY))
+                .unwrap_or_else(|| json!(Plan::new()));
+            let at = request
+                .contents
+                .iter()
+                .take_while(|content| content.role == "system")
+                .count();
+            request.contents.insert(
+                at,
+                Content::new("system").with_text(format!("{PLAN_MARK}{plan}")),
+            );
+            Ok(BeforeModelResult::Continue(request))
+        })
+    })
+}
+// endregion visibility
+
+// region model
+/// 按规则回复的模型：只看请求里的清单和工具结果，和真实模型一样拿不到运行时的内部状态。
+struct PlanLlm {
+    claims_only: bool,
+    requests: Mutex<Vec<LlmRequest>>,
+}
+
+/// 请求里最后一处“当前清单：”后面的清单（只看 system 内容）；没有或读不出来就当作空清单。
+fn plan_in(request: &LlmRequest) -> Plan {
+    request
+        .contents
+        .iter()
+        .filter(|content| content.role == "system")
+        .flat_map(|content| content.parts.iter().filter_map(Part::text))
+        .filter_map(|text| text.rsplit_once(PLAN_MARK).map(|(_, plan)| plan))
+        .next_back()
+        .and_then(|json| serde_json::from_str(json).ok())
+        .unwrap_or_else(Plan::new)
+}
+
+fn tool_results(request: &LlmRequest) -> Vec<&Part> {
+    request
+        .contents
+        .iter()
+        .flat_map(|content| &content.parts)
+        .filter(|part| matches!(part, Part::FunctionResponse { .. }))
+        .collect()
 }
 
 fn initial_items() -> Vec<Item> {
@@ -256,335 +370,607 @@ fn initial_items() -> Vec<Item> {
     .collect()
 }
 
-fn write_call(id: &str, plan: &Plan, items: Vec<Item>) -> Call {
-    Call {
-        call_id: id.into(),
-        tool: "todo_write".into(),
-        arguments: json!({"expected_revision": plan.revision, "items": items}).to_string(),
+fn function_call(name: &str, args: Value, turn: usize) -> Part {
+    Part::FunctionCall {
+        name: name.into(),
+        args,
+        id: Some(format!("call-{turn}")),
+        thought_signature: None,
     }
 }
 
-// region scripted-model
-enum Reply {
-    Tool(Call),
-    Answer(String),
-}
-
-fn scripted_model(input: &ModelInput, turn: usize, claims_only: bool) -> Reply {
-    let mut items = input.plan.items.clone();
-    let call_id = format!("call-{turn}");
-    match turn {
-        1 => items = initial_items(),
-        2 => items[0].status = Status::InProgress,
-        3 => {
-            return Reply::Tool(Call {
-                call_id,
-                tool: if claims_only {
-                    "todo_read"
-                } else {
-                    "read_file"
-                }
-                .into(),
-                arguments: if claims_only {
-                    json!({})
-                } else {
-                    json!({"path": "README.md"})
-                }
-                .to_string(),
-            });
+impl PlanLlm {
+    fn decide(&self, request: &LlmRequest, turn: usize) -> Part {
+        let results = tool_results(request);
+        // 上一个工具调用失败：不再推进，如实报告
+        if let Some(code) = results
+            .last()
+            .and_then(|part| part.tool_result_error_code())
+        {
+            return Part::Text {
+                text: format!("任务未完成：{code}"),
+            };
         }
-        4 => {
-            items[0].status = Status::Completed;
-            items[1].status = Status::InProgress;
+        let plan = plan_in(request);
+        let write = |items: Vec<Item>| {
+            function_call(
+                "todo_write",
+                json!({ "expected_revision": plan.revision, "items": items }),
+                turn,
+            )
+        };
+        let mut items = plan.items.clone();
+        if items.is_empty() {
+            return write(initial_items());
         }
-        5 => {
-            items[1].status = Status::Completed;
-            items[2].status = Status::InProgress;
+        match turn {
+            2 => items[0].status = Status::InProgress,
+            3 if self.claims_only => return function_call("todo_read", json!({}), turn),
+            3 => return function_call("read_file", json!({ "path": "README.md" }), turn),
+            4 => {
+                items[0].status = Status::Completed;
+                items[1].status = Status::InProgress;
+            }
+            5 => {
+                items[1].status = Status::Completed;
+                items[2].status = Status::InProgress;
+            }
+            6 => items[2].status = Status::Completed,
+            _ => {
+                let content = results.iter().find_map(|part| match part {
+                    Part::FunctionResponse {
+                        function_response, ..
+                    } => function_response.response["content"].as_str(),
+                    _ => None,
+                });
+                return Part::Text {
+                    text: content.map_or_else(
+                        || "清单已完成，但缺少 README 读取证据。".into(),
+                        |text| format!("启动说明：\n{text}"),
+                    ),
+                };
+            }
         }
-        6 => items[2].status = Status::Completed,
-        _ => {
-            let content = input.history.iter().find_map(|message| {
-                message
-                    .pointer("/result/data/content")
-                    .and_then(Value::as_str)
-            });
-            return Reply::Answer(content.map_or_else(
-                || "清单已完成，但缺少 README 读取证据。".into(),
-                |text| format!("启动说明：\n{text}"),
-            ));
-        }
+        write(items)
     }
-    Reply::Tool(write_call(&call_id, &input.plan, items))
 }
-// endregion scripted-model
 
-#[derive(Serialize)]
-struct RunReport {
-    scenario: String,
+#[async_trait]
+impl Llm for PlanLlm {
+    fn name(&self) -> &str {
+        "plan-llm"
+    }
+
+    async fn generate_content(
+        &self,
+        request: LlmRequest,
+        _stream: bool,
+    ) -> adk_core::Result<LlmResponseStream> {
+        let turn = {
+            let mut requests = self.requests.lock().unwrap();
+            requests.push(request.clone());
+            requests.len()
+        };
+        let part = self.decide(&request, turn);
+        let mut response = LlmResponse::new(Content {
+            role: "model".into(),
+            parts: vec![part],
+        });
+        response.finish_reason = Some(FinishReason::Stop);
+        response.turn_complete = true;
+        Ok(Box::pin(futures::stream::iter([Ok(response)])))
+    }
+}
+// endregion model
+
+// region wiring
+#[derive(Clone, Copy, PartialEq)]
+enum Visibility {
+    /// before_model 回调每次请求前放入最新清单（主线）
+    Live,
+    /// 只用 instruction 模板里的 {plan?}：本次运行开始时渲染一次
+    TemplateOnly,
+}
+
+struct Lab {
+    runner: Runner,
+    sessions: Arc<InMemorySessionService>,
+    model: Arc<PlanLlm>,
+    reads: Arc<Reads>,
+}
+
+fn lab(
+    root: Arc<PathBuf>,
+    model: Arc<PlanLlm>,
+    visibility: Visibility,
+    max_iterations: Option<u32>,
+) -> Result<Lab> {
+    let reads = Arc::new(Reads::default());
+    let mut agent = LlmAgentBuilder::new("assistant")
+        .model(model.clone())
+        .tool(Arc::new(todo_write(true)))
+        .tool(Arc::new(todo_read()))
+        .tool(Arc::new(read_file(root.clone(), reads.clone())))
+        .tool(Arc::new(write_file(root)));
+    agent = match visibility {
+        Visibility::Live => agent
+            .instruction("先用 todo_write 列出计划，按清单逐步推进。")
+            .before_model_callback(inject_latest_plan()),
+        Visibility::TemplateOnly => agent.instruction(format!(
+            "先用 todo_write 列出计划，按清单逐步推进。\n{PLAN_MARK}{{plan?}}"
+        )),
+    };
+    if let Some(max) = max_iterations {
+        agent = agent.max_iterations(max);
+    }
+    let policy = DeclarativePolicy::builder()
+        .allow("todo_write")
+        .allow("todo_read")
+        .allow("read_file")
+        .deny("write_file", "本章只读：不允许写文件");
+    let sessions = Arc::new(InMemorySessionService::new());
+    let runner = Runner::builder()
+        .app_name("r05")
+        .agent(Arc::new(agent.build()?))
+        .session_service(sessions.clone())
+        .tool_policy(Arc::new(policy.build()))
+        .without_intra_compaction()
+        .build()?;
+    Ok(Lab {
+        runner,
+        sessions,
+        model,
+        reads,
+    })
+}
+
+async fn open_session(lab: &Lab, id: &str, plan: Option<&Plan>) -> Result<()> {
+    let state: HashMap<String, Value> = plan
+        .map(|plan| HashMap::from([(PLAN_KEY.to_string(), json!(plan))]))
+        .unwrap_or_default();
+    lab.sessions
+        .create(CreateRequest {
+            app_name: "r05".into(),
+            user_id: "reader".into(),
+            session_id: Some(id.into()),
+            state,
+        })
+        .await?;
+    Ok(())
+}
+
+async fn session_plan(lab: &Lab, id: &str) -> Result<Option<Plan>> {
+    let session = lab
+        .sessions
+        .get(GetRequest {
+            app_name: "r05".into(),
+            user_id: "reader".into(),
+            session_id: id.into(),
+            num_recent_events: None,
+            after: None,
+        })
+        .await?;
+    Ok(session
+        .state()
+        .get(PLAN_KEY)
+        .and_then(|value| serde_json::from_value(value).ok()))
+}
+// endregion wiring
+
+// region run
+/// 一次运行的可核对结果。
+struct Report {
     stop: String,
-    model_turns: usize,
-    tool_calls: usize,
-    reads: usize,
-    all_completed: bool,
-    goal_verified: bool,
     answer: Option<String>,
-    plan: Plan,
-    inputs: Vec<ModelInput>,
-    history: Vec<Value>,
+    trace: Vec<String>,
+    /// 每次请求模型时，模型在请求里看到的清单
+    seen: Vec<Plan>,
 }
 
-// region loop
-fn run(name: &str, root: &Path, budget: usize) -> RunReport {
-    let mut runtime = Runtime::new();
-    let mut inputs = vec![];
-    let mut answer = None;
-    let mut stop = "turn_limit";
-    for turn in 1..=budget {
-        let input = runtime.model_input();
-        let reply = scripted_model(&input, turn, name == "claims-only");
-        inputs.push(input);
-        match reply {
-            Reply::Tool(call) => {
-                let result = runtime.execute(&call, root);
-                if !result.ok {
-                    stop = "tool_error";
-                    break;
+async fn run_once(lab: &Lab, session: &str) -> Result<Report> {
+    let already = lab.model.requests.lock().unwrap().len();
+    let question = Content::new("user").with_text(GOAL);
+    let mut stream = lab.runner.run_str("reader", session, question).await?;
+    let (mut trace, mut stop, mut answer) = (Vec::new(), "ended".to_string(), None);
+    while let Some(event) = stream.next().await {
+        match event {
+            Ok(event) => {
+                trace.extend(trace::event_lines(&event));
+                if event.is_final_response() && event.author == "assistant" {
+                    answer = event
+                        .content()
+                        .map(|c| c.parts.iter().filter_map(Part::text).collect::<String>())
+                        .filter(|text| !text.is_empty());
+                    if answer.is_some() {
+                        stop = "answer".into();
+                    }
                 }
             }
-            Reply::Answer(text) => {
-                answer = Some(text);
-                stop = "answer";
+            Err(error) => {
+                trace.push(format!("[run] error   {}", error.code));
+                stop = error.code.to_string();
                 break;
             }
         }
     }
-    let all_completed = !runtime.plan.items.is_empty()
-        && runtime
-            .plan
-            .items
-            .iter()
-            .all(|item| item.status == Status::Completed);
-    // This fixture's external acceptance condition is independent of the todo flags.
+    let seen = lab.model.requests.lock().unwrap()[already..]
+        .iter()
+        .map(plan_in)
+        .collect();
+    Ok(Report {
+        stop,
+        answer,
+        trace,
+        seen,
+    })
+}
+// endregion run
+
+fn workspace(with_readme: bool) -> Result<(tempfile::TempDir, Arc<PathBuf>)> {
+    let directory = tempfile::tempdir()?;
+    if with_readme {
+        fs::write(directory.path().join("README.md"), README)?;
+    }
+    let root = Arc::new(directory.path().canonicalize()?);
+    Ok((directory, root))
+}
+
+fn new_model(claims_only: bool) -> Arc<PlanLlm> {
+    Arc::new(PlanLlm {
+        claims_only,
+        requests: Mutex::new(Vec::new()),
+    })
+}
+
+fn statuses(plan: &Plan) -> String {
+    if plan.items.is_empty() {
+        return "未建单".into();
+    }
+    plan.items
+        .iter()
+        .map(|item| {
+            let status = serde_json::to_value(item.status).unwrap();
+            format!("{}={}", item.id, status.as_str().unwrap())
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// 主流程类场景：一次（或两次）完整运行。返回摘要行和详细轨迹。
+async fn flow(name: &str) -> Result<(String, Vec<String>)> {
+    let (_dir, root) = workspace(name != "read-error")?;
+    let visibility = if name == "template-only" {
+        Visibility::TemplateOnly
+    } else {
+        Visibility::Live
+    };
+    let budget = (name == "budget-stop").then_some(3);
+    let lab = lab(
+        root.clone(),
+        new_model(name == "claims-only"),
+        visibility,
+        budget,
+    )?;
+    open_session(&lab, "s1", None).await?;
+    let report = run_once(&lab, "s1").await?;
+    let plan = session_plan(&lab, "s1").await?.unwrap_or_else(Plan::new);
+    let reads = lab.reads.0.load(Ordering::SeqCst);
+    let all_completed =
+        !plan.items.is_empty() && plan.items.iter().all(|i| i.status == Status::Completed);
+    // 独立验收：真实读过一次，并且回答等于“启动说明”加读到的原文
     let expected = fs::read_to_string(root.join("README.md")).ok();
-    let goal_verified = runtime.reads == 1
+    let goal_verified = reads == 1
         && expected
             .as_ref()
-            .is_some_and(|text| answer.as_ref() == Some(&format!("启动说明：\n{text}")));
-    RunReport {
-        scenario: name.into(),
-        stop: stop.into(),
-        model_turns: inputs.len(),
-        tool_calls: runtime.history.len() / 2,
-        reads: runtime.reads,
-        all_completed,
-        goal_verified,
-        answer,
-        plan: runtime.plan,
-        inputs,
-        history: runtime.history,
+            .is_some_and(|text| report.answer.as_deref() == Some(&format!("启动说明：\n{text}")));
+    let mut detail = report.trace.clone();
+    for (i, seen) in report.seen.iter().enumerate() {
+        detail.push(format!(
+            "request {}: revision={} {}",
+            i + 1,
+            seen.revision,
+            statuses(seen)
+        ));
     }
-}
-// endregion loop
-
-fn run_scenario(name: &str) -> Value {
-    let directory = tempfile::tempdir().expect("temporary fixture");
-    let root = directory.path();
-    if name != "read-error" {
-        fs::write(root.join("README.md"), README).unwrap();
-    }
-    if matches!(
-        name,
-        "normal" | "claims-only" | "read-error" | "budget-stop"
-    ) {
-        let report = run(name, root, if name == "budget-stop" { 3 } else { 7 });
-        match name {
-            "normal" => {
-                assert!(report.goal_verified);
-                assert_eq!(report.plan.revision, 5);
-            }
-            "claims-only" => {
-                assert!(report.all_completed);
-                assert!(!report.goal_verified);
-            }
-            "read-error" => {
-                assert_eq!(report.stop, "tool_error");
-                assert_eq!(report.plan.revision, 2);
-            }
-            _ => {
-                assert_eq!(report.stop, "turn_limit");
-                assert!(report.answer.is_none());
-            }
-        }
-        return json!(report);
-    }
-    let mut rt = Runtime::new();
-    if name == "fresh-session" {
-        let previous = run("normal", root, 7);
-        assert_eq!(previous.plan.revision, 5);
-        assert_eq!(rt.plan.revision, 0);
-        return json!({"scenario": name, "previous_revision": previous.plan.revision, "plan": rt.plan});
-    }
-    assert!(
-        rt.execute(&write_call("seed", &rt.plan, initial_items()), root)
-            .ok
+    let mut line = format!(
+        "{name}: stop={} model_calls={} revision={} reads={reads} completed={all_completed} goal_verified={goal_verified} seen_revisions={:?}",
+        report.stop,
+        report.seen.len(),
+        plan.revision,
+        report.seen.iter().map(|p| p.revision).collect::<Vec<_>>()
     );
-    if matches!(name, "reopen-completed" | "yield-step") {
-        let mut next = rt.plan.items.clone();
-        next[0].status = Status::InProgress;
-        assert!(rt.execute(&write_call("start", &rt.plan, next), root).ok);
-    }
-    if name == "reopen-completed" {
-        let mut next = rt.plan.items.clone();
-        next[0].status = Status::Completed;
-        assert!(rt.execute(&write_call("complete", &rt.plan, next), root).ok);
-    }
-    let before = rt.plan.clone();
-    let mut items = before.items.clone();
-    let expected = match name {
-        "two-active" => {
-            items[0].status = Status::InProgress;
-            items[1].status = Status::InProgress;
-            "multiple_active"
-        }
-        "skip-completion" => {
-            items[0].status = Status::Completed;
-            "invalid_transition"
-        }
-        "duplicate-id" => {
-            items[1].id = items[0].id.clone();
-            "duplicate_id"
-        }
-        "empty-content" => {
-            items[0].content = "  ".into();
-            "invalid_content"
-        }
-        "too-many" => {
-            for i in 3..9 {
-                items.push(Item {
-                    id: format!("extra-{i}"),
-                    content: "新增步骤".into(),
-                    status: Status::Pending,
-                });
-            }
-            "item_count"
-        }
-        "remove-item" => {
-            items.pop();
-            "removed_item"
-        }
-        "changed-content" => {
-            items[0].content = "悄悄换了目标".into();
-            "content_changed"
-        }
-        "reopen-completed" => {
-            items[0].status = Status::InProgress;
-            "invalid_transition"
-        }
-        "append-step" => {
-            items.push(Item {
-                id: "verify-env".into(),
-                content: "补查环境要求".into(),
-                status: Status::Pending,
-            });
-            "ok"
-        }
-        "yield-step" => {
-            items[0].status = Status::Pending;
-            items[1].status = Status::InProgress;
-            "ok"
-        }
-        "stale-revision" => "revision_conflict",
-        "permission-denied" => "permission_denied",
-        "invalid-json" | "unknown-field" | "unknown-status" => "invalid_arguments",
-        _ => panic!("unknown scenario: {name}"),
-    };
-    let mut call = write_call("candidate", &rt.plan, items);
     match name {
-        "stale-revision" => {
-            let mut args: Value = serde_json::from_str(&call.arguments).unwrap();
-            args["expected_revision"] = json!(0);
-            call.arguments = args.to_string();
-        }
-        "unknown-status" | "unknown-field" => {
-            let mut args: Value = serde_json::from_str(&call.arguments).unwrap();
-            if name == "unknown-status" {
-                args["items"][0]["status"] = json!("done");
-            } else {
-                args["force"] = json!(true);
-            }
-            call.arguments = args.to_string();
-        }
-        "invalid-json" => call.arguments = "{".into(),
-        "permission-denied" => {
-            // Even an explicit todo asking for a write cannot grant that permission.
-            let mut next = rt.plan.items.clone();
-            next.push(Item {
-                id: "write".into(),
-                content: "写入 summary.txt".into(),
-                status: Status::Pending,
-            });
-            assert!(
-                rt.execute(&write_call("add-write", &rt.plan, next), root)
-                    .ok
+        "template-only" => {
+            // 下一次运行开始时模板重新渲染：这时才看到上一次运行留下的版本 1
+            let again = run_once(&lab, "s1").await?;
+            line = format!(
+                "{line} next_run_first_seen={}",
+                again.seen.first().map_or(0, |p| p.revision)
             );
-            call.tool = "write_file".into();
-            call.arguments = json!({"path": "summary.txt", "content": "hello"}).to_string();
+        }
+        "next-run" => {
+            // 同一个会话再运行一次：清单还在会话状态里
+            let again = run_once(&lab, "s1").await?;
+            line = format!(
+                "next-run: first_run_revision={} second_run_first_seen={}",
+                plan.revision,
+                again.seen.first().map_or(0, |p| p.revision)
+            );
+        }
+        "fresh-session" => {
+            open_session(&lab, "s2", None).await?;
+            let other = session_plan(&lab, "s2").await?;
+            line = format!(
+                "fresh-session: s1_revision={} s2_plan={}",
+                plan.revision,
+                other.map_or("none".into(), |p| p.revision.to_string())
+            );
         }
         _ => {}
     }
-    let before = if name == "permission-denied" {
-        rt.plan.clone()
-    } else {
-        before
-    };
-    let result = rt.execute(&call, root);
-    assert_eq!(result.code, expected);
-    assert_eq!(result.call_id, call.call_id);
-    let unchanged = rt.plan == before;
-    assert_eq!(unchanged, !result.ok);
-    assert!(!root.join("summary.txt").exists());
-    assert_eq!(rt.model_input().plan, rt.plan);
-    json!({"scenario": name, "expected_code": expected, "result": result,
-        "unchanged": unchanged, "before": before, "after": rt.plan,
-        "summary_exists": root.join("summary.txt").exists()})
+    Ok((line, detail))
 }
 
-fn main() {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    if args.first().map(String::as_str) == Some("--json") {
-        let name = args.get(1).expect("usage: --json SCENARIO");
-        assert!(CASES.contains(&name.as_str()), "unknown scenario");
-        println!(
-            "{}",
-            serde_json::to_string_pretty(&run_scenario(name)).unwrap()
-        );
-    } else {
-        for name in CASES {
-            let result = run_scenario(name);
-            if let Some(stop) = result.get("stop") {
-                println!(
-                    "{name}: stop={} turns={} calls={} revision={} reads={} completed={} goal_verified={}",
-                    stop.as_str().unwrap(),
-                    result["model_turns"],
-                    result["tool_calls"],
-                    result["plan"]["revision"],
-                    result["reads"],
-                    result["all_completed"],
-                    result["goal_verified"]
-                );
-            } else if *name == "fresh-session" {
-                println!(
-                    "fresh-session: previous_revision={} new_revision={}",
-                    result["previous_revision"], result["plan"]["revision"]
-                );
-            } else {
-                println!(
-                    "{name}: code={} unchanged={}",
-                    result["result"]["code"].as_str().unwrap(),
-                    result["unchanged"]
-                );
-            }
+// region candidates
+/// 校验类场景：先在会话状态里放好一份清单，模型只提交一次候选，然后核对结果和状态。
+async fn candidate(name: &str) -> Result<(String, Vec<String>)> {
+    let (_dir, root) = workspace(true)?;
+    let mut seed = Plan::new();
+    seed.write(WriteArgs {
+        expected_revision: 0,
+        items: initial_items(),
+    })?;
+    let advance = |plan: &mut Plan, status: Status| {
+        let mut items = plan.items.clone();
+        items[0].status = status;
+        plan.write(WriteArgs {
+            expected_revision: plan.revision,
+            items,
+        })
+    };
+    if matches!(name, "reopen-completed" | "yield-step") {
+        advance(&mut seed, Status::InProgress)?;
+    }
+    if name == "reopen-completed" {
+        advance(&mut seed, Status::Completed)?;
+    }
+    if name == "permission-denied" {
+        let mut items = seed.items.clone();
+        items.push(Item {
+            id: "write".into(),
+            content: "写入 summary.txt".into(),
+            status: Status::Pending,
+        });
+        seed.write(WriteArgs {
+            expected_revision: seed.revision,
+            items,
+        })?;
+    }
+    if name.starts_with("same-batch") {
+        return same_batch(name, root, seed).await;
+    }
+    let mut items = seed.items.clone();
+    let mut args = None;
+    match name {
+        "two-active" => {
+            items[0].status = Status::InProgress;
+            items[1].status = Status::InProgress;
         }
+        "skip-completion" => items[0].status = Status::Completed,
+        "duplicate-id" => items[1].id = items[0].id.clone(),
+        "empty-content" => items[0].content = "  ".into(),
+        "too-many" => items.extend((3..9).map(|i| Item {
+            id: format!("extra-{i}"),
+            content: "新增步骤".into(),
+            status: Status::Pending,
+        })),
+        "remove-item" => {
+            items.pop();
+        }
+        "changed-content" => items[0].content = "悄悄换了目标".into(),
+        "reopen-completed" => items[0].status = Status::InProgress,
+        "append-step" => items.push(Item {
+            id: "verify-env".into(),
+            content: "补查环境要求".into(),
+            status: Status::Pending,
+        }),
+        "yield-step" => {
+            items[0].status = Status::Pending;
+            items[1].status = Status::InProgress;
+        }
+        "stale-revision" => args = Some(json!({ "expected_revision": 0, "items": items })),
+        "unknown-status" => {
+            let mut value = json!({ "expected_revision": seed.revision, "items": items });
+            value["items"][0]["status"] = json!("done");
+            args = Some(value);
+        }
+        "unknown-field" => {
+            args =
+                Some(json!({ "expected_revision": seed.revision, "items": items, "force": true }))
+        }
+        "wrong-type" => args = Some(json!({ "expected_revision": "one", "items": items })),
+        "permission-denied" => {}
+        _ => return Err(format!("unknown scenario: {name}").into()),
+    }
+    let (tool, args) = if name == "permission-denied" {
+        (
+            "write_file",
+            json!({ "path": "summary.txt", "content": "hello" }),
+        )
+    } else {
+        (
+            "todo_write",
+            args.unwrap_or_else(|| json!({ "expected_revision": seed.revision, "items": items })),
+        )
+    };
+    let model = Arc::new(adk_model::ScriptedLlm::new(
+        "scripted",
+        vec![
+            adk_model::ScriptedResponse::function_call(tool, args),
+            adk_model::ScriptedResponse::text("已提交"),
+        ],
+    ));
+    let runner_lab = scripted_lab(root.clone(), model, true)?;
+    open_session(&runner_lab, "s1", Some(&seed)).await?;
+    let report = run_once(&runner_lab, "s1").await?;
+    let after = session_plan(&runner_lab, "s1").await?.expect("seeded plan");
+    let result = report
+        .trace
+        .iter()
+        .find(|line| line.contains("] result "))
+        .cloned()
+        .unwrap_or_default();
+    let status = result
+        .split_whitespace()
+        .find_map(|word| word.strip_prefix("status="))
+        .unwrap_or("-")
+        .to_string();
+    let code = result
+        .split_whitespace()
+        .find_map(|word| word.strip_prefix("code="))
+        .unwrap_or("-")
+        .to_string();
+    let unchanged = after == seed;
+    let summary_exists = root.join("summary.txt").exists();
+    Ok((
+        format!(
+            "{name}: status={status} code={code} unchanged={unchanged} revision={}->{} summary_exists={summary_exists}",
+            seed.revision, after.revision
+        ),
+        report.trace,
+    ))
+}
+
+// region same-batch
+/// 一次模型回复里两个 todo_write，都基于版本 1：一个开始读取，一个新增步骤。
+/// 两个调用的事件要等整批执行完才产出，所以第二个调用读会话状态时，第一个的写入还没合并。
+async fn same_batch(name: &str, root: Arc<PathBuf>, seed: Plan) -> Result<(String, Vec<String>)> {
+    let mut start = seed.items.clone();
+    start[0].status = Status::InProgress;
+    let mut append = seed.items.clone();
+    append.push(Item {
+        id: "verify-env".into(),
+        content: "补查环境要求".into(),
+        status: Status::Pending,
+    });
+    let model = Arc::new(adk_model::ScriptedLlm::new(
+        "scripted",
+        vec![
+            adk_model::ScriptedResponse::function_calls([
+                (
+                    "todo_write",
+                    json!({ "expected_revision": 1, "items": start }),
+                ),
+                (
+                    "todo_write",
+                    json!({ "expected_revision": 1, "items": append }),
+                ),
+            ]),
+            adk_model::ScriptedResponse::text("已提交"),
+        ],
+    ));
+    let lab = scripted_lab(root, model, name == "same-batch")?;
+    open_session(&lab, "s1", Some(&seed)).await?;
+    let report = run_once(&lab, "s1").await?;
+    let after = session_plan(&lab, "s1").await?.expect("seeded plan");
+    let results: Vec<String> = report
+        .trace
+        .iter()
+        .filter(|line| line.contains("] result "))
+        .map(|line| {
+            let field = |key: &str| {
+                line.split_whitespace()
+                    .find_map(|w| w.strip_prefix(key))
+                    .map(str::to_owned)
+            };
+            field("code=").unwrap_or_else(|| field("status=").unwrap_or_default())
+        })
+        .collect();
+    let started = after.items[0].status == Status::InProgress;
+    let appended = after.items.iter().any(|item| item.id == "verify-env");
+    Ok((
+        format!(
+            "{name}: results={} revision={}->{} read_started={started} step_appended={appended} lost_update={}",
+            results.join(","),
+            seed.revision,
+            after.revision,
+            results.iter().all(|r| r == "ok") && !(started && appended)
+        ),
+        report.trace,
+    ))
+}
+// endregion same-batch
+
+/// 校验类场景用脚本模型：只提交一次候选，不需要看清单。
+fn scripted_lab(
+    root: Arc<PathBuf>,
+    model: Arc<adk_model::ScriptedLlm>,
+    remember_batch: bool,
+) -> Result<Lab> {
+    let reads = Arc::new(Reads::default());
+    let agent = LlmAgentBuilder::new("assistant")
+        .model(model)
+        .tool(Arc::new(todo_write(remember_batch)))
+        .tool(Arc::new(todo_read()))
+        .tool(Arc::new(read_file(root.clone(), reads.clone())))
+        .tool(Arc::new(write_file(root)))
+        .build()?;
+    let policy = DeclarativePolicy::builder()
+        .allow("todo_write")
+        .allow("todo_read")
+        .allow("read_file")
+        .deny("write_file", "本章只读：不允许写文件");
+    let sessions = Arc::new(InMemorySessionService::new());
+    let runner = Runner::builder()
+        .app_name("r05")
+        .agent(Arc::new(agent))
+        .session_service(sessions.clone())
+        .tool_policy(Arc::new(policy.build()))
+        .without_intra_compaction()
+        .build()?;
+    Ok(Lab {
+        runner,
+        sessions,
+        model: new_model(false),
+        reads,
+    })
+}
+// endregion candidates
+
+async fn scenario(name: &str) -> Result<(String, Vec<String>)> {
+    if CASES.iter().position(|c| *c == name).is_some_and(|i| i < 7) {
+        flow(name).await
+    } else {
+        candidate(name).await
+    }
+}
+
+async fn cli(args: &[String]) -> Result<()> {
+    match args {
+        [] => {
+            for name in CASES {
+                println!("{}", scenario(name).await?.0);
+            }
+            Ok(())
+        }
+        [name] if CASES.contains(&name.as_str()) => {
+            let (line, detail) = scenario(name).await?;
+            for row in detail {
+                println!("{row}");
+            }
+            println!("{line}");
+            Ok(())
+        }
+        _ => Err(format!("usage: learn-agent-r05 [{}]", CASES.join("|")).into()),
+    }
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Err(error) = cli(&args).await {
+        eprintln!("{error}");
+        std::process::exit(2);
     }
 }
 
@@ -625,43 +1011,81 @@ mod tests {
                 expected_revision: 1,
                 items
             }),
-            Err("invalid_content")
+            Err("todo.invalid_content")
         );
         assert_eq!(plan, before);
     }
 
-    #[test]
-    fn all_scenario_contracts() {
-        for name in CASES {
-            run_scenario(name);
-        }
-    }
-
-    #[test]
-    fn latest_plan_and_history_reach_each_model_turn() {
-        let directory = tempfile::tempdir().unwrap();
-        fs::write(directory.path().join("README.md"), README).unwrap();
-        let report = run("normal", directory.path(), 7);
-        let revisions: Vec<_> = report
-            .inputs
-            .iter()
-            .map(|input| input.plan.revision)
-            .collect();
+    #[tokio::test]
+    async fn the_model_sees_the_latest_plan_before_every_request() {
+        let (_dir, root) = workspace(true).unwrap();
+        let lab = lab(root, new_model(false), Visibility::Live, None).unwrap();
+        open_session(&lab, "s1", None).await.unwrap();
+        let report = run_once(&lab, "s1").await.unwrap();
+        let revisions: Vec<u64> = report.seen.iter().map(|p| p.revision).collect();
         assert_eq!(revisions, [0, 1, 2, 2, 3, 4, 5]);
-        for (index, input) in report.inputs.iter().enumerate() {
-            assert_eq!(input.history.len(), index * 2);
-        }
-        for pair in report.history.as_chunks::<2>().0 {
-            assert_eq!(pair[0]["call"]["call_id"], pair[1]["result"]["call_id"]);
+        assert_eq!(report.stop, "answer");
+    }
+
+    #[tokio::test]
+    async fn a_template_renders_once_per_run() {
+        let (_dir, root) = workspace(true).unwrap();
+        let lab = lab(root, new_model(false), Visibility::TemplateOnly, None).unwrap();
+        open_session(&lab, "s1", None).await.unwrap();
+        let report = run_once(&lab, "s1").await.unwrap();
+        assert!(report.seen.iter().all(|p| p.revision == 0));
+        let again = run_once(&lab, "s1").await.unwrap();
+        assert_eq!(again.seen.first().map(|p| p.revision), Some(1));
+        assert!(
+            report
+                .trace
+                .iter()
+                .any(|l| l.contains("code=todo.revision_conflict"))
+        );
+    }
+
+    #[tokio::test]
+    async fn rejected_candidates_leave_the_plan_unchanged() {
+        for name in CASES
+            .iter()
+            .filter(|name| !name.starts_with("same-batch"))
+            .skip(7)
+        {
+            let (line, _) = scenario(name).await.unwrap();
+            let expect_change = matches!(*name, "append-step" | "yield-step");
+            assert_eq!(line.contains("unchanged=true"), !expect_change, "{line}");
+            assert!(line.contains("summary_exists=false"), "{line}");
+            let accepted = line.contains("status=ok");
+            let refused = line.contains("status=refused");
+            assert!(
+                accepted == expect_change && (accepted || refused || line.contains("code=todo.")),
+                "{line}"
+            );
         }
     }
 
-    #[test]
-    fn answer_uses_changed_readme_not_a_canned_command() {
-        let directory = tempfile::tempdir().unwrap();
-        fs::write(directory.path().join("README.md"), "启动命令：just dev\n").unwrap();
-        let report = run("normal", directory.path(), 7);
-        assert!(report.goal_verified);
+    #[tokio::test]
+    async fn a_second_write_in_the_same_batch_sees_the_first() {
+        let (naive, _) = scenario("same-batch-naive").await.unwrap();
+        assert!(
+            naive.contains("results=ok,ok") && naive.contains("lost_update=true"),
+            "{naive}"
+        );
+        let (fixed, _) = scenario("same-batch").await.unwrap();
+        assert!(
+            fixed.contains("results=ok,todo.revision_conflict")
+                && fixed.contains("read_started=true"),
+            "{fixed}"
+        );
+    }
+
+    #[tokio::test]
+    async fn answer_uses_changed_readme_not_a_canned_command() {
+        let (_dir, root) = workspace(false).unwrap();
+        fs::write(root.join("README.md"), "启动命令：just dev\n").unwrap();
+        let lab = lab(root, new_model(false), Visibility::Live, None).unwrap();
+        open_session(&lab, "s1", None).await.unwrap();
+        let report = run_once(&lab, "s1").await.unwrap();
         assert_eq!(
             report.answer.as_deref(),
             Some("启动说明：\n启动命令：just dev\n")
@@ -695,7 +1119,7 @@ mod tests {
                 expected_revision: 0,
                 items: vec![]
             }),
-            Err("item_count")
+            Err("todo.item_count")
         );
     }
 }

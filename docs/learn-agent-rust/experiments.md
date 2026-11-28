@@ -155,9 +155,11 @@ python3 run.py test --all --offline
 
 ### 第 11 章 · RAG：检索、证据与回答 {#retrieval-augmented-generation}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./retrieval-augmented-generation.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/retrieval-augmented-generation)
 
-目录：`chapters/retrieval-augmented-generation/`；运行：`python3 run.py run K01`。11 个检索与证据场景。
+目录：`chapters/retrieval-augmented-generation/`；运行：`python3 run.py run K01`。16 个检索、证据与 Agent 引用场景。
 
 原章节验证器：`scripts/verify-agent-rag.py`。
 

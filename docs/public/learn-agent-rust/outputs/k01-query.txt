@@ -1,3 +1,4 @@
 quote=Upgrade v2 requires Rust 1.99.1. Run cargo test before publishing.
 citation=A/release.md:L3-L3@63c4bb1531c9478b
+score=0.378
 claim_valid=true

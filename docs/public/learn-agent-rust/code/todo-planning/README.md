@@ -1,34 +1,35 @@
-# R05：可见的任务清单
+# R05 · 可见的任务清单（ADK-Rust 3.0）
 
-这是可独立解压运行的会话内清单实验。Rust 工具链固定为 1.99.1，
-Cargo.lock 固定依赖；首次构建需联网下载工具链与 crates。
-无需模型密钥、数据库、相邻课程代码或网站脚本。
+教程：https://lewislau86.github.io/learn-agent-rust/todo-planning
+
+清单存在会话状态（session state）的 `plan` 键里：`todo_write` 工具读出当前清单，整批校验候选清单，
+通过后写进这次调用的 `state_delta`，由框架合并进会话状态。每次请求模型之前，`before_model` 回调把最新清单
+作为一条 system 内容放进请求。模型是按规则回复的 `PlanLlm`，只看得到请求内容；文件工具真实读取临时目录。
+
+## 准备 ADK-Rust 源码
 
 ```sh
-cargo run --locked
-cargo run --locked -- --json normal
-cargo run --locked -- --json claims-only
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
+```
+
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
+
+## 运行
+
+```sh
+cargo run --locked                    # 全部 24 个场景的摘要
+cargo run --locked -- normal          # 某个场景的完整轨迹，另见 claims-only、template-only 等
 cargo test --locked
 cargo fmt --check
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-默认命令执行全部 20 个场景，每个场景均有断言，失败会以非零状态退出。
-`--json SCENARIO` 输出单场景证据，场景名见默认输出或源码 CASES。
-六个 Rust 测试覆盖迁移矩阵、整批原子拒绝、全部场景、每轮上下文、
-更换 README 后的实际回答以及输入长度和格式边界。
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
 
-固定脚本模型产生 JSON 工具调用。程序创建临时 README，使用 std::fs 真实读取，
-离开作用域后由 tempfile 清理。所有清单与消息只在当前 Runtime 的内存里。
-程序执行器允许读取固定 README、读取和更新清单；拒绝所有写文件请求。
-它未接入真实模型、langchain-rust、graph-flow 或持久化存储。
+## 实验边界
 
-`goal_verified` 是这个固定任务的独立验收：成功读取一次，最终答案包含读取到的完整正文。
-它用于展示清单状态与执行证据的区别，不代表通用的任务质量判定器。
-
-课程正文：https://lewislau86.github.io/learn-agent-rust/todo-planning
-
-在网站仓库中重新生成输出与下载包：
-`python3 scripts/verify-learn-agent-rust-r05.py`。
-检查是否过期追加 `--check`；配图运行
-`python3 scripts/generate-learn-agent-rust-figures.py --lesson R05`。
+- 会话服务是内存版：同一进程里同一会话的下一次运行能看到清单，进程退出后清单就没了。
+- `goal_verified` 是这个固定任务的独立验收：成功读取一次，最终答案等于“启动说明：”加读取到的完整正文；不是通用的质量判定器。
+- 应用策略拒绝 `write_file`；清单里写着“写入 summary.txt”也不会让它执行。
+- 模型是规则模型，不代表真实模型会不会主动列计划、何时更新。

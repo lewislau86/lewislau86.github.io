@@ -1,0 +1,29 @@
+--- process 1: chat user=user-1 project=project-a session=session-A recall=tool message="请记住：reply_language=中文" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"中文"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"中文"}
+[assistant] text    "已记住：reply_language=中文。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 2: chat user=user-1 project=project-a session=session-C recall=tool message="请记住：reply_language=English" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"English"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"English"}
+[assistant] text    "已记住：reply_language=English。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 3: erase user=user-1 compact=false (exit 0)
+outcome: erase:removed=2 compact=false
+--- process 4: erase user=user-1 compact=true (exit 0)
+outcome: erase:removed=0 compact=true
+--- process 5: chat user=user-1 project=project-a session=session-D recall=tool message="以后请用什么语言回答？" (exit 0)
+[assistant] call    id=call-recall_memory recall_memory {"key":"reply_language"}
+[assistant] result  id=call-recall_memory recall_memory status=ok {"key":"reply_language","status":"missing"}
+[assistant] text    "没有找到回答语言的记忆，按默认设置回答。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: recall:missing answer=default
+erase: processes=5 steps=[remember:saved; remember:saved; erase:removed=2 compact=false; erase:removed=0 compact=true; recall:missing answer=default] after_delete_file_has_English=yes after_compact_file_has_English=no

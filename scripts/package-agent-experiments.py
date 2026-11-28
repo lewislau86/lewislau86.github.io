@@ -58,7 +58,8 @@ def source_files(lesson):
     names = subprocess.check_output(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "--", base + "/"],
         cwd=ROOT, text=True).splitlines()
-    return {name[len(base) + 1:]: (ROOT / name).read_bytes() for name in sorted(set(names))}
+    # 索引里可能还留着已删除、尚未提交删除的文件，只取磁盘上存在的
+    return {name[len(base) + 1:]: (ROOT / name).read_bytes() for name in sorted(set(names)) if (ROOT / name).is_file()}
 
 
 def inputs(lesson):
@@ -191,7 +192,7 @@ def build():
         if row["kind"] == "cargo":
             row["binary"] = re.search(r'^name\s*=\s*"([^"]+)"', chapter["Cargo.toml"].decode(), re.M)[1]
         graph_scope = {'G01': '4 组路由、修复额度、超步上限与建图探针演示', 'G02': '跨进程暂停、检查点与按节点名恢复的对照演示', 'G03': '5 组并行、失败、子图与超时演示'}
-        row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "11 个检索与证据场景" if row["id"] == "K01" else "本章正常路径演示"
+        row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "16 个检索、证据与 Agent 引用场景" if row["id"] == "K01" else "本章正常路径演示"
         if row['id'].startswith('D'):
             row['run_scope'] = '{} 个固定输入图场景'.format(json.loads(chapter['evidence.json'])['scenarios'])
             if row['id'] == 'D07':

@@ -65,7 +65,7 @@ python3 run.py test P04
 | R05 | [第 8 章 · 可见的任务清单](https://lewislau86.github.io/learn-agent-rust/todo-planning) | [chapters/todo-planning](chapters/todo-planning/README.md) | 本章正常路径演示 |
 | R06 | [第 9 章 · 子 Agent 与上下文隔离](https://lewislau86.github.io/learn-agent-rust/subagents) | [chapters/subagents](chapters/subagents/README.md) | 本章正常路径演示 |
 | R07 | [第 10 章 · 按需加载技能](https://lewislau86.github.io/learn-agent-rust/skill-loading) | [chapters/skill-loading](chapters/skill-loading/README.md) | 本章正常路径演示 |
-| K01 | [第 11 章 · RAG：检索、证据与回答](https://lewislau86.github.io/learn-agent-rust/retrieval-augmented-generation) | [chapters/retrieval-augmented-generation](chapters/retrieval-augmented-generation/README.md) | 11 个检索与证据场景 |
+| K01 | [第 11 章 · RAG：检索、证据与回答（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/retrieval-augmented-generation) | [chapters/retrieval-augmented-generation](chapters/retrieval-augmented-generation/README.md) | 16 个检索、证据与 Agent 引用场景 |
 | R08 | [第 12 章 · 上下文压缩](https://lewislau86.github.io/learn-agent-rust/context-compaction) | [chapters/context-compaction](chapters/context-compaction/README.md) | 本章正常路径演示 |
 | R09 | [第 13 章 · 跨会话记忆](https://lewislau86.github.io/learn-agent-rust/memory) | [chapters/memory](chapters/memory/README.md) | 跨进程写入与召回演示 |
 | R10 | [第 14 章 · 系统提示词组装](https://lewislau86.github.io/learn-agent-rust/system-prompts) | [chapters/system-prompts](chapters/system-prompts/README.md) | 本章正常路径演示 |

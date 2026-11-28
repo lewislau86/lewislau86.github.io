@@ -200,17 +200,24 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ]
     },
     {
       "id": "R06",
       "slug": "subagents",
-      "kind": "rustc",
-      "archive": "subagents-lab.zip",
+      "kind": "cargo",
+      "archive": "subagents.zip",
       "verifier": "scripts/verify-agent-subagents.py",
       "requires_postgres": false,
       "demo": [
+        [
+          "{binary}"
+        ],
         [
           "{binary}",
           "normal"
@@ -227,6 +234,10 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "permission"
         ]
       ]
     },
@@ -255,6 +266,10 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ]
     },
@@ -262,33 +277,18 @@
       "id": "R09",
       "slug": "memory",
       "kind": "cargo",
-      "archive": "memory-lab.zip",
+      "archive": "memory.zip",
       "verifier": "scripts/verify-agent-memory.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "apply",
-          "{run}/store",
-          "project-a",
-          "session-A",
-          "1",
-          "0",
-          "user",
-          "--message",
-          "{run}/message.txt"
+          "{binary}"
         ],
         [
           "{binary}",
-          "recall",
-          "{run}/store",
-          "project-a",
-          "reply_language"
+          "new-process"
         ]
-      ],
-      "inputs": {
-        "message.txt": "请记住：reply_language=中文\n"
-      }
+      ]
     },
     {
       "id": "R10",
@@ -300,6 +300,10 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ]
     },

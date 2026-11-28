@@ -247,23 +247,26 @@
       "slug": "retrieval-augmented-generation",
       "verifier": "scripts/verify-agent-rag.py",
       "exit_code": 0,
-      "elapsed_seconds": 5.7,
-      "summary": "K01 verified: 8 Rust tests, 11 scenarios, 4 labeled queries, source and extracted archive; outputs and hashes match",
+      "elapsed_seconds": 13.1,
+      "summary": "K01: 16 scenarios x2 identical, 9 Rust tests, fmt, Clippy; artifacts checked",
       "inputs_sha256": {
+        "code/.cargo/config.toml": "ccbf6661b520bb700c9dc2fcc45a45bb9f0495e165661ee0a5da68636ddf135e",
         "code/.gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
-        "code/Cargo.lock": "db5fd400523b24d8faa79ca52060a19199976840f0907107f38b358b7f8dee0d",
-        "code/Cargo.toml": "4775b379f060170d02bbb51fa0afc0601c7080e30b70db66d5827c5b2cb3f84a",
-        "code/README.md": "a3525083d7552cf8e35e5a3f32959c9c727bd7bc8dd09adbe72f06c14555b3dc",
+        "code/Cargo.lock": "91d7ed02e1bb33a831aa848cf2d343edf2979f6e3b6eb8abfe9d466b22fd63d7",
+        "code/Cargo.toml": "cd19f6fddb52b0a8ffd92d41997480e8a93088b8fad08a8aeb33ffdb2c0e6246",
+        "code/README.md": "56a5cebf16b1ddfdc4dd6ba619567de2af161d7195c004ff9f8b67eafd100e31",
         "code/corpus/operations.md": "2a9af58777f6d998be91b7de0cc29dfbfb026f0f67eb49dfbd50cd82716313b7",
         "code/corpus/private.md": "5c8842fed4f79a6d4d61fd0068b7a472599fbfcd043f62d0cf08a2db7e0a8ab0",
         "code/corpus/release.md": "b10ed6970f10546e7d7cfd05b75ffa991c6cebb89b07bc9750bd2b8d83bfc820",
         "code/corpus/untrusted.md": "a4d8fb706bd04fc45bf8a4d1a37a86c3c3ae36a8e71f942163a99525da1382ae",
         "code/rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-        "code/src/main.rs": "6cc2f1777a4791e003b658697daa32cdf04e1286f1992c1000c2b081d2f31bd8",
-        "scripts/verify-agent-rag.py": "a8b6f026730c56a08719851ed3af8fb7c9a0f3d84bc4babea8f9529d55462182",
-        "scripts/data/learn-agent-rust/k01-results.json": "5059657a14c314d91f5f61c6d8c3676b760130d540527ce7b83533e4fb100247",
-        "archive/retrieval-augmented-generation.zip": "d1b317ec1d922af50ef1c6ea327a9a156991cff0630eb6a30638b411f4be6110"
-      }
+        "code/src/main.rs": "7c78921f5c8f179d918c4e871acd3db862a310b6433742a12e343f0e45ee588f",
+        "code/src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae",
+        "scripts/verify-agent-rag.py": "88b2c64e85d100bb90ee4712da14496f5745d3184fcb018041c8d91a881186e5",
+        "scripts/data/learn-agent-rust/k01-results.json": "1281fff6e6ab19cbc32207f6a481ee46db3a44d51c56fc7dceec73d5b5d3a56b",
+        "archive/retrieval-augmented-generation.zip": "e69f07ee76770c5fb9c897dcf0324c2eddbbc414e4551206b18170a22317b89e"
+      },
+      "checked_at": "2026-11-27T12:51:38+00:00"
     },
     {
       "id": "R08",

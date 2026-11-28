@@ -3,23 +3,22 @@ name: Check Agent subagent tutorial
 on:
   push:
     branches: [master]
-    paths:
+    paths: &paths
       - "docs/learn-agent-rust/subagents.md"
-      - "docs/public/learn-agent-rust/code/subagents*"
+      - "docs/public/learn-agent-rust/code/subagents/**"
       - "docs/public/learn-agent-rust/outputs/r06-*"
-      - "docs/public/learn-agent-rust/subagents-lab.zip"
+      - "docs/public/learn-agent-rust/subagents.zip"
+      - "docs/public/learn-agent-rust/figures/r06-*"
       - "scripts/verify-agent-subagents.py"
+      - "scripts/learn-agent-rust-subagent-figures.py"
       - "scripts/data/learn-agent-rust/r06-results.json"
+      - "scripts/learn_agent_rust_adk.py"
+      - "scripts/fetch-adk-rust.py"
+      - "scripts/learn-agent-rust-adk.json"
+      - "scripts/snippets/adk-trace.rs"
       - ".github/workflows/check-agent-subagents.yml"
   pull_request:
-    paths:
-      - "docs/learn-agent-rust/subagents.md"
-      - "docs/public/learn-agent-rust/code/subagents*"
-      - "docs/public/learn-agent-rust/outputs/r06-*"
-      - "docs/public/learn-agent-rust/subagents-lab.zip"
-      - "scripts/verify-agent-subagents.py"
-      - "scripts/data/learn-agent-rust/r06-results.json"
-      - ".github/workflows/check-agent-subagents.yml"
+    paths: *paths
   workflow_dispatch:
 
 permissions:
@@ -28,15 +27,26 @@ permissions:
 jobs:
   subagents:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      RUSTUP_TOOLCHAIN: stable
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Prepare Rust and rustfmt
-        run: rustup toolchain install stable --profile minimal --component rustfmt
-      - name: Verify scenarios, contracts, excerpts and extracted download
+      - name: Install the course toolchain
+        run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/adk-rust
+          key: agent-adk-subagents-${{ runner.os }}-${{ hashFiles('scripts/learn-agent-rust-adk.json', 'docs/public/learn-agent-rust/code/subagents/Cargo.lock') }}
+      - name: Fetch the pinned ADK-Rust 3.0 source
+        run: python3 scripts/fetch-adk-rust.py .cache/adk-rust
+      - name: Verify scenarios, tests and the extracted archive
         run: python3 scripts/verify-agent-subagents.py --check
+      - name: Check generated figures
+        run: |
+          python3 scripts/generate-learn-agent-rust-figures.py --lesson R06
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/r06-*.svg'

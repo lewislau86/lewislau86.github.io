@@ -1,6 +1,6 @@
 ---
 title: "第 10 章：按需加载技能"
-description: "用真实技能文件、langchain-rust 消息和 graph-flow 图执行，验证目录发现、按需注入、版本核对与权限边界。"
+description: "用 ADK-Rust 3.0 的 adk-skill 建技能索引，通过 SkillToolset 让模型先看目录、再按需加载正文与资源，并验证技能能让工具可见、却不能让工具获准执行。"
 pageClass: learn-agent-rust-course
 prev:
   text: 第 9 章 · 子 Agent 与上下文隔离
@@ -16,23 +16,23 @@ next:
 
 ::: tip 本章学习目标
 - 说明技能目录、技能正文和辅助资源为什么分开加载。
-- 沿一次 `load_skill` 调用，追踪版本、内容摘要、调用 ID 和正文进入上下文的位置。
-- 验证重复加载、文件变化和预算拒绝，并证明技能文字不会自动改变本例的工具权限。
+- 沿一次 `load_skill` 调用，追踪正文什么时候、以什么形式进入会话。
+- 验证文件变化、截断、资源访问和 `allowed-tools`，区分“工具可见”与“工具获准执行”。
 
-**前置：** [第 2 章：工具注册与图调度](./tools-and-graph.md)、[第 3 章：工具权限与审批](./permissions.md)；已经完成[两库环境准备](./setup.md#install-frameworks)。本章可独立运行，不要求先完成子 Agent 实验。
+**前置：** [第 2 章：工具注册与图调度](./tools-and-graph.md)、[第 3 章：工具权限与审批](./permissions.md)。本章可独立运行，不要求先完成子 Agent 实验。
 
-**实践方式：** 下载<a href="/learn-agent-rust/skill-loading.zip" download>完整 skill-loading.zip</a>，进入解压后的 `skill-loading` 目录执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02 的两库 Git revisions；首次下载依赖需要网络。
+**实践方式：** 下载<a href="/learn-agent-rust/skill-loading.zip" download>完整 skill-loading.zip</a>，按[第 1 节](#hands-on)取一次 ADK-Rust 源码后运行；无需模型密钥或数据库。
 :::
 
-现在工作区助手能够调用工具，也能把子任务放进独立历史。新的问题是：它接到“审查一个 Rust 函数”时，怎样知道项目约定的审查方法？
+::: info 本章已迁移到 ADK-Rust 3.0
+本章实验基于 ADK-Rust 3.0 发布候选版的 adk-skill（固定提交，尚未发布到 crates.io）。旧版本章自写了技能解析、版本核对、去重和注入预算，可从 git 标签 `learn-agent-rust-v1` 取得。新版的发现、索引、加载工具和 `allowed-tools` 绑定都由框架提供，几处语义与旧版不同（文件变化、重复加载、超长正文），第 8 节的对应表逐一列出。
+:::
 
-假设我们同时维护 Rust 审查规范和 SQL 查询规范。每次请求都塞入两份全文，当然能把资料送到模型面前，但这次没有数据库任务，SQL 正文也会占用输入。更合适的起点是让模型先看到一张目录，需要审查时再取出那一份方法。
+现在工作区助手能够调用工具，也能把子任务交给子 Agent。新的问题是：它接到“审查一个 Rust 函数”时，怎样知道项目约定的审查方法？
 
-这一章沿一个具体任务推进：
+假设我们同时维护 Rust 审查规范和 SQL 查询规范。每次请求都塞入两份全文，当然能把资料送到模型面前，但这次没有数据库任务，SQL 正文也会占用输入。更合适的做法是让模型先看到一张目录，需要审查时再取出那一份方法。
 
-> 审查 `src/lib.rs`，指出空输入时的行为。
-
-目标函数直接读取 `values[0]`。我们准备一个 `rust-review` 技能，要求“先给结论，再列证据”，并提醒说明是否执行了测试；另一个 `sql-style` 技能留在目录中。
+这一章沿一个具体任务推进：审查 `src/lib.rs`，指出空输入时的行为。目标函数直接读取 `values[0]`。我们准备一个 `rust-review` 技能，要求“先给结论，再列证据”；另一个 `sql-style` 技能留在目录中。
 
 <LearnAgentRustMap active="skill-loading" />
 
@@ -43,113 +43,82 @@ next:
 <!-- experiment-library:end -->
 
 ::: info 技术版本与复现基线
-截至 2026-11-08 查阅的 [Agent Skills 规范](https://agentskills.io/specification)继续采用元数据、正文与资源渐进加载，并把 allowed-tools 标为实验字段。宿主对格式与权限的支持需单独核对；见[技术跟踪](./technology-radar.md)。
+截至 2026-11-27 查阅的 [Agent Skills 规范](https://agentskills.io/specification)采用元数据、正文与资源渐进加载，并把 `allowed-tools` 标为实验字段。adk-skill 按这份规范解析技能，它对 `allowed-tools` 的解释见第 5 节；见[技术跟踪](./technology-radar.md)。
 :::
 
 ::: info 本章实验状态
-程序实际读取临时目录中的 `SKILL.md`，脚本模型实现固定版本 `langchain-rust` 的 `LLM` trait，`graph-flow` 实际推进 `ModelTurn` 与 `ExecuteTools`。源码、12 个场景、输出和下载包均由验证脚本核对。
-
-模型决策是确定性规则：它按预设步骤选择工具，并根据实际工具结果决定回答格式。本实验验证接口接线、内容进入上下文的位置和应用策略；真实模型能否准确选中技能、理解说明或提高审查质量，需要在[模型评估专题](./model-evaluation.md)另外测量。
+索引、`list_skills` / `load_skill` / `load_skill_resource` 三个工具、`allowed-tools` 绑定、自动注入和应用策略都是 ADK-Rust 的真实实现；技能文件和被审查的源码真实读写。模型是按规则回复的 `RuleLlm`：它按预设步骤选择工具，并根据实际工具结果决定回答格式。真实模型能否准确选中技能、理解说明，需要在[模型评估专题](./model-evaluation.md)另外测量。
 :::
 
 ## 方法与事实分别从哪里来
 
-本章技能告诉助手“怎样审查”，具体的项目版本、API 行为或发布条件仍要从资料中找证据。下一篇 [K01：RAG](./retrieval-augmented-generation.md)验证这个证据入口；[跨会话记忆](./memory.md)保存过去确认的事实，[MCP](./mcp-tools.md)连接外部服务。四种职责可以组合，先看[关系导读](./knowledge-and-capabilities.md)。
+本章技能告诉助手“怎样审查”，具体的项目版本、API 行为或发布条件仍要从资料中找证据。下一篇 [RAG](./retrieval-augmented-generation.md) 验证这个证据入口；[跨会话记忆](./memory.md)保存过去确认的事实，[MCP](./mcp-tools.md)连接外部服务。四种职责可以组合，先看[关系导读](./knowledge-and-capabilities.md)。
 
-## 1. 先跑一次：模型什么时候才看到全文？
+## 1. 先跑一次：模型什么时候才看到全文？ {#hands-on}
 
-::: info 代码与输出只有一个来源
-完整工程位于网站的 `docs/public/learn-agent-rust/code/skill-loading/`，包含两个 Rust 源文件、两份技能示例、工具链和锁文件。下文代码片段直接从工程导入，输出来自实际运行记录。
-
-<a href="/learn-agent-rust/skill-loading.zip" download>下载完整工程与实验记录</a> · [在 GitHub 查看源码](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/learn-agent-rust/code/skill-loading)
-:::
-
-在解压后的工程目录执行：
+下载并解压工程，先取一次 ADK-Rust 源码再运行：
 
 ```sh
-cargo fetch --locked
-cargo run --locked
+cd skill-loading
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked -- normal
 ```
 
-每次启动都会创建自己的临时技能目录和练习工作区，将随包示例写入其中，退出时由 `TempDir` 回收。程序不会扫描你安装在主目录中的全局 skills。
+编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0），不影响运行和检查。每个场景都会创建自己的临时工作区，把随包的两份技能写进其中的 `.skills/`；程序不会扫描你主目录里的技能。
 
-先预测：启动目录里会有几个技能？完整正文会加载几份？再看实际输出：
+先预测：模型第一次请求时能看到 `rust-review` 的正文吗？再看实际输出：
 
 <<< @/public/learn-agent-rust/outputs/r07-normal.txt
 
-顺着 `call_id` 阅读：`call-1` 请求 `rust-review`，同 ID 的工具结果带回来源和正文；下一轮才请求读取 `src/lib.rs`。最后回答同时使用文件里的 `values[0]` 和技能里的格式约定。SQL 的名称、说明留在目录中，全文没有进入消息历史。
+顺着调用 ID 阅读：`call-1` 调用 `list_skills`，得到两份技能的名称、说明和摘要（L1）；`call-2` 调用 `load_skill`，结果里才有 `rust-review` 的正文（L2），同时事件上多了一条 `skill:active:reviewer` 状态，记下“这个 Agent 激活了哪份技能、内容摘要是什么”；`call-3` 读取 `src/lib.rs`；最后回答使用了技能里的“先给结论”格式。SQL 技能只出现在目录里，正文没有进入会话。
 
-![启动只展示技能目录，模型请求后才把 rust-review 正文作为工具结果加入会话，随后读取目标代码。](/learn-agent-rust/figures/r07-progressive-loading.svg)
+还要注意 `list_skills` 和 `load_skill` 的结果里带着每份技能文件在本机的**绝对路径**和**修改时间**（轨迹里换成了 `$WORKSPACE`、`$MTIME` 占位符，否则两次运行不会逐字节相同）。这两项会原样进入发给模型服务的请求，也随工具结果保存在会话里：技能目录如果在用户主目录或公司内部路径下，路径本身就是要考虑的信息。
 
-先读左上角的目录，再沿箭头走到右下角的工具结果。加载技能本身也是一次工具往返，循环和调用 ID 配对规则继续沿用第 2 章。
+输出末尾是模型每次收到的请求：消息角色是 `user,system,user,...`，最前面那条 `user` 是 `SkillToolset` 在每次请求前加上的技能使用说明（不保存进会话）；四次请求的工具列表都是 `read_file` 加三个技能工具。
+
+![启动时扫描 .skills 建成索引；模型先用 list_skills 看目录，再用 load_skill 取 rust-review 正文，正文作为工具结果进入会话，随后读取代码。](/learn-agent-rust/figures/r07-progressive-loading.svg)
 
 ## 2. 一个技能里装什么？
 
-本例使用 Agent Skills 的目录与文档形式：一个技能一个目录，以 `SKILL.md` 保存 YAML 元信息和 Markdown 说明。下面就是随包提供的文件：
+本例使用 Agent Skills 的目录与文档形式：一个技能一个目录，以 `SKILL.md` 保存 YAML 元信息和 Markdown 说明，旁边可以放 `references/`、`assets/`、`scripts/`。下面就是随包提供的文件：
 
 <<< @/public/learn-agent-rust/code/skill-loading/skills/rust-review/SKILL.md
 
-`name` 用于查找，`description` 帮助判断什么时候相关，分隔线之后的正文说明具体做法。Agent Skills 还允许 `references/`、`scripts/` 和 `assets/` 等辅助资源；本章只实现元信息与正文两层，辅助资源的读取和脚本执行继续走各自的工具与权限入口。
+`name` 用于查找，`description` 帮助判断什么时候相关，分隔线之后的正文说明具体做法。`metadata.version` 是课程自己加的约定，规范并不要求；adk-skill 另外给每份技能算一个内容摘要（整份文件的 SHA-256），技能 ID 由名称加摘要前 12 位组成。
 
-这里的 `metadata.version` 是**课程应用增加的必填约定**，标准并不要求每个技能都带版本号。我们用它告诉读者当前拿到哪份说明，再用整份文件的 SHA-256 检测内容是否在发现之后发生变化。
-
-| 内容 | 本章什么时候读到 | 什么时候放进模型输入 |
+| 内容 | adk-skill 什么时候读 | 什么时候放进模型输入 |
 | --- | --- | --- |
-| `name`、`description`、`metadata.version` | 启动发现时 | 组成目录，放入初始 system 消息。 |
-| Markdown 正文 | 启动校验文件时会读到；加载时重新读取并核对 | 成功执行 `load_skill` 后，作为工具结果加入当前会话。 |
-| 辅助参考、脚本、模板 | 本章不自动读取或执行 | 后续明确需要时，经相应工具单独处理。 |
+| `name`、`description` 等元信息 | 启动建索引时 | 模型调用 `list_skills` 时，作为工具结果。 |
+| Markdown 正文 | 启动建索引时（索引里保存全文） | 模型调用 `load_skill` 时，作为工具结果。 |
+| `references/` 等辅助资源 | 模型调用 `load_skill_resource` 时才读文件 | 作为工具结果；路径必须在技能目录里。 |
 
-注意这里区分了**文件读取**与**模型上下文**。本例启动时会有界读取整份小文件，解析元信息并计算摘要；节省的是没有提前发送的正文，不是声称启动时完全没有读过这些字节。
+注意这里区分了**读文件**与**进入模型上下文**：索引在启动时就读了全文，按需的是正文进入会话的时机。
 
-## 3. 先发现，再按注册名称加载
+## 3. 先发现，再按名称加载
 
-加载器的类型把职责分开：`Entry` 保存元信息、摘要和本地位置，`SkillStore` 持有一个目录；`Loaded` 才是加载成功后送回会话的正文及来源。
+<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#workspace
 
-<<< @/public/learn-agent-rust/code/skill-loading/src/skills.rs#manifest
+`load_skill_index(root)` 扫描 `root/.skills/` 与 `root/.claude/skills/` 下的 Markdown 文件，还会在项目里找 `AGENTS.md`、`CLAUDE.md` 这类约定文件。和旧版相比有几处差别：
 
-### 发现阶段建立一份会话快照
+- **坏文件被跳过，不是停止启动。** `broken-skill` 场景加了一份缺少 `description` 的技能，索引照常建好，目录里仍是 2 份（框架只记一条警告）。如果你需要“技能有问题就拒绝启动”，要自己在建索引后核对数量或名单。
+- **扫描范围比 `SKILL.md` 宽。** `.skills/` 下的每个 `.md` 文件都会被尝试解析（`references/`、`scripts/` 里的除外，`assets/` 里的不除外）；`AGENTS.md`、`CLAUDE.md` 这类约定文件在整个项目树里都会被找到，没有 frontmatter 也能进目录（名字是 `agents`、`claude` 这样）。把 `load_skill_index` 指向一个真实仓库之前，先看看它会把什么放进目录。
+- **名称只用来查表。** `load_skill` 按名称在索引里找，`invalid-name` 传入 `../outside` 也只是“找不到这个名字”，不会被拼成路径；`unknown`、`empty-catalog` 同理。
 
-<<< @/public/learn-agent-rust/code/skill-loading/src/skills.rs#discover
+<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#wiring
 
-启动时只扫描指定根目录的直接子目录，按顺序检查 `SKILL.md`。本例要求目录名与技能名一致；最多检查 32 个根目录条目，每份文档最多 8192 字节。这两个数是示例的应用限制，不是 Agent Skills 标准的限制。
+接线只有两步：建索引，把 `SkillToolset::new(索引, 工具表, 配置)` 作为一个工具集交给 LlmAgent。`SkillToolsetConfig` 的默认值是：最多同时激活 8 份技能，`load_skill` 返回的正文最多 8000 个字符，资源最多 16000 个字符，读资源前必须先加载技能（`ActivatedOnly`）。本章把 `expose_tool_error_messages` 打开：技能工具的错误属于内部错误类，默认只把类别和错误码交给模型，打开以后读者和模型都能看到“找不到这个技能”这样的原因。
 
-`parse` 使用 YAML 解析器处理 frontmatter，支持示例中的嵌套 `metadata`，也支持折行说明。缺少必需字段、重复 YAML 字段和类型不符都报错：
+## 4. 正文进了会话以后
 
-<<< @/public/learn-agent-rust/code/skill-loading/src/skills.rs#parse
+### 索引是启动时的快照
 
-这份教学实现选择<strong>发现异常就停止启动。</strong>读者应先修复技能文件，再建立新会话。成熟客户端也可以选择跳过坏文件并给出诊断，但要明确哪些技能最终进入目录。
+`changed` 场景在建索引之后改写 `SKILL.md`（版本号不变，正文改成“只列证据，不给结论”）：
 
-### 加载时，名称用于查表
+<<< @/public/learn-agent-rust/outputs/r07-changed.txt
 
-`load_skill` 接收的是注册名称。模型传入 `../outside` 时，不会把它拼接成一个待读取的路径：
+`load_skill` 返回的仍是建索引时的正文，新内容根本没出现。旧版在加载时重新读文件、比对摘要，发现变化就拒绝（`stale_skill`）；adk-skill 从内存里的索引取正文，磁盘上的修改要等重新建索引（新进程）才生效。两种做法各有道理：快照保证同一次会话前后一致，代价是改了技能必须重建索引才能用上。激活记录里存了内容摘要，重建索引后摘要不符的旧激活会被丢弃，不会带着旧技能的工具继续工作。
 
-<<< @/public/learn-agent-rust/code/skill-loading/src/skills.rs#load
-
-查到条目后，加载器核对路径、文件大小和 SHA-256。文件删除返回 `missing_manifest`；同版本下替换正文也会返回 `stale_skill`。成功时携带名称、版本和内容摘要，便于定位这份说明的来源。
-
-摘要只能证明“与启动时看到的字节相同”。可信的技能来源仍需要由应用选择，SHA-256 本身不认证作者。这里的路径检查针对程序自建的静态目录；它没有解决其他进程并发替换文件时的竞争问题。
-
-## 4. 加载成功，正文放到哪里？
-
-先看会话中增加了哪些状态：
-
-<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#context
-
-`messages` 仍保存模型与工具历史；新增的 `loaded` 记录已经注入过的技能与摘要，`injected_bytes` 记录成功注入的正文体积。初始 system 消息只有目录和应用给出的使用原则。
-
-接着看激活逻辑：
-
-<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#activation
-
-顺序是：重新读取并验证版本快照，检查是否已加载，再检查剩余正文额度，最后才更新状态并返回内容。额度不足时，正文和 `loaded` 都保持原样，因此不会出现“标记加载成功，但模型没收到正文”的状态。
-
-`activate` 返回的 JSON 交给 `ExecuteTools`，通过 `Message::new_tool_message(output, call.id)` 追加到历史。它沿用第 2 章的工具结果类别，下一轮模型调用才能看到；应用没有把返回文本改写成新的 system 消息。
-
-本例正常路径依次执行 `ModelTurn → ExecuteTools → ModelTurn → ExecuteTools → ModelTurn`。`graph-flow` 负责推进节点，`langchain-rust` 提供 `LLM` 和消息类型；技能解析、版本检查、去重与限额是课程应用写在 `SkillStore` 和 `World` 中的逻辑。
-
-### 重复加载，还要再放一份吗？
-
-执行：
+### 重复加载，正文会再来一份
 
 ```sh
 cargo run --locked -- repeat
@@ -157,23 +126,27 @@ cargo run --locked -- repeat
 
 <<< @/public/learn-agent-rust/outputs/r07-repeat.txt
 
-第二次使用新的调用 ID，但返回 `already_loaded=true`，不重复携带正文。这样每个调用都有对应结果，同时同一会话只保留一次正文注入。
+第二次 `load_skill` 照样返回完整正文：进入会话的技能文字从 276 字节变成 552 字节。激活记录没有重复（同一份技能只记一次），但工具结果里的正文不去重。旧版返回 `already_loaded=true` 省掉正文；在 adk-skill 上，重复加载的代价要靠模型自己避免，或者在应用里拦截。
 
-![实际测得目录文本为 170 字节，两份全文为 671 字节；normal 与 repeat 的正文累计注入都为 276 字节。](/learn-agent-rust/figures/r07-context-bytes.svg)
+### 超长正文被截断，不是被拒绝
 
-看后两条柱的长度：加载请求从 1 次变成 2 次，累计正文仍为 276 字节。重复请求仍增加工具消息和调用开销，因此完整上下文从输出中的 1845 字节变成 2263 字节。这里统计的是 UTF-8 或 JSON 序列化字节，**不是 token 数，也不是模型费用**。
+`truncated` 场景把 `max_instruction_chars` 调到 12：
 
-正文一旦加入历史，就会随后续请求继续发送。本章没有自动撤回或遗忘它；`loaded` 也只在本次内存会话内生效。如何压缩历史、同时维护已加载状态，由[第 12 章](./context-compaction.md)继续处理。下一章先加入[RAG 检索证据](./retrieval-augmented-generation.md)。
+<<< @/public/learn-agent-rust/outputs/r07-truncated.txt
 
-## 5. 技能说“允许写入”，应用就会允许吗？
+`load_skill` 成功了，但正文只剩开头 12 个字符加 `[... truncated]`（这只是正文末尾的一段文字，结果里没有单独的“已截断”字段）。“先给结论”这句话没进来，规则模型于是按“没有审查说明”回答。旧版超出预算就整份拒绝；截断的风险是模型拿到半份说明，却以为自己加载成功。截断标记写在结果里，宿主可以检查它。
 
-先看动作分派的执行入口：
+![normal 与 repeat 进入会话的技能正文字节，truncated 被截断后的字节，以及自动注入方式放进用户消息的字节。](/learn-agent-rust/figures/r07-context-bytes.svg)
 
-<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#dispatch
+正文一旦加入历史，就会随后续请求继续发送。如何压缩历史，由[第 12 章](./context-compaction.md)继续处理。
 
-`write_file` 要先检查应用创建 `World` 时给出的 `allow_write`。加载技能的代码只修改会话中的加载记录和正文统计，没有修改这个策略字段。
+## 5. 技能能让工具出现，不能让工具获准
 
-现在运行一个故障场景：它在技能 frontmatter 中加入 `allowed-tools: write_file`，再在正文追加写入要求。脚本模型会故意提出写文件请求，便于观察执行边界：
+Agent Skills 规范的 `allowed-tools` 是实验字段，各家解释不同。adk-skill 的解释是：技能激活之后，它点名的工具从宿主的 `ToolRegistry` 里取出来，**加进模型可见的工具列表**。工具表由宿主提供，技能只能点名表里有的工具：
+
+<<< @/public/learn-agent-rust/code/skill-loading/src/main.rs#tools
+
+`permission` 场景在技能里加了 `allowed-tools: write_file`，正文要求把结论写进文件：
 
 ```sh
 cargo run --locked -- permission
@@ -181,102 +154,140 @@ cargo run --locked -- permission
 
 <<< @/public/learn-agent-rust/outputs/r07-permission.txt
 
-这段要求是故障注入数据。观察两个不同结果：技能加载成功；后续写入被拒绝。最终写入尝试为 0，没有生成 `review.txt`，被审查源码的摘要也保持不变。
+对照请求列表：第 0、1 次请求的工具里没有 `write_file`；`load_skill` 之后的第 2 次请求起，`write_file` 出现了。模型随后调用它，应用策略拒绝（`refused`），写入次数为 0，没有生成 `review.txt`。
 
-![技能加载成功后提出写入请求，但应用检查 allow_write=false，按调用 ID 返回 permission_denied，未发生文件写入。](/learn-agent-rust/figures/r07-permission-boundary.svg)
+![技能激活后 write_file 出现在模型的工具列表里；模型调用它时，应用策略拒绝，实际写入为零。](/learn-agent-rust/figures/r07-permission-boundary.svg)
 
-沿图向下看：文字在上方进入上下文，动作仍要经过中间的策略入口。我们验证的是本应用的这条执行路径；它不是对所有提示注入的防护证明。
+所以要分开两件事：**可见**由技能和工具表决定，**获准**由应用策略决定。还有几处边界情况：默认的 `ValidationMode::Strict` 下，技能点名的工具在工具表里找不到，`load_skill` 直接失败；工具表之后删掉了某个工具，下一次计算工具列表会出错，整个技能工具集（连同三个技能工具）在那一轮里都会消失；技能点名的工具如果和 Agent 的固定工具同名，运行会因“工具重名”失败。宿主想让技能完全不能带出某个工具，就不要把它放进工具表；放进去了，执行时仍要过[第 3 章](./permissions.md)的策略与审批。这一节验证的是本应用的执行路径，不是对所有提示注入的防护证明。
 
-Agent Skills 标准将 `allowed-tools` 列为实验字段，具体客户端可以赋予它不同含义。本教学应用明确不解释它，也不从技能内容授予权限。要支持自动允许列表，必须在可信应用策略中另行定义范围，并与[审批规则](./permissions.md)一起验收。
+## 6. 辅助资源与激活检查
 
-## 6. 动手实验：改变一个条件，观察拒绝在哪发生
+`load_skill_resource` 读技能目录里的辅助文件。路径要过两道检查：先看字面，必须是 `references/`、`assets/` 或 `scripts/` 开头的相对路径、不能含 `..`（`resource-escape` 用 `../../src/lib.rs`，在这一道就被拒绝；这个场景用 `GoogleCompatible`，否则会先被下面的激活检查挡住）；再解析真实路径，不能跑出技能目录（挡住指向外面的符号链接，本章没有单独测这一道）。`scripts/` 里的脚本只能读，adk-skill 不执行它们。
 
-前面的 `normal`、`repeat` 和 `permission` 已展示主路径。下面几个实验各自改变一个条件，所有修改都发生在程序自建的临时目录。
+默认的 `ActivatedOnly` 要求先 `load_skill` 再读资源。`resource` 场景先直接读（应被拒绝），再加载技能，再读一次：
 
-### 实验 A：完全不加载技能
+<<< @/public/learn-agent-rust/outputs/r07-resource.txt
 
-```sh
-cargo run --locked -- no-skill
-```
+第二次读取**仍被拒绝**，错误一样是“必须先加载”。这是在固定提交里实测到的行为：激活记录存在会话状态里，SkillToolset 用 `ctx.state()` 读它；而 LlmAgent 执行工具时给的上下文没有提供 `state()`（取默认的 `None`），所以检查永远认为没有激活。同一份激活记录在另一处是看得到的：每次请求前计算工具列表时，框架给 SkillToolset 的是运行的调用上下文，那里有会话状态，这就是第 5 节里 `write_file` 能出现的原因。
 
-程序仍能读取同一个目标函数，但回答使用另一条固定规则，明确说明没有加载审查说明。把它与 `normal` 对比，可以确认正文是否影响了这个测试替身的数据流；它没有测量真实模型的回答质量。
+同一个原因的另一个后果：`load_skill` 每次都从空列表重新计算激活记录，`two-skills` 场景先后加载两份技能，第二条 `state` 行里只剩 `sql-style`。后加载的技能会让先加载的那份失去激活，它带出来的工具也从列表里消失；`max_active_skills` 这个上限实际上永远碰不到。
 
-### 实验 B：目录建立后，文件被改写
+<<< @/public/learn-agent-rust/outputs/r07-two-skills.txt
 
-```sh
-cargo run --locked -- changed
-```
+`resource-compatible` 场景改用 `ResourceAccessPolicy::GoogleCompatible`（不要求先加载），资源就能读到，代价是“没加载技能也能读它的资源”。另外两条路：上游只需让工具上下文转交会话状态（adk-harness 自己的工具上下文就是这样做的，一行代码）；或者在应用里包一层工具，把 `ctx.session()` 的状态转交进去。这类问题值得报告给上游。
 
-<<< @/public/learn-agent-rust/outputs/r07-changed.txt
+这个发现也说明了本课程固定版本、逐项实测的价值：框架文档描述的是设计意图，实际行为要以运行结果为准。
 
-场景保留 `1.0.0` 这个版本标签，只改变正文。加载器仍以 `stale_skill` 拒绝。本例要求在新会话重新发现技能；`version-two` 场景则在发现前将版本改成 `2.0.0`，输出会记录新的版本和摘要。
+## 7. 对照：按问题自动注入
 
-### 实验 C：正文超过注入额度
+adk-skill 还有一种不需要工具的用法：LlmAgent 的 `with_skills(索引)`。每次运行开始时，框架用词法打分从索引里挑出最相关的一份（默认取 1 份、最低 1 分），把它的正文放到用户消息前面：
 
-```sh
-cargo run --locked -- budget
-```
+<<< @/public/learn-agent-rust/outputs/r07-auto-inject.txt
 
-<<< @/public/learn-agent-rust/outputs/r07-budget.txt
+模型第一次请求就带着 `rust-review` 的正文（307 字节，含包装），没有调用任何技能工具，工具列表里也只有 `read_file`。打分是词法的：英文按单词切，中文每个字算一个词，得分再除以正文词数的平方根。所以中文问题也能选中，风险反而在另一面：只凭“的”“审”“查”这类单字重合，不相关的技能也可能过线。注入的正文最多 2000 个字符，超出时直接截断、不加标记；它只放进这次请求的副本，不写进会话。
 
-该场景把累计正文额度从 2048 字节改为 16 字节。拒绝发生在注入前，`unique=0`、`injected=0`，工具错误仍与请求配对。文件大小上限负责限制单次读取，正文额度负责限制成功注入的累计体积；两者都不能替代模型总上下文管理。
+| | `SkillToolset`（主线） | `with_skills` 自动注入 |
+| --- | --- | --- |
+| 谁决定加载 | 模型，通过工具 | 框架，按问题文字打分 |
+| 正文在哪 | `load_skill` 的工具结果 | 用户消息前面 |
+| 目录可见 | `list_skills` | 模型看不到目录 |
+| `allowed-tools`、资源 | 支持 | 不涉及 |
+| 超长正文 | 截断并加标记（默认 8000 字符） | 截断、不加标记（默认 2000 字符） |
+| 是否写进会话 | 是（工具结果） | 否（只在请求副本里） |
 
-### 统一核对所有场景
+## 8. 动手实验与结果表
 
-以下表格由验证脚本从真实运行报告生成。“错误”是工具返回的稳定错误码；出现错误后，脚本模型会说明任务未完成。
+以下表格由验证脚本从真实运行结果生成。
 
 <!-- r07-results:start -->
 
-| 场景 | 加载请求 | 正文份数 | 注入字节 | 读 / 写尝试 | 错误 |
+| 场景 | load_skill 次数 | 进入会话的正文字节 | 读 / 写 | 审查格式 | 错误 |
 | --- | --- | --- | --- | --- | --- |
-| `normal` | 1 | 1 | 276 | 1 / 0 | — |
-| `no-skill` | 0 | 0 | 0 | 1 / 0 | — |
-| `repeat` | 2 | 1 | 276 | 1 / 0 | — |
-| `unknown` | 1 | 0 | 0 | 0 / 0 | `unknown_skill` |
-| `invalid-name` | 1 | 0 | 0 | 0 / 0 | `invalid_skill_name` |
-| `changed` | 1 | 0 | 0 | 0 / 0 | `stale_skill` |
-| `missing` | 1 | 0 | 0 | 0 / 0 | `missing_manifest` |
-| `oversize` | 1 | 0 | 0 | 0 / 0 | `file_too_large` |
-| `budget` | 1 | 0 | 0 | 0 / 0 | `context_budget` |
-| `permission` | 1 | 1 | 332 | 0 / 0 | `permission_denied` |
-| `version-two` | 1 | 1 | 276 | 1 / 0 | — |
-| `empty-catalog` | 1 | 0 | 0 | 0 / 0 | `unknown_skill` |
+| `normal` | 1 | 276 | 1 / 0 | 是 | — |
+| `no-skill` | 0 | 0 | 1 / 0 | 否 | — |
+| `repeat` | 2 | 552 | 1 / 0 | 是 | — |
+| `two-skills` | 2 | 671 | 1 / 0 | 是 | — |
+| `unknown` | 1 | 0 | 0 / 0 | 否 | 1 |
+| `invalid-name` | 1 | 0 | 0 / 0 | 否 | 1 |
+| `changed` | 1 | 276 | 1 / 0 | 是 | — |
+| `broken-skill` | 1 | 276 | 1 / 0 | 是 | — |
+| `truncated` | 1 | 36 | 1 / 0 | 否 | — |
+| `permission` | 1 | 341 | 1 / 0 | 是 | 1 |
+| `resource` | 1 | 276 | 1 / 0 | 是 | 2 |
+| `resource-compatible` | 0 | 0 | 1 / 0 | 否 | — |
+| `resource-escape` | 0 | 0 | 0 / 0 | 否 | 1 |
+| `empty-catalog` | 1 | 0 | 0 / 0 | 否 | 1 |
+| `auto-inject` | 0 | 307 | 1 / 0 | 是 | — |
 
 <!-- r07-results:end -->
 
-`empty-catalog` 会在发现前移除两份练习技能，目录为空；模型仍尝试加载时，应用明确返回 `unknown_skill`。`invalid-name` 检查名称输入，`missing` 检查已登记文件消失，`oversize` 检查加载时文件长大，它们在正文进入历史前就失败。
+“进入会话的正文字节”统计的是 UTF-8 字节，不是 token 数，也不是模型费用。<a href="/learn-agent-rust/outputs/r07-summary.txt" download>下载全部场景的摘要</a>。
 
-## 7. 复现与验证范围
+### 与旧版场景的对应 {#old-scenarios}
 
-在解压后的工程内，可以运行测试和静态检查：
+| 旧版（自写加载器 + 两库） | 新版（adk-skill） | 变化 |
+| --- | --- | --- |
+| 目录放在初始 system 消息里 | 模型调用 `list_skills` | 目录也是一次工具往返。 |
+| `normal`、`no-skill` | 同名场景 | — |
+| `repeat`：`already_loaded=true`，不重复注入 | `repeat`：正文再返回一次 | 框架不去重正文。 |
+| `changed`：`stale_skill` 拒绝 | `changed`：返回建索引时的正文 | 索引是快照。 |
+| `budget`：超出注入额度整份拒绝 | `truncated`：截断并加标记 | 部分正文进入会话。 |
+| `oversize`、`missing`、`version-two` | 删除 | 都依赖“加载时重读文件”，adk-skill 不重读。 |
+| 启动时坏文件停止启动 | `broken-skill`：跳过 | 坏技能不进目录。 |
+| `permission`：技能文字不改变 `allow_write` | `permission`：技能让 `write_file` 可见，策略拒绝 | 区分“可见”与“获准”。 |
+| `unknown`、`invalid-name`、`empty-catalog` | 同名场景 | — |
+| （无） | `resource`、`resource-compatible`、`resource-escape`、`auto-inject` | 辅助资源与自动注入。 |
+| 测试含 Unix 符号链接检查 | 8 项测试 | 路径检查由框架的资源读取负责；符号链接那一道本章没有单独测。 |
+| （无） | `two-skills` | 实测激活记录被后一份覆盖。 |
+
+验证脚本把工程打包后在临时目录解压，在旁边放好 ADK-Rust 源码，运行格式、Clippy、8 项 Rust 测试和离线构建；摘要和几条详细轨迹各连跑两次必须逐字节相同，并把上面的结果表写回正文。维护者在网站仓库根目录执行：
 
 ```sh
-cargo test --locked
-cargo fmt --check
-cargo clippy --locked --all-targets -- -D warnings
-cargo run --locked --offline
-```
-
-依赖和工具链要先下载完整，才能离线运行。测试覆盖元信息与正文分离、名称和路径、同版本替换、文件大小、YAML 错误、版本约定、多行说明、文件删除，以及重复注入和权限边界；Unix 平台另外验证目录被替换成符号链接时的拒绝行为。
-
-网站维护者在仓库根目录运行：
-
-```sh
+python3 scripts/fetch-adk-rust.py .cache/adk-rust    # 只需一次；或设 ADK_RUST_SRC
 python3 scripts/verify-agent-skills.py
 python3 scripts/generate-learn-agent-rust-figures.py --lesson R07
 python3 scripts/verify-agent-skills.py --check
 ```
 
-脚本在独立解压目录编译运行，核对 12 个场景的消息配对、图节点顺序、正文统计和实际文件结果，再解压最终下载包验证输出。证据记录工具链、源码 SHA-256 和各场景报告；配图只读取这份证据。CI 用相同检查重新验证。
+## 框架替你做了什么、没做什么
 
-本章保留的边界是：单进程、内存会话、可信静态技能目录；没有远程安装、热更新、辅助脚本执行、真实模型或跨进程恢复。正文预算只统计技能文本，总轮次与工具分派分别另有限额。
+| 框架做了 | 仍归应用 |
+| --- | --- |
+| 扫描 `.skills/` 建索引，解析 frontmatter，算内容摘要；坏文件跳过。 | 选择可信的技能来源；需要时核对索引里的名单。 |
+| `list_skills` / `load_skill` / `load_skill_resource` 三层加载；名称查表，资源路径不出技能目录。 | 改了技能要重建索引；避免重复加载带来的重复正文。 |
+| `load_skill` 正文超长时截断并标记。 | 检查截断标记，决定是否接受半份说明。 |
+| `allowed-tools` 只从宿主的工具表取工具，激活后加进工具列表。 | 决定工具表里放什么；执行仍由应用策略和审批把关。 |
+| 记录激活了哪份技能、内容摘要是什么。 | 在固定提交里，激活记录在工具执行时读不到：读资源的检查总失败、后加载的技能覆盖先加载的；需要时改用 `GoogleCompatible` 或自己转交状态。 |
+
+<!-- adk-refs:start -->
+
+## 在 ADK-Rust 源码里
+
+本章的技能索引、三层加载、allowed-tools 与自动注入，在 ADK-Rust 里分布在这几处：
+
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 建索引 | [`adk-skill/src/index.rs` · `load_skill_index`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/index.rs#L53-L82) | 扫描 `.skills/`、`.claude/skills/` 与约定文件；解析失败的文件只记警告并跳过 |
+| 内容摘要与技能 ID | [`adk-skill/src/index.rs` · `build_document`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/index.rs#L15-L47) | 整份文件的 SHA-256；ID 是名称加摘要前 12 位。索引在内存里保存正文，之后不再读文件 |
+| 三个技能工具 | [`adk-skill/src/progressive.rs` · `SkillToolset::core_tools`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/progressive.rs#L421-L427) | `list_skills`、`load_skill`、`load_skill_resource`；工具表解析出错时，整个工具集连同它们在那一轮都会消失 |
+| 加载正文 | [`adk-skill/src/progressive.rs` 第 761 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/progressive.rs#L761) | 正文超过 `max_instruction_chars` 时截断并加 `[... truncated]`；每次加载都返回完整正文 |
+| 激活记录 | [`adk-skill/src/progressive.rs` · `SkillToolset::activate`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/progressive.rs#L530-L566) | 从 `ctx.state()` 读出已有激活再追加，写进 `state_delta`；工具上下文里 `state()` 为空，所以每次都从空列表开始 |
+| 资源路径检查 | [`adk-skill/src/progressive.rs` · `SkillToolset::validate_resource_path`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/progressive.rs#L605-L621) | 只接受 `references/`、`assets/`、`scripts/` 下的相对路径；解析后不能跑出技能目录 |
+| allowed-tools 变成可见工具 | [`adk-skill/src/progressive.rs` · `SkillToolset::resolve_business_tools`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/progressive.rs#L632-L662) | 按激活记录从宿主的 `ToolRegistry` 取工具，加进下一次请求的工具列表；执行仍经过策略 |
+| 工具上下文的 state() | [`adk-agent/src/llm_agent.rs` 第 2292 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L2292) | 这个实现没有提供 `state()`，取默认的 `None`：`resource` 场景里激活检查失败的原因 |
+| 自动注入 | [`adk-skill/src/injector.rs` · `apply_skill_injection`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src/injector.rs#L166-L194) | 按问题文字打分选出最相关的技能，把正文放到用户消息前面 |
+
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
+
+<!-- adk-refs:end -->
 
 ::: warning 常见误区
-- **把技能加载等同于增加工具。** 加载器提供专业说明；能调用哪些工具、怎样执行仍由应用入口决定。
-- **只看版本标签。** 文件同样写着 `1.0.0`，正文也可能已经不同。本例核对完整文件摘要。
-- **把重复加载理解为零开销。** 正文没有重复注入，但调用、工具结果和摘要仍占用历史。
-- **把 `allowed-tools` 当作所有客户端都接受的授权。** 这个实验字段的解释依赖具体实现，本章应用不从它授予权限。
-- **把加载记录当成跨会话记忆。** 新会话要重新发现；压缩历史后也需要重新考虑正文与加载标记的一致性。
+- **把技能加载等同于获得权限。** `allowed-tools` 最多让工具出现在列表里；能否执行仍由应用策略决定。
+- **以为改了技能文件马上生效。** 索引是启动时的快照，要重建索引才会用上新内容。
+- **把截断当成成功。** `load_skill` 成功不代表正文完整，看结果里有没有截断标记。
+- **把重复加载理解为零开销。** 每次 `load_skill` 都会再送一份完整正文进会话。
+- **只看文档，不看运行结果。** 激活检查在固定提交里的实际行为与设计意图不同，本章用实验记录了下来。
+- **以为自动注入只在英文下工作。** 中文每个字都算一个词，单字重合也可能让不相关的技能被注入。
 :::
 
 <!-- transfer-thinking:start -->
@@ -299,49 +310,49 @@ python3 scripts/verify-agent-skills.py --check
 
 ## 本章结论：目录先出现，正文按需进入会话
 
-本章让技能成为现有工具循环中的一个知识入口：启动时发现目录，调用时核对来源和预算，再把正文作为工具结果写入历史。同一会话按内容快照去重，文件变化与加载失败有明确结果，后续动作继续经过应用权限检查。
+adk-skill 把技能变成工具循环里的一个知识入口：启动时建索引，模型先看目录，需要时加载正文和资源，正文作为工具结果进入会话。技能可以通过 `allowed-tools` 让宿主工具表里的工具出现在列表里，但执行仍要经过应用策略。
 
-这个分层解决了“所有知识提前塞进输入”的问题。技能正文加载后仍会积累在历史里，下一步要处理的就是怎样在保留事实和消息契约的前提下压缩上下文。
+和旧版自写的加载器相比，索引快照、正文不去重、超长截断是框架的取舍，应用要知道它们；读资源的激活检查则是实测到的问题，需要绕开。技能正文加载后仍会积累在历史里，下一步要处理的就是压缩上下文。
 
 ## 检查理解
 
-1. 启动时已经读过技能文件，为什么仍称为按需加载？
+1. 启动时索引已经读过技能全文，为什么仍称为按需加载？
 
    <details><summary>参考答案</summary>
 
-   这里的按需指正文进入模型上下文的时机。本例启动时有界读取文件以校验格式和计算摘要，初始 system 消息只放元信息目录。正文在 `load_skill` 成功后才随工具结果进入历史。
+   按需指的是正文进入模型上下文的时机。索引在启动时读了全文、算了摘要，但模型一开始只能通过 `list_skills` 看到元信息；正文在 `load_skill` 成功后才作为工具结果进入会话。
 
    </details>
 
-2. 第二次加载相同技能，为什么仍要返回工具结果？
+2. `changed` 场景里文件已经改了，为什么 `load_skill` 返回旧内容？
 
    <details><summary>参考答案</summary>
 
-   新请求有新的调用 ID，仍需要匹配结果。本例返回 `already_loaded=true` 和内容摘要，省略已经在历史里的正文；它仍有往返和元信息开销。
+   adk-skill 从启动时建好的索引里取正文，不重新读文件。索引是快照，磁盘上的修改要等重建索引才会出现；`SkillToolset` 持有建好的那份索引，所以重新调用 `load_skill_index` 之后还要用新索引重建工具集和 Agent。
 
    </details>
 
-3. 文件版本仍是 `1.0.0`，为什么可能返回 `stale_skill`？
+3. 技能声明了 `allowed-tools: write_file`，为什么 `writes=0`？
 
    <details><summary>参考答案</summary>
 
-   版本标签相同不能保证内容相同。本例比较完整文件的 SHA-256 与发现时记录的摘要，变化后要求重新建立会话快照。这个摘要不负责认证作者。
+   激活后 `write_file` 从宿主的工具表里取出、出现在模型的工具列表里，模型也调用了它；但应用策略拒绝 `write_file`，工具没有执行。技能决定的是可见，策略决定的是获准。
 
    </details>
 
-4. 技能含有写入要求，为什么 `write_attempts` 仍为 0？
+4. `truncated` 场景的 `load_skill` 是成功的，为什么回答没有用审查格式？
 
    <details><summary>参考答案</summary>
 
-   应用没有把技能文字或 `allowed-tools` 映射成授权。`write_file` 在实际文件调用前检查 `allow_write`，该场景为 `false`，因此返回拒绝结果而没有触及写入函数。
+   正文超过 `max_instruction_chars`，被截成开头 12 个字符加截断标记，“先给结论”这条要求没有进入会话。工具调用成功不代表说明完整。
 
    </details>
 
-5. 假如压缩历史时丢掉了技能正文，却保留 `loaded`，会出现什么问题？
+5. 为什么 `resource` 场景里加载了技能之后，读资源仍被拒绝？
 
    <details><summary>参考答案</summary>
 
-   再次加载可能只得到“已加载”，但模型上下文里已经没有说明。压缩历史时必须让加载标记与实际保留的正文一致，或允许重新注入。这不是本章当前内存实验已经解决的能力。
+   激活记录保存在会话状态里，而在这个固定提交里，执行工具时的上下文拿不到会话状态，激活检查因此总认为没有加载。这是实测到的框架行为；需要读资源时可以改用 `GoogleCompatible`（代价是不再要求先加载），或者让工具上下文转交会话状态。
 
    </details>
 
@@ -350,15 +361,14 @@ python3 scripts/verify-agent-skills.py --check
 - [Learn Claude Code：s07 Skills](https://learn.shareai.run/zh/s07/)：参考目录与全文分离、通过工具结果加载说明的教学主线。
 - [Agent Skills 格式规范](https://agentskills.io/specification)：目录、frontmatter、辅助资源与实验性 `allowed-tools` 字段。
 - [为 Agent 添加 Skills 支持](https://agentskills.io/client-implementation/adding-skills-support)：发现、目录展示、激活、去重和上下文生命周期。
-- [serde_yaml_ng 0.10.0](https://docs.rs/serde_yaml_ng/0.10.0/serde_yaml_ng/)：本例使用的 YAML 解析器。
-- [Rust：canonicalize](https://doc.rust-lang.org/std/fs/fn.canonicalize.html) 与 [sha2 0.10.9](https://docs.rs/sha2/0.10.9/sha2/)：路径解析与内容摘要。
+- [adk-skill 固定源码](https://github.com/zavora-ai/adk-rust/tree/98515241133d24f7e41f8fd272649035416a142f/adk-skill/src)：本课程真实运行的接口与语义基线。
 
 ## 保留的参考原图
 
 ![参考课程将技能元信息放在启动目录中，再通过 load_skill 将完整说明作为工具结果加入会话。](/learn-agent-rust/figures/upstream/r07-skill-overview.svg)
 
-这张图原样保留参考课程的 Python/Claude 语境、接口和编号。先看目录，再看工具结果；本章在相同教学主线上补充 Rust 两库接线、版本快照、限额、去重与权限实验。图中统计不作为本章 Rust 的运行数据。
+这张图原样保留参考课程的 Python/Claude 语境、接口和编号。本章在相同教学主线上换成 adk-skill 的三层加载工具，并补充快照、截断、资源与权限实验。图中统计不作为本章 Rust 的运行数据。
 
 图源：[参考章节](https://learn.shareai.run/zh/s07/) · [原图](https://learn.shareai.run/course-assets/s07_skill_loading/skill-overview.svg)。来源版本与许可见[课程架构](./architecture.md#reference-assets)。
 
-下一篇：[第 11 章：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 12 章](./context-compaction.md)处理历史增长和技能重载。
+下一篇：[第 11 章：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 12 章](./context-compaction.md)处理历史增长。

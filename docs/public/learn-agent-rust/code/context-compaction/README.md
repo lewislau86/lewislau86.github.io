@@ -1,39 +1,36 @@
-# R08：上下文压缩
+# R08 · 上下文压缩（ADK-Rust 3.0）
 
-这是网站“上下文压缩”章的独立实验工程，正文以 `docs/learn-agent-rust/context-compaction.md` 为准。
+教程：https://lewislau86.github.io/learn-agent-rust/context-compaction
+
+一次代码审查：第一次运行读审查规范、读 `src/first.rs`、读 `docs/` 下三份大资料；第二次运行“继续，给出结论”。
+压缩由框架执行：运行之间用 `EventsCompactionConfig`，运行之内用 `IntraCompactionConfig`，`naive-trim` 用
+`RunConfig::history_max_events` 只装入最近的事件作对照。摘要器是应用自写的 `FactSummarizer`：让摘要模型按
+事实清单写 JSON，逐项核对值和来源，通过才交给框架；不通过就返回错误，框架保留原历史。
+审查模型和摘要模型都是按规则回复的替身，只看得到各自的请求；文件工具真实读取临时目录。
+
+## 准备 ADK-Rust 源码
+
+```sh
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
+```
+
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
 
 ## 运行
 
-安装 Rust 1.99.1（含 rustfmt、clippy）。解压后进入本目录：
-
 ```sh
-cargo fetch --locked
-cargo run --locked
-cargo run --locked -- naive-trim
-cargo run --locked -- retrieve
-cargo run --locked -- omit-fact
+cargo run --locked                    # 全部 10 个场景的摘要
+cargo run --locked -- normal          # 某个场景的完整轨迹（事件、压缩摘要、每次请求的消息角色与估算 token）
 cargo test --locked
+cargo fmt --check
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-首次获取工具链、crate 和 Git 依赖需要网络。依赖缓存后可用 `cargo run --locked --offline`；Debian / Ubuntu 构建原生 TLS 依赖需要 `pkg-config libssl-dev` 及系统编译工具。完整安装步骤见网站 `/learn-agent-rust/setup`。
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
 
-Cargo.toml 固定与 R02、R07 相同的 graph-flow / langchain-rust Git revision，Cargo.lock 固定传递依赖。无 API key、HTTP 请求、数据库、GPU 或全局技能扫描。
+## 实验边界
 
-## 观察
-
-`normal`、`small`、`manual`、`micro-only`、`naive-trim`、`omit-fact`、`invent-fact`、`bad-json`、`summary-error`、`summary-large`、`summary-input-budget`、`archive-error`、`hard-budget`、`orphan`、`pending`、`retrieve`、`artifact-tamper`。
-
-每个场景可加 `--json`：`cargo run --locked -- --json normal`。输出包含压缩阶段、实际传给 LLM 的消息、摘要调用计数、图节点、配对与文件校验。失败场景有意以报告里的 `stop` 表达预期的业务失败；非法 CLI 参数才返回非零进程状态。
-
-- `main.rs`：读取真实临时练习文件，建立已结束的种子历史，实际 graph-flow 节点与 langchain-rust LLM trait。
-- `compact.rs`：消息组校验、原始 JSONL 归档、工具结果落盘、旧结果占位、严格摘要候选与提交前预算检查。
-- `tests.rs`：消息配对、事实与来源、失败不改历史、技能重新加载、后续用户约束、归档读取和同大小损坏检查。
-
-临时文件由程序创建并在退出时清理。可检索归档只在同次实验有效，输出中的 a1 / a2 是本次运行的注册 ID；zip 内的 `outputs/` 与 `evidence.json` 保存网站实际实验记录。
-
-## 实验口径
-
-Agent 和摘要器都使用确定性脚本模型。预算单位是 `Vec<Message>` JSON 序列化后的 UTF-8 字节，单独预留 1024 字节；不是 provider token 计数或实际 HTTP 请求大小。摘要请求也有独立字节上限与调用上限，失败不重试。
-
-本例事实清单针对固定审查任务预先定义，由应用关联到真实读取结果；严格匹配验证保留与篡改，不自动判断任意文本的语义真实性。原始首条用户消息和后续用户消息保留原样；摘要以历史资料身份进入 human 消息，工具策略位于 World。路径和 SHA-256 检查针对自建静态目录，不提供跨进程文件竞争防护、作者身份认证或进程崩溃后的恢复。
+- token 数是框架的估算（约 4 个 UTF-8 字节算 1 个 token，一个汉字约 3 字节），不是任何模型的 tokenizer，也不是费用。
+- 事实清单是为这次固定审查声明的；核对器检查清单里的事实有没有被保留或改写，不判断任意摘要的真假。
+- 会话在内存里；跨进程恢复、真实模型的摘要质量都没有验证。

@@ -85,13 +85,13 @@ pageClass: learn-agent-rust-course
 | [第 5 章 · 图状态、条件路由与有界循环](./graph-state-routing.md) | 1 / 9 / 6 | 路由正确与业务完成分别检查 | ADK-Rust 3.0 RC adk-graph 路由、归并规则与超步上限；固定等级规则，无模型质量结论。 |
 | [第 6 章 · 图暂停、检查点与恢复](./graph-pause-resume.md) | 1 / 9 / 6 | 保存冲突与效果重放分别处理 | ADK-Rust 3.0 RC adk-graph 的 SQLite 检查点与跨进程严格恢复；单业务执行者，无外部发布。 |
 | [第 7 章 · 图并行、归并与子图](./graph-parallel-subgraphs.md) | 1 / 12 / 6 | 并发安全与业务归并分别验证 | ADK-Rust 3.0 RC adk-graph 超步并行、自动汇合、超时与隔离子图；无外部服务。 |
-| [第 8 章 · 可见的任务清单](./todo-planning.md) | 4 / 7 / 6 | 计划不是完成证据 | 会话内计划；任务持久化见 R12。 |
-| [第 9 章 · 子 Agent 与上下文隔离](./subagents.md) | 3 / 12 / 7 | 隔离信息与回收执行者 | 独立历史与线程；进程沙箱另验。 |
-| [第 10 章 · 按需加载技能](./skill-loading.md) | 4 / 13 / 6 | 知识不携带执行权 | 两库技能加载；任意第三方技能另验。 |
-| [第 11 章 · RAG：检索、证据与回答](./retrieval-augmented-generation.md) | 2 / 7 / 6 | 检索命中与回答有据分开验收 | 真实词法检索；固定摘录生成器，无真实模型质量结论。 |
-| [第 12 章 · 上下文压缩](./context-compaction.md) | 9 / 14 / 6 | 压缩优化的是充分信息 | 脚本摘要与字节预算；语义泛化另验。 |
-| [第 13 章 · 跨会话记忆](./memory.md) | 5 / 12 / 6 | 记住的事实有时间和来源 | 规则提取、真实磁盘与独立进程；模型提取另验。 |
-| [第 14 章 · 系统提示词组装](./system-prompts.md) | 4 / 8 / 6 | 来源决定解释方式 | 两库消息组装；真实服务与攻击覆盖另验。 |
+| [第 8 章 · 可见的任务清单](./todo-planning.md) | 4 / 10 / 6 | 计划不是完成证据 | ADK-Rust 3.0 RC 会话状态与 before_model 回调；规则模型，内存会话；任务持久化见 R12。 |
+| [第 9 章 · 子 Agent 与上下文隔离](./subagents.md) | 3 / 8 / 7 | 隔离信息与回收执行者 | ADK-Rust 3.0 RC 的 AgentTool 与 transfer_to_agent；同一进程，规则模型；进程沙箱另验。 |
+| [第 10 章 · 按需加载技能](./skill-loading.md) | 4 / 12 / 6 | 知识不携带执行权 | ADK-Rust 3.0 RC adk-skill 的索引、三层加载与 allowed-tools；规则模型；任意第三方技能另验。 |
+| [第 11 章 · RAG：检索、证据与回答](./retrieval-augmented-generation.md) | 2 / 9 / 6 | 检索命中与回答有据分开验收 | ADK-Rust 3.0 RC adk-rag 管线与 RagTool；词袋 embedding 与固定摘录生成器，无真实模型质量结论。 |
+| [第 12 章 · 上下文压缩](./context-compaction.md) | 8 / 9 / 6 | 压缩优化的是充分信息 | ADK-Rust 3.0 RC 的运行间/运行内压缩；规则模型与估算 token；语义泛化另验。 |
+| [第 13 章 · 跨会话记忆](./memory.md) | 5 / 15 / 6 | 记住的事实有时间和来源 | ADK-Rust 3.0 RC adk-memory 的 SQLite 后端、真实文件与独立进程；规则模型；并发写入与语义检索另验。 |
+| [第 14 章 · 系统提示词组装](./system-prompts.md) | 4 / 7 / 6 | 来源决定解释方式 | ADK-Rust 3.0 RC LlmAgent 的请求组装；规则模型记录完整请求；真实服务的缓存与攻击覆盖另验。 |
 | [第 15 章 · 模式选择：单次调用、工作流与自主循环](./pattern-selection.md) | 1 / 4 / 5 | 输入合同决定最小结构 | 真实 graph-flow；读取与决策是内存夹具，模型质量另验。 |
 | [第 16 章 · 提示链与条件路由](./prompt-chaining-routing.md) | 1 / 4 / 5 | 中间成功也需要版本 | 规则路由与固定抽取；真实 graph-flow 产物门，模型分类另验。 |
 | [第 17 章 · 并行分解与结果归并](./parallel-decomposition.md) | 1 / 4 / 5 | 归并要验证成员身份 | 真实 Tokio 并发与任务回收；停顿是夹具，无生产加速结论。 |

@@ -1,0 +1,33 @@
+--- process 1: chat user=user-1 project=project-a session=session-A recall=tool message="请记住：reply_language=中文" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"中文"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"中文"}
+[assistant] text    "已记住：reply_language=中文。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 2: chat user=user-1 project=project-a session=session-C recall=tool message="请记住：reply_language=English" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"English"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"English"}
+[assistant] text    "已记住：reply_language=English。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 3: chat user=user-1 project=project-a session=session-D recall=load message="以后请用什么语言回答？" (exit 0)
+[assistant] call    id=call-load_memory load_memory {"query":"reply_language"}
+[assistant] result  id=call-load_memory load_memory status=ok {"count":2,"memories":[{"author":"user","content":"reply_language=中文\n来源：session-A 原话：请记住：reply_language=中文","timestamp":"…"},{"author":"user","content":"reply_language=English\n来源：session-C 原话：请记住：reply_language=English","timestamp":"…"}]}
+[assistant] text    "好的，以后用中文回答。（依据：load_memory 返回的第 1 条）"
+[assistant] final
+request 0: roles=system,user tools=[remember,read_note,load_memory]
+request 1: roles=system,user,model,function tools=[remember,read_note,load_memory]
+outcome: load_memory:count=2 first=中文 answer=中文
+--- process 4: chat user=user-1 project=project-a session=session-E recall=tool message="以后请用什么语言回答？" (exit 0)
+[assistant] call    id=call-recall_memory recall_memory {"key":"reply_language"}
+[assistant] result  id=call-recall_memory recall_memory status=ok {"key":"reply_language","source":"session-C","status":"found","value":"English","versions":2}
+[assistant] text    "OK, I'll answer in English.（依据：session-C 的记忆）"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: recall:found English from session-C versions=2 answer=English
+naive-load: processes=4 steps=[remember:saved; remember:saved; load_memory:count=2 first=中文 answer=中文; recall:found English from session-C versions=2 answer=English]

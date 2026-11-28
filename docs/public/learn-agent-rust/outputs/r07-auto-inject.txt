@@ -1,0 +1,9 @@
+catalog: [rust-review, sql-style]
+[reviewer] call    id=call-1 read_file {"path":"src/lib.rs"}
+[reviewer] result  id=call-1 read_file status=ok {"path":"src/lib.rs","text":"pub fn first(values: &[u8]) -> u8 { values[0] }\n"}
+[reviewer] text    "结论：空输入会触发索引越界。证据：函数直接使用 values[0]；建议返回 Option<u8>。未执行被审查函数的测试。"
+[reviewer] final
+request 0: roles=system,user tools=[read_file]
+request 1: roles=system,user,model,function tools=[read_file]
+answer: 结论：空输入会触发索引越界。证据：函数直接使用 values[0]；建议返回 Option<u8>。未执行被审查函数的测试。
+auto-inject: catalog=2 load_skill_calls=0 skill_text_bytes=307 reads=1 writes=0 review_txt=false injected_up_front=true review_format=true errors=0

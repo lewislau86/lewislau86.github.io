@@ -73,7 +73,9 @@ def main():
             # Cross-platform verification requires major 18 and durability settings;
             # preserve the recorded patch label in the reproducible downloadable snapshot.
             require(int(evidence["libraries"]["server_version_num"])//10000==18,"Wrong PostgreSQL major")
-            evidence["libraries"]["server_version_num"]=recorded["libraries"]["server_version_num"]
+            # Copy the nested dict first: evidence is a shallow copy of result, and result must keep the
+            # version actually measured so the extracted-archive rerun below compares like with like.
+            evidence["libraries"]=dict(evidence["libraries"],server_version_num=recorded["libraries"]["server_version_num"])
         serialized=(json.dumps(evidence,ensure_ascii=False,indent=2)+"\n").encode()
         outputs={row["scenario"]:(root/"results"/(row["scenario"]+".txt")).read_bytes() for row in result["scenarios"]}
         artifacts[DATA]=serialized

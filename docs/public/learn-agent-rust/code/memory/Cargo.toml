@@ -1,9 +1,20 @@
 [package]
-name = "learn-agent-r09"
+name = "memory"
 version = "0.1.0"
 edition = "2024"
 publish = false
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
+adk-agent = { version = "3.0.0", default-features = false }
+adk-core = { version = "3.0.0", default-features = false }
+adk-memory = { version = "3.0.0", default-features = false, features = ["sqlite-memory"] }
+adk-runner = { version = "3.0.0", default-features = false }
+adk-session = { version = "3.0.0", default-features = false }
+adk-tool = { version = "3.0.0", default-features = false, features = ["memory-tools"] }
+async-trait = "0.1"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+futures = "0.3"
 serde_json = "1"
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "sqlite"] }
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt"] }

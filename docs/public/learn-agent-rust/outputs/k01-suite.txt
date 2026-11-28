@@ -1,20 +1,45 @@
 scenario=normal
 quote=Upgrade v2 requires Rust 1.99.1. Run cargo test before publishing.
 citation=A/release.md:L3-L3@63c4bb1531c9478b
+score=0.378
 claim_valid=true
 scenario=no-hit
 abstain=no_evidence
-scenario=scope visible_hits=1 private_leak=false
+scenario=zero-score threshold=0.0 hits=2 scores=[0.000,0.000] first=A/operations.md:L3-L3
+quote=Backup the database before schema migration. Keep the backup until validation succeeds.
+citation=A/operations.md:L3-L3@3837e7852e030134
+score=0.000
+claim_valid=true
+scenario=scope visible_hits_a=1 private_leak=false visible_hits_b=1 b_documents=[B/private.md]
 scenario=budget
 abstain=no_evidence
-scenario=injection quoted_as_data=true generator=fixture actions=0
+scenario=injection cited=A/untrusted.md:L3-L3 quoted_as_data=true generator=fixture actions=0
 scenario=bad-citation unsupported_quote_rejected=true unknown_id_rejected=true
-scenario=evaluation labeled_queries=4 recall_at_2=3/4 mrr_at_2=0.750
+scenario=evaluation embedder=hashed-words labeled_queries=4 recall_at_2=3/4 mrr_at_2=0.750
 scenario=lexical-gap
 abstain=no_evidence
+scenario=swap-embedder embedder=synonym-table recall_at_2=4/4 mrr_at_2=1.000
+quote=Rollback: restore the previous release after a failed migration.
+citation=A/release.md:L5-L5@63c4bb1531c9478b
+score=0.236
+claim_valid=true
+scenario=collision dims=4 query=unicorn hits=1 first=A/operations.md:L5-L5 score=0.658
 scenario=stale rejected=stale_index
-scenario=updated
+scenario=updated chunks_in_a=5
 quote=Upgrade v2 requires Rust 2.00.0. Run cargo test before publishing.
 citation=A/release.md:L3-L3@15e1b1f9fbe0704d
+score=0.408
 claim_valid=true
-scenario=deleted rejected=source_missing rebuilt_hits=0
+scenario=deleted rejected=source_missing removed_chunks=2 rebuilt_hits=0
+scenario=agent-cited
+[assistant] call    id=scripted_tc_0_0 rag_search {"query":"upgrade Rust"}
+[assistant] result  rag_search [A/release.md:L3-L3 score=0.378]
+[assistant] source  kb://A/release.md#L3-L3
+[assistant] text    "升级到 v2 需要 Rust 1.99.1（[Release v2](kb://A/release.md#L3-L3)）。"
+[assistant] cites   kb://A/release.md#L3-L3
+[assistant] final
+scenario=agent-uncited
+[assistant] call    id=scripted_tc_0_0 rag_search {"query":"upgrade Rust"}
+[assistant] result  rag_search [A/release.md:L3-L3 score=0.378]
+[assistant] source  kb://A/release.md#L3-L3
+[run] error   guardrail.output_blocked

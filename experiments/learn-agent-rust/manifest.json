@@ -390,9 +390,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样只把当前有权访问、与问题相关且可追溯的资料交给回答环节？",
-      "addition": "文档切块、BM25、范围过滤、上下文预算、引用校验与索引更新。",
-      "outcome": "运行真实词法检索，观察同义表达缺口、资料更新与删除；用固定摘录夹具检查回答边界，真实模型质量另验。",
+      "addition": "adk-rag 切块入库、词袋向量检索、范围隔离、上下文预算、引用校验与索引更新。",
+      "outcome": "运行 adk-rag 管线，观察同义表达缺口、零分结果、资料更新与删除；用固定摘录夹具和 CitationRequired 检查回答边界，真实模型质量另验。",
       "prerequisites": [
         "R02",
         "R03",
@@ -411,7 +412,7 @@
         ]
       ],
       "binary": "rag-lab",
-      "run_scope": "11 个检索与证据场景"
+      "run_scope": "16 个检索、证据与 Agent 引用场景"
     },
     {
       "id": "R08",

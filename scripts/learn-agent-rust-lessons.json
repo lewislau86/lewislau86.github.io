@@ -203,9 +203,9 @@
       "part": "planning",
       "domain": "规划与控制",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "长任务怎样记录目标、步骤和当前进度？",
-      "addition": "会话内待办清单与合法状态迁移。",
+      "addition": "会话状态里的待办清单、整批校验与合法状态迁移，before_model 回调让每次请求看到最新清单。",
       "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
       "prerequisites": [
         "R02",
@@ -220,10 +220,10 @@
       "part": "planning",
       "domain": "规划与控制",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "怎样把一次子任务放进独立的消息历史？",
-      "addition": "子会话输入输出契约与父子预算。",
-      "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
+      "addition": "AgentTool 新会话与结果回传、transfer_to_agent 交接控制权、父子共用预算与宿主委派契约。",
+      "outcome": "验证子任务历史独立、只回传最终回答、共用预算、子工具边界，以及委派中途取消的“结果未知”。",
       "prerequisites": [
         "R02",
         "R03"
@@ -237,10 +237,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "怎样只在任务需要时加入专业说明？",
-      "addition": "技能目录、版本与按需内容注入。",
-      "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
+      "addition": "adk-skill 技能索引、list/load/load_resource 三层加载、allowed-tools 与自动注入。",
+      "outcome": "观察加载前后的上下文与工具列表，验证技能能让工具可见、执行权限仍由应用策略决定。",
       "prerequisites": [
         "R02",
         "R03"
@@ -254,10 +254,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "怎样只把当前有权访问、与问题相关且可追溯的资料交给回答环节？",
-      "addition": "文档切块、BM25、范围过滤、上下文预算、引用校验与索引更新。",
-      "outcome": "运行真实词法检索，观察同义表达缺口、资料更新与删除；用固定摘录夹具检查回答边界，真实模型质量另验。",
+      "addition": "adk-rag 切块入库、词袋向量检索、范围隔离、上下文预算、引用校验与索引更新。",
+      "outcome": "运行 adk-rag 管线，观察同义表达缺口、零分结果、资料更新与删除；用固定摘录夹具和 CitationRequired 检查回答边界，真实模型质量另验。",
       "prerequisites": [
         "R02",
         "R03",
@@ -272,10 +272,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "对话历史太长时，怎样保留继续行动需要的事实？",
-      "addition": "上下文预算、裁剪与历史摘要。",
-      "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
+      "addition": "运行之间与运行之内的压缩、只装入最近事件，以及应用自写的事实核对摘要器。",
+      "outcome": "检查压缩前后的事实保留与工具消息配对，验证摘要被拒绝时历史保持不变，记录漏写与只保留最近事件的失败用例。",
       "prerequisites": [
         "R01",
         "R07"
@@ -289,10 +289,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "哪些事实应当在新会话中仍然可用？",
-      "addition": "有来源和版本的事实存储、提取与召回。",
-      "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
+      "addition": "adk-memory 的 SQLite 记忆服务、应用核对来源的写入与按键取最新的召回，以及现成的检索与预加载工具。",
+      "outcome": "在独立的新进程中召回指定事实，验证来源核对、版本选择、项目范围、删除与清除，以及损坏文件和更新版本表结构被拒绝。",
       "prerequisites": [
         "R08"
       ],
@@ -305,10 +305,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
-      "stack": "v1",
+      "stack": "adk3",
       "question": "策略、工具、技能和环境怎样组成一次模型请求？",
-      "addition": "运行时提示词组装与各部分的来源和版本。",
-      "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
+      "addition": "LlmAgent 的组装顺序：static_instruction、instruction 模板、技能注入与工具声明，以及来源 pin、请求前回调和执行策略。",
+      "outcome": "逐次记录模型实际收到的请求，核对各部分的位置、前缀是否稳定、模板何时渲染，以及资料内容与执行权限的边界。",
       "prerequisites": [
         "R07",
         "R09"

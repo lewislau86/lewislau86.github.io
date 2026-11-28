@@ -1,6 +1,6 @@
 ---
 title: "第 8 章：可见的任务清单"
-description: "用 Rust 实现会话内待办、整批校验和版本检查，让计划变化可见，并用执行证据核对任务结果。"
+description: "用 ADK-Rust 3.0 把待办清单放进会话状态：自写 todo_write 工具整批校验并经 state_delta 写回，before_model 回调让每次请求都看到最新清单，再用执行证据核对任务结果。"
 pageClass: learn-agent-rust-course
 prev:
   text: 第 7 章 · 图并行、归并与子图
@@ -15,13 +15,17 @@ next:
 [课程总览](./index.md) · [上一章：图并行、归并与子图](./graph-parallel-subgraphs.md) · [下一章：子 Agent 与上下文隔离](./subagents.md)
 
 ::: tip 本章学习目标
-- 把目标拆成带 ID 和状态的步骤，让每轮模型输入都能看到最新清单。
+- 把目标拆成带 ID 和状态的步骤，保存在会话状态里，让每次模型请求都能看到最新清单。
 - 校验状态迁移、版本和整批更新，拒绝会破坏现有记录的候选清单。
-- 用真实读取与失败对照，区分清单完成、循环停止和任务验收。
+- 用真实读取与失败对照，区分清单完成、运行停止和任务验收。
 
-**前置：** [第 2 章 · 工具注册与图调度](./tools-and-graph.md)、[第 3 章 · 工具权限与审批](./permissions.md)；理解 Rust 的枚举、`Result`、可变借用和 JSON。第 4 章的 Hook 机制可结合阅读，本实验可独立运行。
+**前置：** [第 2 章 · 工具注册与图调度](./tools-and-graph.md)、[第 3 章 · 工具权限与审批](./permissions.md)、[第 4 章 · 生命周期与 Hooks](./hooks.md)；理解 Rust 的枚举、`Result` 和 JSON。
 
-**实践方式：** 下载[本章独立工程](/learn-agent-rust/todo-planning.zip)，使用固定的 Rust 1.99.1 工具链。首次构建需要下载 Cargo 依赖；运行实验无需模型密钥和数据库。
+**实践方式：** 下载[本章独立工程](/learn-agent-rust/todo-planning.zip)，按[动手实验](#hands-on)取一次 ADK-Rust 源码后运行；无需模型密钥和数据库。
+:::
+
+::: info 本章已迁移到 ADK-Rust 3.0
+本章实验基于 ADK-Rust 3.0 发布候选版（固定提交，尚未发布到 crates.io）。旧版本章用标准库自写运行时，清单放在 `Runtime` 结构体里，可从 git 标签 `learn-agent-rust-v1` 取得。新版把清单放进框架的会话状态，校验规则原样保留；变化最大的是“模型怎样看到最新清单”，见第 4 节。[对应表](#old-scenarios)列出了场景的变化。
 :::
 
 沿用前面的工作区助手。这次用户说：“读取 README，整理启动说明。”助手准备先读文件，再整理说明，最后核对原文。一次文件读取很短，但这个例子能把长任务中容易混在一起的三件事拆开：原来的目标是什么，现在推进哪一步，还有什么没有完成。
@@ -38,7 +42,7 @@ next:
 
 ## 1. 先把步骤从对话里拿出来
 
-只有消息历史时，计划可能夹在用户请求、模型回答和工具结果之间。我们给会话增加一份明确的 `Plan`，由运行时保存；模型通过 `todo_read` 查看，通过 `todo_write` 提交新快照。
+只有消息历史时，计划可能夹在用户请求、模型回答和工具结果之间。我们给会话增加一份明确的清单，模型通过 `todo_write` 提交新快照，通过 `todo_read` 查看。
 
 | 条目 ID | 内容 | 建单时状态 |
 | --- | --- | --- |
@@ -46,12 +50,12 @@ next:
 | `summarize` | 整理启动说明 | `pending` |
 | `check` | 核对说明与原文 | `pending` |
 
-条目 ID 用来判断“这还是原来的步骤吗”；内容给模型和读者看；状态说明推进位置。`goal` 保存用户目标，只有应用创建清单时设置，清单更新接口没有修改它的参数。
+条目 ID 用来判断“这还是原来的步骤吗”；内容给模型和读者看；状态说明推进位置。`goal` 保存用户目标，清单更新接口没有修改它的参数。
 
 ::: info 源码与实验范围
 本文 Rust 片段均引用 <a href="/learn-agent-rust/code/todo-planning/src/main.rs" download>完整 main.rs</a>，也可在 [GitHub 查看工程](https://github.com/lewislau86/lewislau86.github.io/tree/master/docs/public/learn-agent-rust/code/todo-planning)。[下载包](/learn-agent-rust/todo-planning.zip)包含源码、锁文件、工具链配置和运行说明。
 
-实验使用固定脚本模型产生工具调用，清单工具接收真实 JSON 参数；文件工具通过 `std::fs` 读取实际的临时 README。它验证单进程、内存内的清单机制。本章没有新增 `langchain-rust` / `graph-flow` 集成测试；两库接线以第 2 章实验为准。
+Runner、LlmAgent、会话状态、before_model 回调和应用策略都是 ADK-Rust 的真实实现；文件工具真实读取临时目录。模型是按规则回复的 `PlanLlm`，它只能看到请求内容；会话服务在内存里，验证的是单进程内的清单机制。
 :::
 
 <<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#types
@@ -72,7 +76,7 @@ next:
 
 <<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#transition
 
-这套规则属于教学应用的选择。其他产品可以允许多个进行中、撤销完成或跳过步骤，但必须明确相应语义。这里限制一个进行中，是为了显示“当前关注点”，并没有实现线程锁、任务领取或并行调度。
+这套规则属于教学应用的选择。其他产品可以允许多个进行中、撤销完成或跳过步骤，但必须明确相应语义。这里限制一个进行中，是为了显示“当前关注点”，并没有实现锁、任务领取或并行调度。
 
 除了迁移，我们还固定以下输入约束：
 
@@ -83,86 +87,92 @@ next:
 | 内容 | 去掉首尾空白后非空，原始内容最多 120 个 Unicode 字符 | 避免空任务和过长说明。 |
 | 已有条目 | 保留 ID 和原内容，允许调整顺序 | 避免把旧步骤悄悄改成另一件事。 |
 | 新增条目 | 初始状态必须是 `pending` | 让新增工作先进入计划。 |
-| 版本 | 与运行时当前版本一致 | 拒绝根据旧快照提交的替换。 |
+| 版本 | 与当前清单版本一致 | 拒绝根据旧快照提交的替换。 |
 
-8、24、120 都是本章选定的应用上限，不是性能测试得到的最佳值。这里用 `chars().count()` 计内容长度；ID 只接受 ASCII，因此字节长度与字符数一致。
+8、24、120 都是本章选定的应用上限，不是性能测试得到的最佳值。
 
 ## 3. 整份先检查，再一次替换
 
-假设候选快照的第一项合法地变成进行中，第三项却是空内容。如果边遍历边修改运行时，发现第三项错误时，第一项可能已经变了。调用者收到“更新失败”，实际状态却只改了一半。
+假设候选快照的第一项合法地变成进行中，第三项却是空内容。如果边遍历边修改，发现第三项错误时，第一项可能已经变了。调用者收到“更新失败”，实际状态却只改了一半。
 
-我们的做法是：先检查 `args.items`，直到所有规则都通过，才替换 `self.items`。
+我们的做法是：先检查整份候选列表，直到所有规则都通过，才替换。
 
 <<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#validate
 
-注意函数末尾的两行。它们是唯一的提交位置；前面任何 `return Err(...)` 都会留下原清单和原版本。Rust 的 `&mut self` 让这次同步调用独占访问当前 `Plan`；这里说的整批更新只覆盖这个内存对象，没有数据库事务或跨进程并发控制。
+函数末尾的两行是唯一的提交位置；前面任何 `return Err(...)` 都会留下原清单和原版本。`expected_revision` 解决另一种问题：模型看到版本 1，清单已经被推进到版本 2，这时模型仍提交“基于版本 1”的候选列表，函数首先返回 `todo.revision_conflict`，模型应读取最新状态再重新组织更新。
 
-`expected_revision` 解决另一种问题：模型看到版本 1，其他动作已经把清单推进到版本 2，这时模型仍提交“基于版本 1”的候选列表。函数首先返回 `revision_conflict`，调用者应读取最新状态，再重新组织更新。
+即使同一候选列表连续提交，接受第一次后版本也会改变，第二次携带旧版本就会冲突——前提是第二次提交时能读到第一次的结果。第 4 节会看到，同一批工具调用里这一点并不自动成立。本章没有把更新设计成幂等重放接口；需要重放与存储时，要额外设计请求身份和提交语义。
 
-即使同一候选列表连续提交，接受第一次后版本也会改变，第二次携带旧版本就会冲突。本章没有把更新设计成幂等重放接口；需要重放与存储时，要额外设计请求身份和提交语义。
+## 4. 清单放在哪里，模型怎样看见
 
-## 4. 更新以后，下一轮怎样看见
+ADK-Rust 的会话（session）除了事件历史，还有一份**会话状态**（session state）：键值对，随会话保存。改状态的正规途径不是直接写，而是在事件上附一份 `state_delta`；框架把事件追加进会话时，把其中的键合并进状态。工具通过 `ctx.actions()` / `ctx.set_actions()` 修改自己这次调用的事件动作：
 
-把清单打印到终端，只能让人看见。要让模型继续利用它，运行时还要在每次模型调用前构造包含最新状态的输入。
+<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#tools
 
-<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#messages
+`todo_write` 从 `ctx.session()` 读出当前清单，调用上一节的校验，通过后把新清单放进 `state_delta`，返回值也是新清单。这次调用的事件产出时，Runner 把 `state_delta` 合并进会话状态，之后的读取就能看到。校验失败时返回 `InvalidInput` 类错误，错误码是 `todo.*`；按[第 1 章](./agent-loop.md)讲过的规则，这一类错误会把消息带给模型。轨迹里每次成功的 `todo_write` 后面都跟着一行 `state   plan = {...}`，就是这次调用事件上的 `state_delta`。
 
-`Runtime` 拥有当前清单、消息历史和成功文件读取计数。`model_input()` 每轮从它复制一份输入快照；快照用于观察，后续更新仍然作用于运行时保存的 `Plan`。每次派发都记录模型调用及其对应的工具结果，结果沿用原 `call_id`。
+这里有一个容易漏掉的时间差：模型一次回复里可以有多个工具调用，框架把这一批全部执行完才产出它们的事件。也就是说，同一批里第二个 `todo_write` 读会话状态时，第一个的写入还没合并。`same-batch-naive` 场景里，一次回复带两个基于版本 1 的 `todo_write`（一个开始读取，一个新增步骤），两个都被接受，最终清单版本是 2，“开始读取”这一改动被第二次写入覆盖掉了，版本检查没有起作用。所以 `todo_write` 按本次运行记下自己刚写的清单，同一批里后面的调用读它；`same-batch` 场景里第二个调用因此得到 `todo.revision_conflict`，“开始读取”保留了下来。harness 的清单工具也是这样处理的（见本章末尾）。
 
-![运行时每轮提供最新计划与历史，工具返回结果；清单完成和实际任务验收分别判断。](/learn-agent-rust/figures/r05-visible-loop.svg)
+清单写进了会话状态，模型下一次请求时能看到吗？这里有一个实测出来的关键细节。LlmAgent 的 `instruction` 支持 `{键}` 模板，按会话状态替换，看起来正好用来放清单。但**模板只在每次运行开始时渲染一次**：同一次运行里，工具写进状态的新清单，不会出现在后面几次请求的 instruction 里。`template-only` 场景只用模板，结果是这样：
 
-沿上半图的回路看：请求进入派发器，结果写回历史，然后构造下一轮输入。下方是两次实际运行的对照，说明“模型声称完成”仍需执行证据支持。
+<<< @/public/learn-agent-rust/outputs/r05-template-only.txt
 
-本实验的派发器把清单和文件工具放在同一个入口：
+三次请求里，instruction 带的清单一直是“未建单”。其实第二次请求的历史里已经有第一次 `todo_write` 的结果（版本 1）：请求里同时出现了两份互相矛盾的清单。`PlanLlm` 被设计成只信 system 内容里的清单，所以它以为还没建单，又按版本 0 提交，被 `todo.revision_conflict` 拒绝；真实模型面对这种矛盾可能选对，也可能选错，这正是每次请求都要放入最新清单的理由。版本检查在这里起了作用：模型的视图过期时，更新不会覆盖真实清单。摘要里的 `next_run_first_seen=1` 说明模板并非不会更新：同一会话的下一次运行开始时重新渲染，就看到了版本 1。
 
-<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#dispatch
+要让每次请求都带上最新清单，本章用 before_model 回调：
 
-`todo_write` 先解析 JSON，再调用刚才的整批校验。成功结果带回已接受的清单；失败结果包含稳定的错误码。`todo_read` 接收空对象，返回当前清单。`read_file` 只允许精确路径 `README.md`，通过后才读取文件；其他路径和所有 `write_file` 请求都被拒绝。
+<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#visibility
 
-因此，计划里出现“写入 summary.txt”只表示有这样一项待办。是否允许写入，仍要经过执行器的权限策略。在[第 3 章](./permissions.md)中，需要批准的动作会保存审批快照；本章为聚焦清单，直接采用固定只读策略。
+回调在每次请求模型之前运行，`ctx.state()` 读到的是会话当前的状态，上一轮工具写入的清单已经在里面；回调把它作为一条 system 内容插到请求里。模型是这样读清单的：
 
-要接回第 2 章的图，接线位置也明确：在应用的 `State` 中增加 `Plan`，`ModelTurn` 组装输入时读取最新计划，`ExecuteTools` 的注册表派发 `todo_read` 与 `todo_write`，然后保存更新后的状态。清单条目属于应用数据，不需要为每个条目建立一个图节点。这是接入方向，本章发布包验证的是上面的独立运行时。
+<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#model
 
-## 5. 沿一次真实读取，看清计划如何推进
+`PlanLlm` 拿不到运行时的任何内部对象，只从请求的 system 内容里找最后一处“当前清单：”，读后面的清单。轨迹里记录的“request N: revision=…”就是它每次请求实际读到的版本。
 
-为了复现每个分支，脚本模型按轮次产生固定请求：建单、开始读取、调用文件工具、推进整理、推进核对、完成核对，最后生成回答。它通过本轮输入中的清单建立候选列表，回答则从历史里的文件读取结果取内容。
+![会话状态里的清单由 before_model 回调放进每次请求，PlanLlm 提出调用，Runner 经过策略执行工具，todo_write 校验后经 state_delta 写回；下方是正常读取与只改完成标记两次运行的对照。](/learn-agent-rust/figures/r05-visible-loop.svg)
 
-这一选择能稳定检验接线和状态规则。它没有测量真实模型会不会主动列计划、何时决定更新，或是否更擅长完成长任务。
+本实验的四个工具和应用策略这样接起来：`todo_write`、`todo_read`、`read_file` 允许，`write_file` 拒绝。
 
-![七轮模型输入中的清单版本依次为 0、1、2、2、3、4、5，读取文件不会自动更新清单。](/learn-agent-rust/figures/r05-plan-snapshots.svg)
+<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#wiring
 
-逐行看三个条目：第一轮输入尚未建单；第二轮看见版本 1 的三个待开始步骤。第三轮读取文件后，第四轮输入的版本仍为 2，因为文件工具只返回内容。第四轮提交“读取完成、整理进行中”，整批通过后，下一轮才看见版本 3。
+因此，计划里出现“写入 summary.txt”只表示有这样一项待办。是否允许写入，仍由应用策略判断（[第 3 章](./permissions.md)）。`write_file` 是一个真的会写文件的工具，策略拒绝它，它就不执行。
 
-真正驱动循环的是下面这段代码：
+## 5. 沿一次真实读取，看清计划如何推进 {#hands-on}
 
-<<< @/public/learn-agent-rust/code/todo-planning/src/main.rs#loop
-
-`inputs` 保留每轮调用前的快照。`stop` 记录为什么停下：得到回答、工具错误或轮次耗尽。最后分别计算 `all_completed` 与 `goal_verified`。
-
-本任务的独立验收很窄：成功调用文件读取一次，且最终答案等于“启动说明”加读取到的 README 全文。它用于检验回答确实经过工具结果，而不是评估开放式摘要质量。测试会把 README 换成 `启动命令：just dev`，核对回答随文件变化。
-
-## 动手实验：先预测，再核对
-
-解压下载包，进入 `todo-planning` 目录：
+下载并解压独立工程，先取一次 ADK-Rust 源码再运行：
 
 ```sh
-cargo run --locked
-cargo run --locked -- --json normal
-cargo run --locked -- --json claims-only
+cd todo-planning
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked                      # 24 个场景的摘要
+cargo run --locked -- normal            # 正常流程的完整轨迹
+cargo run --locked -- claims-only
 cargo test --locked
 ```
 
-默认命令运行全部场景并执行断言。`--json normal` 会展开最终计划、逐轮输入和完整调用历史。先猜三件事：只把清单改完，验收会通过吗？读取第三轮结束时耗尽预算，清单会自动补完吗？新建会话会继承上一份计划吗？
+编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0），不影响运行和检查。先猜三件事：只把清单改完，验收会通过吗？读取第三轮结束时耗尽预算，清单会自动补完吗？新建会话会继承上一份计划吗？
 
-以下是 Rust 1.99.1 下实际运行的完整摘要，直接从生成文件导入：
+`PlanLlm` 按请求次数推进：建单、开始读取、调用文件工具、推进整理、推进核对、完成核对，最后生成回答。它从请求里的清单构造候选列表，回答则从历史里的文件读取结果取内容。这能稳定检验接线和状态规则；它没有测量真实模型会不会主动列计划、何时决定更新。
+
+![七次模型请求里看到的清单版本依次为 0、1、2、2、3、4、5，读取文件不会自动更新清单。](/learn-agent-rust/figures/r05-plan-snapshots.svg)
+
+逐行看三个条目：第一次请求时尚未建单；第二次看见版本 1 的三个待开始步骤。第三次请求时模型读取文件，第四次请求看到的版本仍为 2，因为文件工具只返回内容、不改清单。第四次提交“读取完成、整理进行中”，整批通过后，第五次请求才看见版本 3。完整轨迹：
+
+<<< @/public/learn-agent-rust/outputs/r05-normal.txt
+
+本任务的独立验收很窄：成功调用文件读取一次，且最终答案等于“启动说明”加读取到的 README 全文。它检验回答确实经过工具结果，而不是评估开放式摘要质量。测试会把 README 换成 `启动命令：just dev`，核对回答随文件变化。
+
+## 动手实验：先预测，再核对
+
+以下是全部 24 个场景的实际摘要：
 
 <<< @/public/learn-agent-rust/outputs/r05-summary.txt
 
 ### 对照一：清单全完成，但没有读文件
 
-`claims-only` 只将正常流程的第三轮 `read_file` 换成 `todo_read`，其余建单和状态更新相同。因此，两次运行都是 7 轮输入、6 次工具调用、清单版本 5，三个步骤都标成完成。
+`claims-only` 只将正常流程的第三次请求从 `read_file` 换成 `todo_read`，其余建单和状态更新相同。因此，两次运行都是 7 次模型请求、清单版本 5，三个步骤都标成完成。
 
-区别在文件证据：正常流程成功读取 1 次，并生成基于文件内容的回答；对照读取 0 次，最终明确返回“缺少 README 读取证据”，`goal_verified=false`。
+区别在文件证据：正常流程成功读取 1 次，并生成基于文件内容的回答；对照读取 0 次，最终明确返回“缺少 README 读取证据”，`goal_verified=false`。<a href="/learn-agent-rust/outputs/r05-claims-only.txt" download>下载 claims-only 完整轨迹</a>。
 
 **迁移校验只能证明状态变化符合规则，无法证明步骤内容已经执行。** 真实应用应按任务类型建立验收条件，例如修改后运行相应测试、生成报告后核对交付物。不能把模型自己填写的 `completed` 作为唯一依据。
 
@@ -170,40 +180,58 @@ cargo test --locked
 
 | 场景 | 真实读取次数 | 清单版本 | 当前步骤 | 停止原因 |
 | --- | --- | --- | --- | --- |
-| `read-error` | 0 | 2 | 读取 README：进行中 | `tool_error` |
-| `budget-stop` | 1 | 2 | 读取 README：进行中 | `turn_limit` |
+| `read-error` | 0 | 2 | 读取 README：进行中 | 模型看到 `file.missing` 后如实回答“任务未完成” |
+| `budget-stop` | 1 | 2 | 读取 README：进行中 | `max_iterations(3)` 用完，运行以错误结束（错误码 `agent.legacy`） |
 
-`read-error` 的临时工作区没有创建 README。读取返回 `read_error`，练习循环立即停止；错误仍进入调用历史，原清单保留。这个停止策略属于本章驱动器，后续可以基于[错误分类与恢复](./error-recovery.md)决定如何继续。
+`read-error` 的临时工作区没有创建 README。读取失败的结果交回模型，模型不再推进，回答“任务未完成：file.missing”；原清单保留。和旧版不同，框架不会因为一次工具失败就停止运行，停不停由模型（以及第 1 章讲过的预算）决定。
 
-`budget-stop` 允许三轮，所以文件读取已经成功，但还没轮到模型提交完成状态或生成答案。它说明停止时应同时展示原因、当前计划和已有证据；运行时可以保存这份快照供当前进程里的调用者查看。本实验结束后就会丢弃它。
+`budget-stop` 给 LlmAgent 设了 `max_iterations(3)`：文件读取已经成功，但还没轮到模型提交完成状态或生成答案。`agent.legacy` 是框架很多 Agent 错误共用的笼统代码，能说明原因的是错误消息里的“Max iterations (3) exceeded”；第 1 章的 `loop-limit` 场景有同样的结果。停止时应同时展示原因、当前计划和已有证据；清单这时仍在会话状态里，版本 2。
 
 ### 对照三：非法输入整批拒绝，合理变更保留记录
 
-`two-active`、`skip-completion`、`duplicate-id` 等场景各自从一份合法清单开始，只改变待测条件。摘要中的 `unchanged=true` 比较了整个 `Plan`，包括目标、版本和全部条目。
+`two-active`、`skip-completion`、`duplicate-id` 等场景各自先在会话状态里放好一份合法清单（创建会话时给出初始状态），再让脚本模型提交一次候选。摘要中的 `unchanged=true` 比较了运行前后会话状态里的整个清单，包括目标、版本和全部条目。
 
 `append-step` 在三个原步骤后新增“补查环境要求”，原条目保留，新项从 `pending` 开始；`yield-step` 把正在读取的步骤退回 `pending`，同时把整理步骤切到 `in_progress`。两次整批更新均成功，说明重新规划也可以走同一个接口。
 
 本章选择保留历史、内容不可改，所以暂时无法表达“取消一项已不需要的工作”。需要这种能力时应显式增加 `cancelled` 及原因、迁移规则和测试；不要用虚假的完成状态隐藏被取消的工作。
 
-`permission-denied` 则先成功加入“写入 summary.txt”待办，再提交写文件请求。返回仍为 `permission_denied`，清单不变，目录里没有产生摘要文件。
+`permission-denied` 的清单里已经有“写入 summary.txt”待办，脚本模型再请求 `write_file`。应用策略拒绝，结果是 `refused`，工具没有执行，目录里没有产生摘要文件，清单不变。
 
-### 对照四：新的会话从零开始
+### 对照四：同一会话的下一次运行与新会话
 
-`fresh-session` 先完成一份版本 5 的计划，再创建新的 `Runtime`。新实例的版本为 0，条目为空。这份清单的生命周期属于当前运行时实例；没有共享全局列表、数据库或进程退出后的恢复。
+| 场景 | 观察 | 说明 |
+| --- | --- | --- |
+| `next-run` | 同一会话再运行一次，第一次请求就看到版本 5 | 会话状态随会话保存，跨运行可见。 |
+| `fresh-session` | 新会话 `s2` 没有清单 | 状态属于会话，不是全局列表。 |
+
+旧版的清单活在 `Runtime` 对象里，新建一个对象就从零开始；新版的清单属于会话，同一会话的下一次运行还在。键名前缀决定作用范围：不带前缀的键属于这个会话，`user:` 开头的键由同一用户的所有会话共享，`app:` 开头的由整个应用共享，`temp:` 开头的只在本次运行里可见、不保存。本章用内存会话服务，进程退出后一切都没有了；换成 SQLite 或 PostgreSQL 会话服务，清单就随会话持久保存，但那时还要考虑多个进程同时写同一会话、恢复时清单与事件的一致性等问题。
 
 | 本章会话内清单 | 后续持久化任务系统需要补充 |
 | --- | --- |
 | 目标、条目、状态、清单版本 | 持久化的任务身份、依赖与查询。 |
-| 当前模型输入中的关注点 | 执行者领取、租约与接管。 |
-| 当前进程内的整批校验 | 存储提交、重启恢复与并发冲突处理。 |
+| 当前模型请求中的关注点 | 执行者领取、租约与接管。 |
+| 单个会话内的整批校验 | 跨会话、跨进程的并发冲突处理。 |
 
 因此，清单适合把当前工作说清楚。[第 24 章的持久化任务系统](./task-system.md)再处理退出、领取和依赖等生命周期问题。
 
+### 与旧版场景的对应 {#old-scenarios}
+
+| 旧版（标准库 Runtime） | 新版（ADK-Rust） | 变化 |
+| --- | --- | --- |
+| `Plan` 在 `Runtime` 结构体里 | `plan` 在会话状态里，经 `state_delta` 写入 | 同一会话跨运行可见。 |
+| `model_input()` 每轮复制清单 | before_model 回调每次请求前插入清单 | 新增 `template-only`：instruction 模板一次运行只渲染一次。 |
+| 自写派发器 + 固定只读策略 | Runner + `DeclarativePolicy` | `permission-denied` 的结果从自定义码变为框架的 `refused`。 |
+| `read-error`：`tool_error` 立即停止 | 模型看到错误后回答未完成 | 工具失败不再自动停止运行。 |
+| `budget-stop`：`turn_limit` | `max_iterations(3)`，`agent.legacy` | 预算由框架执行。 |
+| `fresh-session`：新 `Runtime` | 新会话；另加 `next-run` | 区分“新会话”与“同一会话的下一次运行”。 |
+| `invalid-json`（参数不是合法 JSON） | `wrong-type`（版本号是字符串） | 模型给的参数在进入工具前已经是 JSON 值，坏 JSON 由模型接口层处理。 |
+| 其余 13 个校验场景 | 同名场景 | 错误码加上 `todo.` 前缀；经过真实 Runner 执行。 |
+| （无） | `same-batch-naive`、`same-batch` | 一次回复里两个写入：同一批的事件晚于执行才产出。 |
+| 6 项测试 | 8 项测试 | 新增“每次请求看到最新清单”“模板一次运行只渲染一次”“同一批的第二次写入看得到第一次”。 |
+
 ### 实验怎样复核
 
-六个 Rust 测试覆盖三种状态的完整迁移矩阵、候选列表后段失败时的整批拒绝、全部场景断言、每轮输入和调用 ID 配对、更换 README 后的回答，以及输入长度和格式边界。
-
-网站仓库中的验收命令会**先生成下载 zip，再解压到临时目录**，在解压出的工程里运行格式检查、Rust 测试、Clippy 和全部场景，随后保存输出、源码 SHA-256 与下载包校验值：
+网站仓库中的验收命令会先生成下载 zip，再解压到临时目录，在旁边放好 ADK-Rust 源码，运行格式检查、Clippy、8 项 Rust 测试和离线构建；摘要与三条详细轨迹各连跑两次必须逐字节相同：
 
 ```sh
 python3 scripts/verify-learn-agent-rust-r05.py
@@ -211,22 +239,23 @@ python3 scripts/verify-learn-agent-rust-r05.py --check
 python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 ```
 
-`--check` 重新执行并逐字节检查产物是否过期；CI 也运行同一检查。可下载[正常流程完整记录](/learn-agent-rust/outputs/r05-normal.json)、[仅改标记的对照](/learn-agent-rust/outputs/r05-claims-only.json)与[实际输出摘要](/learn-agent-rust/outputs/r05-summary.txt)。证据汇总保存在仓库的 `scripts/data/learn-agent-rust/r05-results.json`，自制图从这份记录读取数据，并校验源码摘要。
+证据汇总保存在仓库的 `scripts/data/learn-agent-rust/r05-results.json`，自制图从这份记录读取数据，并校验源码摘要。
 
-## 与参考课程对照
+## 与参考课程和 harness 对照
 
 ![参考课程的原图展示 todo_write 将计划状态放回工具循环。](/learn-agent-rust/figures/upstream/r05-todo-overview.svg)
 
-这张原图原样保留自 [TodoWrite 参考章节](https://learn.shareai.run/zh/s05/)，图源为[课程原图](https://learn.shareai.run/course-assets/s05_todo_write/todo-overview.svg)。沿计划与循环之间的连接阅读即可；图中的 Python/Claude 接口、工具数量和编号属于参考实现。
+这张原图原样保留自 [TodoWrite 参考章节](https://learn.shareai.run/zh/s05/)，图源为[课程原图](https://learn.shareai.run/course-assets/s05_todo_write/todo-overview.svg)。图中的 Python/Claude 接口、工具数量和编号属于参考实现。参考实现还演示了连续若干轮未更新时注入提醒的策略，本章没有实现提醒计数器。原图许可与来源版本见[参考资料说明](./architecture.md#reference-assets)。
 
-参考实现通过 `todo_write` 保存并显示清单，还演示了连续若干轮未更新时注入提醒的策略。本章改用每轮提供最新清单的方式，并增加整批校验与版本检查，尚未实现提醒计数器。两者都是让计划保持可见的教学设计，不能据此推断某个商业 Agent 的内部实现。原图许可与来源版本见[参考资料说明](./architecture.md#reference-assets)。
+ADK-Rust 的 `adk-harness`（Beta 层）自带 `write_todos` / `update_todo` 两个工具，清单同样存在会话状态（键 `harness:todos`）。和本章的自写工具比，它的取舍不同：`write_todos` 不检查状态迁移和版本，每次写入版本直接加一，有 `cancelled` 状态，上限是 50 项、每项 500 字符；同一批里多个调用的问题，它用同样的办法处理：按运行记下刚写的清单，后面的调用读它。本章没有运行 harness，计划中的第十一部分再展开。
 
 ::: warning 常见误区
 - **把状态当成执行凭证。** 清单展示自报进度，任务完成还需要检查结果与交付物。
-- **把版本号当成轮次。** 只有接受清单更新才增加版本，文件读取和模型调用另行计数。
-- **在清单里写下动作，就认为获得权限。** 实际文件操作仍经过独立策略判断。
-- **用一个进行中条目代替并发控制。** 这里没有执行者、锁或租约，也没有跨进程协调。
-- **把新实例误当成恢复。** 当前计划在运行时内存中；下载包验证了独立运行，没有验证重启续跑。
+- **把版本号当成轮次。** 只有接受清单更新才增加版本，文件读取和模型请求另行计数。
+- **以为 instruction 模板每轮都会刷新。** `{键}` 模板只在每次运行开始时渲染；同一次运行里要看到工具刚写的状态，需要在 before_model 回调里读取。
+- **直接改状态。** 状态通过事件上的 `state_delta` 合并；工具里只改 `ctx.actions()`，不要另找途径写会话。
+- **在清单里写下动作，就认为获得权限。** 实际文件操作仍经过应用策略判断。
+- **把内存会话当成持久化。** 同一进程里同一会话的下一次运行能看到清单，进程退出后就没有了。
 :::
 
 <!-- transfer-thinking:start -->
@@ -247,11 +276,40 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 
 <!-- transfer-thinking:end -->
 
+## 框架替你做了什么、没做什么
+
+| 框架做了 | 仍归应用 |
+| --- | --- |
+| 会话状态随会话保存；事件上的 `state_delta` 在事件产出时合并进状态。 | 决定清单存在哪个键、什么格式；整批校验与版本检查（本章自写）；同一批多个写入时自己记住刚写的值。 |
+| before_model 回调每次请求前运行，能读到会话的当前状态。 | 把最新清单放进请求；instruction 模板只在运行开始时渲染一次。 |
+| 工具调用经过应用策略；被拒绝的工具不执行。 | 写策略：清单里的待办不赋予任何权限。 |
+| `max_iterations` 限制模型请求次数，到达上限时以错误结束运行。 | 停止时展示原因、当前计划和已有证据；独立验收任务结果。 |
+
+<!-- adk-refs:start -->
+
+## 在 ADK-Rust 源码里
+
+本章的会话状态、清单可见性与运行上限，在 ADK-Rust 里分布在这几处：
+
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 事件上的状态变更 | [`adk-core/src/event.rs` · `EventActions`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/event.rs#L75-L135) | `state_delta` 随事件一起保存；工具通过 `ctx.actions()` / `ctx.set_actions()` 修改自己这次调用的动作 |
+| 追加事件时合并状态 | [`adk-session/src/inmemory.rs` 第 101 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-session/src/inmemory.rs#L101) | `temp:` 开头的键丢弃；`app:` / `user:` 开头的写到应用级、用户级状态；其余写进这个会话 |
+| 工具读会话 | [`adk-core/src/tool.rs` 第 519 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/tool.rs#L519) | `todo_write` 从这里读出当前清单；默认返回 `None`，Runner 提供的工具上下文会给出会话 |
+| instruction 模板 | [`adk-core/src/instruction_template.rs` · `inject_session_state`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-core/src/instruction_template.rs#L207-L227) | `{键}` 按会话状态替换，`{键?}` 缺失时留空 |
+| 模板在哪里渲染 | [`adk-agent/src/llm_agent.rs` 第 4097 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L4097) | 每次运行开始时调用一次，之后的循环不再重新渲染（`template-only` 场景） |
+| 每次请求前的回调 | [`adk-agent/src/llm_agent.rs` 第 4632 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/llm_agent.rs#L4632) | 在循环里、每次请求模型之前运行，可以修改请求；本章在这里插入最新清单 |
+| harness 的清单工具 | [`adk-harness/src/tools/todos.rs` · `WriteTodosTool`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-harness/src/tools/todos.rs#L228-L230) | Beta 层：整份替换、版本每次加一，不检查状态迁移和版本；清单存在 `harness:todos` |
+
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
+
+<!-- adk-refs:end -->
+
 ## 本章结论：把计划变成可检查的会话状态
 
-本章选择由运行时保存目标和清单，用 `todo_write` 提交完整候选快照，经过版本、身份和迁移检查后再一次替换。每轮模型输入读取最新状态，工具结果继续沿调用 ID 回到历史。
+本章把目标和清单放进会话状态，用 `todo_write` 提交完整候选快照，经过版本、身份和迁移检查后再经 `state_delta` 一次写回；before_model 回调让每次模型请求都带上最新清单。instruction 模板只在运行开始时渲染一次，这一点由 `template-only` 场景实测，版本检查挡住了模型过期视图带来的覆盖；同一批里的多个写入还要工具自己记住刚写的值，否则版本检查会被绕过（`same-batch-naive`）。
 
-这个机制让计划变化可以观察、拒绝和复核。实验也把验收边界固定下来：清单全完成、循环已停止、用户目标已满足，需要分别判断。
+这个机制让计划变化可以观察、拒绝和复核。实验也把验收边界固定下来：清单全完成、运行已停止、用户目标已满足，需要分别判断。
 
 ## 检查理解
 
@@ -259,7 +317,7 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 
    <details><summary>参考答案</summary>
 
-   不会。文件工具只写回执行结果。随后模型提出合法的 `todo_write`，把读取改成完成并提交版本 2 的候选快照，运行时接受后才进入版本 3。
+   不会。文件工具只返回内容，它的事件上没有 `state_delta`。随后模型提出合法的 `todo_write`，把读取改成完成并提交版本 2 的候选快照，工具校验通过、写入 `state_delta` 后才进入版本 3。
 
    </details>
 
@@ -267,11 +325,19 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 
    <details><summary>参考答案</summary>
 
-   校验阶段只检查候选列表，尚未替换当前清单。函数最后才执行 `self.items = args.items` 和版本递增；前面返回错误时，原条目和原版本全部保留。
+   校验阶段只检查候选列表，尚未替换当前清单。函数最后才替换条目、递增版本；前面返回错误时，工具也不会写 `state_delta`，会话状态里的原条目和原版本全部保留。
 
    </details>
 
-3. `claims-only` 已经过合法的状态迁移，为什么 `goal_verified` 仍为 `false`？
+3. 把清单写进 instruction 的 `{plan?}` 模板，为什么 `template-only` 的第二次 `todo_write` 被拒绝？
+
+   <details><summary>参考答案</summary>
+
+   模板只在这次运行开始时渲染一次，那时还没有清单。第一次 `todo_write` 已经把版本推进到 1，但后面的请求里模型看到的仍是“未建单、版本 0”，于是按版本 0 再次提交，版本检查返回 `todo.revision_conflict`。要每次请求都看到最新状态，需要在 before_model 回调里读取会话状态。
+
+   </details>
+
+4. `claims-only` 已经过合法的状态迁移，为什么 `goal_verified` 仍为 `false`？
 
    <details><summary>参考答案</summary>
 
@@ -279,27 +345,19 @@ python3 scripts/generate-learn-agent-rust-figures.py --lesson R05
 
    </details>
 
-4. 完成一项工作后发现还需要补查环境，应重开完成项，还是新增步骤？如果旧步骤已不需要呢？
+5. 清单已经在会话状态里了，为什么仍需单独设计持久化任务？
 
    <details><summary>参考答案</summary>
 
-   按本章规则，已完成条目保留，新增一项 `pending` 的补查步骤。若旧步骤需要取消，现有三态模型无法准确表示；应扩展取消状态及原因，而不是把未做的步骤标成完成。
-
-   </details>
-
-5. 为什么把清单加进 `graph-flow` 的状态后，仍需单独设计持久化任务？
-
-   <details><summary>参考答案</summary>
-
-   图状态提供运行时的数据位置，但恢复还取决于是否保存、何时提交以及如何加载。任务领取、依赖、租约与接管也需要各自的协议。本实验只验证当前实例内的清单机制。
+   会话状态提供了数据位置，换成持久的会话服务后也能跨进程保存。但任务领取、依赖、租约与接管需要各自的协议，多个执行者同时写同一份清单也要并发控制；会话状态只是一组键值对。本实验只验证单进程、单会话内的清单机制。
 
    </details>
 
 ## 参考资料
 
 - [Serde：容器属性](https://serde.rs/container-attrs.html)，`rename_all` 和 `deny_unknown_fields` 的语义。
-- [Rust：std::fs::read_to_string](https://doc.rust-lang.org/std/fs/fn.read_to_string.html)，实验实际文件读取入口与错误条件。
 - [Learn Claude Code：TodoWrite](https://learn.shareai.run/zh/s05/)，计划可见性与提醒机制的参考实现。
-- [本章独立工程](/learn-agent-rust/todo-planning.zip)与[完整运行记录](/learn-agent-rust/outputs/r05-normal.json)。
+- [ADK-Rust 固定源码](https://github.com/zavora-ai/adk-rust/tree/98515241133d24f7e41f8fd272649035416a142f)：本课程真实运行的接口与语义基线。
+- [本章独立工程](/learn-agent-rust/todo-planning.zip)与[正常流程完整轨迹](/learn-agent-rust/outputs/r05-normal.txt)。
 
 下一章进入[子 Agent 与上下文隔离](./subagents.md)：当一个步骤需要独立处理时，怎样给它一份单独的目标与消息历史，再把结果带回当前任务。

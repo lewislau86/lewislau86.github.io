@@ -1,0 +1,14 @@
+--- run: 读取 README，解释启动命令与环境要求。
+[assistant] call    id=call-read_file read_file {"path":"README.md"}
+[assistant] result  id=call-read_file read_file status=ok {"path":"README.md","text":"# demo-project\n\n启动：cargo run --locked\n环境：Rust 1.99.1，无需数据库。\n"}
+[assistant] text    "启动命令：`cargo run --locked`（来自 README.md）。"
+[assistant] final
+request 0: roles=system,system,system,user tools=[read_file,set_locale,write_file] prefix=c6bf8c035fa5 user_turn=3960a32510e5 locale=zh-CN skill=startup@system bytes=599
+request 1: roles=system,system,system,user,model,function tools=[read_file,set_locale,write_file] prefix=c6bf8c035fa5 user_turn=3960a32510e5 locale=zh-CN skill=startup@system bytes=923
+answer: 启动命令：`cargo run --locked`（来自 README.md）。
+--- run: 按 SQL 代码风格检查查询。
+[assistant] text    "好的。"
+[assistant] final
+request 0: roles=system,system,system,user tools=[read_file,set_locale,write_file] prefix=951e48258059 user_turn=9a5bea28c541 locale=zh-CN skill=sql-style@system bytes=578
+answer: 好的。
+skill-in-system: first: model_calls=2 skill=startup@system tools=[read_file:ok] answer=中文 | second: model_calls=1 skill=sql-style@system tools=[] answer=no_command | prefix_same=no user_same=no

@@ -6,7 +6,7 @@
 > **怎样维护本文件：** 每完成一项工作，更新第 9 节状态表；每做出一个取舍，追加到第 10 节决策记录；每次查阅上游，更新第 2 节基线并在第 11 节记一笔。不要删除旧决策，改判时写新条目并注明替代了哪一条。
 
 - 创建日期：2026-11-27
-- 当前阶段：阶段 2 完成（6.2 节），下一步阶段 3（R05、R06、R07、K01、R08、R09、R10）。已迁移：第 0–7 章（R00–R04、G01–G03）与专题 2（P02，按 D-10 在阶段 6 整章重写）
+- 当前阶段：阶段 3 完成（6.3 节），下一步阶段 4（D01–D08）。已迁移：第 0–14 章（R00–R10、G01–G03、K01）与专题 2（P02，按 D-10 在阶段 6 整章重写）。全书代码库重新打包等 P01 在 Mac 上复跑（6.3 节）
 - 上游基线：adk-rust `main` @ `98515241133d24f7e41f8fd272649035416a142f`（2026-11-26，workspace 版本 3.0.0，未发布）；唯一登记处是 `scripts/learn-agent-rust-adk.json`
 
 ---
@@ -95,11 +95,11 @@
 | G03 | 7 | graph-parallel-subgraphs | graph-flow | 多入边自动延迟汇合、`DeferredNodeConfig{min_predecessors}`、`run_node_with`（类似 `Send`）、`with_max_concurrency`、`SubgraphNode`（编译期通道检查）、节点重试与超时 | 旧版“父子持久恢复未实现”的边界需重新验证 | Stable | 2 |
 | R05 | 8 | todo-planning | serde + tempfile | 主线：会话 state（`EventActions.state_delta`）+ 自定义清单工具；对照：harness todos | 清单写入 state 的可见性与恢复 | Stable（对照 Beta） | 3 |
 | R06 | 9 | subagents | 标准库 | `sub_agent` + `transfer_to_agent`、`AgentTool`（独立上下文）、`allows_transfer_to_parent/peers`、共享 `RunBudget` | 区分“交接控制权”与“当工具调用” | Stable | 3 |
-| R07 | 10 | skill-loading | 两库 + serde_yaml | `adk-skill`：`load_skill_index`、`select_skills`、`SkillInjector`、`SkillToolset`（list / load / load_resource 渐进披露） | 显式启用 `skills` feature；宿主执行权仍单独授权 | Stable | 3 |
+| R07 | 完成（12 → 15：stale/budget/oversize/missing/version-two 改为 changed 快照、truncated、broken-skill；新增 two-skills、resource×3、auto-inject） | 完成（adk-skill SkillToolset + ToolRegistry + SkillInjector 对照） | 完成（15 场景 × 2 次一致、8 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张） | 完成（`adk3`、CI） |
 | K01 | 11 | retrieval-augmented-generation | 标准库 | `adk-rag`（切块、embedding、向量检索、rerank） | 离线需要确定性 embedder：阶段 3 先验证能否注入自定义 embedder 与内存后端（D-8）；BM25 基线可作为对照保留 | Stable | 3 |
-| R08 | 12 | context-compaction | 两库 | `EventsCompactionConfig` + `LlmEventSummarizer`（调用间）、`IntraCompactionConfig`（调用内，3.0 默认开）、`RunConfig::history_max_events`、`Llm::context_window` | 摘要器同样用 `ScriptedLlm`；保留“配对不被切断、事实不丢、回滚”场景 | Stable | 3 |
-| R09 | 13 | memory | serde | `MemoryService`（`add_session` / `search` / `delete_user`）、SQLite 后端、app / user / project 隔离 | 跨进程写入与召回；双时态知识图谱只作延伸阅读 | Stable | 3 |
-| R10 | 14 | system-prompts | 两库 | `instruction`（system 角色）、`ToolDeclarations` 顺序、技能与 AGENTS.md 注入来源 | 用 `requests()` 断言模型收到的完整输入与前缀稳定性 | Stable | 3 |
+| R08 | 12 | context-compaction | 两库 | `EventsCompactionConfig`（调用间）、`IntraCompactionConfig`（调用内，3.0 默认开）、`RunConfig::history_max_events`；摘要器改为应用自写的 `FactSummarizer`（实现 `BaseEventsSummarizer`，核对事实清单），不用 `LlmEventSummarizer` | 实际做法见 6.3 节；规则模型代替 `ScriptedLlm` | Stable | 3 |
+| R09 | 13 | memory | serde | `SqliteMemoryService`（FTS5）、app / user / project 隔离；应用工具 `remember` / `recall_memory` / `forget` 核对来源、按时间取最新；对照 `LoadMemoryTool` / `PreloadMemoryTool`；`delete_user` 与 FTS `optimize` + `VACUUM` | 每一步是独立子进程；双时态知识图谱只在源码表里提及 | Stable | 3 |
+| R10 | 14 | system-prompts | 两库 | `static_instruction`（策略 + AGENTS.md）、`instruction` 模板（每次运行渲染一次）、`with_skills` 注入用户这一轮 vs `global_instruction_provider`、`ToolDeclarations` 顺序、技能 ID pin、`before_model_callback` 字节预算、策略拒绝写入 | 规则模型自己记录每次请求（代替 `requests()`），比较“系统消息 + 工具声明”的前缀指纹 | Stable | 3 |
 | D01 | 15 | pattern-selection | graph-flow | 单次调用 vs `SequentialAgent` vs 自主 `LlmAgent` | 6 个固定输入场景逐个映射 | Stable | 4 |
 | D02 | 16 | prompt-chaining-routing | graph-flow | `SequentialAgent`、`ConditionalAgent`、`LlmConditionalAgent`、graph 条件边 | 两种 API（workflow agents 与 graph）何时用哪个 | Stable | 4 |
 | D03 | 17 | parallel-decomposition | graph-flow | `ParallelAgent`、graph 扇出与 reducer 归并 | 局部失败与归并冲突 | Stable | 4 |
@@ -279,6 +279,31 @@ R00、R01、R03、R04、G01–G03 全部迁移上线，`graph-orchestration.md` 
 
 先做 K01 的离线 embedder 可行性验证（D-8）。同步改写 `knowledge-and-capabilities.md`。
 
+### 6.3 阶段 3 的执行记录（2026-11-28）
+
+七章全部迁移：R05（会话状态 + `before_model` 回调）、R06（`AgentTool` / `transfer_to_agent`）、R07（adk-skill）、K01（adk-rag，D-8）、R08（运行间 / 运行内压缩 + 应用摘要器）、R09（adk-memory SQLite）、R10（LlmAgent 请求组装）。每章：工程、验证器（结果表写回正文、两次逐字节一致）、正文、配图、源码引用表（`learn-agent-rust-adk-refs.py` 共 16 章 SPEC）、`lessons.json` / `experiments.json` / `review-prompts.json` 登记、单章 CI 工作流、审查子代理一轮并修正。`knowledge-and-capabilities.md` 加 ADK 入口对照表并更新 R07/R09 段落；`index.md`、`setup.md`、`graph-orchestration.md` 的迁移说明改为“第 0–14 章”；`setup.md` 第 8–14 章合成一段。
+
+**实测到的框架事实（写进各章）：**
+- `instruction` 的 `{key}` 模板在 `prepare_conversation` 里每次运行渲染一次；运行中途改状态要到下一次运行才进系统消息（R05、R10）。缺键在调用模型前报错；带花括号的原文放 `static_instruction`。
+- 同一批工具调用看不到彼此的 `state_delta`；`ToolContext::actions()` 返回副本，改完要 `set_actions`（R05、R10）。
+- `with_skills` 把技能拼进用户这一轮、不写进会话；AGENTS.md 等约定文件被索引成带 `convention` 标签的技能，和别的技能一起排名，未必被选中（R07、R10）。
+- `AgentTool` 默认隔离快照，返回 `{"response"}`，与父 Agent 共用预算、策略与审批；中途取消得到 `outcome_unknown`；`transfer_to_agent` 的子 Agent 看得到用户原话（R06）。
+- 运行内压缩默认开启（窗口 80%，未知时 10 万估算 token）；切口不分开调用与结果；摘要器出错或不更短则保留原历史（R08）。
+- adk-memory SQLite：FTS5 把连续汉字当一个词且所有词 AND，自然语言问句检索为空；同一键的新旧版本按相关度（并列时按写入顺序）返回，没有替换语义；`LoadMemoryTool` / `PreloadMemoryTool` 默认最多 5 条；`delete_user` 后文件里仍有原文，FTS `optimize` + `VACUUM` 后才没有；文件损坏或表结构更新时 `migrate` 报错、文件不变；Runner 从不自动写记忆（R09）。
+
+**上游问题（待整理后报给 adk-rust）：**
+1. `LlmAgent` 的 `AgentToolContext` 没有实现 `ReadonlyContext::state()`：`SkillToolset` 的 `ActivatedOnly` 资源检查总失败，激活记录互相覆盖。
+2. `instruction` 模板每次运行只渲染一次，文档没有说明。
+3. 同一批工具调用看不到彼此的 `state_delta`。
+4. adk-rag 默认 `similarity_threshold = 0.0`，零分结果也返回。
+5. `AgentTool` 的 Parent 快照里，子 Agent 用任务文字替换复制来的最后一条用户消息。
+6. `list_skills` / `load_skill` 把绝对路径和修改时间交给模型。
+7. 运行内压缩的 `session_cut` 依赖毫秒级时间戳，同一毫秒的事件会让它整段压缩且不记录。
+
+**CI：** 新增或改写 `check-agent-rag.yml`、`check-agent-todos.yml`、`check-agent-subagents.yml`、`check-agent-skills.yml`、`check-agent-compaction.yml`、`check-agent-memory.yml`、`check-agent-prompts.yml`，都用 Rust 1.99.1、缓存并取 adk 源码后跑 `--check` 与配图检查。
+
+**未完成、需要 lewislau 处理：** 另一会话修了 `verify-agent-checkpoints.py`，使 P01 的检查记录过期，`package-agent-experiments.py` 因此拒绝打包。请在 Mac 上运行 `python3 scripts/verify-agent-experiments.py --lesson P01`（需要 PostgreSQL），再运行 `python3 scripts/package-agent-experiments.py` 重新生成全书代码库；在此之前 `experiments/learn-agent-rust/` 与统一下载包里第 8–14 章仍是旧版。R09 的归档改名为 `memory.zip`（旧 `memory-lab.zip` 已删除）。
+
 ### 阶段 4 · 第五部分（D01–D08）
 
 八章共用一个验证器 `verify-agent-patterns.py`，可一起迁移。同步改写 `agent-design-patterns.md`，加一节“workflow agents 与 graph 两套 API 怎样选”。
@@ -342,13 +367,13 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 | G01 | 完成（`direct` 删除，新增 `runaway` 超步上限；探针 11 项） | 完成 | 完成（4 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
 | G02 | 完成（6 个多进程流程，见正文对应表） | 完成（SQLite 检查点） | 完成（6 流程 × 2 次一致、3 测试） | 完成（已审查并修正；第 6 章改名“图暂停、检查点与恢复”） | 完成 | 完成（`adk3`、CI） |
 | G03 | 完成（5 场景，失败场景新增“恢复只重跑失败节点”） | 完成 | 完成（5 场景 × 2 次一致、5 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
-| R05 | — | — | — | — | — | — |
-| R06 | — | — | — | — | — | — |
-| R07 | — | — | — | — | — | — |
-| K01 | — | — | — | — | — | — |
-| R08 | — | — | — | — | — | — |
-| R09 | — | — | — | — | — | — |
-| R10 | — | — | — | — | — | — |
+| R05 | 完成（20 → 24：新增 template-only、next-run、same-batch-naive / same-batch；invalid-json 改为 wrong-type） | 完成（会话状态 + before_model 回调 + PlanLlm） | 完成（24 场景 × 2 次一致、8 测试） | 完成（已审查并修正） | 完成（3 张） | 完成（`adk3`、CI） |
+| R06 | 完成（16 → 15：child-tool-budget、gate-closed 删除；新增 transfer；见正文对应表） | 完成（AgentTool + Delegate 契约 + transfer，单文件 rustc 改为 Cargo 工程） | 完成（15 场景 × 2 次一致、7 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，取消生命周期图换成交接对照图） | 完成（`adk3`、CI） |
+| R07 | 完成（12 → 14：stale/budget/oversize/missing/version-two 改为 changed 快照、truncated、broken-skill；新增 resource×3、auto-inject） | 完成（adk-skill SkillToolset + ToolRegistry + SkillInjector 对照） | 完成（14 场景 × 2 次一致、7 测试，结果表写回正文） | 完成（待审查） | 完成（3 张） | 完成（`adk3`、CI） |
+| K01 | 完成（11 → 16：新增 zero-score、swap-embedder、collision、agent-cited / agent-uncited） | 完成（adk-rag，自写切块器与词袋 embedder） | 完成（16 场景 × 2 次一致、9 测试） | 完成（已审查并修正） | 完成（2 张） | 完成（`adk3`、CI） |
+| R08 | 完成（17 → 10：归档、占位、硬预算类场景删除；新增 intra、omit-unchecked、not-smaller） | 完成（运行间/运行内压缩 + FactSummarizer + history_max_events） | 完成（10 场景 × 2 次一致、5 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，消息分组图删除） | 完成（`adk3`、CI） |
+| R09 | 完成（22 → 14：修订号、锁、保存失败、重放校验类删除；新增 naive-load、preload、erase） | 完成（SqliteMemoryService + 应用工具 + LoadMemoryTool / PreloadMemoryTool，每步独立子进程） | 完成（14 场景 × 2 次一致、6 测试，README 命令复跑，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，旧的修订历史与存储边界图删除） | 完成（`adk3`、CI、归档改名 memory.zip） |
+| R10 | 完成（14 → 13：来源格式、历史配对类删除；新增 skill-switch、skill-in-system、state-midrun、braces、agents-as-skill） | 完成（LlmAgent 组装 + 技能 pin + 预算回调 + 策略） | 完成（13 场景 × 2 次一致、6 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，两轮输入图换成前缀稳定图） | 完成（`adk3`、CI） |
 | D01 | — | — | — | — | — | — |
 | D02 | — | — | — | — | — | — |
 | D03 | — | — | — | — | — | — |
@@ -399,12 +424,15 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 - **D-2 补充（2026-11-27）第 1 章用自写的规则模型 `RuleLlm`，不用 `ScriptedLlm`。** 理由：第 1 章要证明“回答来自真实读到的内容”（`changed-readme` 场景改了 README，回答跟着变），固定脚本做不到；`RuleLlm` 同样实现 `Llm` trait，并自己记录收到的每次请求，起到 `requests()` 的作用。其余章节默认仍用 `ScriptedLlm`。
 - **D-10（2026-11-27）专题 2 整章用 ADK-Rust 重写（方案 b）。** 替代此前先行实现的方案 a（保留原实验 + 第 9 节）。现状保留到重写完成：站点上的专题 2 仍是“原 29 场景 + 第 9 节 ADK 部分”，能正常构建和下载。重写安排在阶段 6，与 P01 一起做：两章都用到 ADK 的持久存储（会话、动作账本、检查点、run store），一起设计可以共用同一套 SQLite / PostgreSQL 布局。重写要求：原 29 个故障窗口逐个映射到“经过 Runner 的工具调用”，第 9 节的 6 个场景并入；Outbox、对账、幂等保留期等应用合同仍要有可运行的实验，不能因为换成框架而丢掉。
 
+- **D-8（2026-11-27）K01 能完全离线使用 adk-rag，结论：可以。** 沙盒探针实测（`--offline` 构建并运行）：`adk-rag` 默认特性只有核心 trait、`InMemoryVectorStore` 和切块器，不引入任何网络依赖；`EmbeddingProvider` 只需实现 `embed` 与 `dimensions`，自写确定性 embedder 即可；`RagPipeline::scoped(Scope)` 原生按范围隔离（检索只在该范围内打分）；`RagTool` 把检索作为 `rag_search` 工具交给 `LlmAgent`，范围由宿主固定、模型无法指定，并把结果记为 `GroundingSource`；`adk-agent` 的 `guardrails` 特性提供 `CitationRequired`，最终回答没有链接到本轮检索来源就被拦下（运行以 `guardrail.output_blocked` 结束）。实测到的两个教学点：默认 `similarity_threshold = 0.0` 会把零分结果也返回（要设大于 0 的阈值）；哈希型玩具 embedder 维度太小会碰撞，无关查询也能得到高分。真实语义向量只能靠 `onnx` 特性（首次要下载模型与 onnxruntime）或在线 provider，不进入离线实验，正文只作说明。
+
 ### 待决（需要 lewislau 拍板）
+
+- **D-11 是否新增“联网搜索”专题：** 目前没有章节讲联网搜索。ADK-Rust 有服务商执行的 `GoogleSearchTool`（Gemini）、`WebSearchTool`（Anthropic）与各家原生搜索（都要 API key），以及 adk-harness 的 `web_search`（由应用实现 `SearchProvider`，结果放进标明不可信的区块）。建议：用 `web_search` 配一个假的 `SearchProvider` 写一章离线可复现的实验（不可信结果、带链接引用、结果里的注入），真实服务商搜索作为可选演示。
 
 
 - **D-5 新章编号与位置：** 暂用 X01–X06 作第十一部分；X06 是否作为全书收官放在 P06 之后。
 - **D-6 Beta 章节的时机：** 现在就基于 RC 写，还是等 harness 在 3.2.0 评审转 Stable。建议先写 Stable 部分，Beta 章节排在阶段 7，动笔前再评估。
-- **D-8 K01 是否能完全离线使用 adk-rag：** 阶段 3 验证。
 
 ## 11. 更新日志
 
@@ -416,6 +444,8 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 
 - **2026-11-27** 阶段 2 进行中。R00、R01、R03、R04 已迁移（工程、验证器、正文、配图、源码引用、全书代码库），本次在沙盒（Linux）里把 R00–R04、R02、P02 的验证器全部 `--check` 复跑通过，证明 Mac 上生成的产物跨平台逐字节一致。两个审查子代理对 R00/R01、R03/R04 找出必改 7 处、应改 22 处，已修正：R01 源码引用补全循环各步位置、新增 `loop-limit` 场景与 `--max-iterations`、补旧版场景对应表、说明自动压缩与两份历史；R03 改正“批准绑定调用 ID”的错误（指纹不含调用 ID）、补“多出的决定等于预先批准”、补对应表；R04 引用文档给出扣下结果的理由、修正 `after_tool` / `after_agent` 运行条件、panic 保护只覆盖 `before_tool`、补对应表；R00 说明 `tool.not_found (file.missing)`。`architecture.md` 按 ADK-Rust 重写，`setup.md` 新增第 4 节“准备 ADK-Rust 3.0 源码”，总览页实践状态表与迁移说明更新。剩余：G01–G03 与图编排导读。
 - **2026-11-27** 阶段 2 完成。G01–G03 迁移到 adk-graph：三个工程（`graph-state-lab`、`graph-resume-lab`、`graph-parallel-lab`）、验证器 `verify-agent-orchestration.py` 重写（`--lab`，G02 每条命令一个独立进程）、三章正文重写（保留迁移思考原文，G02 问题里的 CAS 改为 CheckpointConflict）、四张配图、源码引用（`learn-agent-rust-adk-refs.py` 新增三章 SPEC，共 9 章）、`lessons.json` / `experiments.json` / `review-prompts.json` 登记、全书代码库重新打包。`graph-orchestration.md` 改写为 LangGraph ↔ adk-graph 导读；第 6 章改名“图暂停、检查点与恢复”。审查后修正：递归上限按整次运行累计、“整步重跑”只在崩溃时成立、汇合只看无条件入边、`typo_channel` 探针改为只写错名字、路由函数不再比较 `Option`、G02 README 与正文补可直接复制的运行命令、冲突实验屏障的注释、子图映射与检查点要求。CI 三个工作流补取 adk 源码（6.2 节）。`course-conventions.md` 的 G01–G03、R04 段落更新。验证：三实验 `--check`、`verify-agent-experiments.py --lesson G01/G02/G03`、`package --check`、下载包逐章 `--offline` 测试、sync / review / snippets / refs `--check`、站点构建全部通过。
+
+- **2026-11-28** 阶段 3 完成（6.3 节）：R05、R06、R07、K01、R08、R09、R10 迁移上线，每章一轮审查子代理并修正；D-8 已定；新增待决 D-11（联网搜索专题）。全书代码库打包被 P01 过期记录阻塞，等 Mac 上复跑。
 
 ## 12. 资料来源
 

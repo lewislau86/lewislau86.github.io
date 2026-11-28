@@ -189,10 +189,10 @@
         "transfer": true
       },
       "images": 4,
-      "snippets": 7,
+      "snippets": 10,
       "details": 6,
       "teaching_focus": "计划不是完成证据",
-      "evidence_boundary": "会话内计划；任务持久化见 R12。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 会话状态与 before_model 回调；规则模型，内存会话；任务持久化见 R12。",
       "document_path": "docs/learn-agent-rust/todo-planning.md"
     },
     {
@@ -210,10 +210,10 @@
         "transfer": true
       },
       "images": 3,
-      "snippets": 12,
+      "snippets": 8,
       "details": 7,
       "teaching_focus": "隔离信息与回收执行者",
-      "evidence_boundary": "独立历史与线程；进程沙箱另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 AgentTool 与 transfer_to_agent；同一进程，规则模型；进程沙箱另验。",
       "document_path": "docs/learn-agent-rust/subagents.md"
     },
     {
@@ -231,10 +231,10 @@
         "transfer": true
       },
       "images": 4,
-      "snippets": 13,
+      "snippets": 12,
       "details": 6,
       "teaching_focus": "知识不携带执行权",
-      "evidence_boundary": "两库技能加载；任意第三方技能另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-skill 的索引、三层加载与 allowed-tools；规则模型；任意第三方技能另验。",
       "document_path": "docs/learn-agent-rust/skill-loading.md"
     },
     {
@@ -252,10 +252,10 @@
         "transfer": true
       },
       "images": 2,
-      "snippets": 7,
+      "snippets": 9,
       "details": 6,
       "teaching_focus": "检索命中与回答有据分开验收",
-      "evidence_boundary": "真实词法检索；固定摘录生成器，无真实模型质量结论。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-rag 管线与 RagTool；词袋 embedding 与固定摘录生成器，无真实模型质量结论。",
       "document_path": "docs/learn-agent-rust/retrieval-augmented-generation.md"
     },
     {
@@ -272,11 +272,11 @@
         "references": true,
         "transfer": true
       },
-      "images": 9,
-      "snippets": 14,
+      "images": 8,
+      "snippets": 9,
       "details": 6,
       "teaching_focus": "压缩优化的是充分信息",
-      "evidence_boundary": "脚本摘要与字节预算；语义泛化另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的运行间/运行内压缩；规则模型与估算 token；语义泛化另验。",
       "document_path": "docs/learn-agent-rust/context-compaction.md"
     },
     {
@@ -294,10 +294,10 @@
         "transfer": true
       },
       "images": 5,
-      "snippets": 12,
+      "snippets": 15,
       "details": 6,
       "teaching_focus": "记住的事实有时间和来源",
-      "evidence_boundary": "规则提取、真实磁盘与独立进程；模型提取另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-memory 的 SQLite 后端、真实文件与独立进程；规则模型；并发写入与语义检索另验。",
       "document_path": "docs/learn-agent-rust/memory.md"
     },
     {
@@ -315,10 +315,10 @@
         "transfer": true
       },
       "images": 4,
-      "snippets": 8,
+      "snippets": 7,
       "details": 6,
       "teaching_focus": "来源决定解释方式",
-      "evidence_boundary": "两库消息组装；真实服务与攻击覆盖另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC LlmAgent 的请求组装；规则模型记录完整请求；真实服务的缓存与攻击覆盖另验。",
       "document_path": "docs/learn-agent-rust/system-prompts.md"
     },
     {

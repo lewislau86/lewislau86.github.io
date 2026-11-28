@@ -16,6 +16,10 @@ on:
       - 'scripts/data/learn-agent-rust/k01-results.json'
       - 'scripts/learn-agent-rust-lessons.json'
       - 'scripts/sync-learn-agent-rust-course.py'
+      - 'scripts/learn_agent_rust_adk.py'
+      - 'scripts/fetch-adk-rust.py'
+      - 'scripts/learn-agent-rust-adk.json'
+      - 'scripts/snippets/adk-trace.rs'
       - '.github/workflows/check-agent-rag.yml'
   pull_request:
     paths: *paths
@@ -27,14 +31,23 @@ permissions:
 jobs:
   retrieval:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
-      - name: Prepare Rust tools
+      - name: Install the course toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            .cache/adk-rust
+          key: agent-adk-rag-${{ runner.os }}-${{ hashFiles('scripts/learn-agent-rust-adk.json', 'docs/public/learn-agent-rust/code/retrieval-augmented-generation/Cargo.lock') }}
+      - name: Fetch the pinned ADK-Rust 3.0 source
+        run: python3 scripts/fetch-adk-rust.py .cache/adk-rust
       - name: Verify source, fault paths and extracted learning package
         run: python3 scripts/verify-agent-rag.py --check
       - name: Check navigation and teaching structure
