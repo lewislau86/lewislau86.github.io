@@ -1,8 +1,8 @@
 {
   "schema_version": 2,
   "scope": "documentation structure only; not runtime verification",
-  "lessons": 39,
-  "written_lessons": 39,
+  "lessons": 40,
+  "written_lessons": 40,
   "planned_lessons": 0,
   "all_structure_checks_passed": true,
   "rows": [
@@ -259,6 +259,27 @@
       "document_path": "docs/learn-agent-rust/retrieval-augmented-generation.md"
     },
     {
+      "id": "K02",
+      "slug": "web-search",
+      "status": "written",
+      "checks": {
+        "frontmatter": true,
+        "objectives": true,
+        "map": true,
+        "pitfalls": true,
+        "conclusion": true,
+        "questions": true,
+        "references": true,
+        "transfer": true
+      },
+      "images": 1,
+      "snippets": 9,
+      "details": 6,
+      "teaching_focus": "搜到的网页只是证据候选",
+      "evidence_boundary": "ADK-Rust 3.0 RC adk-harness（Beta）受管 web_search；离线假后端、规则模型与规则审批人，无真实搜索与模型结论。",
+      "document_path": "docs/learn-agent-rust/web-search.md"
+    },
+    {
       "id": "R08",
       "slug": "context-compaction",
       "status": "written",
@@ -336,10 +357,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 13,
+      "details": 6,
       "teaching_focus": "输入合同决定最小结构",
-      "evidence_boundary": "真实 graph-flow；读取与决策是内存夹具，模型质量另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 LlmAgent、SequentialAgent 与 CustomAgent；规则模型、真实临时文件；模型质量另验。",
       "document_path": "docs/learn-agent-rust/pattern-selection.md"
     },
     {
@@ -357,10 +378,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 7,
+      "details": 6,
       "teaching_focus": "中间成功也需要版本",
-      "evidence_boundary": "规则路由与固定抽取；真实 graph-flow 产物门，模型分类另验。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的三种路由 Agent、SequentialAgent 与 output_schema；规则模型，模型分类准确率另验。",
       "document_path": "docs/learn-agent-rust/prompt-chaining-routing.md"
     },
     {
@@ -378,10 +399,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 7,
+      "details": 6,
       "teaching_focus": "归并要验证成员身份",
-      "evidence_boundary": "真实 Tokio 并发与任务回收；停顿是夹具，无生产加速结论。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 ParallelAgent 与归并；规则模型与固定停顿，无生产加速结论。",
       "document_path": "docs/learn-agent-rust/parallel-decomposition.md"
     },
     {
@@ -399,10 +420,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 8,
+      "details": 6,
       "teaching_focus": "重规划保留结果账本",
-      "evidence_boundary": "真实图推进与依赖验证；检查动作为内存夹具，无跨进程恢复。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 LoopAgent 与 adk-harness（Beta）计划模式；规划者与审批人为规则替身，计划质量另验。",
       "document_path": "docs/learn-agent-rust/plan-execute-replan.md"
     },
     {
@@ -420,10 +441,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 7,
+      "details": 7,
       "teaching_focus": "返回结果与移交控制分开",
-      "evidence_boundary": "真实 Tokio 动态派发与角色状态；消息为脚本，非真实多模型协作。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 TeamSpec / CompiledTeam；协调者、工作者与专员都是规则替身，真实团队协作质量另验。",
       "document_path": "docs/learn-agent-rust/orchestrator-workers-handoffs.md"
     },
     {
@@ -441,10 +462,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 4,
-      "details": 5,
+      "snippets": 8,
+      "details": 6,
       "teaching_focus": "修复后重验完整合同",
-      "evidence_boundary": "真实图与固定规则修复；未复现完整 Reflexion，无模型质量结论。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 LoopAgent 与 adk-retry-reflect；写作者与读文件的模型都是规则替身，评估规则固定，没有模型质量结论。",
       "document_path": "docs/learn-agent-rust/evaluator-reflection.md"
     },
     {
@@ -462,10 +483,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 5,
-      "details": 5,
-      "teaching_focus": "编辑使旧批准失效",
-      "evidence_boundary": "真实跨 CLI JSON 状态；单写者，无认证服务或外部发布。",
+      "snippets": 8,
+      "details": 6,
+      "teaching_focus": "需求变了，先撤回旧批准",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 SqliteSessionService 与 SqliteApprovalStore；模型是规则替身，单写者本地文件，没有用户认证与外部发布服务。",
       "document_path": "docs/learn-agent-rust/human-in-the-loop.md"
     },
     {
@@ -483,10 +504,10 @@
         "transfer": true
       },
       "images": 1,
-      "snippets": 6,
-      "details": 5,
+      "snippets": 11,
+      "details": 6,
       "teaching_focus": "组合验证接缝",
-      "evidence_boundary": "真实图、Tokio、报告文件与本地 HTTP；模型决策和批准仍为夹具。",
+      "evidence_boundary": "ADK-Rust 3.0 RC 的 workflow agents、审批记录与 OpenAI 兼容客户端；模型是规则替身或本地 fixture，真实服务未运行，没有模型质量结论。",
       "document_path": "docs/learn-agent-rust/pattern-composition.md"
     },
     {

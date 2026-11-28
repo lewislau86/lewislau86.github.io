@@ -1,0 +1,11 @@
+--- workflow: 根据工作区的 README 写一份升级报告，列出依据的文件。
+[read_root] text    "读入 README.md"
+[read_root] state   root_readme = "# demo-workspace\n升级到 3.0 需要 Rust 1.99。\n成员：member\n"
+[read_root] final
+[read_member] text    "member/README.md 不存在，跳过"
+[read_member] state   member_readme = ""
+[read_member] final
+[writer] text    "升级报告：按各 README 的要求逐项升级。\n依据：README.md"
+[writer] final
+report: 升级报告：按各 README 的要求逐项升级。 | 依据：README.md
+workflow-silent: structure=workflow agents=[read_root,read_member,writer] model_calls=1 reads=[README.md] verdict=rejected:missing:member/README.md

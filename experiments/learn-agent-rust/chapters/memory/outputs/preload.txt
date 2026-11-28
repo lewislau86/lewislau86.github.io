@@ -1,0 +1,23 @@
+--- process 1: chat user=user-1 project=project-a session=session-A recall=tool message="请记住：reply_language=中文" (exit 0)
+[assistant] call    id=call-remember remember {"key":"reply_language","value":"中文"}
+[assistant] result  id=call-remember remember status=ok {"key":"reply_language","status":"saved","value":"中文"}
+[assistant] text    "已记住：reply_language=中文。"
+[assistant] final
+request 0: roles=system,user tools=[remember,recall_memory,forget,read_note]
+request 1: roles=system,user,model,function tools=[remember,recall_memory,forget,read_note]
+outcome: remember:saved
+--- process 2: chat user=user-1 project=project-a session=session-B recall=preload message="以后请用什么语言回答？" (exit 0)
+[assistant] text    "没有找到回答语言的记忆，按默认设置回答。"
+[assistant] final
+request 0: roles=system,user tools=[remember,read_note]
+outcome: preload:injected=0 answer=default
+--- process 3: chat user=user-1 project=project-a session=session-C recall=preload message="reply_language？" (exit 0)
+[assistant] text    "好的，以后用中文回答。（依据：预加载注入的记忆）"
+[assistant] final
+request 0: roles=system,user tools=[remember,read_note]
+[preload] --- Relevant Memories ---
+[preload] […] user: reply_language=中文
+[preload] 来源：session-A 原话：请记住：reply_language=中文
+[preload] --- End Memories ---
+outcome: preload:injected=1 answer=中文
+preload: processes=3 steps=[remember:saved; preload:injected=0 answer=default; preload:injected=1 answer=中文]

@@ -15,6 +15,11 @@ on:
       - 'docs/public/learn-agent-rust/outputs/d0*-*'
       - 'docs/public/learn-agent-rust/figures/*pattern*.svg'
       - 'scripts/*agent*patterns*.py'
+      - 'scripts/learn-agent-rust-pattern-adk-figures.py'
+      - 'scripts/learn_agent_rust_adk.py'
+      - 'scripts/fetch-adk-rust.py'
+      - 'scripts/learn-agent-rust-adk.json'
+      - 'scripts/snippets/adk-trace.rs'
       - 'scripts/learn-agent-rust-lessons.json'
       - 'scripts/data/learn-agent-rust/d0*-results.json'
       - '.github/workflows/check-agent-patterns.yml'
@@ -26,7 +31,7 @@ permissions:
 jobs:
   patterns:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -34,21 +39,20 @@ jobs:
           python-version: '3.12'
       - name: Prepare Rust
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            .cache/agent-patterns-target
-            .cache/agent-patterns-download-target
-          key: agent-patterns-${{ runner.os }}-${{ hashFiles('docs/public/learn-agent-rust/code/pattern-composition/Cargo.lock') }}
-      - name: Fetch pinned dependencies
-        run: cargo fetch --locked --manifest-path docs/public/learn-agent-rust/code/pattern-composition/Cargo.toml
-      - name: Replay Rust, cross-process state, HTTP fixtures and final archives
-        run: python3 scripts/verify-agent-patterns.py --check
+            .cache/adk-rust
+          key: agent-patterns-${{ runner.os }}-${{ hashFiles('scripts/learn-agent-rust-adk.json', 'docs/public/learn-agent-rust/code/*/Cargo.lock') }}
+      - name: Fetch the pinned ADK-Rust 3.0 source
+        run: python3 scripts/fetch-adk-rust.py .cache/adk-rust
+      - name: Verify D01–D08 (scenarios, tests, cross-process approval, OpenAI-compatible fixture, archives)
+        run: python3 scripts/verify-agent-patterns-adk.py --check
       - name: Check course structure and generated figures
         run: |
           python3 scripts/sync-learn-agent-rust-course.py --check
           python3 scripts/review-learn-agent-rust.py --check
           python3 scripts/generate-learn-agent-rust-figures.py --lesson patterns
-          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/*pattern*.svg'
+          git diff --exit-code -- 'docs/public/learn-agent-rust/figures/*pattern*.svg' 'docs/public/learn-agent-rust/figures/d0*.svg'

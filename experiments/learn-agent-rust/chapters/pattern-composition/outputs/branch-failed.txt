@@ -1,0 +1,7 @@
+--- run: 审查修订 r2 的升级，写一段带来源的升级说明并发布。
+[docs_checker] text    "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[docs_checker] state   check_docs = "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[error] model.unavailable: rule-llm: 依赖检查服务没有响应
+branch-failed: model_calls=2 checkers=2 writer=0 publisher=0 steps=[run] published=no stop=error:model.unavailable

@@ -1,0 +1,149 @@
+{
+  "scope": "K02 on ADK-Rust 3.0 RC: adk-harness governed web_search with an offline application SearchProvider, mode table and approval prompter, result screening and untrusted block, web_fetch URL provenance, application citation check; rule-based model and person, no network",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-harness": {
+      "default_features": false,
+      "features": [
+        "runner",
+        "web"
+      ]
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "94ba78fb4c709f7e6d784709b64f6731514daf78419f59d8349e920d4ac13435",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "06387c9c52b75b8fb8d5cbc0994437f05395339756868e15e63c07c2075596cc",
+    "Cargo.toml": "589f204ceef855cb41c0a2c92e31d75ccc844ada0b1051978e5c2d005419871d",
+    "README.md": "092a475fd98d602037d50aeaa7b9674b7c6129db87d82869853f455c88faed02",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "c832d74ed2e82dddb5eda09c8860d9626c83174aa09e160b61a6605d175e9658",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "653ca4297544449c6fec0c6c3e58b58d4188c0d99e401b0a10b66a15ed0b0277",
+  "rust_tests_passed": 6,
+  "repeated_identical_runs": 2,
+  "scenarios": [
+    {
+      "name": "allowlisted",
+      "summary": "asked=0 provider_queries=1 results=2 tools=[web_search:ok] citations=ok",
+      "asked": 0,
+      "provider_queries": 1,
+      "results": 2,
+      "tools": "web_search:ok",
+      "citations": "ok"
+    },
+    {
+      "name": "needs-approval",
+      "summary": "asked=1 provider_queries=1 results=2 tools=[web_search:ok] citations=ok",
+      "asked": 1,
+      "provider_queries": 1,
+      "results": 2,
+      "tools": "web_search:ok",
+      "citations": "ok"
+    },
+    {
+      "name": "denied",
+      "summary": "asked=1 provider_queries=0 results=0 tools=[web_search:refused] citations=none",
+      "asked": 1,
+      "provider_queries": 0,
+      "results": 0,
+      "tools": "web_search:refused",
+      "citations": "none"
+    },
+    {
+      "name": "read-only",
+      "summary": "asked=0 provider_queries=0 results=0 tools=[web_search:refused] citations=none",
+      "asked": 0,
+      "provider_queries": 0,
+      "results": 0,
+      "tools": "web_search:refused",
+      "citations": "none"
+    },
+    {
+      "name": "screening",
+      "summary": "asked=2 provider_queries=1 results=3 tools=[web_search:ok,web_fetch:failed(harness.web.url_not_in_context)] citations=none",
+      "asked": 2,
+      "provider_queries": 1,
+      "results": 3,
+      "tools": "web_search:ok,web_fetch:failed(harness.web.url_not_in_context)",
+      "citations": "none"
+    },
+    {
+      "name": "secret-query",
+      "summary": "asked=1 provider_queries=0 results=0 tools=[web_search:failed(harness.web.secret_in_query)] citations=none",
+      "asked": 1,
+      "provider_queries": 0,
+      "results": 0,
+      "tools": "web_search:failed(harness.web.secret_in_query)",
+      "citations": "none"
+    },
+    {
+      "name": "domain-filter",
+      "summary": "asked=1 provider_queries=1 results=2 tools=[web_search:ok] citations=ok",
+      "asked": 1,
+      "provider_queries": 1,
+      "results": 2,
+      "tools": "web_search:ok",
+      "citations": "ok"
+    },
+    {
+      "name": "provider-error",
+      "summary": "asked=1 provider_queries=1 results=0 tools=[web_search:failed(fake.search_unavailable)] citations=none",
+      "asked": 1,
+      "provider_queries": 1,
+      "results": 0,
+      "tools": "web_search:failed(fake.search_unavailable)",
+      "citations": "none"
+    },
+    {
+      "name": "empty",
+      "summary": "asked=1 provider_queries=1 results=0 tools=[web_search:ok] citations=none",
+      "asked": 1,
+      "provider_queries": 1,
+      "results": 0,
+      "tools": "web_search:ok",
+      "citations": "none"
+    },
+    {
+      "name": "invented-citation",
+      "summary": "asked=0 provider_queries=1 results=2 tools=[web_search:ok] citations=invented",
+      "asked": 0,
+      "provider_queries": 1,
+      "results": 2,
+      "tools": "web_search:ok",
+      "citations": "invented"
+    }
+  ],
+  "outputs_sha256": {
+    "k02-allowlisted.txt": "312b8b0b4a2cf5cdd2a6dc6abe76a328d0c28555f1250aa1f1b6f32fd00aae13",
+    "k02-domain-filter.txt": "5c628f7d5f8569b9ae6fa2f8736499d2af31ad955a57895bff1c11f7b4b4c2de",
+    "k02-invented-citation.txt": "668dbd774cec9ce163928aea76899d648ce57c8217348303e0846df4a4da6bae",
+    "k02-needs-approval.txt": "b716d68b69764eac782bad39d2ce085bf15e8e71943caced45f038707fa871b8",
+    "k02-screening.txt": "5b7210367d6721f3d135f4290438874b727f59f86b50488793455261bdcf672a",
+    "k02-secret-query.txt": "abf1796e352d8f5ac0c29b3cf6baddec283ce142f38ba922123b1966582b63c8",
+    "k02-summary.txt": "65313bcc611e26bfb7da2a26e62d6a4ca1565040f11654506426feff842182b3"
+  }
+}

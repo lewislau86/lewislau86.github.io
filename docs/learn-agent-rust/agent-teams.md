@@ -1,16 +1,16 @@
 ---
-title: "第 27 章：Agent 团队"
+title: "第 28 章：Agent 团队"
 description: "让两个队友保留独立历史，通过有界邮箱协作，验证持续会话、消息投递、共享预算和可等待的退出。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 26 章 · 定时调度
+  text: 第 27 章 · 定时调度
   link: /learn-agent-rust/scheduling
 next:
-  text: 第 28 章 · 团队协作协议
+  text: 第 29 章 · 团队协作协议
   link: /learn-agent-rust/team-protocols
 ---
 
-# 第 27 章：Agent 团队
+# 第 28 章：Agent 团队
 
 [课程总览](./index.md) · [上一章](./scheduling.md) · [学习路径](./learning-path.md#r15) · [下一章](./team-protocols.md)
 
@@ -19,7 +19,7 @@ next:
 - 沿一条消息追踪发送者、接收邮箱、处理结果和回执，区分入队成功与工作完成。
 - 验证满邮箱、共享预算、队友取消和句柄回收，并说明单进程实验的适用范围。
 
-**前置：** [第 9 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 24 章任务系统](./task-system.md)与[第 25 章后台任务](./background-tasks.md)是架构前置。R12 已有持久化任务实验，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
+**前置：** [第 9 章：子 Agent 与上下文隔离](./subagents.md)、[两库环境准备](./setup.md#install-frameworks)。[第 25 章任务系统](./task-system.md)与[第 26 章后台任务](./background-tasks.md)是架构前置。R12 已有持久化任务实验，R13 已有独立后台实验；本章也提供独立工程，团队机制可以直接运行。
 
 **实践方式：** 下载<a href="/learn-agent-rust/agent-teams.zip" download>完整 agent-teams.zip</a>，进入解压后的 `agent-teams` 执行 `cargo run --locked`。固定 Rust 1.99.1，沿用 R02 的两库 Git revisions，锁文件中的 Tokio 为 1.54.1；首次获取依赖需要网络。
 :::
@@ -148,7 +148,7 @@ cargo run --locked -- persistent
 
 ![同一个源码队友第一次审查后回到 idle，接收追问资料，再进入第二次审查，直到团队关闭才退出。](/learn-agent-rust/figures/r15-member-lifecycle.svg)
 
-图中的两次 `busy` 都属于同一个 `core`。验证器检查历史中同时存在 `core-1-c1`、`core-2-c1` 两个调用 ID，第一次读取结果和追问文字都还在；配置队友没有收到这段追问。持续历史也会增长，本章在每次模型请求前检查 16000 字节上限，压缩策略可接回[第 12 章](./context-compaction.md)。
+图中的两次 `busy` 都属于同一个 `core`。验证器检查历史中同时存在 `core-1-c1`、`core-2-c1` 两个调用 ID，第一次读取结果和追问文字都还在；配置队友没有收到这段追问。持续历史也会增长，本章在每次模型请求前检查 16000 字节上限，压缩策略可接回[第 13 章](./context-compaction.md)。
 
 ### 没有工作时怎样等？
 

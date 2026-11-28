@@ -276,7 +276,7 @@ def r02_figures():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--r02", action="store_true", help="Generate only the R02 figures")
-    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R16", "R18", "R19", "R20", "P02", "P01", "R17", "P04", "P03", "P05", "P06", "K01", "G01", "G02", "G03", "patterns", "all"], default="all")
+    parser.add_argument("--lesson", choices=["R00", "R01", "R02", "R03", "R04", "R05", "R06", "R07", "R08", "R09", "R11", "R12", "R10", "R13", "R14", "R15", "R16", "R18", "R19", "R20", "P02", "P01", "R17", "P04", "P03", "P05", "P06", "K01", "K02", "D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "G01", "G02", "G03", "patterns", "all"], default="all")
     args = parser.parse_args()
     if args.r02:
         args.lesson = "R02"
@@ -380,6 +380,18 @@ def main():
     if args.lesson in ("K01", "all"):
         import importlib.util
         spec = importlib.util.spec_from_file_location("rag_figures", ROOT / "scripts/learn-agent-rust-rag-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure)
+    if args.lesson in ("D01", "D02", "D03", "D04", "D05", "D06", "D07", "D08", "patterns", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("pattern_adk_figures", ROOT / "scripts/learn-agent-rust-pattern-adk-figures.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.generate(ROOT, text, panel, arrow, save_figure, None if args.lesson in ("patterns", "all") else args.lesson)
+    if args.lesson in ("K02", "all"):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("websearch_figures", ROOT / "scripts/learn-agent-rust-websearch-figures.py")
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.generate(ROOT, text, panel, arrow, save_figure)

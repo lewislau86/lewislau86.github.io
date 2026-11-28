@@ -190,7 +190,7 @@ cargo run --locked -- replay
 | 审批人是谁、有没有资格批准 | 应用外层（界面、身份系统） | 本章没有实现，决定由程序直接写入 |
 | 文件内容 | 工具与文件系统 | 程序自建的临时目录 |
 
-审批记录和会话都只在内存里，进程退出就没了。ADK-Rust 提供 `SqliteApprovalStore`、`PostgresApprovalStore` 等持久版本，同一个决定可以跨进程、跨重启使用；跨进程挂起与恢复在[第 6 章](./graph-pause-resume.md)和[第 21 章](./human-in-the-loop.md)验证。
+审批记录和会话都只在内存里，进程退出就没了。ADK-Rust 提供 `SqliteApprovalStore`、`PostgresApprovalStore` 等持久版本，同一个决定可以跨进程、跨重启使用；跨进程挂起与恢复在[第 6 章](./graph-pause-resume.md)和[第 22 章](./human-in-the-loop.md)验证。
 
 ## 框架替你做了什么、没做什么
 

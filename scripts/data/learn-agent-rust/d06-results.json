@@ -1,210 +1,120 @@
 {
-  "additional": {},
-  "id": "D06",
-  "results": [
+  "scope": "D06 on ADK-Rust 3.0 RC: LoopAgent of a writer LlmAgent (output_key, instruction templates) and a rule-based evaluator CustomAgent (feedback and baseline in session state, escalate on acceptance or no progress, max_iterations 3); adk-retry-reflect plugin on an LlmAgent tool (max_retries 2, global_limit 3); rule-based models",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": [
+        "enhanced-plugins"
+      ]
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-retry-reflect": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "8308f458e09e4edb2895c730d30d822689a9a1bd29788cae89955b813f4cbc30",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "8ded366da3bbe75851b6e90068f260bed083a97376add983b52695899b389a32",
+    "Cargo.toml": "4f36445a489112cdff5028297e1b76d5e313ce5ccc337f2e4c706702075c5b4c",
+    "README.md": "76475cbcd958a750df4e315555c9840b2df7e66f6b8f247fbfc3862e71975145",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "c8e403f6093916dc9838ec4ce45e8ad873d90c52d8f1364b93184e06649ec0a2",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "b17a71c723b548db57a7984f39938d46c70707fbac6d9295cc160881674f79cb",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 2,
-          "sources": [
-            "README.md"
-          ],
-          "text": "upgrade reviewed"
-        },
-        "feedback": {
-          "candidate_revision": 1,
-          "criterion": "missing_evidence"
-        },
-        "repairs": 1
-      },
-      "limit": 32,
-      "scenario": "normal",
-      "stop": "completed",
-      "trace": [
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "accept"
-      ],
-      "used": 5
+      "name": "normal",
+      "checks": "[r1:missing_source,r2:pass]",
+      "iterations": "2",
+      "baseline": "r1",
+      "stop": "accepted"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [
-            "README.md"
-          ],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 1,
-          "sources": [
-            "README.md"
-          ],
-          "text": "upgrade reviewed"
-        },
-        "repairs": 0
-      },
-      "limit": 32,
-      "scenario": "already_good",
-      "stop": "completed",
-      "trace": [
-        "generate",
-        "evaluate",
-        "accept"
-      ],
-      "used": 3
+      "name": "already-good",
+      "checks": "[r1:pass]",
+      "iterations": "1",
+      "baseline": "r1",
+      "stop": "accepted"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "feedback": {
-          "candidate_revision": 0,
-          "criterion": "missing_evidence"
-        },
-        "repairs": 0
-      },
-      "limit": 32,
-      "scenario": "stale",
-      "stop": "stale_feedback",
-      "trace": [
-        "generate",
-        "evaluate",
-        "repair"
-      ],
-      "used": 3
+      "name": "new-error",
+      "checks": "[r1:missing_source,r2:empty_text,r3:pass]",
+      "iterations": "3",
+      "baseline": "r1",
+      "stop": "accepted"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "repairs": 0
-      },
-      "limit": 32,
-      "scenario": "malformed",
-      "stop": "invalid_feedback",
-      "trace": [
-        "generate",
-        "evaluate"
-      ],
-      "used": 2
+      "name": "no-progress",
+      "checks": "[r1:missing_source,r2:missing_source]",
+      "iterations": "2",
+      "baseline": "r1",
+      "stop": "no_progress"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "feedback": {
-          "candidate_revision": 1,
-          "criterion": "missing_evidence"
-        },
-        "repairs": 0
-      },
-      "limit": 32,
-      "scenario": "no_progress",
-      "stop": "no_progress",
-      "trace": [
-        "generate",
-        "evaluate",
-        "repair"
-      ],
-      "used": 3
+      "name": "never-good",
+      "checks": "[r1:missing_source,r2:unread_source,r3:unread_source]",
+      "iterations": "3",
+      "baseline": "r1",
+      "stop": "loop_limit"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 2,
-          "sources": [
-            "README.md"
-          ],
-          "text": ""
-        },
-        "feedback": {
-          "candidate_revision": 2,
-          "criterion": "empty_report"
-        },
-        "repairs": 1
-      },
-      "limit": 32,
-      "scenario": "new_error",
-      "stop": "no_progress",
-      "trace": [
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "repair"
-      ],
-      "used": 5
+      "name": "tool-retry",
+      "calls": "[READMe.md:reflection,README.md:ok]",
+      "outcome": "read",
+      "stop": "answered"
     },
     {
-      "data": {
-        "baseline": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "candidate": {
-          "revision": 1,
-          "sources": [],
-          "text": "upgrade reviewed"
-        },
-        "repairs": 0
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "generate"
-      ],
-      "used": 1
+      "name": "tool-retry-exhausted",
+      "calls": "[READMe.md:reflection,READMe.md:reflection,READMe.md:error]",
+      "outcome": "gave_up",
+      "stop": "answered"
+    },
+    {
+      "name": "tool-retry-wandering",
+      "calls": "[READMe.md:reflection,readme.md:reflection,Readme.md:reflection,README.txt:error]",
+      "outcome": "gave_up",
+      "stop": "answered"
     }
   ],
-  "rust_tests": 4,
-  "scenarios": 7,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
-  "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "e7bee402c0e8b113ced329d5e69724bdbf147543d9339a11e32d5f0addc2eab8",
-    "Cargo.toml": "9adec0b5d03ec11c1be18e821caa8be10be6545413ed0a8dde59a280e5f320b5",
-    "README.md": "bf12d5c1491c0ca931d32caf3fc1bb461acd31598829d58cc48257a54f96b46e",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "deb3513bb0fdea8dc8cca73796a6536d09d7f8e986d5cfd8c8e67e93bb9a22ef"
+  "outputs_sha256": {
+    "d06-never-good.txt": "4a0bcd9c4730a04c9f47d36587df9b81f3f71453cb82f3d3a5bd2a5b1a28c7c6",
+    "d06-new-error.txt": "600e8c813d6ffbfe78f8e54654a7d8f0f35956b0e8f6dec98b24318a0fe14e3b",
+    "d06-no-progress.txt": "7618a109f520ba7525809321fa4585d61177f4200e244084b82cedb1b6fe2476",
+    "d06-normal.txt": "470444446270e55e0802477adbdcba52ca548eeac51712a4c247c9cab6d1b67f",
+    "d06-summary.txt": "ca0c1038b16aaff8fb7e1d7efc1a5cc609d8f022d97e895c99e27358b7a526c5",
+    "d06-tool-retry-exhausted.txt": "fdc1e25ecdd8340894ee4adfb5a2746080586bb62d5554db0c16a448c75316b3",
+    "d06-tool-retry-wandering.txt": "a4a92ce0f6732f86c3912682cdf7d290b3c4db962042bf0c6922db61a12f1527",
+    "d06-tool-retry.txt": "b0d2e848c1823934648205979ec4612a6e6ed8529f8d772d372c5f15e2e70f4a"
   }
 }

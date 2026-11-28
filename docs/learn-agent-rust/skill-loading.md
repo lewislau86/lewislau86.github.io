@@ -138,7 +138,7 @@ cargo run --locked -- repeat
 
 ![normal 与 repeat 进入会话的技能正文字节，truncated 被截断后的字节，以及自动注入方式放进用户消息的字节。](/learn-agent-rust/figures/r07-context-bytes.svg)
 
-正文一旦加入历史，就会随后续请求继续发送。如何压缩历史，由[第 12 章](./context-compaction.md)继续处理。
+正文一旦加入历史，就会随后续请求继续发送。如何压缩历史，由[第 13 章](./context-compaction.md)继续处理。
 
 ## 5. 技能能让工具出现，不能让工具获准
 
@@ -371,4 +371,4 @@ adk-skill 把技能变成工具循环里的一个知识入口：启动时建索�
 
 图源：[参考章节](https://learn.shareai.run/zh/s07/) · [原图](https://learn.shareai.run/course-assets/s07_skill_loading/skill-overview.svg)。来源版本与许可见[课程架构](./architecture.md#reference-assets)。
 
-下一篇：[第 11 章：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 12 章](./context-compaction.md)处理历史增长。
+下一篇：[第 11 章：RAG](./retrieval-augmented-generation.md)，为技能要求的结论找出当前资料与来源；随后在[第 13 章](./context-compaction.md)处理历史增长。

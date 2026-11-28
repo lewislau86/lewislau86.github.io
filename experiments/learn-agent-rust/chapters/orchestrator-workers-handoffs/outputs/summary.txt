@@ -1,0 +1,10 @@
+two: workers=[api,cli] peak=2 worker_saw=[-,-] edges=[delegate:completed,delegate:completed] turn1=lead turn2=lead coverage=50%
+three: workers=[api,cli,core] peak=2 worker_saw=[-,-,-] edges=[delegate:completed,delegate:completed,delegate:completed] turn1=lead turn2=lead coverage=50%
+shared-context: workers=[api,cli] peak=2 worker_saw=[note,note] edges=[delegate:completed,delegate:completed] turn1=lead turn2=lead coverage=50%
+handoff: workers=[api,cli,core] peak=2 worker_saw=[-,-,-] edges=[delegate:completed,delegate:completed,delegate:completed,handoff:completed] turn1=license turn2=license license_knew=no coverage=100%
+handoff-note: workers=[api,cli,core] peak=2 worker_saw=[-,-,-] edges=[delegate:completed,delegate:completed,delegate:completed,handoff:completed] turn1=license turn2=license license_knew=yes coverage=100%
+undeclared: workers=[api,cli,core] peak=2 worker_saw=[-,-,-] edges=[delegate:completed,delegate:completed,delegate:completed] turn1=lead turn2=lead coverage=50%
+worker-failed: workers=[api,cli] peak=2 worker_saw=[-,-] edges=[delegate:completed,delegate:failed] turn1=lead turn2=lead coverage=50%
+budget: workers=[api,cli] peak=2 worker_saw=[-,-] edges=[delegate:completed,delegate:running,delegate:running] stop=error:agent.team.budget_exceeded
+cycle: stop=invalid_spec:CyclicTopology
+interrupted: workers=[api,cli,core] peak=2 worker_saw=[-,-,-] edges=[delegate:completed,delegate:running,delegate:running] stop=interrupted:UnsafeDelegate

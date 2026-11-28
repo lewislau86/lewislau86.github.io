@@ -1,0 +1,11 @@
+{
+  "repository": "https://github.com/zavora-ai/adk-rust",
+  "rev": "98515241133d24f7e41f8fd272649035416a142f",
+  "rev_date": "2026-11-26",
+  "version": "3.0.0",
+  "release_status": "release candidate, not on crates.io",
+  "toolchain": "1.99.1",
+  "upstream_toolchain": "1.95.0",
+  "source_dir": "adk-rust",
+  "note": "全书唯一的 ADK-Rust 基线。各章 .cargo/config.toml 的 path patch、源码引用、证据里的版本字段都从这里读取。更换基线时全书一起换，并在根目录 agent.md 第 2 节和第 11 节记录。"
+}

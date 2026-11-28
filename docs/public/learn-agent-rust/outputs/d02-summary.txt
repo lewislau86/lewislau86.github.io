@@ -1,0 +1,10 @@
+readme: router=llm route=readme agents=[router,readme_extract,readme_gate,readme_render] model_calls=[route,extract,render] gate=passed outcome=report
+cargo: router=llm route=cargo agents=[router,cargo_extract,cargo_gate,cargo_render] model_calls=[route,extract,render] gate=passed outcome=report
+unknown: router=llm route=needs_input agents=[router,needs_input] model_calls=[route] gate=- outcome=needs_input
+substring-trap: router=llm route=readme agents=[router,readme_extract] model_calls=[route,extract,extract] gate=- outcome=error
+rule-router: router=rule route=cargo agents=[cargo_extract,cargo_gate,cargo_render] model_calls=[extract,render] gate=passed outcome=report
+rule-router-other: router=rule route=needs_input agents=[needs_input] model_calls=[] gate=- outcome=needs_input
+low-confidence: router=decision route=needs_input agents=[router,needs_input] model_calls=[decide] gate=- outcome=needs_input
+missing-field: router=llm route=readme agents=[router,readme_extract] model_calls=[route,extract,extract] gate=- outcome=error
+schema-retry: router=llm route=readme agents=[router,readme_extract,readme_gate,readme_render] model_calls=[route,extract,extract,render] gate=passed outcome=report
+stale: router=llm route=readme agents=[router,readme_extract,readme_gate] model_calls=[route,extract,render,route,extract] gate=stale_artifact:r1 outcome=stopped

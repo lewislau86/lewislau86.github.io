@@ -1,20 +1,24 @@
-normal: stop=answer turns=7 calls=6 revision=5 reads=1 completed=true goal_verified=true
-claims-only: stop=answer turns=7 calls=6 revision=5 reads=0 completed=true goal_verified=false
-read-error: stop=tool_error turns=3 calls=3 revision=2 reads=0 completed=false goal_verified=false
-budget-stop: stop=turn_limit turns=3 calls=3 revision=2 reads=1 completed=false goal_verified=false
-fresh-session: previous_revision=5 new_revision=0
-two-active: code=multiple_active unchanged=true
-skip-completion: code=invalid_transition unchanged=true
-unknown-status: code=invalid_arguments unchanged=true
-duplicate-id: code=duplicate_id unchanged=true
-empty-content: code=invalid_content unchanged=true
-too-many: code=item_count unchanged=true
-remove-item: code=removed_item unchanged=true
-changed-content: code=content_changed unchanged=true
-stale-revision: code=revision_conflict unchanged=true
-reopen-completed: code=invalid_transition unchanged=true
-append-step: code=ok unchanged=false
-yield-step: code=ok unchanged=false
-permission-denied: code=permission_denied unchanged=true
-invalid-json: code=invalid_arguments unchanged=true
-unknown-field: code=invalid_arguments unchanged=true
+normal: stop=answer model_calls=7 revision=5 reads=1 completed=true goal_verified=true seen_revisions=[0, 1, 2, 2, 3, 4, 5]
+claims-only: stop=answer model_calls=7 revision=5 reads=0 completed=true goal_verified=false seen_revisions=[0, 1, 2, 2, 3, 4, 5]
+read-error: stop=answer model_calls=4 revision=2 reads=0 completed=false goal_verified=false seen_revisions=[0, 1, 2, 2]
+budget-stop: stop=agent.legacy model_calls=3 revision=2 reads=1 completed=false goal_verified=false seen_revisions=[0, 1, 2]
+template-only: stop=answer model_calls=3 revision=1 reads=0 completed=false goal_verified=false seen_revisions=[0, 0, 0] next_run_first_seen=1
+next-run: first_run_revision=5 second_run_first_seen=5
+fresh-session: s1_revision=5 s2_plan=none
+two-active: status=failed code=todo.multiple_active unchanged=true revision=1->1 summary_exists=false
+skip-completion: status=failed code=todo.invalid_transition unchanged=true revision=1->1 summary_exists=false
+unknown-status: status=failed code=todo.invalid_arguments unchanged=true revision=1->1 summary_exists=false
+duplicate-id: status=failed code=todo.duplicate_id unchanged=true revision=1->1 summary_exists=false
+empty-content: status=failed code=todo.invalid_content unchanged=true revision=1->1 summary_exists=false
+too-many: status=failed code=todo.item_count unchanged=true revision=1->1 summary_exists=false
+remove-item: status=failed code=todo.removed_item unchanged=true revision=1->1 summary_exists=false
+changed-content: status=failed code=todo.content_changed unchanged=true revision=1->1 summary_exists=false
+stale-revision: status=failed code=todo.revision_conflict unchanged=true revision=1->1 summary_exists=false
+reopen-completed: status=failed code=todo.invalid_transition unchanged=true revision=3->3 summary_exists=false
+append-step: status=ok code=- unchanged=false revision=1->2 summary_exists=false
+yield-step: status=ok code=- unchanged=false revision=2->3 summary_exists=false
+permission-denied: status=refused code=- unchanged=true revision=2->2 summary_exists=false
+same-batch-naive: results=ok,ok revision=1->2 read_started=false step_appended=true lost_update=true
+same-batch: results=ok,todo.revision_conflict revision=1->2 read_started=true step_appended=false lost_update=false
+wrong-type: status=failed code=todo.invalid_arguments unchanged=true revision=1->1 summary_exists=false
+unknown-field: status=failed code=todo.invalid_arguments unchanged=true revision=1->1 summary_exists=false

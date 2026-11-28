@@ -9,7 +9,7 @@ pageClass: learn-agent-rust-course
 [课程总览](./index.md) · [学习路径](./learning-path.md) · [开始图状态与路由](./graph-state-routing.md)
 
 ::: info 正在迁移到 ADK-Rust 3.0
-全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–14 章与[专题 2](./side-effect-reliability.md)。本导读与第 5–7 章基于 adk-graph；第五部分的设计模式章节仍是旧版 graph-flow 实验，迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
+全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–23 章与[专题 2](./side-effect-reliability.md)。本导读与第 5–7 章基于 adk-graph；第五部分（第 16–23 章）用的是 workflow agents，两套 API 怎样选见[第五部分导读](./agent-design-patterns.md#adk-mapping)。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
 :::
 
 ::: tip 本章学习目标

@@ -1,0 +1,7 @@
+--- run: 审查修订 r2 的升级：文档、依赖、配置分别检查，再汇总。
+[config_checker] call    id=stop-config exit_loop {}
+[config_checker] result  id=stop-config exit_loop status=ok {}
+[config_checker] final
+[config_checker] escalate
+report: 
+escalate: started=[config,deps,docs] finished=[config] peak_concurrent=3 outcome=escalated_by:config_checker

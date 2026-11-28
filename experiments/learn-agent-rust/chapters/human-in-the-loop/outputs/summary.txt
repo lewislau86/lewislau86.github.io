@@ -1,0 +1,8 @@
+approve: steps=[start:held,approve,resume] writer_runs=1 published=[3.0.md] pending=0
+no-decision: steps=[start:held,resume:held] writer_runs=1 published=[] pending=1
+deny: steps=[start:held,deny,resume] writer_runs=1 published=[] pending=0
+edit: steps=[start:held,edit,resume] writer_runs=1 published=[3.0.md(edited)] pending=0
+edit-forbidden: steps=[start:held,edit-target,resume] writer_runs=1 published=[] pending=0
+clarify: steps=[start,say:held,approve,resume] writer_runs=2 published=[3.0.md] pending=0
+changed-mind: steps=[start:held,approve,say] writer_runs=1 published=[3.0.md] pending=0
+changed-mind-revoked: steps=[start:held,approve,revoke,resume,say:held,approve,resume] writer_runs=2 published=[3.1.md] pending=0

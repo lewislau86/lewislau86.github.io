@@ -62,31 +62,32 @@ python3 run.py test P04
 | G01 | [第 5 章 · 图状态、条件路由与有界循环（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-state-routing) | [chapters/graph-state-routing](chapters/graph-state-routing/README.md) | 4 组路由、修复额度、超步上限与建图探针演示 |
 | G02 | [第 6 章 · 图暂停、检查点与恢复（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-pause-resume) | [chapters/graph-pause-resume](chapters/graph-pause-resume/README.md) | 跨进程暂停、检查点与按节点名恢复的对照演示 |
 | G03 | [第 7 章 · 图并行、归并与子图（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/graph-parallel-subgraphs) | [chapters/graph-parallel-subgraphs](chapters/graph-parallel-subgraphs/README.md) | 5 组并行、失败、子图与超时演示 |
-| R05 | [第 8 章 · 可见的任务清单](https://lewislau86.github.io/learn-agent-rust/todo-planning) | [chapters/todo-planning](chapters/todo-planning/README.md) | 本章正常路径演示 |
-| R06 | [第 9 章 · 子 Agent 与上下文隔离](https://lewislau86.github.io/learn-agent-rust/subagents) | [chapters/subagents](chapters/subagents/README.md) | 本章正常路径演示 |
-| R07 | [第 10 章 · 按需加载技能](https://lewislau86.github.io/learn-agent-rust/skill-loading) | [chapters/skill-loading](chapters/skill-loading/README.md) | 本章正常路径演示 |
+| R05 | [第 8 章 · 可见的任务清单（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/todo-planning) | [chapters/todo-planning](chapters/todo-planning/README.md) | 本章正常路径演示 |
+| R06 | [第 9 章 · 子 Agent 与上下文隔离（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/subagents) | [chapters/subagents](chapters/subagents/README.md) | 本章正常路径演示 |
+| R07 | [第 10 章 · 按需加载技能（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/skill-loading) | [chapters/skill-loading](chapters/skill-loading/README.md) | 本章正常路径演示 |
 | K01 | [第 11 章 · RAG：检索、证据与回答（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/retrieval-augmented-generation) | [chapters/retrieval-augmented-generation](chapters/retrieval-augmented-generation/README.md) | 16 个检索、证据与 Agent 引用场景 |
-| R08 | [第 12 章 · 上下文压缩](https://lewislau86.github.io/learn-agent-rust/context-compaction) | [chapters/context-compaction](chapters/context-compaction/README.md) | 本章正常路径演示 |
-| R09 | [第 13 章 · 跨会话记忆](https://lewislau86.github.io/learn-agent-rust/memory) | [chapters/memory](chapters/memory/README.md) | 跨进程写入与召回演示 |
-| R10 | [第 14 章 · 系统提示词组装](https://lewislau86.github.io/learn-agent-rust/system-prompts) | [chapters/system-prompts](chapters/system-prompts/README.md) | 本章正常路径演示 |
-| D01 | [第 15 章 · 模式选择：单次调用、工作流与自主循环](https://lewislau86.github.io/learn-agent-rust/pattern-selection) | [chapters/pattern-selection](chapters/pattern-selection/README.md) | 6 个固定输入图场景 |
-| D02 | [第 16 章 · 提示链与条件路由](https://lewislau86.github.io/learn-agent-rust/prompt-chaining-routing) | [chapters/prompt-chaining-routing](chapters/prompt-chaining-routing/README.md) | 6 个固定输入图场景 |
-| D03 | [第 17 章 · 并行分解与结果归并](https://lewislau86.github.io/learn-agent-rust/parallel-decomposition) | [chapters/parallel-decomposition](chapters/parallel-decomposition/README.md) | 8 个固定输入图场景 |
-| D04 | [第 18 章 · 规划、执行与动态重规划](https://lewislau86.github.io/learn-agent-rust/plan-execute-replan) | [chapters/plan-execute-replan](chapters/plan-execute-replan/README.md) | 6 个固定输入图场景 |
-| D05 | [第 19 章 · 协调者、工作者与任务交接](https://lewislau86.github.io/learn-agent-rust/orchestrator-workers-handoffs) | [chapters/orchestrator-workers-handoffs](chapters/orchestrator-workers-handoffs/README.md) | 7 个固定输入图场景 |
-| D06 | [第 20 章 · 评估、反思与有界修复](https://lewislau86.github.io/learn-agent-rust/evaluator-reflection) | [chapters/evaluator-reflection](chapters/evaluator-reflection/README.md) | 7 个固定输入图场景 |
-| D07 | [第 21 章 · 人工介入与审批恢复](https://lewislau86.github.io/learn-agent-rust/human-in-the-loop) | [chapters/human-in-the-loop](chapters/human-in-the-loop/README.md) | 7 个固定输入图场景与跨 CLI 编辑后重新批准 |
-| D08 | [第 22 章 · 模式组合与选型实战](https://lewislau86.github.io/learn-agent-rust/pattern-composition) | [chapters/pattern-composition](chapters/pattern-composition/README.md) | 9 个固定输入图场景、真实报告文件与 36 项本地 HTTP 模式对照驱动器任务 |
-| R11 | [第 23 章 · 错误分类与恢复](https://lewislau86.github.io/learn-agent-rust/error-recovery) | [chapters/error-recovery](chapters/error-recovery/README.md) | 本章正常路径演示 |
-| R12 | [第 24 章 · 持久化任务系统](https://lewislau86.github.io/learn-agent-rust/task-system) | [chapters/task-system](chapters/task-system/README.md) | 多步持久状态演示 |
-| R13 | [第 25 章 · 后台任务](https://lewislau86.github.io/learn-agent-rust/background-tasks) | [chapters/background-tasks](chapters/background-tasks/README.md) | 本章正常路径演示 |
-| R14 | [第 26 章 · 定时调度](https://lewislau86.github.io/learn-agent-rust/scheduling) | [chapters/scheduling](chapters/scheduling/README.md) | 多步持久状态演示 |
-| R15 | [第 27 章 · Agent 团队](https://lewislau86.github.io/learn-agent-rust/agent-teams) | [chapters/agent-teams](chapters/agent-teams/README.md) | 本章正常路径演示 |
-| R16 | [第 28 章 · 团队协作协议](https://lewislau86.github.io/learn-agent-rust/team-protocols) | [chapters/team-protocols](chapters/team-protocols/README.md) | 本章正常路径演示 |
-| R17 | [第 29 章 · 自主任务领取](https://lewislau86.github.io/learn-agent-rust/autonomous-workers) | [chapters/autonomous-workers](chapters/autonomous-workers/README.md) | 多步持久状态演示 |
-| R18 | [第 30 章 · 工作区隔离](https://lewislau86.github.io/learn-agent-rust/worktree-isolation) | [chapters/worktree-isolation](chapters/worktree-isolation/README.md) | 本章正常路径演示 |
-| R19 | [第 31 章 · MCP 外部工具](https://lewislau86.github.io/learn-agent-rust/mcp-tools) | [chapters/mcp-tools](chapters/mcp-tools/README.md) | 本章正常路径演示 |
-| R20 | [第 32 章 · 完整 Agent 集成](https://lewislau86.github.io/learn-agent-rust/integrated-agent) | [chapters/integrated-agent](chapters/integrated-agent/README.md) | 本章正常路径演示 |
+| K02 | [第 12 章 · 联网搜索（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/web-search) | [chapters/web-search](chapters/web-search/README.md) | 本章正常路径演示 |
+| R08 | [第 13 章 · 上下文压缩（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/context-compaction) | [chapters/context-compaction](chapters/context-compaction/README.md) | 本章正常路径演示 |
+| R09 | [第 14 章 · 跨会话记忆（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/memory) | [chapters/memory](chapters/memory/README.md) | 跨进程写入与召回演示 |
+| R10 | [第 15 章 · 系统提示词组装（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/system-prompts) | [chapters/system-prompts](chapters/system-prompts/README.md) | 本章正常路径演示 |
+| D01 | [第 16 章 · 模式选择：单次调用、工作流与自主循环（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/pattern-selection) | [chapters/pattern-selection](chapters/pattern-selection/README.md) | 9 个场景（ADK-Rust 3.0，规则模型） |
+| D02 | [第 17 章 · 提示链与条件路由（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/prompt-chaining-routing) | [chapters/prompt-chaining-routing](chapters/prompt-chaining-routing/README.md) | 10 个场景（ADK-Rust 3.0，规则模型） |
+| D03 | [第 18 章 · 并行分解与结果归并（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/parallel-decomposition) | [chapters/parallel-decomposition](chapters/parallel-decomposition/README.md) | 7 个场景（ADK-Rust 3.0，规则模型） |
+| D04 | [第 19 章 · 规划、执行与动态重规划（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/plan-execute-replan) | [chapters/plan-execute-replan](chapters/plan-execute-replan/README.md) | 7 个场景（ADK-Rust 3.0，规则模型） |
+| D05 | [第 20 章 · 协调者、工作者与任务交接（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/orchestrator-workers-handoffs) | [chapters/orchestrator-workers-handoffs](chapters/orchestrator-workers-handoffs/README.md) | 10 个场景（ADK-Rust 3.0，规则模型） |
+| D06 | [第 21 章 · 评估、反思与有界修复（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/evaluator-reflection) | [chapters/evaluator-reflection](chapters/evaluator-reflection/README.md) | 8 个场景（ADK-Rust 3.0，规则模型） |
+| D07 | [第 22 章 · 人工介入与审批恢复（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/human-in-the-loop) | [chapters/human-in-the-loop](chapters/human-in-the-loop/README.md) | 8 个场景（ADK-Rust 3.0，规则模型） |
+| D08 | [第 23 章 · 模式组合与选型实战（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/pattern-composition) | [chapters/pattern-composition](chapters/pattern-composition/README.md) | 7 个场景（ADK-Rust 3.0，规则模型） |
+| R11 | [第 24 章 · 错误分类与恢复](https://lewislau86.github.io/learn-agent-rust/error-recovery) | [chapters/error-recovery](chapters/error-recovery/README.md) | 本章正常路径演示 |
+| R12 | [第 25 章 · 持久化任务系统](https://lewislau86.github.io/learn-agent-rust/task-system) | [chapters/task-system](chapters/task-system/README.md) | 多步持久状态演示 |
+| R13 | [第 26 章 · 后台任务](https://lewislau86.github.io/learn-agent-rust/background-tasks) | [chapters/background-tasks](chapters/background-tasks/README.md) | 本章正常路径演示 |
+| R14 | [第 27 章 · 定时调度](https://lewislau86.github.io/learn-agent-rust/scheduling) | [chapters/scheduling](chapters/scheduling/README.md) | 多步持久状态演示 |
+| R15 | [第 28 章 · Agent 团队](https://lewislau86.github.io/learn-agent-rust/agent-teams) | [chapters/agent-teams](chapters/agent-teams/README.md) | 本章正常路径演示 |
+| R16 | [第 29 章 · 团队协作协议](https://lewislau86.github.io/learn-agent-rust/team-protocols) | [chapters/team-protocols](chapters/team-protocols/README.md) | 本章正常路径演示 |
+| R17 | [第 30 章 · 自主任务领取](https://lewislau86.github.io/learn-agent-rust/autonomous-workers) | [chapters/autonomous-workers](chapters/autonomous-workers/README.md) | 多步持久状态演示 |
+| R18 | [第 31 章 · 工作区隔离](https://lewislau86.github.io/learn-agent-rust/worktree-isolation) | [chapters/worktree-isolation](chapters/worktree-isolation/README.md) | 本章正常路径演示 |
+| R19 | [第 32 章 · MCP 外部工具](https://lewislau86.github.io/learn-agent-rust/mcp-tools) | [chapters/mcp-tools](chapters/mcp-tools/README.md) | 本章正常路径演示 |
+| R20 | [第 33 章 · 完整 Agent 集成](https://lewislau86.github.io/learn-agent-rust/integrated-agent) | [chapters/integrated-agent](chapters/integrated-agent/README.md) | 本章正常路径演示 |
 | P01 | [专题 1 · PostgreSQL 检查点](https://lewislau86.github.io/learn-agent-rust/postgres-checkpoints) | [chapters/postgres-checkpoints](chapters/postgres-checkpoints/README.md) | 完整本地 Python 套件 |
 | P02 | [专题 2 · 外部操作的可靠性（ADK-Rust 3.0）](https://lewislau86.github.io/learn-agent-rust/side-effect-reliability) | [chapters/side-effect-reliability](chapters/side-effect-reliability/README.md) | 本章正常路径演示 |
 | P03 | [专题 3 · 模型协议与质量评估](https://lewislau86.github.io/learn-agent-rust/model-evaluation) | [chapters/model-evaluation](chapters/model-evaluation/README.md) | 完整本地 Python 套件 |
@@ -96,7 +97,7 @@ python3 run.py test P04
 
 ## 检查证据与范围
 
-发布前逐章原验证器：39/39 通过，记录见 [audit.json](audit.json)。
+发布前逐章原验证器：40/40 通过，记录见 [audit.json](audit.json)。
 原验证器检查正文引用、故障场景、实际产物及章节下载包；本代码库的 `test --all` 检查 Rust 测试、格式、Clippy 与运行表中的演示。两种检查分别记录。
 P01/P03/P04/P05 的统一入口运行章节 lab.py 完整本地套件；其余章节的更多故障场景见各章 README 和源码。
 各章 outputs/ 与 evidence.json 是发布时的记录，包含源码摘要与实验边界。时延、PID、平台路径等现场值不能逐字比较。

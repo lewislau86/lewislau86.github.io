@@ -1,18 +1,18 @@
 ---
-title: "第 12 章：上下文压缩"
+title: "第 13 章：上下文压缩"
 description: "沿一次连续代码审查，用 ADK-Rust 3.0 的运行间压缩与运行内压缩缩短历史，由应用自写的摘要器核对事实清单，验证摘要失败时历史保持不变。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 11 章 · RAG：检索、证据与回答
-  link: /learn-agent-rust/retrieval-augmented-generation
+  text: 第 12 章 · 联网搜索
+  link: /learn-agent-rust/web-search
 next:
-  text: 第 13 章 · 跨会话记忆
+  text: 第 14 章 · 跨会话记忆
   link: /learn-agent-rust/memory
 ---
 
-# 第 12 章：上下文压缩
+# 第 13 章：上下文压缩
 
-[课程总览](./index.md) · [上一章](./retrieval-augmented-generation.md) · [学习路径](./learning-path.md#r08) · [下一章](./memory.md)
+[课程总览](./index.md) · [上一章](./web-search.md) · [学习路径](./learning-path.md#r08) · [下一章](./memory.md)
 
 ::: tip 本章学习目标
 - 区分运行之间的压缩、运行之内的压缩和直接丢弃旧事件，解释各自保留了什么。

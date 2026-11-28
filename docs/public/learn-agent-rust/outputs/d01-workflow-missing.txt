@@ -1,0 +1,9 @@
+--- workflow: 根据工作区的 README 写一份升级报告，列出依据的文件。
+[read_root] text    "读入 README.md"
+[read_root] state   root_readme = "# demo-workspace\n升级到 3.0 需要 Rust 1.99。\n成员：member\n"
+[read_root] final
+[read_member] text    "missing_evidence: member/README.md 不存在，停止"
+[read_member] final
+[read_member] escalate
+report: missing_evidence: member/README.md 不存在，停止
+workflow-missing: structure=workflow agents=[read_root,read_member] model_calls=0 reads=[README.md] verdict=rejected:escalated

@@ -6,7 +6,7 @@
 > **怎样维护本文件：** 每完成一项工作，更新第 9 节状态表；每做出一个取舍，追加到第 10 节决策记录；每次查阅上游，更新第 2 节基线并在第 11 节记一笔。不要删除旧决策，改判时写新条目并注明替代了哪一条。
 
 - 创建日期：2026-11-27
-- 当前阶段：阶段 3 完成（6.3 节），下一步阶段 4（D01–D08）。已迁移：第 0–14 章（R00–R10、G01–G03、K01）与专题 2（P02，按 D-10 在阶段 6 整章重写）。全书代码库重新打包等 P01 在 Mac 上复跑（6.3 节）
+- 当前阶段：阶段 4 完成（6.4 节）。已迁移：第 0–23 章（R00–R10、G01–G03、K01、K02、D01–D08）与专题 2（P02，按 D-10 在阶段 6 整章重写）；全书代码库已重新打包（`package-agent-experiments.py --check` 通过）。下一步：阶段 5（R11–R18）
 - 上游基线：adk-rust `main` @ `98515241133d24f7e41f8fd272649035416a142f`（2026-11-26，workspace 版本 3.0.0，未发布）；唯一登记处是 `scripts/learn-agent-rust-adk.json`
 
 ---
@@ -97,27 +97,28 @@
 | R06 | 9 | subagents | 标准库 | `sub_agent` + `transfer_to_agent`、`AgentTool`（独立上下文）、`allows_transfer_to_parent/peers`、共享 `RunBudget` | 区分“交接控制权”与“当工具调用” | Stable | 3 |
 | R07 | 完成（12 → 15：stale/budget/oversize/missing/version-two 改为 changed 快照、truncated、broken-skill；新增 two-skills、resource×3、auto-inject） | 完成（adk-skill SkillToolset + ToolRegistry + SkillInjector 对照） | 完成（15 场景 × 2 次一致、8 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张） | 完成（`adk3`、CI） |
 | K01 | 11 | retrieval-augmented-generation | 标准库 | `adk-rag`（切块、embedding、向量检索、rerank） | 离线需要确定性 embedder：阶段 3 先验证能否注入自定义 embedder 与内存后端（D-8）；BM25 基线可作为对照保留 | Stable | 3 |
-| R08 | 12 | context-compaction | 两库 | `EventsCompactionConfig`（调用间）、`IntraCompactionConfig`（调用内，3.0 默认开）、`RunConfig::history_max_events`；摘要器改为应用自写的 `FactSummarizer`（实现 `BaseEventsSummarizer`，核对事实清单），不用 `LlmEventSummarizer` | 实际做法见 6.3 节；规则模型代替 `ScriptedLlm` | Stable | 3 |
-| R09 | 13 | memory | serde | `SqliteMemoryService`（FTS5）、app / user / project 隔离；应用工具 `remember` / `recall_memory` / `forget` 核对来源、按时间取最新；对照 `LoadMemoryTool` / `PreloadMemoryTool`；`delete_user` 与 FTS `optimize` + `VACUUM` | 每一步是独立子进程；双时态知识图谱只在源码表里提及 | Stable | 3 |
-| R10 | 14 | system-prompts | 两库 | `static_instruction`（策略 + AGENTS.md）、`instruction` 模板（每次运行渲染一次）、`with_skills` 注入用户这一轮 vs `global_instruction_provider`、`ToolDeclarations` 顺序、技能 ID pin、`before_model_callback` 字节预算、策略拒绝写入 | 规则模型自己记录每次请求（代替 `requests()`），比较“系统消息 + 工具声明”的前缀指纹 | Stable | 3 |
-| D01 | 15 | pattern-selection | graph-flow | 单次调用 vs `SequentialAgent` vs 自主 `LlmAgent` | 6 个固定输入场景逐个映射 | Stable | 4 |
-| D02 | 16 | prompt-chaining-routing | graph-flow | `SequentialAgent`、`ConditionalAgent`、`LlmConditionalAgent`、graph 条件边 | 两种 API（workflow agents 与 graph）何时用哪个 | Stable | 4 |
-| D03 | 17 | parallel-decomposition | graph-flow | `ParallelAgent`、graph 扇出与 reducer 归并 | 局部失败与归并冲突 | Stable | 4 |
-| D04 | 18 | plan-execute-replan | graph-flow | graph 动态节点（`run_node_with`）；对照：harness plan graph（`compile_plan`、`step:<id>`） | 主线用 Stable 的 graph | Stable（对照 Beta） | 4 |
-| D05 | 19 | orchestrator-workers-handoffs | graph-flow | `TeamSpec`（Handoff / Delegate）→ `CompiledTeam`（预算、回执、恢复计划） | 交接回执作为证据 | Stable | 4 |
-| D06 | 20 | evaluator-reflection | graph-flow | `LoopAgent`（`with_max_iterations`、`ExitLoopTool`）、`adk-retry-reflect` | 有界修复，评估依据必须可检查 | Stable | 4 |
-| D07 | 21 | human-in-the-loop | graph-flow | 跨运行挂起的审批、`confirmation_pending`、workflow agent 在挂起的子 Agent 处恢复、graph interrupt | 跨 CLI 编辑后必须重新批准（指纹变化） | Stable | 4 |
-| D08 | 22 | pattern-composition | graph-flow | 组合以上；`model_compare` 用 OpenAI 兼容客户端（`OpenAIConfig::compatible`） | 默认仍只跑 fixture；live 由读者配置 | Stable | 4 |
-| R11 | 23 | error-recovery | 标准库 | `ToolEffect` 与重试、`RetryBudget`、`circuit_breaker_threshold`、`outcome_unknown`、`ErrorCategory`（含 `Conflict`、`ResourceExhausted`）、`model.refusal` / `model.empty_response` | 保留“什么错误值得重试”的分类表 | Stable | 5 |
-| R12 | 24 | task-system | serde | 业务任务仍由应用建模；运行由 `DurableRunStore`（`NewRun` 幂等键、并发键、`OnConflict`）承载 | 讲清业务任务、durable run、图节点三者区别 | Stable | 5 |
-| R13 | 25 | background-tasks | 标准库 | `adk_server::background::DurableWorker`（feature `background`）、后台运行、持久取消、`Runner::close` | 可查询、可取消 | Stable | 5 |
-| R14 | 26 | scheduling | chrono + rusqlite | `ScheduleStore`、`ScheduleSpec::{Cron, At, Every}`、`MissedFirePolicy::{Skip, FireOnce, CatchUp(n)}`、`ManualClock`、`DurableScheduler` | adk-core 需启用 `cron` feature；kernel 留到 X05 | Stable | 5 |
-| R15 | 27 | agent-teams | 两库 | `TeamSpec` / `CompiledTeam`、`ParallelAgent`、共享 `RunBudget` | 私有历史与共享预算 | Stable | 5 |
-| R16 | 28 | team-protocols | tokio | `TeamSpec` 的策略与回执；批准 / 拒绝 / 关闭握手中框架未覆盖的部分在 adk 之上自建 | 写清哪些协议由框架提供、哪些仍是应用契约 | Stable | 5 |
-| R17 | 29 | autonomous-workers | rusqlite | `LeaseStore`（按 epoch 设栅栏，旧写入 `run_store.stale_epoch`）、过期接管 | 旧代次拒写场景直接对应 | Stable | 5 |
-| R18 | 30 | worktree-isolation | 标准库 | `adk-devtools` 的 `Workspace` / `DevToolset` + git worktree；harness 团队成员作对照 | Beta，最后写本部分时再定深度 | Beta | 5 |
-| R19 | 31 | mcp-tools | rmcp 3.9.0 | `McpToolset` over `rmcp` 3.9（与现有基线同一 SDK）、stdio `TokioChildProcess`、HTTP；`ClientLifecycleMode::Discover` 支持 2026-07-28 | 顺带完成技术跟踪页里“MCP 2026-07-28 迁移尚未实现”的那一项 | Stable | 6 |
-| R20 | 32 | integrated-agent | 两库 + rmcp + rusqlite | 主线：用 `Runner::builder()` 组装前面验证过的部件；HarnessAgent 留到 X06 | 验收范围按旧版口径逐项对照；K01 这次接入 | Stable | 6 |
+| K02 | 12 | web-search | （新章） | adk-harness 的 `web_search` + 应用实现的 `SearchProvider`；对照 adk-tool 的 `WebSearchTool`（Anthropic）、`GoogleSearchTool`（Gemini）与原生搜索 | 按 D-11 新增：离线假后端进验证器；`live` 子命令换成 SearXNG / DeepSeek 后端走同一条受管路径，不进验证 | Beta（adk-harness） | 3+ |
+| R08 | 13 | context-compaction | 两库 | `EventsCompactionConfig`（调用间）、`IntraCompactionConfig`（调用内，3.0 默认开）、`RunConfig::history_max_events`；摘要器改为应用自写的 `FactSummarizer`（实现 `BaseEventsSummarizer`，核对事实清单），不用 `LlmEventSummarizer` | 实际做法见 6.3 节；规则模型代替 `ScriptedLlm` | Stable | 3 |
+| R09 | 14 | memory | serde | `SqliteMemoryService`（FTS5）、app / user / project 隔离；应用工具 `remember` / `recall_memory` / `forget` 核对来源、按时间取最新；对照 `LoadMemoryTool` / `PreloadMemoryTool`；`delete_user` 与 FTS `optimize` + `VACUUM` | 每一步是独立子进程；双时态知识图谱只在源码表里提及 | Stable | 3 |
+| R10 | 15 | system-prompts | 两库 | `static_instruction`（策略 + AGENTS.md）、`instruction` 模板（每次运行渲染一次）、`with_skills` 注入用户这一轮 vs `global_instruction_provider`、`ToolDeclarations` 顺序、技能 ID pin、`before_model_callback` 字节预算、策略拒绝写入 | 规则模型自己记录每次请求（代替 `requests()`），比较“系统消息 + 工具声明”的前缀指纹 | Stable | 3 |
+| D01 | 16 | pattern-selection | graph-flow | 单次调用 vs `SequentialAgent`（CustomAgent 读步骤 + 写作者）vs 带工具的 `LlmAgent`（`max_iterations`） | 9 场景；已完成（6.4 节） | Stable | 4 |
+| D02 | 17 | prompt-chaining-routing | graph-flow | `SequentialAgent` 链 + 产物门、`LlmConditionalAgent`、`ConditionalAgent`、`DecisionAgent`、`output_schema` | 10 场景；workflow agents 与 graph 的选择写进第五部分导读 | Stable | 4 |
+| D03 | 18 | parallel-decomposition | graph-flow | `ParallelAgent` + 归并 `CustomAgent`，暂停的 Tokio 时钟 | 7 场景（失败、上报、过期、缺项、状态键冲突） | Stable | 4 |
+| D04 | 19 | plan-execute-replan | graph-flow | `LoopAgent`（规划者 `write_plan` / `exit_loop` + 执行者 `CustomAgent`）；adk-harness 计划模式（`exit_plan_mode` 审批） | 7 场景；补了“计划怎样产生、怎样被批准”（用户 2026-11-28 问到） | Stable（对照 Beta） | 4 |
+| D05 | 20 | orchestrator-workers-handoffs | graph-flow | `TeamSpec`（JSON）→ `CompiledTeam`：Delegate 降为 `AgentTool`、Handoff 走 `transfer_to_agent`；执行回执、覆盖分析、恢复计划 | 10 场景；交接不带载荷，要靠交接说明 | Stable | 4 |
+| D06 | 21 | evaluator-reflection | graph-flow | `LoopAgent`（写作者 + 规则评估者）、adk-retry-reflect（`max_retries`、`global_limit`） | 8 场景；反思提示会盖掉失败状态 | Stable | 4 |
+| D07 | 22 | human-in-the-loop | graph-flow | 工具策略挂起、`SqliteSessionService` + `SqliteApprovalStore`、改参数批准、工作流从挂起处恢复、撤回 | 8 场景 + 独立进程记录；批准绑定调用不绑定意图 | Stable | 4 |
+| D08 | 23 | pattern-composition | graph-flow | workflow agents 组合 + 接缝适配器、`RunBudget`、`OpenAIClient::compatible`（`live` + 本地 fixture）；`model_compare.py` 保留 | 7 场景；默认只跑替身与 fixture，live 由读者配置 | Stable | 4 |
+| R11 | 24 | error-recovery | 标准库 | `ToolEffect` 与重试、`RetryBudget`、`circuit_breaker_threshold`、`outcome_unknown`、`ErrorCategory`（含 `Conflict`、`ResourceExhausted`）、`model.refusal` / `model.empty_response` | 保留“什么错误值得重试”的分类表 | Stable | 5 |
+| R12 | 25 | task-system | serde | 业务任务仍由应用建模；运行由 `DurableRunStore`（`NewRun` 幂等键、并发键、`OnConflict`）承载 | 讲清业务任务、durable run、图节点三者区别 | Stable | 5 |
+| R13 | 26 | background-tasks | 标准库 | `adk_server::background::DurableWorker`（feature `background`）、后台运行、持久取消、`Runner::close` | 可查询、可取消 | Stable | 5 |
+| R14 | 27 | scheduling | chrono + rusqlite | `ScheduleStore`、`ScheduleSpec::{Cron, At, Every}`、`MissedFirePolicy::{Skip, FireOnce, CatchUp(n)}`、`ManualClock`、`DurableScheduler` | adk-core 需启用 `cron` feature；kernel 留到 X05 | Stable | 5 |
+| R15 | 28 | agent-teams | 两库 | `TeamSpec` / `CompiledTeam`、`ParallelAgent`、共享 `RunBudget` | 私有历史与共享预算 | Stable | 5 |
+| R16 | 29 | team-protocols | tokio | `TeamSpec` 的策略与回执；批准 / 拒绝 / 关闭握手中框架未覆盖的部分在 adk 之上自建 | 写清哪些协议由框架提供、哪些仍是应用契约 | Stable | 5 |
+| R17 | 30 | autonomous-workers | rusqlite | `LeaseStore`（按 epoch 设栅栏，旧写入 `run_store.stale_epoch`）、过期接管 | 旧代次拒写场景直接对应 | Stable | 5 |
+| R18 | 31 | worktree-isolation | 标准库 | `adk-devtools` 的 `Workspace` / `DevToolset` + git worktree；harness 团队成员作对照 | Beta，最后写本部分时再定深度 | Beta | 5 |
+| R19 | 32 | mcp-tools | rmcp 3.9.0 | `McpToolset` over `rmcp` 3.9（与现有基线同一 SDK）、stdio `TokioChildProcess`、HTTP；`ClientLifecycleMode::Discover` 支持 2026-07-28 | 顺带完成技术跟踪页里“MCP 2026-07-28 迁移尚未实现”的那一项 | Stable | 6 |
+| R20 | 33 | integrated-agent | 两库 + rmcp + rusqlite | 主线：用 `Runner::builder()` 组装前面验证过的部件；HarnessAgent 留到 X06 | 验收范围按旧版口径逐项对照；K01 这次接入 | Stable | 6 |
 | P01 | 专题 1 | postgres-checkpoints | postgres | `PostgresCheckpointer::from_pool`、Postgres 会话 / run / ledger store、`migrate()`、`adk-core` 的 `conformance` 测试套件 | 仍需 PostgreSQL 18 临时集群 | Stable | 6 |
 | P02 | 专题 2 | side-effect-reliability | rusqlite | `SqliteActionLedger`、`Runner::recover_unanswered_calls`（`already_succeeded` / `already_failed` / `outcome_unknown`）、`InMemoryActionLedger` 重启后不保留 | **试点章**；Outbox 与对账仍是应用职责，继续自建 | Stable | 1 |
 | P03 | 专题 3 | model-evaluation | 两库 + reqwest | `adk-eval`：`Evaluator`、`.test.json`、轨迹匹配、rubric、LLM judge、A/B（Wilcoxon）、`cargo adk eval`；本地 HTTP fixture 走 OpenAI 兼容客户端 | 协议正确与任务完成仍分开报告 | Stable | 6 |
@@ -308,6 +309,27 @@ R00、R01、R03、R04、G01–G03 全部迁移上线，`graph-orchestration.md` 
 
 八章共用一个验证器 `verify-agent-patterns.py`，可一起迁移。同步改写 `agent-design-patterns.md`，加一节“workflow agents 与 graph 两套 API 怎样选”。
 
+### 6.4 阶段 4 的执行记录（2026-11-28）
+
+D01–D08 全部迁移上线。八章共用新验证器 `scripts/verify-agent-patterns-adk.py`（`LESSONS` 表：场景期望、详细轨迹、结果表列、`checks`；`extra=` 挂额外检查，`files=` 打包额外文件），配图由 `learn-agent-rust-pattern-adk-figures.py` 从结果证据生成。旧的 `verify-agent-patterns.py` 已删除，`learn-agent-rust-pattern-figures.py` 只剩第五部分导读的选型总图；`check-agent-patterns.yml` 只跑新验证器（不再 `cargo fetch` 旧工程）。合计 66 个场景、32 项 Rust 测试；每章一轮审查子代理并修正。`agent-design-patterns.md` 重写相关段落，新增“在 ADK-Rust 里用什么搭”一节（含 workflow agents 与 adk-graph 怎样选）；`index.md`、`setup.md`、`graph-orchestration.md` 的迁移范围改为第 0–23 章；`course-conventions.md` 的 D01–D08 段落更新。全书代码库重新打包（987 个文件），`--check` 通过。
+
+**实测到的框架事实（写进各章）：**
+- workflow agents：`SequentialAgent` 就是只跑一轮的 `LoopAgent`；子 Agent 的事件原样交给外层，内层的 escalate 外层同样看见（D08 `naive`：修复循环“通过”让整个发布流程结束）。`LoopAgent` 轮数用完不报错，默认 1000 轮。`ParallelAgent` 无并发上限，出错的分支等兄弟分支做完再报错，上报的分支让其他分支被丢下。
+- 指令模板每次运行渲染一次：同一次运行里调用工具改了状态，模型要到下一次运行才在指令里看到（D04 `planner_saw`）。
+- 路由：`LlmConditionalAgent` 先完全匹配、再按标签长度子串匹配，无默认分支时只产出说明文字；`DecisionAgent` 低置信度走兜底，无兜底则报错。`output_schema` 不合格时追加纠正提示重试，纠正提示不写进会话。
+- adk-harness 计划模式：`exit_plan_mode` 只在计划模式有效，先问人再查步骤（环检查要 `graph` 特性）；批准后的模式从下一轮对话起生效，默认进询问模式。
+- 团队（D05）：`TeamSpec` 可从 JSON 反序列化；关系图必须无环、从协调者可达（不能“交回”）；团队策略默认 `context: shared`；委派降为 `AgentTool`，同一成员同时进行的委派受 `maxConcurrentDelegations` 限制，但 `LlmAgent` 默认顺序执行工具调用，要 `ToolExecutionStrategy::Parallel`；交接后接手者只看用户的话和自己的回答，下一轮由它回答；未声明的交接作为 `not_run` 工具结果还给模型；中断后 `resume_plan` 给 `UnsafeDelegate`。
+- adk-retry-reflect（D06）：次数按“运行 + 工具 + 参数”计，换参数就重新计，需要 `global_limit`；插件改过的结果交给模型时失败状态和错误码都丢了。
+- 审批（D07）：`SqliteSessionService` 与 `SqliteApprovalStore` 可共用一个文件；`decide` 后请求即离开 `pending()`；同一指纹再 `decide` 会覆盖；挂起的调用让工作流停在那一步，只要调用还挂着，下一次运行（不管用户说什么）先回到它——已批准就按原参数执行；改参数批准会再过一遍策略。
+- 预算（D08）：`RunBudget` 每次运行新建计数器，恢复运行重新计数；停止说明记在最后一个发出事件的 Agent 名下。`OpenAIClient::compatible` 换掉替身后流程不变，非流式请求走 `/chat/completions`。
+
+**上游问题（续 6.3 节编号）：**
+8. adk-harness 的 `web_search` 不调用 `record_grounding_sources`，`CitationRequired` 形同虚设（K02）。
+9. 团队运行时 `start_edge` 先把关系记进回执再检查预算：被 `maxDelegations` 拒绝、根本没执行的委派在回执里停在 `running`，`resume_plan` 会把它当成未完成的委派。
+10. `LlmAgent` 用增强插件改过的工具结果重建回答时不保留状态与错误码（`answer(modified, None, None)`），adk-retry-reflect 的反思提示让失败显示为 `status=ok`。
+
+**CI：** `check-agent-patterns.yml` 改为取 adk 源码后跑 `verify-agent-patterns-adk.py --check`（D01–D08）与配图检查；删除旧验证器步骤与 `cargo fetch`。
+
 ### 阶段 5 · 第六、七部分（R11–R18）
 
 R18 依赖 Beta 的 devtools，放在本阶段最后。
@@ -371,17 +393,18 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 | R06 | 完成（16 → 15：child-tool-budget、gate-closed 删除；新增 transfer；见正文对应表） | 完成（AgentTool + Delegate 契约 + transfer，单文件 rustc 改为 Cargo 工程） | 完成（15 场景 × 2 次一致、7 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，取消生命周期图换成交接对照图） | 完成（`adk3`、CI） |
 | R07 | 完成（12 → 14：stale/budget/oversize/missing/version-two 改为 changed 快照、truncated、broken-skill；新增 resource×3、auto-inject） | 完成（adk-skill SkillToolset + ToolRegistry + SkillInjector 对照） | 完成（14 场景 × 2 次一致、7 测试，结果表写回正文） | 完成（待审查） | 完成（3 张） | 完成（`adk3`、CI） |
 | K01 | 完成（11 → 16：新增 zero-score、swap-embedder、collision、agent-cited / agent-uncited） | 完成（adk-rag，自写切块器与词袋 embedder） | 完成（16 场景 × 2 次一致、9 测试） | 完成（已审查并修正） | 完成（2 张） | 完成（`adk3`、CI） |
+| K02 | 完成（新章，10 场景：allowlisted、needs-approval、denied、read-only、screening、secret-query、domain-filter、provider-error、empty、invented-citation） | 完成（adk-harness 受管 web_search + 离线 `FakeSearch` + 规则审批人；`live` 子命令可接 SearXNG / DeepSeek） | 完成（10 场景 × 2 次一致、6 测试，结果表写回正文） | 完成（已审查并修正） | 完成（1 张） | 完成（`adk3`、CI、全书章号顺延） |
 | R08 | 完成（17 → 10：归档、占位、硬预算类场景删除；新增 intra、omit-unchecked、not-smaller） | 完成（运行间/运行内压缩 + FactSummarizer + history_max_events） | 完成（10 场景 × 2 次一致、5 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，消息分组图删除） | 完成（`adk3`、CI） |
 | R09 | 完成（22 → 14：修订号、锁、保存失败、重放校验类删除；新增 naive-load、preload、erase） | 完成（SqliteMemoryService + 应用工具 + LoadMemoryTool / PreloadMemoryTool，每步独立子进程） | 完成（14 场景 × 2 次一致、6 测试，README 命令复跑，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，旧的修订历史与存储边界图删除） | 完成（`adk3`、CI、归档改名 memory.zip） |
 | R10 | 完成（14 → 13：来源格式、历史配对类删除；新增 skill-switch、skill-in-system、state-midrun、braces、agents-as-skill） | 完成（LlmAgent 组装 + 技能 pin + 预算回调 + 策略） | 完成（13 场景 × 2 次一致、6 测试，结果表写回正文） | 完成（已审查并修正） | 完成（3 张，两轮输入图换成前缀稳定图） | 完成（`adk3`、CI） |
-| D01 | — | — | — | — | — | — |
-| D02 | — | — | — | — | — | — |
-| D03 | — | — | — | — | — | — |
-| D04 | — | — | — | — | — | — |
-| D05 | — | — | — | — | — | — |
-| D06 | — | — | — | — | — | — |
-| D07 | — | — | — | — | — | — |
-| D08 | — | — | — | — | — | — |
+| D01 | 完成（6 → 9：新增 workflow-new-member、workflow-missing、workflow-silent 等） | 完成 | 完成（9 场景 × 2 次一致、4 测试，共用 `verify-agent-patterns-adk.py`） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D02 | 完成（10 场景：三种路由、substring 陷阱、schema 重试、过期） | 完成 | 完成（10 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D03 | 完成（7 场景，新增 key-collision） | 完成（暂停时钟） | 完成（7 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D04 | 完成（7 场景，含计划模式 3 个） | 完成（LoopAgent + adk-harness） | 完成（7 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D05 | 完成（7 → 10，见正文对应表） | 完成（TeamSpec / CompiledTeam） | 完成（10 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D06 | 完成（7 → 8，含 3 个 adk-retry-reflect 场景） | 完成 | 完成（8 场景 × 2 次一致、4 测试） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D07 | 完成（7 → 8，另有独立进程记录） | 完成（SQLite 会话 + 审批记录） | 完成（8 场景 × 2 次一致、4 测试、多进程记录） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
+| D08 | 完成（9 → 7，另有 live fixture 与对照自检） | 完成（含 `live_fixture.py`、`model_compare.py`） | 完成（7 场景 × 2 次一致、4 测试、live fixture、36 项对照自检） | 完成（已审查并修正） | 完成 | 完成（`adk3`、CI） |
 | R11 | — | — | — | — | — | — |
 | R12 | — | — | — | — | — | — |
 | R13 | — | — | — | — | — | — |
@@ -426,9 +449,11 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 
 - **D-8（2026-11-27）K01 能完全离线使用 adk-rag，结论：可以。** 沙盒探针实测（`--offline` 构建并运行）：`adk-rag` 默认特性只有核心 trait、`InMemoryVectorStore` 和切块器，不引入任何网络依赖；`EmbeddingProvider` 只需实现 `embed` 与 `dimensions`，自写确定性 embedder 即可；`RagPipeline::scoped(Scope)` 原生按范围隔离（检索只在该范围内打分）；`RagTool` 把检索作为 `rag_search` 工具交给 `LlmAgent`，范围由宿主固定、模型无法指定，并把结果记为 `GroundingSource`；`adk-agent` 的 `guardrails` 特性提供 `CitationRequired`，最终回答没有链接到本轮检索来源就被拦下（运行以 `guardrail.output_blocked` 结束）。实测到的两个教学点：默认 `similarity_threshold = 0.0` 会把零分结果也返回（要设大于 0 的阈值）；哈希型玩具 embedder 维度太小会碰撞，无关查询也能得到高分。真实语义向量只能靠 `onnx` 特性（首次要下载模型与 onnxruntime）或在线 provider，不进入离线实验，正文只作说明。
 
+- **D-11（2026-11-28）新增联网搜索章 K02，作为第 12 章紧跟 RAG。** lewislau 认为“非常重要”。原第 12–32 章顺延为 13–33（`lessons.json` 的 `chapter`、各页标题与前后导航、正文里的“第 N 章”引用由脚本按链接目标与数值统一改写，TinyLLM 等其他书里指向本课程的链接一并改）。实验用离线的假搜索后端进验证器；另附可选的真实服务商搜索演示，需要读者自己的 API key，不进验证。
+
 ### 待决（需要 lewislau 拍板）
 
-- **D-11 是否新增“联网搜索”专题：** 目前没有章节讲联网搜索。ADK-Rust 有服务商执行的 `GoogleSearchTool`（Gemini）、`WebSearchTool`（Anthropic）与各家原生搜索（都要 API key），以及 adk-harness 的 `web_search`（由应用实现 `SearchProvider`，结果放进标明不可信的区块）。建议：用 `web_search` 配一个假的 `SearchProvider` 写一章离线可复现的实验（不可信结果、带链接引用、结果里的注入），真实服务商搜索作为可选演示。
+- ~~**D-11 是否新增“联网搜索”专题**~~（已定，见上）：目前没有章节讲联网搜索。ADK-Rust 有服务商执行的 `GoogleSearchTool`（Gemini）、`WebSearchTool`（Anthropic）与各家原生搜索（都要 API key），以及 adk-harness 的 `web_search`（由应用实现 `SearchProvider`，结果放进标明不可信的区块）。建议：用 `web_search` 配一个假的 `SearchProvider` 写一章离线可复现的实验（不可信结果、带链接引用、结果里的注入），真实服务商搜索作为可选演示。
 
 
 - **D-5 新章编号与位置：** 暂用 X01–X06 作第十一部分；X06 是否作为全书收官放在 P06 之后。
@@ -446,6 +471,9 @@ R19 同时完成 MCP 2026-07-28 迁移，更新 `technology-radar.md` 第 2 节�
 - **2026-11-27** 阶段 2 完成。G01–G03 迁移到 adk-graph：三个工程（`graph-state-lab`、`graph-resume-lab`、`graph-parallel-lab`）、验证器 `verify-agent-orchestration.py` 重写（`--lab`，G02 每条命令一个独立进程）、三章正文重写（保留迁移思考原文，G02 问题里的 CAS 改为 CheckpointConflict）、四张配图、源码引用（`learn-agent-rust-adk-refs.py` 新增三章 SPEC，共 9 章）、`lessons.json` / `experiments.json` / `review-prompts.json` 登记、全书代码库重新打包。`graph-orchestration.md` 改写为 LangGraph ↔ adk-graph 导读；第 6 章改名“图暂停、检查点与恢复”。审查后修正：递归上限按整次运行累计、“整步重跑”只在崩溃时成立、汇合只看无条件入边、`typo_channel` 探针改为只写错名字、路由函数不再比较 `Option`、G02 README 与正文补可直接复制的运行命令、冲突实验屏障的注释、子图映射与检查点要求。CI 三个工作流补取 adk 源码（6.2 节）。`course-conventions.md` 的 G01–G03、R04 段落更新。验证：三实验 `--check`、`verify-agent-experiments.py --lesson G01/G02/G03`、`package --check`、下载包逐章 `--offline` 测试、sync / review / snippets / refs `--check`、站点构建全部通过。
 
 - **2026-11-28** 阶段 3 完成（6.3 节）：R05、R06、R07、K01、R08、R09、R10 迁移上线，每章一轮审查子代理并修正；D-8 已定；新增待决 D-11（联网搜索专题）。全书代码库打包被 P01 过期记录阻塞，等 Mac 上复跑。
+- **2026-11-28** 按 D-11 新增第 12 章 K02 联网搜索（adk-harness 受管 `web_search`，10 场景、6 测试、审查后修正 14 处），原第 12–32 章顺延为 13–33（审查确认链接与标题无错位）。`verify-agent-experiments.py --lesson` 修正：新章节的检查记录也写入（原先只替换已有行）。14 个工作流的 `actions/cache` 升到 v5（Node 24，消除 Node 20 弃用警告）。全书代码库打包仍只差 P01 的检查记录（需 PostgreSQL 18，在 Mac 上复跑）。开始阶段 4。
+
+- **2026-11-28** 阶段 4 完成（6.4 节）：D01–D08 迁移上线（66 场景、32 测试），每章审查后修正；旧验证器删除；第五部分导读重写并加 ADK 对照与 workflow agents / adk-graph 选择；全书代码库重新打包并 `--check` 通过。新增上游问题 #8–#10。
 
 ## 12. 资料来源
 

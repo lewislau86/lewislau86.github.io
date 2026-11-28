@@ -1,0 +1,15 @@
+--- turn: 先调研，制定升级计划。
+[call]   read_file {"path":"README.md"}
+[result] read_file ok
+[call]   write_file {"path":"UPGRADE.md"}
+[result] write_file refused — Tool 'write_file' denied by policy: 'write_file' is an edit, which plan mode does not allow
+[call]   exit_plan_mode {"steps":2}
+[result] exit_plan_mode ok mode→ask
+[state]  harness:plan steps=2 planHash=ed5aa9dda063…
+--- turn: 开始执行。
+[call]   write_file {"path":"UPGRADE.md"}
+[result] write_file ok
+[text]   已按计划写好 UPGRADE.md。
+person asked: exit_plan_mode@plan:approve
+person asked: write_file@ask:approve
+plan-mode-approved: tools=[read_file:ok,write_file:refused,exit_plan_mode:ok,write_file:ok] asked=[exit_plan_mode@plan:approve,write_file@ask:approve] file_written=yes

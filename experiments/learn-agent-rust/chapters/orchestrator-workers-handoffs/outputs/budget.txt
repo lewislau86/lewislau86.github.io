@@ -1,0 +1,10 @@
+--- turn: 审查升级 r2。工作区成员：api,cli,core
+[lead] call    id=check-api member_check {"request":"检查成员 api 修订 r2"}
+[lead] call    id=check-cli member_check {"request":"检查成员 cli 修订 r2"}
+[lead] call    id=check-core member_check {"request":"检查成员 core 修订 r2"}
+[lead] stop    code=agent.team.budget_exceeded
+[error] agent.resource_exhausted: team budget exceeded: team budget exceeded for delegations: used 3, maximum 2
+[receipt] lead→member_check delegate completed；lead→member_check delegate running；lead→member_check delegate running
+[workers] 每次请求除系统消息外的消息数：[1, 1]
+[workers] 开始时刻（毫秒）：[0, 0]
+budget: workers=[api,cli] peak=2 worker_saw=[-,-] edges=[delegate:completed,delegate:running,delegate:running] stop=error:agent.team.budget_exceeded

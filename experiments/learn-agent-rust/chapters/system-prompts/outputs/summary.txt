@@ -1,14 +1,13 @@
-normal: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
-empty-context: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
-repeat: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
-memory-update: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
-environment-change: stop=answer error=none turns=2 reads=1 writes=0 goal_verified=true
-tool-change: stop=answer error=none turns=1 reads=0 writes=0 goal_verified=false
-stale-source: stop=prompt_error error=stale_source turns=0 reads=0 writes=0 goal_verified=false
-missing-source: stop=prompt_error error=missing_source turns=0 reads=0 writes=0 goal_verified=false
-duplicate-source: stop=prompt_error error=duplicate_source turns=0 reads=0 writes=0 goal_verified=false
-invalid-source: stop=prompt_error error=invalid_source turns=0 reads=0 writes=0 goal_verified=false
-budget: stop=prompt_error error=request_budget turns=0 reads=0 writes=0 goal_verified=false
-history-system: stop=prompt_error error=history_system turns=0 reads=0 writes=0 goal_verified=false
-orphan-tool: stop=prompt_error error=unpaired_tool turns=0 reads=0 writes=0 goal_verified=false
-knowledge-injection: stop=tool_error error=permission_denied turns=2 reads=0 writes=1 goal_verified=false
+normal: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 | prefix_stable_within_run=yes | session_has_skill=no
+repeat: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 | prefix_same=yes user_same=yes | request_identical=yes
+skill-switch: first: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 | second: model_calls=1 skill=sql-style@user tools=[] answer=no_command | prefix_same=yes user_same=no
+skill-in-system: first: model_calls=2 skill=startup@system tools=[read_file:ok] answer=中文 | second: model_calls=1 skill=sql-style@system tools=[] answer=no_command | prefix_same=no user_same=no
+env-change: model_calls=2 skill=startup@user tools=[read_file:ok] answer=English | prefix_same=no user_same=yes
+state-midrun: run1: model_calls=3 skill=startup@user tools=[set_locale:ok,read_file:ok] answer=中文 locales=[zh-CN,zh-CN,zh-CN] | run2: model_calls=2 skill=startup@user tools=[read_file:ok] answer=English locales=[en-US,en-US]
+tool-change: model_calls=1 skill=startup@user tools=[] answer=no_command | prefix_same=no user_same=yes
+braces: in_instruction: model_calls=0 skill=- tools=[] answer=error: agent.invalid_input: State variable 'window_id' not found | in_static: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 verbatim=yes
+agents-as-skill: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 | agents_md_in_request=no
+skill-update: model_calls=2 skill=startup@user tools=[read_file:ok] answer=中文 | prefix_same=yes user_same=no
+stale-skill: agent_built=no refused=stale_skill: startup
+knowledge-injection: model_calls=2 skill=startup@user tools=[write_file:refused] answer=no_command | injected_text_role=user | summary_exists=no
+budget: model_calls=0 skill=- tools=[] answer=request_budget bytes=563

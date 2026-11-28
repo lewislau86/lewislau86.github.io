@@ -1,0 +1,3 @@
+live: steps=[run:held,approve,resume] published=yes stop=completed
+fixture: requests=6 roles=[deps_checker,docs_checker,publisher,publisher,writer,writer]
+model_compare self-test: attempted_tasks=36 planned_tasks=36 live_provider=not_run

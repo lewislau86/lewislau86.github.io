@@ -1,0 +1,2 @@
+[compile] team topology contains a cycle involving 'lead'
+cycle: stop=invalid_spec:CyclicTopology

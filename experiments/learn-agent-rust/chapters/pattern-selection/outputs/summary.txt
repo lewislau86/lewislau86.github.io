@@ -1,0 +1,9 @@
+single: structure=single agents=[writer] model_calls=1 reads=[] verdict=accepted
+single-partial: structure=single agents=[writer] model_calls=1 reads=[] verdict=rejected:missing:member/README.md
+workflow: structure=workflow agents=[read_root,read_member,writer] model_calls=1 reads=[README.md,member/README.md] verdict=accepted
+workflow-new-member: structure=workflow agents=[read_root,read_member,writer] model_calls=1 reads=[README.md,member/README.md] verdict=rejected:missing:plugin/README.md
+workflow-missing: structure=workflow agents=[read_root,read_member] model_calls=0 reads=[README.md] verdict=rejected:escalated
+workflow-silent: structure=workflow agents=[read_root,read_member,writer] model_calls=1 reads=[README.md] verdict=rejected:missing:member/README.md
+adaptive: structure=adaptive agents=[explorer] model_calls=4 reads=[README.md,member/README.md,plugin/README.md] verdict=accepted
+forbidden: structure=adaptive agents=[explorer] model_calls=3 reads=[README.md] verdict=rejected:no_report
+budget: structure=adaptive agents=[explorer] model_calls=2 reads=[README.md,member/README.md] verdict=rejected:max_iterations

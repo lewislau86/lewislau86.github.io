@@ -257,6 +257,23 @@
       ]
     },
     {
+      "id": "K02",
+      "slug": "web-search",
+      "kind": "cargo",
+      "archive": "web-search.zip",
+      "verifier": "scripts/verify-agent-web-search.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ],
+        [
+          "{binary}",
+          "screening"
+        ]
+      ]
+    },
+    {
       "id": "R08",
       "slug": "context-compaction",
       "kind": "cargo",
@@ -312,12 +329,15 @@
       "slug": "pattern-selection",
       "kind": "cargo",
       "archive": "pattern-selection.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "adaptive"
         ]
       ],
       "verifier_args": [
@@ -330,12 +350,15 @@
       "slug": "prompt-chaining-routing",
       "kind": "cargo",
       "archive": "prompt-chaining-routing.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "stale"
         ]
       ],
       "verifier_args": [
@@ -348,12 +371,15 @@
       "slug": "parallel-decomposition",
       "kind": "cargo",
       "archive": "parallel-decomposition.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "failure"
         ]
       ],
       "verifier_args": [
@@ -366,12 +392,15 @@
       "slug": "plan-execute-replan",
       "kind": "cargo",
       "archive": "plan-execute-replan.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "plan-mode-approved"
         ]
       ],
       "verifier_args": [
@@ -384,12 +413,15 @@
       "slug": "orchestrator-workers-handoffs",
       "kind": "cargo",
       "archive": "orchestrator-workers-handoffs.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "handoff"
         ]
       ],
       "verifier_args": [
@@ -402,12 +434,15 @@
       "slug": "evaluator-reflection",
       "kind": "cargo",
       "archive": "evaluator-reflection.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "new-error"
         ]
       ],
       "verifier_args": [
@@ -420,53 +455,15 @@
       "slug": "human-in-the-loop",
       "kind": "cargo",
       "archive": "human-in-the-loop.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "suite"
+          "{binary}"
         ],
         [
           "{binary}",
-          "disk",
-          "{run}/request.json",
-          "init"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "approve",
-          "1",
-          "1"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "edit",
-          "edited report"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "approve",
-          "1",
-          "2"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "resume"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "show"
+          "changed-mind"
         ]
       ],
       "verifier_args": [
@@ -479,23 +476,15 @@
       "slug": "pattern-composition",
       "kind": "cargo",
       "archive": "pattern-composition.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "suite"
+          "{binary}"
         ],
         [
           "{binary}",
-          "discover",
-          "{run}/report.json"
-        ],
-        [
-          "{python}",
-          "model_compare.py",
-          "self-test",
-          "{run}/http"
+          "naive"
         ]
       ],
       "verifier_args": [

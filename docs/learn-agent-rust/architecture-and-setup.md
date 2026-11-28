@@ -176,7 +176,7 @@ cargo run --locked -- --missing-file
 | 运行控制状态 | 调用了几次？能否继续？是否允许动作？ | 策略、读取计数；预算在[第 1 章](./agent-loop.md) |
 | 图的执行位置 | 哪个图、当前处于哪个节点？ | 尚未使用；[第 5–7 章](./graph-orchestration.md) |
 | 持久化检查点 | 退出后，凭什么恢复到一个明确位置？ | 尚未保存；[第 6 章](./graph-pause-resume.md)与[专题 1](./postgres-checkpoints.md) |
-| 长期记忆 | 换一个会话后，仍应召回哪些事实？ | 后续 [第 13 章](./memory.md) |
+| 长期记忆 | 换一个会话后，仍应召回哪些事实？ | 后续 [第 14 章](./memory.md) |
 
 本章用的是 `InMemorySessionService`，每次运行都新建会话，再次运行会从第一条用户消息开始。ADK-Rust 还提供 SQLite、PostgreSQL 等会话服务，但换一个服务名不等于获得恢复能力：要核对保存到了哪里、保存是否成功、恢复时读回哪些内容，这些实验放到后面的章节。
 

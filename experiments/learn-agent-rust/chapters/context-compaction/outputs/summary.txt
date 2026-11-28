@@ -1,0 +1,10 @@
+normal: summary_calls=[accepted,accepted] compactions=2 review_calls=9 skill_loads=2 conclusion=true says_untested=true
+small: summary_calls=[] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true
+intra: summary_calls=[accepted] compactions=1 review_calls=8 skill_loads=2 conclusion=true says_untested=true
+naive-trim: summary_calls=[] compactions=0 review_calls=8 skill_loads=2 conclusion=false says_untested=false
+omit-fact: summary_calls=[rejected compaction.summary_facts,rejected compaction.summary_facts] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true
+omit-unchecked: summary_calls=[accepted,accepted] compactions=2 review_calls=8 skill_loads=2 conclusion=false says_untested=false
+invent-fact: summary_calls=[rejected compaction.summary_facts,rejected compaction.summary_facts] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true
+bad-json: summary_calls=[rejected compaction.summary_schema,rejected compaction.summary_schema] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true
+summary-error: summary_calls=[failed model.unavailable,failed model.unavailable] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true
+not-smaller: summary_calls=[accepted,accepted] compactions=0 review_calls=8 skill_loads=1 conclusion=true says_untested=true

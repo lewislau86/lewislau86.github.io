@@ -1,0 +1,16 @@
+--- start 写 3.0 的升级说明并发布
+[writer] text    "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[writer] state   report = "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[publisher] call    id=publish publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+[publisher] result  id=publish publish_report status=held {"error":"Tool 'publish_report' requires confirmation: 发布升级说明需要编辑批准","status":"confirmation_pending"}
+[publisher] text    "Tool confirmation required for 'publish_report'. Provide approve/deny decision to continue."
+[publisher] final
+[pending] publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+--- deny 目标版本写错了，先别发
+--- resume
+[publisher] result  id=publish publish_report status=refused {"error":"Tool 'publish_report' was not run; the approver declined it: 目标版本写错了，先别发"}
+[publisher] text    "没有发布：Tool 'publish_report' was not run; the approver declined it: 目标版本写错了，先别发"
+[publisher] final
+deny: steps=[start:held,deny,resume] writer_runs=1 published=[] pending=0

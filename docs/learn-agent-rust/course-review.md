@@ -10,7 +10,7 @@ pageClass: learn-agent-rust-course
 
 [课程总览](./index.md) · [技术跟踪](./technology-radar.md) · [Agent RSI](./agent-rsi.md)
 
-**审查日期：2026-11-10。范围：Learn Agent by Rust 的 39 个已成文节点（第 0–32 章和专题 1–6；实验标识 R00–R20、G01–G03、K01、D01–D08、P01–P06），以及总览、环境、架构、学习路径、配图与片段引用。** 第五部分 D01–D08 已补正文、独立工程和真实图运行证据；模型与审批仍为固定输入，真实服务质量另验。本页聚焦教学叙事、证据口径、版本一致性和学习迁移。它不是逐行安全审计，也不把其他课程纳入“全书”。
+**审查日期：2026-11-10。范围：Learn Agent by Rust 的 40 个已成文节点（第 0–33 章和专题 1–6；实验标识 R00–R20、G01–G03、K01–K02、D01–D08、P01–P06；K02 联网搜索为 2026-11-28 新增，不在当日审查范围内），以及总览、环境、架构、学习路径、配图与片段引用。** 第五部分 D01–D08 已补正文、独立工程和真实图运行证据；模型与审批仍为固定输入，真实服务质量另验。本页聚焦教学叙事、证据口径、版本一致性和学习迁移。它不是逐行安全审计，也不把其他课程纳入“全书”。
 
 这本书最有价值的主线，是把模型提出的动作放到可检查的运行边界中：消息是否配对、批准是否对应原动作、取消后执行者是否退出、恢复时效果是否重复。图和代码应帮助读者解释这些问题，最后能在新场景中作判断。
 
@@ -89,27 +89,28 @@ pageClass: learn-agent-rust-course
 | [第 9 章 · 子 Agent 与上下文隔离](./subagents.md) | 3 / 8 / 7 | 隔离信息与回收执行者 | ADK-Rust 3.0 RC 的 AgentTool 与 transfer_to_agent；同一进程，规则模型；进程沙箱另验。 |
 | [第 10 章 · 按需加载技能](./skill-loading.md) | 4 / 12 / 6 | 知识不携带执行权 | ADK-Rust 3.0 RC adk-skill 的索引、三层加载与 allowed-tools；规则模型；任意第三方技能另验。 |
 | [第 11 章 · RAG：检索、证据与回答](./retrieval-augmented-generation.md) | 2 / 9 / 6 | 检索命中与回答有据分开验收 | ADK-Rust 3.0 RC adk-rag 管线与 RagTool；词袋 embedding 与固定摘录生成器，无真实模型质量结论。 |
-| [第 12 章 · 上下文压缩](./context-compaction.md) | 8 / 9 / 6 | 压缩优化的是充分信息 | ADK-Rust 3.0 RC 的运行间/运行内压缩；规则模型与估算 token；语义泛化另验。 |
-| [第 13 章 · 跨会话记忆](./memory.md) | 5 / 15 / 6 | 记住的事实有时间和来源 | ADK-Rust 3.0 RC adk-memory 的 SQLite 后端、真实文件与独立进程；规则模型；并发写入与语义检索另验。 |
-| [第 14 章 · 系统提示词组装](./system-prompts.md) | 4 / 7 / 6 | 来源决定解释方式 | ADK-Rust 3.0 RC LlmAgent 的请求组装；规则模型记录完整请求；真实服务的缓存与攻击覆盖另验。 |
-| [第 15 章 · 模式选择：单次调用、工作流与自主循环](./pattern-selection.md) | 1 / 4 / 5 | 输入合同决定最小结构 | 真实 graph-flow；读取与决策是内存夹具，模型质量另验。 |
-| [第 16 章 · 提示链与条件路由](./prompt-chaining-routing.md) | 1 / 4 / 5 | 中间成功也需要版本 | 规则路由与固定抽取；真实 graph-flow 产物门，模型分类另验。 |
-| [第 17 章 · 并行分解与结果归并](./parallel-decomposition.md) | 1 / 4 / 5 | 归并要验证成员身份 | 真实 Tokio 并发与任务回收；停顿是夹具，无生产加速结论。 |
-| [第 18 章 · 规划、执行与动态重规划](./plan-execute-replan.md) | 1 / 4 / 5 | 重规划保留结果账本 | 真实图推进与依赖验证；检查动作为内存夹具，无跨进程恢复。 |
-| [第 19 章 · 协调者、工作者与任务交接](./orchestrator-workers-handoffs.md) | 1 / 4 / 5 | 返回结果与移交控制分开 | 真实 Tokio 动态派发与角色状态；消息为脚本，非真实多模型协作。 |
-| [第 20 章 · 评估、反思与有界修复](./evaluator-reflection.md) | 1 / 4 / 5 | 修复后重验完整合同 | 真实图与固定规则修复；未复现完整 Reflexion，无模型质量结论。 |
-| [第 21 章 · 人工介入与审批恢复](./human-in-the-loop.md) | 1 / 5 / 5 | 编辑使旧批准失效 | 真实跨 CLI JSON 状态；单写者，无认证服务或外部发布。 |
-| [第 22 章 · 模式组合与选型实战](./pattern-composition.md) | 1 / 6 / 5 | 组合验证接缝 | 真实图、Tokio、报告文件与本地 HTTP；模型决策和批准仍为夹具。 |
-| [第 23 章 · 错误分类与恢复](./error-recovery.md) | 4 / 11 / 7 | 未知结果需要对账 | 进程内恢复与注入时钟；跨进程见 P01。 |
-| [第 24 章 · 持久化任务系统](./task-system.md) | 5 / 13 / 7 | 恢复数据与恢复执行权 | 任务元数据跨进程；实际领取见 R17。 |
-| [第 25 章 · 后台任务](./background-tasks.md) | 4 / 12 / 6 | 取消是一段生命周期 | 真实线程和文件；持久化后台服务另验。 |
-| [第 26 章 · 定时调度](./scheduling.md) | 5 / 10 / 6 | 时间事件需要稳定身份 | 具名时区与 SQLite；只入队，不执行外部业务。 |
-| [第 27 章 · Agent 团队](./agent-teams.md) | 6 / 12 / 6 | 并行是否值得其协调成本 | 单进程 Tokio 团队；真实模型协作质量另验。 |
-| [第 28 章 · 团队协作协议](./team-protocols.md) | 5 / 14 / 8 | 消息的含义来自状态 | 固定协议与真实 Tokio；外部身份认证另验。 |
-| [第 29 章 · 自主任务领取](./autonomous-workers.md) | 5 / 16 / 6 | 所有权必须在写入处生效 | 本机 SQLite 多进程；多机与共享存储另验。 |
-| [第 30 章 · 工作区隔离](./worktree-isolation.md) | 4 / 13 / 6 | 文件隔离没有隔离全部世界 | 真实 Git 工作区；容器与外部资源隔离另验。 |
-| [第 31 章 · MCP 外部工具](./mcp-tools.md) | 4 / 10 / 7 | 协议兼容与业务可靠性 | MCP 2025-11-25 的真实 stdio；新版与 HTTP 另验。 |
-| [第 32 章 · 完整 Agent 集成](./integrated-agent.md) | 4 / 14 / 6 | 接缝是新的故障位置 | 两库最小集成与脚本模型；完整生产系统另验。 |
+| [第 12 章 · 联网搜索](./web-search.md) | 1 / 9 / 6 | 搜到的网页只是证据候选 | ADK-Rust 3.0 RC adk-harness（Beta）受管 web_search；离线假后端、规则模型与规则审批人，无真实搜索与模型结论。 |
+| [第 13 章 · 上下文压缩](./context-compaction.md) | 8 / 9 / 6 | 压缩优化的是充分信息 | ADK-Rust 3.0 RC 的运行间/运行内压缩；规则模型与估算 token；语义泛化另验。 |
+| [第 14 章 · 跨会话记忆](./memory.md) | 5 / 15 / 6 | 记住的事实有时间和来源 | ADK-Rust 3.0 RC adk-memory 的 SQLite 后端、真实文件与独立进程；规则模型；并发写入与语义检索另验。 |
+| [第 15 章 · 系统提示词组装](./system-prompts.md) | 4 / 7 / 6 | 来源决定解释方式 | ADK-Rust 3.0 RC LlmAgent 的请求组装；规则模型记录完整请求；真实服务的缓存与攻击覆盖另验。 |
+| [第 16 章 · 模式选择：单次调用、工作流与自主循环](./pattern-selection.md) | 1 / 13 / 6 | 输入合同决定最小结构 | ADK-Rust 3.0 RC 的 LlmAgent、SequentialAgent 与 CustomAgent；规则模型、真实临时文件；模型质量另验。 |
+| [第 17 章 · 提示链与条件路由](./prompt-chaining-routing.md) | 1 / 7 / 6 | 中间成功也需要版本 | ADK-Rust 3.0 RC 的三种路由 Agent、SequentialAgent 与 output_schema；规则模型，模型分类准确率另验。 |
+| [第 18 章 · 并行分解与结果归并](./parallel-decomposition.md) | 1 / 7 / 6 | 归并要验证成员身份 | ADK-Rust 3.0 RC 的 ParallelAgent 与归并；规则模型与固定停顿，无生产加速结论。 |
+| [第 19 章 · 规划、执行与动态重规划](./plan-execute-replan.md) | 1 / 8 / 6 | 重规划保留结果账本 | ADK-Rust 3.0 RC 的 LoopAgent 与 adk-harness（Beta）计划模式；规划者与审批人为规则替身，计划质量另验。 |
+| [第 20 章 · 协调者、工作者与任务交接](./orchestrator-workers-handoffs.md) | 1 / 7 / 7 | 返回结果与移交控制分开 | ADK-Rust 3.0 RC 的 TeamSpec / CompiledTeam；协调者、工作者与专员都是规则替身，真实团队协作质量另验。 |
+| [第 21 章 · 评估、反思与有界修复](./evaluator-reflection.md) | 1 / 8 / 6 | 修复后重验完整合同 | ADK-Rust 3.0 RC 的 LoopAgent 与 adk-retry-reflect；写作者与读文件的模型都是规则替身，评估规则固定，没有模型质量结论。 |
+| [第 22 章 · 人工介入与审批恢复](./human-in-the-loop.md) | 1 / 8 / 6 | 需求变了，先撤回旧批准 | ADK-Rust 3.0 RC 的 SqliteSessionService 与 SqliteApprovalStore；模型是规则替身，单写者本地文件，没有用户认证与外部发布服务。 |
+| [第 23 章 · 模式组合与选型实战](./pattern-composition.md) | 1 / 11 / 6 | 组合验证接缝 | ADK-Rust 3.0 RC 的 workflow agents、审批记录与 OpenAI 兼容客户端；模型是规则替身或本地 fixture，真实服务未运行，没有模型质量结论。 |
+| [第 24 章 · 错误分类与恢复](./error-recovery.md) | 4 / 11 / 7 | 未知结果需要对账 | 进程内恢复与注入时钟；跨进程见 P01。 |
+| [第 25 章 · 持久化任务系统](./task-system.md) | 5 / 13 / 7 | 恢复数据与恢复执行权 | 任务元数据跨进程；实际领取见 R17。 |
+| [第 26 章 · 后台任务](./background-tasks.md) | 4 / 12 / 6 | 取消是一段生命周期 | 真实线程和文件；持久化后台服务另验。 |
+| [第 27 章 · 定时调度](./scheduling.md) | 5 / 10 / 6 | 时间事件需要稳定身份 | 具名时区与 SQLite；只入队，不执行外部业务。 |
+| [第 28 章 · Agent 团队](./agent-teams.md) | 6 / 12 / 6 | 并行是否值得其协调成本 | 单进程 Tokio 团队；真实模型协作质量另验。 |
+| [第 29 章 · 团队协作协议](./team-protocols.md) | 5 / 14 / 8 | 消息的含义来自状态 | 固定协议与真实 Tokio；外部身份认证另验。 |
+| [第 30 章 · 自主任务领取](./autonomous-workers.md) | 5 / 16 / 6 | 所有权必须在写入处生效 | 本机 SQLite 多进程；多机与共享存储另验。 |
+| [第 31 章 · 工作区隔离](./worktree-isolation.md) | 4 / 13 / 6 | 文件隔离没有隔离全部世界 | 真实 Git 工作区；容器与外部资源隔离另验。 |
+| [第 32 章 · MCP 外部工具](./mcp-tools.md) | 4 / 10 / 7 | 协议兼容与业务可靠性 | MCP 2025-11-25 的真实 stdio；新版与 HTTP 另验。 |
+| [第 33 章 · 完整 Agent 集成](./integrated-agent.md) | 4 / 14 / 6 | 接缝是新的故障位置 | 两库最小集成与脚本模型；完整生产系统另验。 |
 | [专题 1 · PostgreSQL 检查点](./postgres-checkpoints.md) | 4 / 12 / 6 | 检查点是可重建的承诺 | 真实 PostgreSQL 与进程恢复；物理断电另验。 |
 | [专题 2 · 外部操作的可靠性](./side-effect-reliability.md) | 4 / 12 / 7 | 业务身份比重试次数稳定 | 两份 SQLite 与独立进程，加 ADK-Rust 3.0 RC 动作账本的单机恢复；远程服务合同另验。 |
 | [专题 3 · 模型协议与质量评估](./model-evaluation.md) | 3 / 14 / 6 | 指标衡量的是哪个对象 | 本地 HTTP fixture；真实服务、费用与泛化另验。 |

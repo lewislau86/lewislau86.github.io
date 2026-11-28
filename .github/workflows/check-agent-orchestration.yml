@@ -40,7 +40,7 @@ jobs:
           python-version: "3.12"
       - name: Install the course toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry

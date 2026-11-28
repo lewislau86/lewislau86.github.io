@@ -119,15 +119,19 @@
         "link": "/learn-agent-rust/retrieval-augmented-generation"
       },
       {
-        "text": "第 12 章 · 上下文压缩",
+        "text": "第 12 章 · 联网搜索",
+        "link": "/learn-agent-rust/web-search"
+      },
+      {
+        "text": "第 13 章 · 上下文压缩",
         "link": "/learn-agent-rust/context-compaction"
       },
       {
-        "text": "第 13 章 · 跨会话记忆",
+        "text": "第 14 章 · 跨会话记忆",
         "link": "/learn-agent-rust/memory"
       },
       {
-        "text": "第 14 章 · 系统提示词组装",
+        "text": "第 15 章 · 系统提示词组装",
         "link": "/learn-agent-rust/system-prompts"
       }
     ]
@@ -141,35 +145,35 @@
         "link": "/learn-agent-rust/agent-design-patterns"
       },
       {
-        "text": "第 15 章 · 模式选择：单次调用、工作流与自主循环",
+        "text": "第 16 章 · 模式选择：单次调用、工作流与自主循环",
         "link": "/learn-agent-rust/pattern-selection"
       },
       {
-        "text": "第 16 章 · 提示链与条件路由",
+        "text": "第 17 章 · 提示链与条件路由",
         "link": "/learn-agent-rust/prompt-chaining-routing"
       },
       {
-        "text": "第 17 章 · 并行分解与结果归并",
+        "text": "第 18 章 · 并行分解与结果归并",
         "link": "/learn-agent-rust/parallel-decomposition"
       },
       {
-        "text": "第 18 章 · 规划、执行与动态重规划",
+        "text": "第 19 章 · 规划、执行与动态重规划",
         "link": "/learn-agent-rust/plan-execute-replan"
       },
       {
-        "text": "第 19 章 · 协调者、工作者与任务交接",
+        "text": "第 20 章 · 协调者、工作者与任务交接",
         "link": "/learn-agent-rust/orchestrator-workers-handoffs"
       },
       {
-        "text": "第 20 章 · 评估、反思与有界修复",
+        "text": "第 21 章 · 评估、反思与有界修复",
         "link": "/learn-agent-rust/evaluator-reflection"
       },
       {
-        "text": "第 21 章 · 人工介入与审批恢复",
+        "text": "第 22 章 · 人工介入与审批恢复",
         "link": "/learn-agent-rust/human-in-the-loop"
       },
       {
-        "text": "第 22 章 · 模式组合与选型实战",
+        "text": "第 23 章 · 模式组合与选型实战",
         "link": "/learn-agent-rust/pattern-composition"
       }
     ]
@@ -179,19 +183,19 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 23 章 · 错误分类与恢复",
+        "text": "第 24 章 · 错误分类与恢复",
         "link": "/learn-agent-rust/error-recovery"
       },
       {
-        "text": "第 24 章 · 持久化任务系统",
+        "text": "第 25 章 · 持久化任务系统",
         "link": "/learn-agent-rust/task-system"
       },
       {
-        "text": "第 25 章 · 后台任务",
+        "text": "第 26 章 · 后台任务",
         "link": "/learn-agent-rust/background-tasks"
       },
       {
-        "text": "第 26 章 · 定时调度",
+        "text": "第 27 章 · 定时调度",
         "link": "/learn-agent-rust/scheduling"
       }
     ]
@@ -201,19 +205,19 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 27 章 · Agent 团队",
+        "text": "第 28 章 · Agent 团队",
         "link": "/learn-agent-rust/agent-teams"
       },
       {
-        "text": "第 28 章 · 团队协作协议",
+        "text": "第 29 章 · 团队协作协议",
         "link": "/learn-agent-rust/team-protocols"
       },
       {
-        "text": "第 29 章 · 自主任务领取",
+        "text": "第 30 章 · 自主任务领取",
         "link": "/learn-agent-rust/autonomous-workers"
       },
       {
-        "text": "第 30 章 · 工作区隔离",
+        "text": "第 31 章 · 工作区隔离",
         "link": "/learn-agent-rust/worktree-isolation"
       }
     ]
@@ -223,11 +227,11 @@
     "collapsed": false,
     "items": [
       {
-        "text": "第 31 章 · MCP 外部工具",
+        "text": "第 32 章 · MCP 外部工具",
         "link": "/learn-agent-rust/mcp-tools"
       },
       {
-        "text": "第 32 章 · 完整 Agent 集成",
+        "text": "第 33 章 · 完整 Agent 集成",
         "link": "/learn-agent-rust/integrated-agent"
       }
     ]

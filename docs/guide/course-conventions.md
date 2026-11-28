@@ -81,9 +81,11 @@ P06 Agent RSI 使用 `python3 scripts/verify-agent-rsi.py` 生成有限策略实
 
 RAG 主线章（稳定实验标识 K01）基于 ADK-Rust 3.0 的 adk-rag，使用 `python3 scripts/verify-agent-rag.py` 生成独立工程包、16 个场景的轨迹与证据；`--check` 在解压目录重跑 9 项 Rust 测试、Clippy 与两次逐字节一致的场景。切块入库、向量检索、范围隔离、`RagTool` 与 `CitationRequired` 真实执行，embedding 是自写词袋向量，生成器是固定摘录夹具；真实模型、语义 embedding 与 MCP 接线另验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K01`。主线章号由清单的 `chapter` 字段连续定义（从 0 开始），R/G/K 是稳定实验标识，不能据此前缀推断章节分类；P 为可靠性 / 演进专题。阅读位置由清单顺序和 part 决定，主题网址和实验命令保持稳定。
 
+联网搜索章（K02）基于 ADK-Rust 3.0 adk-harness（Beta）的受管 `web_search`，使用 `python3 scripts/verify-agent-web-search.py` 生成 10 个场景的摘要与轨迹、证据与独立工程包，并把结果表写回正文；`--check` 在解压目录重跑 6 项 Rust 测试、Clippy 与两次逐字节一致的场景。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson K02`。搜索后端是应用写的离线假后端，模型与审批人是规则替身，实验没有网络请求；`live` 子命令可接 SearXNG 或 DeepSeek 搜索，不在验证范围内。
+
 G01–G03 图编排三章基于 ADK-Rust 3.0 的 adk-graph，用 `python3 scripts/verify-agent-orchestration.py [--lab G01|G02|G03]` 生成独立工程包、12 项 Rust 测试和 15 组场景（G02 为 6 个多进程流程）的输出与证据；`--check` 检查源码与章节包的独立编译、格式、Clippy 和两次运行逐字节一致。运行前先取 ADK-Rust 源码（`python3 scripts/fetch-adk-rust.py .cache/adk-rust`）。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson G01`（同时刷新三章与导读图）。固定业务规则，无模型；G02 用框架的 SQLite 检查点跨 CLI 进程恢复，图版本检查由宿主完成，限定单业务执行者；G03 用 `SubgraphNode` 隔离子图，子图内暂停恢复另验。
 
-D01–D08 设计模式使用 `python3 scripts/verify-agent-patterns.py` 生成八章独立下载工程、56 个正常与故障场景及源码摘要；`--check` 复核 32 项 Rust 测试、Clippy、D07 跨 CLI JSON 状态、D08 实际报告文件与 36 项本地 HTTP 驱动器任务，再解压最终章节包离线复验。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson patterns`。输入与决策固定；D08 的 `model_compare.py live` 由读者配置 OPENAI_BASE_URL、OPENAI_MODEL、OPENAI_API_KEY 后另行运行，默认验证不读模型凭据，不将 fixture 通过当真实模型质量结论。
+D01–D08 设计模式已迁移到 ADK-Rust 3.0，共用 `python3 scripts/verify-agent-patterns-adk.py --lesson Dxx`（不带 `--lesson` 时跑全部八章）：每章打包、在临时目录解压并在旁边放好 ADK-Rust 源码，运行格式、Clippy、Rust 测试，场景摘要与详细轨迹各连跑两次必须逐字节相同，把结果表写回正文 `<!-- dxx-results:start/end -->`；`--check` 复核全部产物。各章的额外检查登记在 `LESSONS` 的 `extra=`：D07 用独立进程逐条运行审批命令，D08 用本地 fixture 跑 `live` 并运行 `model_compare.py self-test`。配图用 `python3 scripts/generate-learn-agent-rust-figures.py --lesson Dxx`（`learn-agent-rust-pattern-adk-figures.py`，读结果证据生成）。模型都是规则替身；D08 的 `live` 与 `model_compare.py live` 由读者配置 OPENAI_BASE_URL、OPENAI_MODEL、OPENAI_API_KEY 后另行运行，默认验证不读模型凭据，不将 fixture 通过当真实模型质量结论。
 
 ## 4. 章节模板
 

@@ -1,16 +1,16 @@
 ---
-title: "第 14 章：系统提示词组装"
+title: "第 15 章：系统提示词组装"
 description: "用 ADK-Rust 3.0 的 static_instruction、instruction 模板和技能注入组装一次模型请求，逐次记录模型实际收到的内容，核对前缀稳定、来源 pin、模板渲染时机与执行权限。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 13 章 · 跨会话记忆
+  text: 第 14 章 · 跨会话记忆
   link: /learn-agent-rust/memory
 next:
-  text: 第 15 章 · 模式选择：单次调用、工作流与自主循环
+  text: 第 16 章 · 模式选择：单次调用、工作流与自主循环
   link: /learn-agent-rust/pattern-selection
 ---
 
-# 第 14 章：系统提示词组装
+# 第 15 章：系统提示词组装
 
 [课程总览](./index.md) · [上一章：跨会话记忆](./memory.md) · [学习路径](./learning-path.md#r10) · [下一章：模式选择](./pattern-selection.md)
 
@@ -168,7 +168,7 @@ cargo run --locked -- normal
 
 `before_model_callback` 能看到整份请求。本章用它算 `contents` 序列化后的字节数，超过上限就用 `BeforeModelResult::Skip` 给出一条说明，不调用模型。`budget` 场景把上限设成 300 字节，第一次请求就有 563 字节（`bytes=563`），`model_calls=0`。工具声明不在 `contents` 里，没有算进去。
 
-字节数不是 token 数。按 token 管预算，要用服务商报告的用量，或者框架的估算（[第 12 章](./context-compaction.md)）。
+字节数不是 token 数。按 token 管预算，要用服务商报告的用量，或者框架的估算（[第 13 章](./context-compaction.md)）。
 
 ### 全部场景的实际结果
 
@@ -347,6 +347,6 @@ README 中出现“忽略系统限制”，放进 system 角色就更可信吗�
 
 本章 Rust 实验逐次记录模型收到的请求，核对每部分的位置、生成时机与前缀变化。它没有复刻商业产品的内部提示词，也没有证明不同服务商对系统消息的处理完全一致。原图版本与许可见[课程架构的参考资料说明](./architecture.md#reference-assets)。
 
-接下来先看[第五部分导读：常见 Agent 设计模式](./agent-design-patterns.md)：根据任务选择提示链、路由、并行、重规划、协调交接与人工介入。第 15–22 章附独立 Rust 工程和故障复验，从[第 15 章 · 模式选择](./pattern-selection.md)开始。
+接下来先看[第五部分导读：常见 Agent 设计模式](./agent-design-patterns.md)：根据任务选择提示链、路由、并行、重规划、协调交接与人工介入。第 16–23 章附独立 Rust 工程和故障复验，从[第 16 章 · 模式选择](./pattern-selection.md)开始。
 
-学完模式组合后进入[第 23 章 · 错误分类与恢复](./error-recovery.md)：面对来源变化、工具失败和服务异常，怎样决定是否重试，并保持停止条件和累计预算。
+学完模式组合后进入[第 24 章 · 错误分类与恢复](./error-recovery.md)：面对来源变化、工具失败和服务异常，怎样决定是否重试，并保持停止条件和累计预算。

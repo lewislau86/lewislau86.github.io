@@ -1,17 +1,39 @@
-# D06 · 评估、反思与有界修复
+# D06 · 评估、反思与有界修复（ADK-Rust 3.0）
 
 教程：https://lewislau86.github.io/learn-agent-rust/evaluator-reflection
 
-本目录可独立复制。Rust 1.99.1，固定 graph-flow git 提交，Cargo.lock 固定解析结果；首次下载依赖需要网络，之后可加 --offline。
+两部分：
+
+1. **生成—评估—修复**：`LoopAgent` 每一轮先运行写作者（`LlmAgent`，最终回答经 `output_key` 写进状态 `draft`），
+   再运行评估者（`CustomAgent`，按三条固定规则检查，把反馈写进状态 `feedback`，第一稿另存为 `baseline`）。
+   全部通过或没有进展就上报（escalate）停下；最多 3 轮。
+2. **工具失败的反思**：adk-retry-reflect 插件在 `read_file` 失败时，把结果换成一段反思提示；
+   同一参数最多 2 次，整次运行最多 3 次，超过后原始错误交给模型。
+
+写作者和读文件的模型都是按规则回复的替身。
+
+## 准备 ADK-Rust 源码
 
 ```sh
-cargo run --locked -- suite
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
+```
+
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
+
+## 运行
+
+```sh
+cargo run --locked                    # 全部 8 个场景的摘要
+cargo run --locked -- new-error       # 某个场景的完整轨迹
 cargo test --locked
+cargo fmt --check
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-输出字段 scenario/trace/used/limit/stop/data。stop=completed 是业务通过，图结束本身不等于通过。节点执行和派发 worker 在同一账本扣费，默认 32，budget 场景为 1。输入与角色决策均为固定夹具；真实图、Tokio 与文件范围见 evidence.json。
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
 
-真实图与固定规则修复；未复现完整 Reflexion，无模型质量结论。
+## 实验边界
 
-下载包附 outputs/suite.json 和 evidence.json。网站唯一源码与包内容由 scripts/verify-agent-patterns.py 核对，并解压最终包离线重跑。包内没有源码依赖上级或相邻目录。
+- 评估规则只有三条，用来检验修复机制，不代表对真实报告的全面评分。
+- 写作者与读文件的模型按规则回复；真实模型的修复质量没有测试。

@@ -1,0 +1,31 @@
+$ cargo run --locked -- disk DIR start "写 3.0 的升级说明并发布"
+--- start 写 3.0 的升级说明并发布
+[writer] text    "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[writer] state   report = "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[publisher] call    id=publish publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+[publisher] result  id=publish publish_report status=held {"error":"Tool 'publish_report' requires confirmation: 发布升级说明需要编辑批准","status":"confirmation_pending"}
+[publisher] text    "Tool confirmation required for 'publish_report'. Provide approve/deny decision to continue."
+[publisher] final
+[pending] publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+step: start:held
+$ cargo run --locked -- disk DIR pending
+--- pending
+[pending] publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+step: pending:held
+$ cargo run --locked -- disk DIR edit "升级到 3.0：把 member 的启动命令改成 serve，并更新 CI 脚本。"
+--- edit 升级到 3.0：把 member 的启动命令改成 serve，并更新 CI 脚本。
+step: edit
+$ cargo run --locked -- disk DIR resume
+--- resume
+[publisher] result  id=publish publish_report status=ok {"published":"releases/3.0.md"}
+[publisher] text    "已发布到 releases/3.0.md。"
+[publisher] final
+step: resume
+$ cargo run --locked -- disk DIR show
+--- show
+[file] releases/3.0.md 升级到 3.0：把 member 的启动命令改成 serve，并更新 CI 脚本。
+step: show
+$ cargo run --locked -- disk DIR revoke "需求变了"
+nothing is held: the approval was already used or never given

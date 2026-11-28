@@ -1,0 +1,16 @@
+--- run: 检查工作区升级要读的全部 README，边读边补计划。
+[planner] call    id=plan-1 write_plan {"revision":1,"steps":[{"file":"README.md","id":"s1"}]}
+[planner] result  id=plan-1 write_plan status=ok {"revision":1,"status":"accepted"}
+[planner] text    "计划已更新，交给执行者。"
+[planner] final
+[executor] text    "执行 s1：读完 README.md"
+[executor] final
+[planner] call    id=plan-2 write_plan {"revision":2,"steps":[{"file":"README.md","id":"s1"},{"file":"member/README.md","id":"s2"}]}
+[planner] result  id=plan-2 write_plan status=ok {"revision":2,"status":"accepted"}
+[planner] text    "计划已更新，交给执行者。"
+[planner] final
+[executor] text    "执行 s2 失败：member/README.md 不存在"
+[executor] final
+[executor] escalate
+ledger: s1:README.md, s2:member/README.md
+missing-file: revisions=[1,2] rejected=[] executed=[README.md,member/README.md(missing)] iterations=2 planner_saw=[0,0,1,1] stop=step_failed

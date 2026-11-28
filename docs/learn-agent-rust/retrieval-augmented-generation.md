@@ -6,13 +6,13 @@ prev:
   text: 第 10 章 · 按需加载技能
   link: /learn-agent-rust/skill-loading
 next:
-  text: 第 12 章 · 上下文压缩
-  link: /learn-agent-rust/context-compaction
+  text: 第 12 章 · 联网搜索
+  link: /learn-agent-rust/web-search
 ---
 
 # 第 11 章：RAG：检索、证据与回答
 
-[课程总览](./index.md) · [上一章](./skill-loading.md) · [学习路径](./learning-path.md#k01) · [下一章](./context-compaction.md)
+[课程总览](./index.md) · [上一章](./skill-loading.md) · [学习路径](./learning-path.md#k01) · [下一章](./web-search.md)
 
 ::: tip 本章学习目标
 - 从一个升级问题出发，解释文档、chunk、embedding、向量库、检索和生成各自的职责。
@@ -108,7 +108,7 @@ $$
 
 <<< @/public/learn-agent-rust/code/retrieval-augmented-generation/src/main.rs#context
 
-文件变了就返回 `stale_index`，被删除就返回 `source_missing`。通过以后才按排名装入预算；一个片段放不下就跳过，继续尝试后面的片段。这里的预算统计序列化证据块的 Unicode 字符数，不是模型 tokenizer 的 token 数；接入模型以后，应给系统策略、历史、工具 schema 和预期输出留出预算。历史裁剪与摘要见[下一章](./context-compaction.md)。
+文件变了就返回 `stale_index`，被删除就返回 `source_missing`。通过以后才按排名装入预算；一个片段放不下就跳过，继续尝试后面的片段。这里的预算统计序列化证据块的 Unicode 字符数，不是模型 tokenizer 的 token 数；接入模型以后，应给系统策略、历史、工具 schema 和预期输出留出预算。历史裁剪与摘要见[第 13 章](./context-compaction.md)。
 
 `generate_fixture` 是替换边界：它从最终上下文摘录第一条证据，不会猜答案。`validate_claim` 独立核对引用属于本轮集合、摘录非空且确实出现在对应原文。没有片段可用时，返回 `abstain=no_evidence`。这套检查只适用于逐字摘录：真实模型通常会改写或综合多个来源，引用有效只能证明来源存在，不能证明结论被支持。
 
@@ -327,4 +327,4 @@ cargo run --locked -- suite /tmp/my-rag-lab
 - [Sentence Transformers：Retrieve & Re-Rank](https://sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html)：候选召回与重排的职责。
 - [adk-rag 固定源码](https://github.com/zavora-ai/adk-rust/tree/98515241133d24f7e41f8fd272649035416a142f/adk-rag/src)：本课程真实运行的接口与语义基线。
 
-资料查阅：2026-11-27。接下来进入[第 12 章：上下文压缩](./context-compaction.md)，处理方法、证据和历史不断累积时的输入预算。
+资料查阅：2026-11-27。本地资料里没有的信息要到网上找，接下来进入[第 12 章：联网搜索](./web-search.md)；方法、证据和历史不断累积时的输入预算，留到[第 13 章：上下文压缩](./context-compaction.md)。

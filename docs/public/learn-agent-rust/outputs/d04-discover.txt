@@ -1,0 +1,25 @@
+--- run: 检查工作区升级要读的全部 README，边读边补计划。
+[planner] call    id=plan-1 write_plan {"revision":1,"steps":[{"file":"README.md","id":"s1"}]}
+[planner] result  id=plan-1 write_plan status=ok {"revision":1,"status":"accepted"}
+[planner] text    "计划已更新，交给执行者。"
+[planner] final
+[executor] text    "执行 s1：读完 README.md"
+[executor] final
+[planner] call    id=plan-2 write_plan {"revision":2,"steps":[{"file":"README.md","id":"s1"},{"file":"member/README.md","id":"s2"}]}
+[planner] result  id=plan-2 write_plan status=ok {"revision":2,"status":"accepted"}
+[planner] text    "计划已更新，交给执行者。"
+[planner] final
+[executor] text    "执行 s2：读完 member/README.md"
+[executor] final
+[planner] call    id=plan-3 write_plan {"revision":3,"steps":[{"file":"README.md","id":"s1"},{"file":"member/README.md","id":"s2"},{"file":"plugin/README.md","id":"s3"}]}
+[planner] result  id=plan-3 write_plan status=ok {"revision":3,"status":"accepted"}
+[planner] text    "计划已更新，交给执行者。"
+[planner] final
+[executor] text    "执行 s3：读完 plugin/README.md"
+[executor] final
+[planner] call    id=done exit_loop {}
+[planner] result  id=done exit_loop status=ok {}
+[planner] final
+[planner] escalate
+ledger: s1:README.md, s2:member/README.md, s3:plugin/README.md
+discover: revisions=[1,2,3] rejected=[] executed=[README.md,member/README.md,plugin/README.md] iterations=3 planner_saw=[0,0,1,1,2,2,3] stop=completed

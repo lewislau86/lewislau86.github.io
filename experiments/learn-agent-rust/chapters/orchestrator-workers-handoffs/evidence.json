@@ -1,248 +1,158 @@
 {
-  "additional": {},
-  "id": "D05",
-  "results": [
+  "scope": "D05 on ADK-Rust 3.0 RC: TeamSpec (JSON) compiled to a CompiledTeam of three LlmAgents; Delegate edge lowered to AgentTool (parallel tool calls, max 2 concurrent, isolated vs shared context, returnError), Handoff edge via transfer_to_agent with a handoff note in session state, team budget, cycle rejection, execution receipts, analysis and resume plan; rule-based model, paused Tokio clock",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": [
+        "team-tools"
+      ]
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "edba27a6f686a1bb770b3affd70cd7bdee95e0079f56faefeebc748a4b1897aa",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "929affdd2e24405094bfa1e39ec7a9a63e8bdcd28dec0107d8a976756f2d9255",
+    "Cargo.toml": "29d5c5a6b313a1d3312df07513454870ff7ce34074df4638fae6ae3e02252385",
+    "README.md": "61183d147a127d08f24be388d2a8925591424001016aadf02fb68ad34a99a701",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "9faabb54c7cd285786382d800f1a9f090e9567173ed5bc8360f9d67d6c56617b",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "83e59257989e5400acbf4bfaecdde8af007c66edd7ca3b9c96f0a89e52dad1ae",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
     {
-      "data": {
-        "controller": "technical",
-        "handoff": {
-          "allowed": [
-            "read"
-          ],
-          "from": "technical",
-          "id": 1,
-          "revision": 2,
-          "to": "license"
-        },
-        "input_revision": 2,
-        "joined": true,
-        "results": [
-          {
-            "id": "api",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "cli",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          }
-        ],
-        "returned_from": "license",
-        "tasks": [
-          "api",
-          "cli"
-        ]
-      },
-      "limit": 32,
-      "scenario": "normal",
-      "stop": "completed",
-      "trace": [
-        "decompose",
-        "workers",
-        "handoff",
-        "return"
-      ],
-      "used": 6
+      "name": "two",
+      "workers": "[api,cli]",
+      "peak": "2",
+      "worker_saw": "[-,-]",
+      "edges": "[delegate:completed,delegate:completed]",
+      "turn1": "lead",
+      "turn2": "lead",
+      "coverage": "50%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "handoff": {
-          "allowed": [
-            "read"
-          ],
-          "from": "technical",
-          "id": 1,
-          "revision": 2,
-          "to": "license"
-        },
-        "input_revision": 2,
-        "joined": true,
-        "results": [
-          {
-            "id": "api",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "cli",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "core",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          }
-        ],
-        "returned_from": "license",
-        "tasks": [
-          "api",
-          "cli",
-          "core"
-        ]
-      },
-      "limit": 32,
-      "scenario": "three",
-      "stop": "completed",
-      "trace": [
-        "decompose",
-        "workers",
-        "handoff",
-        "return"
-      ],
-      "used": 7
+      "name": "three",
+      "workers": "[api,cli,core]",
+      "peak": "2",
+      "worker_saw": "[-,-,-]",
+      "edges": "[delegate:completed,delegate:completed,delegate:completed]",
+      "turn1": "lead",
+      "turn2": "lead",
+      "coverage": "50%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "input_revision": 2,
-        "joined": true,
-        "results": [
-          {
-            "id": "api",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "cli",
-            "ok": false,
-            "private_messages": 1,
-            "revision": 2
-          }
-        ],
-        "tasks": [
-          "api",
-          "cli"
-        ]
-      },
-      "limit": 32,
-      "scenario": "failed_worker",
-      "stop": "worker_failed",
-      "trace": [
-        "decompose",
-        "workers"
-      ],
-      "used": 4
+      "name": "shared-context",
+      "workers": "[api,cli]",
+      "peak": "2",
+      "worker_saw": "[note,note]",
+      "edges": "[delegate:completed,delegate:completed]",
+      "turn1": "lead",
+      "turn2": "lead",
+      "coverage": "50%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "input_revision": 2,
-        "joined": true,
-        "results": [
-          {
-            "id": "api",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "cli",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          }
-        ],
-        "tasks": [
-          "api",
-          "cli"
-        ]
-      },
-      "limit": 32,
-      "scenario": "invalid_role",
-      "stop": "invalid_role_or_permission",
-      "trace": [
-        "decompose",
-        "workers",
-        "handoff"
-      ],
-      "used": 5
+      "name": "handoff",
+      "workers": "[api,cli,core]",
+      "peak": "2",
+      "worker_saw": "[-,-,-]",
+      "edges": "[delegate:completed,delegate:completed,delegate:completed,handoff:completed]",
+      "turn1": "license",
+      "turn2": "license",
+      "license_knew": "no",
+      "coverage": "100%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "input_revision": 2,
-        "joined": true,
-        "results": [
-          {
-            "id": "api",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          },
-          {
-            "id": "cli",
-            "ok": true,
-            "private_messages": 1,
-            "revision": 2
-          }
-        ],
-        "tasks": [
-          "api",
-          "cli"
-        ]
-      },
-      "limit": 32,
-      "scenario": "stale",
-      "stop": "stale_handoff",
-      "trace": [
-        "decompose",
-        "workers",
-        "handoff"
-      ],
-      "used": 5
+      "name": "handoff-note",
+      "workers": "[api,cli,core]",
+      "peak": "2",
+      "worker_saw": "[-,-,-]",
+      "edges": "[delegate:completed,delegate:completed,delegate:completed,handoff:completed]",
+      "turn1": "license",
+      "turn2": "license",
+      "license_knew": "yes",
+      "coverage": "100%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "input_revision": 2,
-        "results": [],
-        "tasks": []
-      },
-      "limit": 32,
-      "scenario": "depth",
-      "stop": "delegation_depth",
-      "trace": [
-        "decompose"
-      ],
-      "used": 1
+      "name": "undeclared",
+      "workers": "[api,cli,core]",
+      "peak": "2",
+      "worker_saw": "[-,-,-]",
+      "edges": "[delegate:completed,delegate:completed,delegate:completed]",
+      "turn1": "lead",
+      "turn2": "lead",
+      "coverage": "50%"
     },
     {
-      "data": {
-        "controller": "technical",
-        "input_revision": 2,
-        "results": [],
-        "tasks": [
-          "api",
-          "cli"
-        ]
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "decompose"
-      ],
-      "used": 1
+      "name": "worker-failed",
+      "workers": "[api,cli]",
+      "peak": "2",
+      "worker_saw": "[-,-]",
+      "edges": "[delegate:completed,delegate:failed]",
+      "turn1": "lead",
+      "turn2": "lead",
+      "coverage": "50%"
+    },
+    {
+      "name": "budget",
+      "workers": "[api,cli]",
+      "peak": "2",
+      "worker_saw": "[-,-]",
+      "edges": "[delegate:completed,delegate:running,delegate:running]",
+      "stop": "error:agent.team.budget_exceeded"
+    },
+    {
+      "name": "cycle",
+      "stop": "invalid_spec:CyclicTopology"
+    },
+    {
+      "name": "interrupted",
+      "workers": "[api,cli,core]",
+      "peak": "2",
+      "worker_saw": "[-,-,-]",
+      "edges": "[delegate:completed,delegate:running,delegate:running]",
+      "stop": "interrupted:UnsafeDelegate"
     }
   ],
-  "rust_tests": 4,
-  "scenarios": 7,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
-  "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "1242e47578d7812d577f59521afeb9a7baef350e486dd7c11ea4b545ccdc7044",
-    "Cargo.toml": "8c1a5f46c7d813e53aab418fb91aaed5902eb045aeb3acbf15ada0463ae60f50",
-    "README.md": "310b8bb8febf39136f0031341cedb45d4c77acdaa982401a0927a6bc421d57c4",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "0c6c2137fdf336cb7b5be245cd78cf8d3098f86f26acea0f77ddebb9aeccfb0a"
+  "outputs_sha256": {
+    "d05-budget.txt": "5ecb1d921701816b2594810f0c2087087b21bd4f51db67ffbceea1a66cc629b4",
+    "d05-cycle.txt": "2026aaf2d398dd22710a26590ed7504ec876c46b1728664613dcc67f1aecb244",
+    "d05-handoff-note.txt": "7439c8145a242b04a4c52153ce63d8c8df9fc691862a970650efc59fdbc3a7b4",
+    "d05-handoff.txt": "b256cbf5b556a6534d5486ac60602ca7f1a7df0f57a0d8bc8a34448a7a9489e6",
+    "d05-interrupted.txt": "5ea06e8c61549a7b2546791a1164c5adcb7115a34cc695bf675103ade2b343c6",
+    "d05-shared-context.txt": "6ea0a91a2cb81641d06b7b505833f6dc01daa9008f9c01ea45e6ef2c0106acce",
+    "d05-summary.txt": "a2b55c47eea4d723b52f80f0337d63caadbcd8357ac132afeb8e2071e756d5f5",
+    "d05-three.txt": "ebc955495d4062999beec7b2c47a97eeadaa0641a784e2e84d1f94598155b16d",
+    "d05-two.txt": "2d160e6bb338afa4caf47f88052140f6bd538295f1626e5b7bae9dfd494b0b63",
+    "d05-undeclared.txt": "1e515e3d28bef2ccfa006098be521d1eec2c77e966797da0d0c0801176509b63",
+    "d05-worker-failed.txt": "950e076fb6d6567a6381f23481d60160ef2c47e9c3975887e5f12cc5d27580ef"
   }
 }

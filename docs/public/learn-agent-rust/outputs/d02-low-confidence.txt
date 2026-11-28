@@ -1,0 +1,9 @@
+--- run: 文件：notes.md 修订：r1
+[router] text    "[Decision: readme (0.30) (below 0.60; fallback needs_input)] 文件名是 notes.md"
+[router] state   route = {"confidence":0.3,"followed":false,"option":"readme","rationale":"文件名是 notes.md","route":"needs_input"}
+[router] final
+[needs_input] text    "needs_input：请交 README.md 或 Cargo.toml"
+[needs_input] final
+model calls: decide
+last: needs_input：请交 README.md 或 Cargo.toml
+low-confidence: router=decision route=needs_input agents=[router,needs_input] model_calls=[decide] gate=- outcome=needs_input

@@ -1,0 +1,13 @@
+--- run: 审查修订 r2 的升级，写一段带来源的升级说明并发布。
+[deps_checker] text    "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r1\"}"
+[deps_checker] final
+[docs_checker] text    "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[deps_checker] state   check_deps = "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r1\"}"
+[deps_checker] final
+[docs_checker] state   check_docs = "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[merge] text    "merge:stale_result:deps@r1"
+[merge] final
+[merge] escalate
+stale-branch: model_calls=2 checkers=2 writer=0 publisher=0 steps=[run] published=no stop=merge:stale_result:deps@r1

@@ -1,0 +1,37 @@
+--- run: 审查修订 r2 的升级，写一段带来源的升级说明并发布。
+[deps_checker] text    "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[docs_checker] text    "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[deps_checker] state   check_deps = "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[docs_checker] state   check_docs = "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[merge] text    "merge:ok"
+[merge] state   evidence = "[{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\"},{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\"}]"
+[merge] final
+[writer] text    "{\"sources\":[],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"sources\":[],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "repair:missing_source"
+[evaluator] state   feedback = {"failed":["missing_source"]}
+[evaluator] final
+[writer] text    "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "accepted"
+[evaluator] state   feedback = {"failed":[]}
+[evaluator] state   final_draft = "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[evaluator] final
+[publisher] call    id=publish publish_report {"content":"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。","target":"releases/3.0.md"}
+[publisher] result  id=publish publish_report status=held {"error":"Tool 'publish_report' requires confirmation: 发布需要编辑批准","status":"confirmation_pending"}
+[publisher] text    "Tool confirmation required for 'publish_report'. Provide approve/deny decision to continue."
+[publisher] final
+--- approve
+--- run: 
+[publisher] result  id=publish publish_report status=ok {"published":"releases/3.0.md"}
+[publisher] text    "已发布。"
+[publisher] final
+normal: model_calls=6 checkers=2 writer=2 publisher=2 steps=[run:held,approve,resume] published=yes stop=completed

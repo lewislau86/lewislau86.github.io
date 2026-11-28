@@ -1,162 +1,255 @@
 ---
-title: "第 17 章：并行分解与结果归并"
-description: "独立子问题怎样同时处理，再合成可用结论？"
+title: "第 18 章：并行分解与结果归并"
+description: "用 ADK-Rust 3.0 的 ParallelAgent 同时运行三个互不依赖的检查者，再由归并步骤核对成员与修订；观察分支失败、上报、过期结果、缺成员与状态键冲突各自怎样收场。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 16 章 · 提示链与条件路由
+  text: 第 17 章 · 提示链与条件路由
   link: /learn-agent-rust/prompt-chaining-routing
 next:
-  text: 第 18 章 · 规划、执行与动态重规划
+  text: 第 19 章 · 规划、执行与动态重规划
   link: /learn-agent-rust/plan-execute-replan
 ---
 
-# 第 17 章：并行分解与结果归并
+# 第 18 章：并行分解与结果归并
 
-[课程总览](./index.md) · [上一章](./prompt-chaining-routing.md) · [本部分导读](./agent-design-patterns.md) · [下一章](./plan-execute-replan.md)
+[课程总览](./index.md) · [上一章](./prompt-chaining-routing.md) · [本部分导读](./agent-design-patterns.md) · [学习路径](./learning-path.md#d03) · [下一章](./plan-execute-replan.md)
 
 ::: tip 本章学习目标
-- 识别真正独立的子问题，区分按问题拆分和对同一问题多次生成。
-- 定义并发上限、局部失败政策及确定性归并契约。
+- 判断哪些子任务可以同时做，用 `ParallelAgent` 把它们同时运行，再用一个归并步骤汇总。
+- 说清 `ParallelAgent` 遇到分支出错、分支上报（escalate）时分别怎样收场。
+- 让归并核对成员身份和资料修订，而不是只数结果的个数。
 
-**前置与基础：** [D02 · 提示链与条件路由](./prompt-chaining-routing.md)、[G03 · 图并行、归并与子图](./graph-parallel-subgraphs.md)。
+**前置：** [第 17 章：提示链与条件路由](./prompt-chaining-routing.md)、[第 7 章：图并行、归并与子图](./graph-parallel-subgraphs.md)。
+
+**实践方式：** 下载<a href="/learn-agent-rust/parallel-decomposition.zip" download>完整 parallel-decomposition.zip</a>，按[第 1 节](#hands-on)取一次 ADK-Rust 源码后运行；无需模型密钥。
 :::
+
+::: info 本章已迁移到 ADK-Rust 3.0
+旧版用 Tokio 的 `JoinSet` 和信号量自己写并发与归并（同时最多两个任务），可从 git 标签 `learn-agent-rust-v1` 取得。新版用 ADK-Rust 的 `ParallelAgent` 同时运行三个 `LlmAgent`，归并是 `SequentialAgent` 里紧跟的一个 `CustomAgent`。`ParallelAgent` 没有并发上限，所以三个分支同时进行，[对应表](#old-scenarios)列出了场景的变化。
+:::
+
+升级审查要看三件事：启动文档要不要改、依赖要不要升、配置有没有改名的键。三件事互不依赖，读的是同一个修订 r2。一个接一个地检查，总时间是三者之和；同时检查，总时间接近最慢的那一个。
+
+同时做，就要回答几个新问题：谁先做完是不确定的，报告的顺序怎么定？一个检查者出错了，其他人的结果还要吗？一个检查者发现了必须立刻停下的问题，其他人还在跑怎么办？三份结果都到了，就一定齐全、都是 r2 吗？
 
 <LearnAgentRustMap active="parallel-decomposition" />
 
-::: info 完整代码与运行方式
-本章使用 Rust 1.99.1 与固定提交的 graph-flow 0.8.1。下载<a href="/learn-agent-rust/parallel-decomposition.zip" download>独立 Rust 工程</a>，解压后运行 `cargo run --locked -- suite`；`cargo test --locked` 运行回归测试，`cargo clippy --locked --all-targets -- -D warnings` 检查代码。
+<!-- experiment-library:start -->
 
-源码唯一位置为 `docs/public/learn-agent-rust/code/parallel-decomposition/`，下文代码直接引用该工程。验证命令：`python3 scripts/verify-agent-patterns.py --lesson D03 --check`。默认没有真实模型调用。
+全书实验可从[统一代码库](./experiments.md#parallel-decomposition)下载；解压后进入 `chapters/parallel-decomposition/`，或在代码库根目录运行 `python3 run.py run D03`。
+
+<!-- experiment-library:end -->
+
+::: info 本章实验状态
+`ParallelAgent`、`SequentialAgent`、`CustomAgent`、`output_key` 与 `exit_loop` 都是 ADK-Rust 的真实实现。检查者的模型是按规则回复的替身：每次请求先停 30–110 毫秒，让三个分支真正重叠，再回一个 JSON 发现。程序用暂停的 Tokio 时钟推进这些停顿，完成顺序只由停顿长短决定，在任何机器上都一样；停顿不代表真实服务的耗时，也不用来推算加速比。
 :::
 
-## 1. 从任务问题开始
+## 1. 先运行：七个场景 {#hands-on}
 
-独立子问题怎样同时处理，再合成可用结论？
+下载并解压工程，先取一次 ADK-Rust 源码再运行：
 
-固定任务分片、独立状态、有界并发与确定性归并。
+```sh
+cd parallel-decomposition
+python3 fetch-adk-rust.py ../adk-rust    # 需要 git 与 GitHub 访问；不行时加 --method cdn
+cargo run --locked
+```
 
-## 2. 适用与不适用
+编译时会看到 adk-core 的 3 条弃用警告（上游固定 Rust 1.95.0，本课程用 1.99.1），不影响运行和检查。
 
-依赖、文档和配置可以各自检查时，可以按问题分片并行；同一判断的多样化生成则需要另外说明抽样和判分规则。
+<<< @/public/learn-agent-rust/outputs/d03-summary.txt
 
-存在顺序依赖、争写同一文件或无法归并的任务，不宜直接同时启动；多个相似模型的投票也不自动等于独立证据。
+`started` 是开始请求模型的检查者，`finished` 是按完成先后排列的检查者，`peak_concurrent` 是同一时刻最多有几次模型请求在进行，`outcome` 是这次的结果，`report_sha` 是报告内容的指纹。
 
-## 3. 场景与流程
+## 2. 同时运行，按成员顺序归并
 
-升级审查同时检查依赖兼容性、启动文档与配置变更，三个检查者只读同一修订，各自产生有来源的发现，最终由归并器形成报告。
+<<< @/public/learn-agent-rust/code/parallel-decomposition/src/main.rs#fanout
 
-![图展示本章实际图节点的推进关系，失败在对应合同处停止。](/learn-agent-rust/figures/d03-pattern-flow.svg)
+三个检查者各写自己的状态键：`check_config`、`check_deps`、`check_docs`。`ParallelAgent` 把它们放在同一个任务里轮流推进，三个都开始之后才有人完成，所以 `peak_concurrent=3`。它没有并发上限：子 Agent 有几个，就同时跑几个。要限制同时访问外部服务的数量，得在工具或模型客户端里自己限流。
 
-沿上方节点读取主流程，重点看下方的report · 确定顺序。配图只表达拓扑；真实节点次序见下方输出中的 trace，不把示意布局当作性能测量。
+每个分支有自己的分支标识，读历史时看不到兄弟分支刚产出的内容，只看得到分叉之前的对话。（这一点来自源码；本实验每个检查者只调用一次模型，观察不到。）
 
-## 状态与控制契约
+三个分支在同一个任务里轮流推进：一个分支做阻塞或很耗 CPU 的事，会卡住其他分支。这类工作要放到单独的线程里（例如 `spawn_blocking`）。
 
-| 边界 | 实验约束 |
+<<< @/public/learn-agent-rust/outputs/d03-normal.txt
+
+`normal` 里 config 最快、docs 最慢；`reverse` 把停顿反过来，完成顺序变成 docs、deps、config。两次的 `report_sha` 相同：归并不看谁先到，按成员名的顺序写报告。
+
+<<< @/public/learn-agent-rust/code/parallel-decomposition/src/main.rs#merge
+
+## 3. 一个分支出错
+
+`failure` 里依赖检查的模型服务没有响应：
+
+<<< @/public/learn-agent-rust/outputs/d03-failure.txt
+
+config 和 docs 照常做完，结果也写进了状态（`finished=[config,docs]`）。可等所有分支都结束后，`ParallelAgent` 把出错分支的错误报出来，整次运行以 `model.unavailable` 结束，归并没有运行。几个分支同时出错时，报的是排在最前面的那个子 Agent 的错误，所以结果是确定的。
+
+“一个必要成员失败，就不出报告”是这里的选择。如果允许缺成员出报告，就要在归并里明确写出哪些成员可以缺、缺了怎么标注。
+
+## 4. 一个分支上报，其他分支停下
+
+`escalate` 里配置检查发现了阻断问题，调用 `exit_loop` 工具，把事件标成 escalate：
+
+<<< @/public/learn-agent-rust/outputs/d03-escalate.txt
+
+`ParallelAgent` 收到上报，立刻停下其他分支：deps 和 docs 还在等模型回复，就被丢下了（`finished=[config]`），外层的 `SequentialAgent` 也随之结束，归并没有运行。出错是“等大家做完再报”，上报是“现在就停”。
+
+“丢下”的意思是那个分支停在它正在等待的地方，不再往下执行。如果它已经发出了一个外部请求，请求可能已经生效；有副作用的分支要能承受被半途丢下（[专题 2](./side-effect-reliability.md)讲外部副作用的幂等与对账）。
+
+## 5. 归并核对的是身份和修订
+
+三份结果都到了，不等于能出报告：
+
+- `stale`：deps 的检查者读的是旧修订 r1。归并发现 `deps@r1`，返回 `stale_result` 并上报。
+- `missing`：docs 的检查者只回了一句“应该没问题”，没给结构化发现。状态里有一个值，却不是合格的发现，归并报 `member_mismatch:missing=docs`。
+- `key-collision`：三个检查者都写同一个状态键 `check`。后写的覆盖先写的，留下来的是最后完成的 docs，config 和 deps 的发现都丢了。分支并行时，每个分支要写自己的键。
+
+<<< @/public/learn-agent-rust/outputs/d03-key-collision.txt
+
+只数结果个数会放过这些情况。归并按成员名逐个核对：成员是谁、修订是不是这一次的。
+
+![三个检查者由 ParallelAgent 同时运行，各写自己的状态键；分支出错时等兄弟分支做完再报错，分支上报时立刻停下其他分支；归并逐个核对成员与修订，按成员顺序写报告。](/learn-agent-rust/figures/d03-pattern-flow.svg)
+
+上面是三个同时运行的检查者，下面是归并；两侧标出了出错和上报两种收场方式，归并框里列出了它拦下的三种情况。
+
+### 全部场景的实际结果
+
+<!-- d03-results:start -->
+
+| 场景 | 完成先后 | 同时进行 | 结果 | 报告指纹 |
+| --- | --- | --- | --- | --- |
+| `normal` | `[config,deps,docs]` | `3` | `report` | `396f74b4` |
+| `reverse` | `[docs,deps,config]` | `3` | `report` | `396f74b4` |
+| `failure` | `[config,docs]` | `3` | `error:model.unavailable` | — |
+| `escalate` | `[config]` | `3` | `escalated_by:config_checker` | — |
+| `stale` | `[config,deps,docs]` | `3` | `stale_result:deps@r1` | — |
+| `missing` | `[config,deps,docs]` | `3` | `member_mismatch:missing=docs` | — |
+| `key-collision` | `[config,deps,docs]` | `3` | `member_mismatch:missing=config+deps` | — |
+
+<!-- d03-results:end -->
+
+### 与旧版场景的对应 {#old-scenarios}
+
+| 旧版（Tokio JoinSet） | 新版（ADK-Rust） | 变化 |
+| --- | --- | --- |
+| `normal`、`reverse` | `normal`、`reverse` | 改用 `ParallelAgent`；没有并发上限，峰值从 2 变成 3。 |
+| `failure` | `failure` | 出错分支等兄弟分支做完后让整次运行出错。 |
+| `cancel` | `escalate` | 改为分支上报，其他分支立刻停下。 |
+| `stale` | `stale` | 归并核对修订。 |
+| `duplicate`、`missing` | `missing`、`key-collision` | 重复成员改为写同一个状态键的覆盖问题。 |
+| `budget` | 删除 | 调用上限见第 16 章。 |
+| 8 个场景、4 项测试 | 7 个场景、4 项测试 | — |
+
+验证脚本把工程打包后在临时目录解压，在旁边放好 ADK-Rust 源码，运行格式、Clippy、4 项 Rust 测试和离线构建；摘要和几条详细轨迹各连跑两次必须逐字节相同，并把结果表写回正文。维护者在网站仓库根目录执行：
+
+```sh
+python3 scripts/fetch-adk-rust.py .cache/adk-rust    # 只需一次；或设 ADK_RUST_SRC
+python3 scripts/verify-agent-patterns-adk.py --lesson D03
+python3 scripts/generate-learn-agent-rust-figures.py --lesson D03
+python3 scripts/verify-agent-patterns-adk.py --lesson D03 --check
+```
+
+## 框架替你做了什么、没做什么
+
+| 框架做了 | 仍归应用 |
 | --- | --- |
-| 输入 | 预先确定的成员清单、同一资料修订与每个成员的只读输入。 |
-| 分支状态 | task_id、input_revision、status、findings 和 error；分支输出写入独立命名空间。 |
-| 归并 | 验证成员齐全、无重复和版本一致，按 task_id 排序；冲突留待判定，不能只采用最后写入值。 |
-| 失败与取消 | 明确全有或全无、允许部分结果的条件、超时和取消后的线程或任务回收。 |
+| 同时运行所有子 Agent（在同一个任务里轮流推进），每个分支有自己的分支标识。 | 并发上限：在工具或模型客户端里限流；阻塞工作放到单独线程。 |
+| 分支出错：等其他分支结束后报出排在最前的错误。 | 决定缺了某个成员能不能出报告。 |
+| 分支上报：立刻停下其他分支。 | 决定什么情况值得上报；有副作用的分支要能承受被半途丢下。 |
+| 每个分支的 `output_key` 写进同一份会话状态。 | 给每个分支起不同的键；归并核对成员与修订。 |
 
-## 4. 从合同到 Rust 实现
+<!-- adk-refs:start -->
 
-### 独立任务怎样真正重叠
+## 在 ADK-Rust 源码里
 
-checks 用 JoinSet 启动 config、deps、docs 三个 Tokio 任务，用 Semaphore 将同时工作的数量限制为 2。每个任务持有独立 Finding；原子计数器记录活跃峰值。短暂停顿是调度夹具，使两个任务确实重叠，不是模拟外部服务耗时，也不用于推导生产加速比。
+本章的同时运行、出错与上报的收场，在 ADK-Rust 里分布在这几处：
 
-### 完成顺序与报告顺序分开
+| 本章内容 | 源码位置 | 对照要点 |
+| --- | --- | --- |
+| 同时运行的工作流 | [`adk-agent/src/workflow/parallel_agent.rs` · `ParallelAgent`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/workflow/parallel_agent.rs#L20-L30) | 全部子 Agent 一起运行，没有并发上限；可选的共享状态只在本次运行内有效 |
+| 每个分支一个分支标识 | [`adk-agent/src/workflow/parallel_agent.rs` 第 258 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/workflow/parallel_agent.rs#L258) | 按分支读历史时看不到兄弟分支的产出，只看得到分叉前的对话 |
+| 分支上报，立刻停下 | [`adk-agent/src/workflow/parallel_agent.rs` 第 312 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/workflow/parallel_agent.rs#L312) | 收到上报就不再推进其他分支，外层工作流随之结束 |
+| 分支出错，最后报错 | [`adk-agent/src/workflow/parallel_agent.rs` 第 295 行](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-agent/src/workflow/parallel_agent.rs#L295) | 出错的分支被丢下，其他分支照常做完；最后报出排在最前的那个子 Agent 的错误 |
+| 上报的工具 | [`adk-tool/src/builtin/exit_loop.rs` · `ExitLoopTool`](https://github.com/zavora-ai/adk-rust/blob/98515241133d24f7e41f8fd272649035416a142f/adk-tool/src/builtin/exit_loop.rs#L8) | 把这次调用的事件标成 escalate，并跳过工具结果之后的总结 |
 
-normal 与 reverse 改变各分支的停顿顺序。收集后按成员排序，merge 再逐项核对必须出现的三个身份，拒绝重复、缺失和旧修订。仅比较数组长度不够：两个 docs 加一个 config 仍有三个元素，却缺 deps。任何必要成员失败都不生成报告。
+源码固定在 ADK-Rust `98515241133d`（3.0.0，2026-11-26，尚未发布到 crates.io）。本节由 `scripts/learn-agent-rust-adk-refs.py` 生成。
 
-### 取消也要等待句柄结束
-
-cancel 在任务启动后调用 abort_all，再持续 join_next，直到 JoinSet 为空。它验证 Tokio 任务的回收，并不代表远端请求已撤销。预算在派发前预留三份 worker 额度，避免并发分支各自重新获得完整预算。
-
-先看统一运行账本。State 的 `used` 在执行前扣除，stop 记录业务终态，trace 记录真实经过的图节点。graph-flow 的 Completed 只表示图执行结束，成功与否由 stop 判断。
-
-<<< @/public/learn-agent-rust/code/parallel-decomposition/src/main.rs#state
-
-本章的关键领域代码如下。先沿 match 找正常分支，再找过期、缺失或失败分支，观察它们是否在产生后续效果之前停止。
-
-<<< @/public/learn-agent-rust/code/parallel-decomposition/src/main.rs#parallel
-
-节点适配器把状态读出、扣费、调用领域逻辑，再保存回 Context。`GoTo` 表示受应用控制的跳转；宿主还有限制 64 次推进的兜底。每个场景从全新 Session 开始。
-
-<<< @/public/learn-agent-rust/code/parallel-decomposition/src/main.rs#runner
-
-## 动手实验与真实运行
-
-先预测正常场景中的 trace，再预测 budget 场景能执行几个节点。运行独立工程后对照下面保存的真实输出。suite 每行是一个场景的状态，字段包括 scenario、used、limit、trace、stop 和 data；JSON 展开仅改变显示格式。
-
-<<< @/public/learn-agent-rust/outputs/d03-suite.json
-
-验证器在独立临时目录运行 4 项 Rust 回归测试、全部正常与故障场景和 Clippy，再解压最终下载包离线重新编译、复验输出。<a href="/learn-agent-rust/parallel-decomposition.zip" download>下载包</a>内的 evidence.json 记录源码摘要、场景与额外检查。运行平台为本次 macOS aarch64，Rust 1.99.1；默认固定决策，不需要密钥。
-
-## 已验证范围与真实模型边界
-
-真实 Tokio 并发与任务回收；停顿是夹具，无生产加速结论。 规则、角色和输入由代码预先给定，因此输出能够复核控制合同，但不能据此推导真实模型成功率或质量收益。第 22 章提供[统一模型对照入口](./pattern-composition.md#model-comparison)，配置标准 OpenAI 兼容服务后再运行；当前未产生真实模型结果。
+<!-- adk-refs:end -->
 
 ::: warning 常见误区
-异步调用和并行设计模式不是同一层概念；能同时启动，并不表示问题可以独立求解。
+- **以为 `ParallelAgent` 会限制并发。** 它同时运行全部子 Agent。
+- **以为一个分支出错，其他分支会被取消。** 出错时其他分支照常做完，只是最后整次运行出错；上报才会立刻停下其他分支。
+- **用结果个数判断齐全。** 个数对，成员可能重复、缺失或属于旧修订。
+- **几个分支写同一个状态键。** 后写的覆盖先写的，谁留下取决于谁最后完成。
 :::
 
-## 本章结论
-
-并行把独立检查同时推进，正确汇总仍由应用负责。限制活跃任务数、预留共享额度、按身份核对结果，并在取消后回收句柄，才形成完整生命周期。
+<!-- transfer-thinking:start -->
 
 ## 迁移思考：归并要验证成员身份
 
-三个并行结果中有两份来自同一成员，会发生什么？
+三个分支都完成了，状态里却只剩一个成员的结果，会发生什么？先给出你的判断，再展开下面的推演。
 
-即使结果数量正确，也会缺一个必要检查；merge 比较排序后的成员身份，拒绝通过。
+<details><summary>推演与应用</summary>
+
+分支写了同一个键，后写的覆盖先写的；归并按成员逐个核对身份和修订，发现缺成员就拒绝出报告，而不是用剩下的那一份凑数。
 
 批处理、分片搜索和多审查者报告都需要身份、版本和失败合同。
 
+</details>
+
+这是一道迁移练习，推演不代表新增实验已通过。对照[全书审查中的证据层次](./course-review.md#evidence-layers)，说明你的判断还需要哪一级证据。
+
+<!-- transfer-thinking:end -->
+
+## 本章结论
+
+子任务互不依赖时，`ParallelAgent` 让它们同时运行，总时间接近最慢的那一个。并行带来的问题要在归并里解决：按成员顺序而不是完成顺序写报告，逐个核对成员和修订，给每个分支独立的状态键。出错和上报是两种不同的收场：出错等大家做完再报，上报立刻停下其他人。
+
 ## 检查理解
 
-1. 为什么三个结果还可能不完整？
+1. `normal` 和 `reverse` 的完成顺序相反，为什么报告一字不差？
 
    <details><summary>参考答案</summary>
 
-   成员身份可能重复。必须比较完整成员集合，而不仅是结果数。
+   归并按成员名的顺序读各自的状态键写报告，不看谁先完成。两次的 `report_sha` 相同。
 
    </details>
 
-2. peak=2 表示什么？
+2. `failure` 里 config 和 docs 都做完了，为什么还是没有报告？
 
    <details><summary>参考答案</summary>
 
-   当前短暂停顿夹具下两个任务确实同时活跃，且未超过 Semaphore 上限；它不是速度提升倍数。
+   `ParallelAgent` 等所有分支结束后，把出错分支的错误报出来，整次运行以错误结束，后面的归并没有运行。本章的选择是必要成员失败就不出报告。
 
    </details>
 
-3. reverse 改变了什么？
+3. `escalate` 和 `failure` 的收场有什么不同？
 
    <details><summary>参考答案</summary>
 
-   改变分支完成顺序；最终 report 应与 normal 一致。
+   出错时其他分支照常做完，最后才报错；上报时 `ParallelAgent` 立刻停下其他分支，它们的结果不会出现。
 
    </details>
 
-4. abort_all 之后为什么还调用 join_next？
+4. `key-collision` 里三个检查者都完成了，为什么归并说缺 config 和 deps？
 
    <details><summary>参考答案</summary>
 
-   发送取消请求后还要确认任务结束，直到所有句柄回收。
+   三个检查者写同一个状态键，后写的覆盖先写的。最后完成的是 docs，状态里只剩它的发现。
 
    </details>
 
-5. 能把相似模型投票当独立证据吗？
+5. 想让三个检查者最多同时调用两次外部服务，该改哪里？
 
    <details><summary>参考答案</summary>
 
-   不能自动这样解释。输入与误差可能相关，需另设抽样与独立判分规则。
+   `ParallelAgent` 没有并发上限，要在调用外部服务的地方自己限流，例如在工具或模型客户端里用信号量。
 
    </details>
 
 ## 参考资料
 
-- [Building effective agents](https://www.anthropic.com/research/building-effective-agents)：工作流、Agent 与可组合模式的工程导读；本文取其结构分类，不沿用过时 API。
-- [LangGraph：Workflows and agents](https://docs.langchain.com/oss/python/langgraph/workflows-agents)：对照模式拓扑；Python API 不视为 graph-flow 等价接口。
+- [Building effective agents](https://www.anthropic.com/research/building-effective-agents)：并行化（分段与投票）两种用法。
+- [ADK-Rust 固定源码](https://github.com/zavora-ai/adk-rust/tree/98515241133d24f7e41f8fd272649035416a142f)：`ParallelAgent` 的分支、出错与上报处理。
 
-下一章：[第 18 章 · 规划、执行与动态重规划](./plan-execute-replan.md)。回到[本部分导读](./agent-design-patterns.md)比较模式。
+下一章：[第 19 章 · 规划、执行与动态重规划](./plan-execute-replan.md)。回到[本部分导读](./agent-design-patterns.md)比较模式。

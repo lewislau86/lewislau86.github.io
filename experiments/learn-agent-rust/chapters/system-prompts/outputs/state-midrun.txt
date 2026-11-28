@@ -1,0 +1,21 @@
+--- run: 先切换到英文，再读取 README，解释启动命令。
+[assistant] call    id=call-set_locale set_locale {"locale":"en-US"}
+[assistant] result  id=call-set_locale set_locale status=ok {"locale":"en-US"}
+[assistant] state   locale = "en-US"
+[assistant] call    id=call-read_file read_file {"path":"README.md"}
+[assistant] result  id=call-read_file read_file status=ok {"path":"README.md","text":"# demo-project\n\n启动：cargo run --locked\n环境：Rust 1.99.1，无需数据库。\n"}
+[assistant] text    "启动命令：`cargo run --locked`（来自 README.md）。"
+[assistant] final
+request 0: roles=system,system,user tools=[read_file,set_locale,write_file] prefix=56280a8ff48f user_turn=c6b30914e3c2 locale=zh-CN skill=startup@user bytes=572
+request 1: roles=system,system,user,model,function tools=[read_file,set_locale,write_file] prefix=56280a8ff48f user_turn=c6b30914e3c2 locale=zh-CN skill=startup@user bytes=796
+request 2: roles=system,system,user,model,function,model,function tools=[read_file,set_locale,write_file] prefix=56280a8ff48f user_turn=c6b30914e3c2 locale=zh-CN skill=startup@user bytes=1120
+answer: 启动命令：`cargo run --locked`（来自 README.md）。
+--- run: 读取 README，解释启动命令与环境要求。
+[assistant] call    id=call-read_file read_file {"path":"README.md"}
+[assistant] result  id=call-read_file read_file status=ok {"path":"README.md","text":"# demo-project\n\n启动：cargo run --locked\n环境：Rust 1.99.1，无需数据库。\n"}
+[assistant] text    "Start it with `cargo run --locked` (from README.md)."
+[assistant] final
+request 0: roles=system,system,user,model,function,model,function,model,user tools=[read_file,set_locale,write_file] prefix=e775cf74da20 user_turn=083cfc7dcd3f locale=en-US skill=startup@user bytes=1309
+request 1: roles=system,system,user,model,function,model,function,model,user,model,function tools=[read_file,set_locale,write_file] prefix=e775cf74da20 user_turn=083cfc7dcd3f locale=en-US skill=startup@user bytes=1633
+answer: Start it with `cargo run --locked` (from README.md).
+state-midrun: run1: model_calls=3 skill=startup@user tools=[set_locale:ok,read_file:ok] answer=中文 locales=[zh-CN,zh-CN,zh-CN] | run2: model_calls=2 skill=startup@user tools=[read_file:ok] answer=English locales=[en-US,en-US]

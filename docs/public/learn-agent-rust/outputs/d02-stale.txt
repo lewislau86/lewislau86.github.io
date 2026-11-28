@@ -1,0 +1,24 @@
+--- run: 文件：README.md 修订：r1
+[router] text    "[Routing to: readme]"
+[router] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_extract] state   artifact = "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_gate] text    "gate:passed"
+[readme_gate] final
+[readme_render] text    "报告：README.md 的 目标版本 是 3.0（修订 r1）"
+[readme_render] final
+--- run: 文件：README.md 修订：r2
+[router] text    "[Routing to: readme]"
+[router] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_extract] state   artifact = "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_gate] text    "gate:stale_artifact:r1"
+[readme_gate] final
+[readme_gate] escalate
+model calls: route,extract,render,route,extract
+last: gate:stale_artifact:r1
+stale: router=llm route=readme agents=[router,readme_extract,readme_gate] model_calls=[route,extract,render,route,extract] gate=stale_artifact:r1 outcome=stopped

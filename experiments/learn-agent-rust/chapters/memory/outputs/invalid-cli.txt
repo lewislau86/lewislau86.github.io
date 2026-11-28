@@ -1,4 +1,0 @@
-invalid command
-{"error":"usage","status":"error"}
-extra argument
-{"error":"usage","status":"error"}

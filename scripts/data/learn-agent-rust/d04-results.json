@@ -1,161 +1,121 @@
 {
-  "additional": {},
-  "id": "D04",
-  "results": [
+  "scope": "D04 on ADK-Rust 3.0 RC: LoopAgent of a planner LlmAgent (write_plan checked by the application, exit_loop) and an executor CustomAgent with a result ledger; adk-harness (Beta) plan mode with exit_plan_mode approval; rule-based model and approver, real temp-dir files",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-harness": {
+      "default_features": false,
+      "features": [
+        "runner"
+      ]
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "4c70349efd1dc6dfb35586161ae212e10b5e1a81317ef82d1296e1cffb25cfc9",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "82d834d445aa240afa1f988c1f74704a94f324c78161d789b7991fde1e92fe95",
+    "Cargo.toml": "e0bfc7cca3ab5588b68928438830f8f4851f6bede8f9419d3c2b280b2b532189",
+    "README.md": "038a5deb42585f4f8681808af144533167ba792df503b9c4d8a0058b361ec3b4",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "571a44baf5e00d7561ddc8457788f4c6d1f019885e073feb19afd937a6213ab2",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "62848094728a729688db14ce059b8553d3ef3eb6abda3a79f14647f876202b25",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
     {
-      "data": {
-        "done": [
-          "root"
-        ],
-        "plan": {
-          "revision": 1,
-          "steps": {
-            "root": []
-          }
-        },
-        "replans": 0
-      },
-      "limit": 32,
-      "scenario": "normal",
-      "stop": "completed",
-      "trace": [
-        "plan",
-        "validate",
-        "execute",
-        "observe",
-        "finish"
-      ],
-      "used": 5
+      "name": "discover",
+      "revisions": "[1,2,3]",
+      "rejected": "[]",
+      "executed": "[README.md,member/README.md,plugin/README.md]",
+      "iterations": "3",
+      "planner_saw": "[0,0,1,1,2,2,3]",
+      "stop": "completed"
     },
     {
-      "data": {
-        "done": [
-          "root",
-          "member"
-        ],
-        "plan": {
-          "revision": 2,
-          "steps": {
-            "member": [
-              "root"
-            ],
-            "root": []
-          }
-        },
-        "replans": 1
-      },
-      "limit": 32,
-      "scenario": "discover",
-      "stop": "completed",
-      "trace": [
-        "plan",
-        "validate",
-        "execute",
-        "observe",
-        "validate",
-        "execute",
-        "observe",
-        "finish"
-      ],
-      "used": 8
+      "name": "drops-done",
+      "revisions": "[1,2,3]",
+      "rejected": "[done_step_removed:s1,done_step_removed:s1]",
+      "executed": "[README.md,member/README.md,plugin/README.md]",
+      "iterations": "3",
+      "planner_saw": "[0,0,1,1,1,2,2,2,3]",
+      "stop": "completed"
     },
     {
-      "data": {
-        "done": [],
-        "plan": {
-          "revision": 1,
-          "steps": {
-            "root": [
-              "root"
-            ]
-          }
-        },
-        "replans": 0
-      },
-      "limit": 32,
-      "scenario": "cycle",
-      "stop": "dependency_cycle",
-      "trace": [
-        "plan",
-        "validate"
-      ],
-      "used": 2
+      "name": "missing-file",
+      "revisions": "[1,2]",
+      "rejected": "[]",
+      "executed": "[README.md,member/README.md(missing)]",
+      "iterations": "2",
+      "planner_saw": "[0,0,1,1]",
+      "stop": "step_failed"
     },
     {
-      "data": {
-        "done": [],
-        "plan": {
-          "revision": 1,
-          "steps": {
-            "root": [
-              "ghost"
-            ]
-          }
-        },
-        "replans": 0
-      },
-      "limit": 32,
-      "scenario": "unknown",
-      "stop": "unknown_dependency",
-      "trace": [
-        "plan",
-        "validate"
-      ],
-      "used": 2
+      "name": "stuck",
+      "revisions": "[1,2,3]",
+      "rejected": "[]",
+      "executed": "[README.md,member/README.md,plugin/README.md]",
+      "iterations": "6",
+      "planner_saw": "[0,0,1,1,2,2,3,3,3]",
+      "stop": "loop_limit"
     },
     {
-      "data": {
-        "done": [
-          "root"
-        ],
-        "plan": {
-          "revision": 1,
-          "steps": {
-            "root": []
-          }
-        },
-        "replans": 0
-      },
-      "limit": 32,
-      "scenario": "repeat",
-      "stop": "repeated_plan",
-      "trace": [
-        "plan",
-        "validate",
-        "execute",
-        "observe"
-      ],
-      "used": 4
+      "name": "plan-mode-approved",
+      "tools": "[read_file:ok,write_file:refused,exit_plan_mode:ok,write_file:ok]",
+      "asked": "[exit_plan_mode@plan:approve,write_file@ask:approve]",
+      "file_written": "yes"
     },
     {
-      "data": {
-        "done": [],
-        "plan": {
-          "revision": 1,
-          "steps": {
-            "root": []
-          }
-        },
-        "replans": 0
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "plan"
-      ],
-      "used": 1
+      "name": "plan-mode-rejected",
+      "tools": "[read_file:ok,write_file:refused,exit_plan_mode:refused,write_file:refused]",
+      "asked": "[exit_plan_mode@plan:deny]",
+      "file_written": "no"
+    },
+    {
+      "name": "plan-mode-invalid",
+      "tools": "[read_file:ok,write_file:refused,exit_plan_mode:failed(harness.plan.invalid),write_file:refused]",
+      "asked": "[exit_plan_mode@plan:approve]",
+      "file_written": "no"
     }
   ],
-  "rust_tests": 4,
-  "scenarios": 6,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
-  "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "df9eb0830d84e7156694f1afd6e34619e429d34bc3c94cc5bdde6ee8b4f9d352",
-    "Cargo.toml": "34a77e39c092c3bdf8b8579de64117c5b7554879906392b9a53ed8cdfb335960",
-    "README.md": "2c55166e8d77403d052fc44c3dad92ead761442321864d54cc80083035add26d",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "8f045bb1d9b359f697121c17bf548890e395d6b2413484df8b9e79267abe5311"
+  "outputs_sha256": {
+    "d04-discover.txt": "967a69bf8307e1288a4c49200e9f3e953e0bb23a9f1782c32201e3069df0deac",
+    "d04-drops-done.txt": "d6028cf14a1935e7d3c3f101ee81f1c129fe571e8f851c4b2473d4c10a30ebce",
+    "d04-missing-file.txt": "e85623cf26f06ec1b8f0ba592d999e51a2d70284a073d8ea0396b336c40409dd",
+    "d04-plan-mode-approved.txt": "4f690c7670135c535d7746fa00d874fe0ce87124536c8a53e5f04ffc49a15238",
+    "d04-plan-mode-invalid.txt": "9cefbdbdd4d019d5bf646c0494bd11a0c72eb1d45051ca6beeb8e499f4dc4457",
+    "d04-plan-mode-rejected.txt": "b7cd5231d1d86ea16f3ed17b7c8e915949c9fe6ad83aebb14a0695b78c9b3541",
+    "d04-stuck.txt": "2b96919f676aada96f9e1b339926bcfe7e8898f7466d36a24f172826fea72768",
+    "d04-summary.txt": "9cdf03fa2a52eac656d051bc7eda62738b5c44681eca6eab00f5761d3d223aa1"
   }
 }

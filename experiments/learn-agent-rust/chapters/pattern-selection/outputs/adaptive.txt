@@ -1,0 +1,11 @@
+--- adaptive: 根据工作区的 README 写一份升级报告，列出依据的文件。
+[explorer] call    id=read-1 read_file {"path":"README.md"}
+[explorer] result  id=read-1 read_file status=ok {"path":"README.md","text":"# demo-workspace\n升级到 3.0 需要 Rust 1.99。\n成员：member, plugin\n"}
+[explorer] call    id=read-2 read_file {"path":"member/README.md"}
+[explorer] result  id=read-2 read_file status=ok {"path":"member/README.md","text":"# member\n依赖 tokio 1.x；升级前先跑 member 的测试。\n"}
+[explorer] call    id=read-3 read_file {"path":"plugin/README.md"}
+[explorer] result  id=read-3 read_file status=ok {"path":"plugin/README.md","text":"# plugin\n用到了 3.0 删除的旧接口，需要改写。\n"}
+[explorer] text    "升级报告：按各 README 的要求逐项升级。\n依据：README.md, member/README.md, plugin/README.md"
+[explorer] final
+report: 升级报告：按各 README 的要求逐项升级。 | 依据：README.md, member/README.md, plugin/README.md
+adaptive: structure=adaptive agents=[explorer] model_calls=4 reads=[README.md,member/README.md,plugin/README.md] verdict=accepted

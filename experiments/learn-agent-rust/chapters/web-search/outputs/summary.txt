@@ -1,0 +1,10 @@
+allowlisted: asked=0 provider_queries=1 results=2 tools=[web_search:ok] citations=ok
+needs-approval: asked=1 provider_queries=1 results=2 tools=[web_search:ok] citations=ok
+denied: asked=1 provider_queries=0 results=0 tools=[web_search:refused] citations=none
+read-only: asked=0 provider_queries=0 results=0 tools=[web_search:refused] citations=none
+screening: asked=2 provider_queries=1 results=3 tools=[web_search:ok,web_fetch:failed(harness.web.url_not_in_context)] citations=none
+secret-query: asked=1 provider_queries=0 results=0 tools=[web_search:failed(harness.web.secret_in_query)] citations=none
+domain-filter: asked=1 provider_queries=1 results=2 tools=[web_search:ok] citations=ok
+provider-error: asked=1 provider_queries=1 results=0 tools=[web_search:failed(fake.search_unavailable)] citations=none
+empty: asked=1 provider_queries=1 results=0 tools=[web_search:ok] citations=none
+invented-citation: asked=0 provider_queries=1 results=2 tools=[web_search:ok] citations=invented

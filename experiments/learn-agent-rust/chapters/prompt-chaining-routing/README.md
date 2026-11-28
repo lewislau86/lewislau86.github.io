@@ -1,17 +1,38 @@
-# D02 · 提示链与条件路由
+# D02 · 提示链与条件路由（ADK-Rust 3.0）
 
 教程：https://lewislau86.github.io/learn-agent-rust/prompt-chaining-routing
 
-本目录可独立复制。Rust 1.99.1，固定 graph-flow git 提交，Cargo.lock 固定解析结果；首次下载依赖需要网络，之后可加 --offline。
+用户交来一个文件（第一行写“文件：名字 修订：rN”）。先按类型路由到对应的处理链，链里依次“抽取 → 质量门 → 写报告”：
+
+- 路由有三种：`LlmConditionalAgent`（模型回一个标签）、`ConditionalAgent`（代码按文件名判断）、
+  `DecisionAgent`（模型在列出的选项里选，并给出置信度，低于门槛走兜底）；
+- 抽取是带 `output_schema` 的 `LlmAgent`，不合格就带着纠正提示重试，重试用完以错误结束；
+- 质量门是一个 `CustomAgent`：产物必须属于这次输入的文件和修订、类别与本链一致，否则把事件标成 escalate（上报），写报告那一步不再运行。
+
+模型是按规则回复的替身，只看自己收到的请求。
+
+## 准备 ADK-Rust 源码
 
 ```sh
-cargo run --locked -- suite
+python3 fetch-adk-rust.py ../adk-rust     # 需要 git 与 GitHub 访问；不行时加 --method cdn
+```
+
+下面的命令都要在本目录里运行（cargo 只读取当前目录及上级目录的 `.cargo/config.toml`）。
+
+## 运行
+
+```sh
+cargo run --locked                    # 全部 10 个场景的摘要
+cargo run --locked -- stale           # 某个场景的完整轨迹
 cargo test --locked
+cargo fmt --check
 cargo clippy --locked --all-targets -- -D warnings
 ```
 
-输出字段 scenario/trace/used/limit/stop/data。stop=completed 是业务通过，图结束本身不等于通过。节点执行和派发 worker 在同一账本扣费，默认 32，budget 场景为 1。输入与角色决策均为固定夹具；真实图、Tokio 与文件范围见 evidence.json。
+`rust-toolchain.toml` 固定 Rust 1.99.1；`Cargo.lock` 固定全部依赖。
+编译时会看到 adk-core 的 3 条 `fetch_update` 弃用警告（上游固定 1.95.0），不影响本章代码的检查。
 
-规则路由与固定抽取；真实 graph-flow 产物门，模型分类另验。
+## 实验边界
 
-下载包附 outputs/suite.json 和 evidence.json。网站唯一源码与包内容由 scripts/verify-agent-patterns.py 核对，并解压最终包离线重跑。包内没有源码依赖上级或相邻目录。
+- 分类、决定和抽取都由替身模型按规则给出；真实模型的分类准确率没有测试。
+- 置信度是模型自报的数字，不是校准过的概率。

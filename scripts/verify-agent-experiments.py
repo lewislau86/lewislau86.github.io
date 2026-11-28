@@ -57,7 +57,9 @@ def update_rows(results, log_directory):
                                   exit_code=result["exit_code"], elapsed_seconds=result["elapsed_seconds"],
                                   summary=text.strip().splitlines()[-1] if text.strip() else "No verifier output",
                                   inputs_sha256=package.inputs(lesson), checked_at=now)
-    report["lessons"] = [rows[row["id"]] for row in report["lessons"]]
+    # 按课程顺序排列；新加入的章节（例如 K02）也补进记录
+    report["lessons"] = [rows[row["id"]] for row in package.configuration() if row["id"] in rows]
+    report["total"] = len(report["lessons"])
     report["passed"] = sum(r["exit_code"] == 0 for r in report["lessons"])
     package.REPORT.write_bytes(package.encoded(report))
     return report

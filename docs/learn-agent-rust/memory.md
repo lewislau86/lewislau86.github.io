@@ -1,16 +1,16 @@
 ---
-title: "第 13 章：跨会话记忆"
+title: "第 14 章：跨会话记忆"
 description: "用 ADK-Rust 3.0 的 SQLite 记忆服务让一条偏好跨过进程边界，由应用核对写入来源、按键取最新版本，对照现成的检索与预加载工具，区分遗忘、删除和从文件里清除。"
 pageClass: learn-agent-rust-course
 prev:
-  text: 第 12 章 · 上下文压缩
+  text: 第 13 章 · 上下文压缩
   link: /learn-agent-rust/context-compaction
 next:
-  text: 第 14 章 · 系统提示词组装
+  text: 第 15 章 · 系统提示词组装
   link: /learn-agent-rust/system-prompts
 ---
 
-# 第 13 章：跨会话记忆
+# 第 14 章：跨会话记忆
 
 [课程总览](./index.md) · [上一章](./context-compaction.md) · [学习路径](./learning-path.md#r09) · [下一章](./system-prompts.md)
 
@@ -19,7 +19,7 @@ next:
 - 比较三种召回方式的检索词从哪里来、由谁挑结果，解释为什么会召回旧值，或者什么也召回不到。
 - 由应用核对写入来源；区分遗忘、删除用户和从文件里清除原文；观察损坏的文件和更新版本的表结构怎样被拒绝。
 
-**前置：** [第 1 章：最小 Agent 循环](./agent-loop.md)、[第 2 章：工具注册与图调度](./tools-and-graph.md)。第 12 章[上下文压缩](./context-compaction.md)处理同一会话里的历史；本章处理会话结束以后还要留下的东西，可以直接运行。
+**前置：** [第 1 章：最小 Agent 循环](./agent-loop.md)、[第 2 章：工具注册与图调度](./tools-and-graph.md)。第 13 章[上下文压缩](./context-compaction.md)处理同一会话里的历史；本章处理会话结束以后还要留下的东西，可以直接运行。
 
 **实践方式：** 下载<a href="/learn-agent-rust/memory.zip" download>完整 memory.zip</a>，按[第 1 节](#hands-on)取一次 ADK-Rust 源码后运行；无需模型密钥。SQLite 由依赖自带的源码编译，不需要另装数据库。
 :::

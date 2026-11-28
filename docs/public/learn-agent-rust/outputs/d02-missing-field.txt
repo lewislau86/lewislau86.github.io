@@ -1,0 +1,11 @@
+--- run: 文件：README.md 修订：r1
+[router] text    "[Routing to: readme]"
+[router] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\"}"
+[readme_extract] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\"}"
+[readme_extract] final
+[error] agent.internal: output schema validation failed after 1 attempts
+model calls: route,extract,extract
+last: error:agent.internal: output schema validation failed after 1 attempts
+missing-field: router=llm route=readme agents=[router,readme_extract] model_calls=[route,extract,extract] gate=- outcome=error

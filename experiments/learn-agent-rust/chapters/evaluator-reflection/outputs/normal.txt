@@ -1,0 +1,19 @@
+--- run: 写一段升级摘要，每个结论都要有来源。
+[writer] text    "{\"revision\":1,\"self_check\":\"已自查，没有问题\",\"sources\":[],\"text\":\"升级到 3.0 需要把 member 的启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"revision\":1,\"self_check\":\"已自查，没有问题\",\"sources\":[],\"text\":\"升级到 3.0 需要把 member 的启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "repair:missing_source"
+[evaluator] state   baseline = {"revision":1,"self_check":"已自查，没有问题","sources":[],"text":"升级到 3.0 需要把 member 的启动命令改成 serve。"}
+[evaluator] state   feedback = {"failed":["missing_source"],"revision":1,"sources":[],"text":"升级到 3.0 需要把 member 的启动命令改成 serve。"}
+[evaluator] final
+[writer] text    "{\"revision\":2,\"self_check\":\"已自查，没有问题\",\"sources\":[\"README.md\"],\"text\":\"升级到 3.0 需要把 member 的启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"revision\":2,\"self_check\":\"已自查，没有问题\",\"sources\":[\"README.md\"],\"text\":\"升级到 3.0 需要把 member 的启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "accepted:r2"
+[evaluator] state   feedback = {"failed":[],"revision":2,"sources":["README.md"],"text":"升级到 3.0 需要把 member 的启动命令改成 serve。"}
+[evaluator] final
+[evaluator] escalate
+[writer] 每一稿依据的反馈：["-", "missing_source"]
+normal: checks=[r1:missing_source,r2:pass] iterations=2 baseline=r1 stop=accepted

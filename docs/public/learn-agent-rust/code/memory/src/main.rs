@@ -518,7 +518,7 @@ async fn assistant(
         .agent(Arc::new(agent.build()?))
         .session_service(sessions)
         .tool_policy(Arc::new(policy))
-        // 和前面各章一样关掉运行之内的压缩（第 12 章），让轨迹稳定
+        // 和前面各章一样关掉运行之内的压缩（上下文压缩一章），让轨迹稳定
         .without_intra_compaction()
         .build()?)
 }

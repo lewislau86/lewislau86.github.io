@@ -1,0 +1,5 @@
+--- single: 根据工作区的 README 写一份升级报告，列出依据的文件。
+[writer] text    "升级报告：按各 README 的要求逐项升级。\n依据：README.md"
+[writer] final
+report: 升级报告：按各 README 的要求逐项升级。 | 依据：README.md
+single-partial: structure=single agents=[writer] model_calls=1 reads=[] verdict=rejected:missing:member/README.md

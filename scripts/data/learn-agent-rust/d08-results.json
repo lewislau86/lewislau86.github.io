@@ -1,379 +1,140 @@
 {
-  "additional": {
-    "actual_report_checked": true,
-    "http_fixture_tasks": 36,
-    "live_provider": {
-      "reason": "User will configure an OpenAI-compatible endpoint",
-      "status": "not_run"
-    },
-    "scope": "actual Rust graph; fixed decisions; real report file; HTTP comparison runner is a separate Python driver",
-    "stale_approval_no_file": true,
-    "variants": [
-      "single",
-      "chain",
-      "routing",
-      "parallel",
-      "replan",
-      "workers",
-      "repair",
-      "human",
-      "composed"
-    ]
+  "scope": "D08 on ADK-Rust 3.0 RC: SequentialAgent composing ParallelAgent checks, a merge CustomAgent, a LoopAgent writer/evaluator (with and without an escalate-containing boundary CustomAgent) and an approval-gated publisher; one RunBudget for the run; rule-based model, plus the same pipeline through adk-model OpenAIClient::compatible against a loopback fixture and model_compare.py self-test",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
   },
-  "id": "D08",
-  "results": [
-    {
-      "data": {
-        "approved_revision": 2,
-        "effects": 1,
-        "evidence": [
-          "root/README.md"
-        ],
-        "feedback_revision": 1,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 1,
-        "report": "upgrade report",
-        "report_revision": 2,
-        "results": [
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": [
-          "root/README.md"
-        ]
-      },
-      "limit": 32,
-      "scenario": "normal",
-      "stop": "completed",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge",
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "approve",
-        "publish"
-      ],
-      "used": 11
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
     },
-    {
-      "data": {
-        "approved_revision": 2,
-        "effects": 1,
-        "evidence": [
-          "member/README.md",
-          "root/README.md"
-        ],
-        "feedback_revision": 1,
-        "joined": true,
-        "members": [
-          "root",
-          "member"
-        ],
-        "plan_revision": 2,
-        "repairs": 1,
-        "report": "upgrade report",
-        "report_revision": 2,
-        "results": [
-          {
-            "member": "member",
-            "ok": true,
-            "revision": 2,
-            "source": "member/README.md"
-          },
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": [
-          "member/README.md",
-          "root/README.md"
-        ]
-      },
-      "limit": 32,
-      "scenario": "discover",
-      "stop": "completed",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge",
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "approve",
-        "publish"
-      ],
-      "used": 12
+    "adk-core": {
+      "default_features": false,
+      "features": []
     },
-    {
-      "data": {
-        "effects": 0,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 0,
-        "report_revision": 0,
-        "results": [
-          {
-            "member": "root",
-            "ok": false,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": []
-      },
-      "limit": 32,
-      "scenario": "branch_failed",
-      "stop": "branch_failed",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge"
-      ],
-      "used": 5
+    "adk-model": {
+      "default_features": false,
+      "features": [
+        "openai"
+      ]
     },
-    {
-      "data": {
-        "effects": 0,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 0,
-        "report_revision": 0,
-        "results": [
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 1,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": []
-      },
-      "limit": 32,
-      "scenario": "stale_branch",
-      "stop": "stale_result",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge"
-      ],
-      "used": 5
+    "adk-runner": {
+      "default_features": false,
+      "features": []
     },
-    {
-      "data": {
-        "effects": 0,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 0,
-        "report_revision": 0,
-        "results": [],
-        "revision": 2,
-        "sources": []
-      },
-      "limit": 32,
-      "scenario": "missing_branch",
-      "stop": "member_mismatch",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge"
-      ],
-      "used": 5
+    "adk-session": {
+      "default_features": false,
+      "features": []
     },
-    {
-      "data": {
-        "approved_revision": 1,
-        "effects": 0,
-        "evidence": [
-          "root/README.md"
-        ],
-        "feedback_revision": 1,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 1,
-        "report": "upgrade report",
-        "report_revision": 2,
-        "results": [
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": [
-          "root/README.md"
-        ]
-      },
-      "limit": 32,
-      "scenario": "stale_approval",
-      "stop": "stale_approval",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge",
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "approve",
-        "publish"
-      ],
-      "used": 11
-    },
-    {
-      "data": {
-        "effects": 0,
-        "evidence": [
-          "root/README.md"
-        ],
-        "feedback_revision": 1,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 1,
-        "report": "upgrade report",
-        "report_revision": 2,
-        "results": [
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": [
-          "root/README.md"
-        ]
-      },
-      "limit": 32,
-      "scenario": "denied",
-      "stop": "denied",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge",
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate",
-        "approve"
-      ],
-      "used": 10
-    },
-    {
-      "data": {
-        "effects": 0,
-        "evidence": [
-          "root/README.md"
-        ],
-        "feedback_revision": 1,
-        "joined": true,
-        "members": [
-          "root"
-        ],
-        "plan_revision": 1,
-        "repairs": 1,
-        "report": "upgrade report",
-        "report_revision": 2,
-        "results": [
-          {
-            "member": "root",
-            "ok": true,
-            "revision": 2,
-            "source": "root/README.md"
-          }
-        ],
-        "revision": 2,
-        "sources": []
-      },
-      "limit": 32,
-      "scenario": "no_progress",
-      "stop": "no_progress",
-      "trace": [
-        "route",
-        "plan",
-        "parallel",
-        "merge",
-        "generate",
-        "evaluate",
-        "repair",
-        "evaluate"
-      ],
-      "used": 9
-    },
-    {
-      "data": {
-        "effects": 0,
-        "members": [
-          "root"
-        ],
-        "repairs": 0,
-        "report_revision": 0,
-        "revision": 2,
-        "sources": []
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "route"
-      ],
-      "used": 1
+    "adk-tool": {
+      "default_features": false,
+      "features": []
     }
-  ],
-  "rust_tests": 4,
-  "scenarios": 9,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
   "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "eddf7dd9826a2c366d34a1ddcbd819440b325ff52789e9cf22b86b5d16a310dc",
-    "Cargo.toml": "15fc08d338193715ad232f1ccd41df9befe8ef5548ca3226dcbe59a5b5e150bb",
-    "README.md": "63374a90096e09629c25697d66533ef5ba47638c8df5e3ddec9e731335e72587",
+    ".cargo/config.toml": "b1a1de68e110da7a7a7b8587925ce5c88e608bf2724ccc62001d675aa7bf500e",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "4ac12e7699b8972929fd4ba6c5054a64dfc96090e8030c872dc225896f34a5f5",
+    "Cargo.toml": "5bae99898fc15bfc2996be6798f8272fc4cfc81dc34981fe70886acb2f692000",
+    "README.md": "b03b620d409f5e2c33452b6e92bdcd3d2134729cd3e6f2da619d1878945c372a",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "live_fixture.py": "1b49bee2c0765fefa3c93316972fbee6573eaaf7be2c7b5f438b883359b5b836",
     "model-cases.json": "46f503671045a6d5757ea4299e17dbd9e40db9ec8f2a4e30954ceee61ab54e69",
     "model_compare.py": "f0e904c2b6e150ce0cafba817d11b7ee051c8b9994a65ee8467e42c051bfb63a",
     "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "bca6865b78623a9a0df2f83af7ca8ac7b7d786d28ee78d152872586886facc65"
+    "src/main.rs": "8dc94a8d1c1e58950118ff0fe6630043ae496a9da3c138a919db06232727d25f",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "5600aad9aa436b5588e54b1efdeccfaf7fcfeb69cfac2a098371f526ce34545e",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
+    {
+      "name": "naive",
+      "model_calls": "4",
+      "checkers": "2",
+      "writer": "2",
+      "publisher": "0",
+      "steps": "[run]",
+      "published": "no",
+      "stop": "escalated_by:evaluator"
+    },
+    {
+      "name": "normal",
+      "model_calls": "6",
+      "checkers": "2",
+      "writer": "2",
+      "publisher": "2",
+      "steps": "[run:held,approve,resume]",
+      "published": "yes",
+      "stop": "completed"
+    },
+    {
+      "name": "stale-branch",
+      "model_calls": "2",
+      "checkers": "2",
+      "writer": "0",
+      "publisher": "0",
+      "steps": "[run]",
+      "published": "no",
+      "stop": "merge:stale_result:deps@r1"
+    },
+    {
+      "name": "branch-failed",
+      "model_calls": "2",
+      "checkers": "2",
+      "writer": "0",
+      "publisher": "0",
+      "steps": "[run]",
+      "published": "no",
+      "stop": "error:model.unavailable"
+    },
+    {
+      "name": "never-accepted",
+      "model_calls": "5",
+      "checkers": "2",
+      "writer": "3",
+      "publisher": "0",
+      "steps": "[run]",
+      "published": "no",
+      "stop": "refine:no_accepted_draft"
+    },
+    {
+      "name": "budget",
+      "model_calls": "4",
+      "checkers": "2",
+      "writer": "2",
+      "publisher": "0",
+      "steps": "[run]",
+      "published": "no",
+      "stop": "error:budget.model_calls"
+    },
+    {
+      "name": "budget-resume",
+      "model_calls": "6",
+      "checkers": "2",
+      "writer": "2",
+      "publisher": "2",
+      "steps": "[run:held,approve,resume]",
+      "published": "yes",
+      "stop": "completed"
+    }
+  ],
+  "outputs_sha256": {
+    "d08-branch-failed.txt": "0da24658851ec4dc9149ecbf27bbf362bdcbd8af53e6bcbe464e4a4c6714e791",
+    "d08-budget.txt": "1c5e71065b40a1da90c63d7557238a5afc02fe6cf114e9c8acfa67f9c3df857a",
+    "d08-live.txt": "c2a62c973c0560660e0b189da2d5ee16f597c167111bbc795aa492e719275c37",
+    "d08-naive.txt": "3b529e1685a4f2cf382395408beec48c9bae555f73c710aabba761235a100105",
+    "d08-never-accepted.txt": "954dbf7470c1519cd78ceda23097ebcbda75445fa42a35845a8198b324ec49f4",
+    "d08-normal.txt": "d273c1ad9ec0c673d419b626fd439c74023dbaf21fdd49b6a0794eb6d0f2ea57",
+    "d08-stale-branch.txt": "168aebf636fa00f05015358b1dd748a6c15cac7024ed904cbcfec433258e4905",
+    "d08-summary.txt": "a84277be0108d96d40891060faabd687de687028487bb877503203e0740b6df5"
   }
 }

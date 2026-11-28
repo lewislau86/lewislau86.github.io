@@ -1,0 +1,25 @@
+--- start 写升级说明并发布
+[writer] text    "升级说明：把 member 的启动命令改成 serve（目标版本待确认）。"
+[writer] final
+[writer] state   report = "升级说明：把 member 的启动命令改成 serve（目标版本待确认）。"
+[writer] final
+[version_check] text    "请确认目标版本，确认后我重新写。"
+[version_check] final
+[version_check] escalate
+--- say 目标版本是 3.0
+[writer] text    "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[writer] state   report = "升级到 3.0：把 member 的启动命令改成 serve。"
+[writer] final
+[publisher] call    id=publish publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+[publisher] result  id=publish publish_report status=held {"error":"Tool 'publish_report' requires confirmation: 发布升级说明需要编辑批准","status":"confirmation_pending"}
+[publisher] text    "Tool confirmation required for 'publish_report'. Provide approve/deny decision to continue."
+[publisher] final
+[pending] publish_report {"content":"升级到 3.0：把 member 的启动命令改成 serve。","target":"releases/3.0.md"}
+--- approve
+--- resume
+[publisher] result  id=publish publish_report status=ok {"published":"releases/3.0.md"}
+[publisher] text    "已发布到 releases/3.0.md。"
+[publisher] final
+[file] releases/3.0.md 升级到 3.0：把 member 的启动命令改成 serve。
+clarify: steps=[start,say:held,approve,resume] writer_runs=2 published=[3.0.md] pending=0

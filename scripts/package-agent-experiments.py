@@ -193,7 +193,11 @@ def build():
             row["binary"] = re.search(r'^name\s*=\s*"([^"]+)"', chapter["Cargo.toml"].decode(), re.M)[1]
         graph_scope = {'G01': '4 组路由、修复额度、超步上限与建图探针演示', 'G02': '跨进程暂停、检查点与按节点名恢复的对照演示', 'G03': '5 组并行、失败、子图与超时演示'}
         row["run_scope"] = graph_scope[row['id']] if row['id'] in graph_scope else "完整本地 Python 套件" if row["id"] in {"P01", "P03", "P04", "P05"} else "跨进程写入与召回演示" if row["id"] == "R09" else "多步持久状态演示" if row["id"] in {"R12", "R14", "R17"} else "三种策略发布/拒绝/回滚演示" if row["id"] == "P06" else "16 个检索、证据与 Agent 引用场景" if row["id"] == "K01" else "本章正常路径演示"
-        if row['id'].startswith('D'):
+        if row['id'].startswith('D') and row.get('stack') == 'adk3':
+            # 已迁移到 ADK-Rust 3.0 的章节：场景数取自章节验证器写下的证据
+            evidence = json.loads((ROOT / ('scripts/data/learn-agent-rust/' + row['id'].lower() + '-results.json')).read_text())
+            row['run_scope'] = '{} 个场景（ADK-Rust 3.0，规则模型）'.format(len(evidence['scenarios']))
+        elif row['id'].startswith('D'):
             row['run_scope'] = '{} 个固定输入图场景'.format(json.loads(chapter['evidence.json'])['scenarios'])
             if row['id'] == 'D07':
                 row['run_scope'] += '与跨 CLI 编辑后重新批准'

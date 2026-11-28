@@ -1,0 +1,17 @@
+--- run: 审查修订 r2 的升级：文档、依赖、配置分别检查，再汇总。
+[config_checker] text    "{\"finding\":\"配置里有一个 3.0 改名的键\",\"member\":\"config\",\"revision\":\"r2\"}"
+[config_checker] final
+[config_checker] state   check_config = "{\"finding\":\"配置里有一个 3.0 改名的键\",\"member\":\"config\",\"revision\":\"r2\"}"
+[config_checker] final
+[deps_checker] text    "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[deps_checker] state   check_deps = "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[docs_checker] text    "{\"finding\":\"启动文档要改一行命令\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[docs_checker] state   check_docs = "{\"finding\":\"启动文档要改一行命令\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[merge] text    "报告（修订 r2）\nconfig: 配置里有一个 3.0 改名的键\ndeps: tokio 需要升到 1.40\ndocs: 启动文档要改一行命令"
+[merge] final
+report: 报告（修订 r2） | config: 配置里有一个 3.0 改名的键 | deps: tokio 需要升到 1.40 | docs: 启动文档要改一行命令
+normal: started=[config,deps,docs] finished=[config,deps,docs] peak_concurrent=3 outcome=report report_sha=396f74b4

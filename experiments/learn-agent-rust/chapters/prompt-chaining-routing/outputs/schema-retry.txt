@@ -1,0 +1,16 @@
+--- run: 文件：README.md 修订：r1
+[router] text    "[Routing to: readme]"
+[router] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\"}"
+[readme_extract] final
+[readme_extract] text    "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_extract] state   artifact = "{\"kind\":\"readme\",\"revision\":\"r1\",\"source\":\"README.md\",\"value\":\"3.0\"}"
+[readme_extract] final
+[readme_gate] text    "gate:passed"
+[readme_gate] final
+[readme_render] text    "报告：README.md 的 目标版本 是 3.0（修订 r1）"
+[readme_render] final
+model calls: route,extract,extract,render
+last: 报告：README.md 的 目标版本 是 3.0（修订 r1）
+schema-retry: router=llm route=readme agents=[router,readme_extract,readme_gate,readme_render] model_calls=[route,extract,extract,render] gate=passed outcome=report

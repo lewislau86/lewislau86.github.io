@@ -1,0 +1,10 @@
+--- run: 读一下 README.md。
+[reader] call    id=read-1 read_file {"path":"READMe.md"}
+[reader] result  id=read-1 read_file status=ok {"reflection":"[RETRY GUIDANCE - Attempt 1/2]\n\nTool: read_file\nError: tool 'read_file' failed: tool.not_found (tool.file_not_found): no such file: READMe.md\n\nOriginal Arguments:\n{\n  \"path\": \"READMe.md\"\n}\n\n\n\nPlease analyze the error above and retry the tool call with corrected arguments."}
+[reader] call    id=read-2 read_file {"path":"READMe.md"}
+[reader] result  id=read-2 read_file status=ok {"reflection":"[RETRY GUIDANCE - Attempt 2/2]\n\nTool: read_file\nError: tool 'read_file' failed: tool.not_found (tool.file_not_found): no such file: READMe.md\n\nOriginal Arguments:\n{\n  \"path\": \"READMe.md\"\n}\n\n\n\nPlease analyze the error above and retry the tool call with corrected arguments."}
+[reader] call    id=read-3 read_file {"path":"READMe.md"}
+[reader] result  id=read-3 read_file status=failed code=tool.file_not_found {"error":"tool 'read_file' failed: tool.not_found (tool.file_not_found): no such file: READMe.md"}
+[reader] text    "读不到这个文件，先停下来问用户。"
+[reader] final
+tool-retry-exhausted: calls=[READMe.md:reflection,READMe.md:reflection,READMe.md:error] outcome=gave_up stop=answered

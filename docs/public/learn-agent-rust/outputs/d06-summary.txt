@@ -1,0 +1,8 @@
+normal: checks=[r1:missing_source,r2:pass] iterations=2 baseline=r1 stop=accepted
+already-good: checks=[r1:pass] iterations=1 baseline=r1 stop=accepted
+new-error: checks=[r1:missing_source,r2:empty_text,r3:pass] iterations=3 baseline=r1 stop=accepted
+no-progress: checks=[r1:missing_source,r2:missing_source] iterations=2 baseline=r1 stop=no_progress
+never-good: checks=[r1:missing_source,r2:unread_source,r3:unread_source] iterations=3 baseline=r1 stop=loop_limit
+tool-retry: calls=[READMe.md:reflection,README.md:ok] outcome=read stop=answered
+tool-retry-exhausted: calls=[READMe.md:reflection,READMe.md:reflection,READMe.md:error] outcome=gave_up stop=answered
+tool-retry-wandering: calls=[READMe.md:reflection,readme.md:reflection,Readme.md:reflection,README.txt:error] outcome=gave_up stop=answered

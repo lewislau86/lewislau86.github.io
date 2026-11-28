@@ -1,137 +1,145 @@
 {
-  "additional": {},
-  "id": "D02",
-  "results": [
+  "scope": "D02 on ADK-Rust 3.0 RC: SequentialAgent chain (output_schema extraction with retries, CustomAgent revision gate that escalates, render), LlmConditionalAgent / ConditionalAgent / DecisionAgent routing; rule-based model",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "a34a757abd6e5695de05b898136aef5555dd57cf1bae3703686fcb13a9db56fa",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "63bb725f2dbede77bcd1bafe02a73d843fee8bdd428e0ab34f44ebe763a12925",
+    "Cargo.toml": "aba33bcdf579c217a4ba60458afe43a5b44606edac2a7b25d754a88b202b88a0",
+    "README.md": "272435971f0b39f7b18049b9f51f0e6a163b626d9fb4ff09c3d69dc4e2c58de7",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "4f24bdcbef406501ee3978b2769e867d47ed220391c7b8bc3a0d8ee6980119c4",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "76c6a27a6bfbead305f9fe70ce66aa2d6d58095ce91d7bb939b19aa7fcf3d484",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
     {
-      "data": {
-        "artifact": {
-          "command": "cargo run",
-          "revision": 2,
-          "source": "README.md"
-        },
-        "report": {
-          "command": "cargo run",
-          "revision": 2,
-          "source": "README.md"
-        },
-        "revision": 2,
-        "route": "readme",
-        "source": "README.md"
-      },
-      "limit": 32,
-      "scenario": "readme",
-      "stop": "completed",
-      "trace": [
-        "route",
-        "extract",
-        "gate",
-        "render"
-      ],
-      "used": 4
+      "name": "readme",
+      "router": "llm",
+      "route": "readme",
+      "agents": "[router,readme_extract,readme_gate,readme_render]",
+      "model_calls": "[route,extract,render]",
+      "gate": "passed",
+      "outcome": "report"
     },
     {
-      "data": {
-        "artifact": {
-          "command": "cargo test",
-          "revision": 2,
-          "source": "Cargo.toml"
-        },
-        "report": {
-          "command": "cargo test",
-          "revision": 2,
-          "source": "Cargo.toml"
-        },
-        "revision": 2,
-        "route": "cargo",
-        "source": "Cargo.toml"
-      },
-      "limit": 32,
-      "scenario": "cargo",
-      "stop": "completed",
-      "trace": [
-        "route",
-        "extract",
-        "gate",
-        "render"
-      ],
-      "used": 4
+      "name": "cargo",
+      "router": "llm",
+      "route": "cargo",
+      "agents": "[router,cargo_extract,cargo_gate,cargo_render]",
+      "model_calls": "[route,extract,render]",
+      "gate": "passed",
+      "outcome": "report"
     },
     {
-      "data": {},
-      "limit": 32,
-      "scenario": "unknown",
-      "stop": "needs_input",
-      "trace": [
-        "route"
-      ],
-      "used": 1
+      "name": "unknown",
+      "router": "llm",
+      "route": "needs_input",
+      "agents": "[router,needs_input]",
+      "model_calls": "[route]",
+      "gate": "-",
+      "outcome": "needs_input"
     },
     {
-      "data": {
-        "artifact": {
-          "command": null,
-          "revision": 2,
-          "source": "README.md"
-        },
-        "revision": 2,
-        "route": "readme",
-        "source": "README.md"
-      },
-      "limit": 32,
-      "scenario": "missing",
-      "stop": "missing_field",
-      "trace": [
-        "route",
-        "extract",
-        "gate"
-      ],
-      "used": 3
+      "name": "substring-trap",
+      "router": "llm",
+      "route": "readme",
+      "agents": "[router,readme_extract]",
+      "model_calls": "[route,extract,extract]",
+      "gate": "-",
+      "outcome": "error"
     },
     {
-      "data": {
-        "artifact": {
-          "command": "cargo run",
-          "revision": 1,
-          "source": "README.md"
-        },
-        "revision": 2,
-        "route": "readme",
-        "source": "README.md"
-      },
-      "limit": 32,
-      "scenario": "stale",
-      "stop": "stale_artifact",
-      "trace": [
-        "route",
-        "extract",
-        "gate"
-      ],
-      "used": 3
+      "name": "rule-router",
+      "router": "rule",
+      "route": "cargo",
+      "agents": "[cargo_extract,cargo_gate,cargo_render]",
+      "model_calls": "[extract,render]",
+      "gate": "passed",
+      "outcome": "report"
     },
     {
-      "data": {
-        "revision": 2,
-        "route": "readme",
-        "source": "README.md"
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "route"
-      ],
-      "used": 1
+      "name": "rule-router-other",
+      "router": "rule",
+      "route": "needs_input",
+      "agents": "[needs_input]",
+      "model_calls": "[]",
+      "gate": "-",
+      "outcome": "needs_input"
+    },
+    {
+      "name": "low-confidence",
+      "router": "decision",
+      "route": "needs_input",
+      "agents": "[router,needs_input]",
+      "model_calls": "[decide]",
+      "gate": "-",
+      "outcome": "needs_input"
+    },
+    {
+      "name": "missing-field",
+      "router": "llm",
+      "route": "readme",
+      "agents": "[router,readme_extract]",
+      "model_calls": "[route,extract,extract]",
+      "gate": "-",
+      "outcome": "error"
+    },
+    {
+      "name": "schema-retry",
+      "router": "llm",
+      "route": "readme",
+      "agents": "[router,readme_extract,readme_gate,readme_render]",
+      "model_calls": "[route,extract,extract,render]",
+      "gate": "passed",
+      "outcome": "report"
+    },
+    {
+      "name": "stale",
+      "router": "llm",
+      "route": "readme",
+      "agents": "[router,readme_extract,readme_gate]",
+      "model_calls": "[route,extract,render,route,extract]",
+      "gate": "stale_artifact:r1",
+      "outcome": "stopped"
     }
   ],
-  "rust_tests": 4,
-  "scenarios": 6,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
-  "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "12a6f4693ef40a50622b13b04b8b45bab1d01d0ba5a99626b4c1dba7b1993b69",
-    "Cargo.toml": "5506651f36bdb926d44843d73118dfa3e76cc7d221580831514bd7d3e26d252e",
-    "README.md": "6a7c24a66edd3914cd70f97e5823d2c859a07b1d555286204042cc30e6bf6561",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "0d690235fc1308d6123e0a1de6698320293ce9442cb1048a2cb20ed31f63f653"
+  "outputs_sha256": {
+    "d02-low-confidence.txt": "b6a902009f35606c6551aa15449e57791804671b108dd14e6aef9bdfd70f0a7c",
+    "d02-missing-field.txt": "b394f4d4ef0b1f634155151c32b057ce1ccee8436147f1526c8f4ee0fe636aee",
+    "d02-schema-retry.txt": "edef2d3960be3dc934d75645fafc1ed3179e1f4978a242ff8816c2892ba0e5ad",
+    "d02-stale.txt": "e1f683e318620d9cb8f7ae9f1f01e23f22ae42bb4c84dea73c2efcff00474786",
+    "d02-substring-trap.txt": "c36b1e8a01eeb8a931ad914c0f487fc4c1e98244915cb560d934c77ed30bb7ad",
+    "d02-summary.txt": "8ee8d992db97c1571e11f787d2bceaf9b568522392ff4868cd0b03878d6bb123"
   }
 }

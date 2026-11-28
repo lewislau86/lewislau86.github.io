@@ -8,7 +8,7 @@ pageClass: learn-agent-rust-course
 
 [课程总览](./index.md) · [环境准备](./setup.md) · [学习路径](./learning-path.md)
 
-全书 39 个实验单元按主题目录打包，包含源码、Cargo 锁文件、夹具、运行说明、发布时输出和检查证据。解压后可独立运行。
+全书 40 个实验单元按主题目录打包，包含源码、Cargo 锁文件、夹具、运行说明、发布时输出和检查证据。解压后可独立运行。
 
 下载包包含[第五部分设计模式](./agent-design-patterns.md)的 D01–D08 独立实验。D08 附标准 OpenAI 兼容模型对照入口，真实服务需自行配置；默认只运行固定输入。
 
@@ -131,6 +131,8 @@ python3 run.py test --all --offline
 
 ### 第 8 章 · 可见的任务清单 {#todo-planning}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./todo-planning.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/todo-planning)
 
 目录：`chapters/todo-planning/`；运行：`python3 run.py run R05`。本章正常路径演示。
@@ -139,6 +141,8 @@ python3 run.py test --all --offline
 
 ### 第 9 章 · 子 Agent 与上下文隔离 {#subagents}
 
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
 [阅读本章](./subagents.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/subagents)
 
 目录：`chapters/subagents/`；运行：`python3 run.py run R06`。本章正常路径演示。
@@ -146,6 +150,8 @@ python3 run.py test --all --offline
 原章节验证器：`scripts/verify-agent-subagents.py`。
 
 ### 第 10 章 · 按需加载技能 {#skill-loading}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./skill-loading.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/skill-loading)
 
@@ -163,7 +169,19 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-rag.py`。
 
-### 第 12 章 · 上下文压缩 {#context-compaction}
+### 第 12 章 · 联网搜索 {#web-search}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
+
+[阅读本章](./web-search.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/web-search)
+
+目录：`chapters/web-search/`；运行：`python3 run.py run K02`。本章正常路径演示。
+
+原章节验证器：`scripts/verify-agent-web-search.py`。
+
+### 第 13 章 · 上下文压缩 {#context-compaction}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./context-compaction.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/context-compaction)
 
@@ -171,7 +189,9 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-compaction.py`。
 
-### 第 13 章 · 跨会话记忆 {#memory}
+### 第 14 章 · 跨会话记忆 {#memory}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./memory.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/memory)
 
@@ -179,7 +199,9 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-memory.py`。
 
-### 第 14 章 · 系统提示词组装 {#system-prompts}
+### 第 15 章 · 系统提示词组装 {#system-prompts}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./system-prompts.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/system-prompts)
 
@@ -187,71 +209,87 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-prompts.py`。
 
-### 第 15 章 · 模式选择：单次调用、工作流与自主循环 {#pattern-selection}
+### 第 16 章 · 模式选择：单次调用、工作流与自主循环 {#pattern-selection}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./pattern-selection.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/pattern-selection)
 
-目录：`chapters/pattern-selection/`；运行：`python3 run.py run D01`。6 个固定输入图场景。
+目录：`chapters/pattern-selection/`；运行：`python3 run.py run D01`。9 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 16 章 · 提示链与条件路由 {#prompt-chaining-routing}
+### 第 17 章 · 提示链与条件路由 {#prompt-chaining-routing}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./prompt-chaining-routing.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/prompt-chaining-routing)
 
-目录：`chapters/prompt-chaining-routing/`；运行：`python3 run.py run D02`。6 个固定输入图场景。
+目录：`chapters/prompt-chaining-routing/`；运行：`python3 run.py run D02`。10 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 17 章 · 并行分解与结果归并 {#parallel-decomposition}
+### 第 18 章 · 并行分解与结果归并 {#parallel-decomposition}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./parallel-decomposition.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/parallel-decomposition)
 
-目录：`chapters/parallel-decomposition/`；运行：`python3 run.py run D03`。8 个固定输入图场景。
+目录：`chapters/parallel-decomposition/`；运行：`python3 run.py run D03`。7 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 18 章 · 规划、执行与动态重规划 {#plan-execute-replan}
+### 第 19 章 · 规划、执行与动态重规划 {#plan-execute-replan}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./plan-execute-replan.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/plan-execute-replan)
 
-目录：`chapters/plan-execute-replan/`；运行：`python3 run.py run D04`。6 个固定输入图场景。
+目录：`chapters/plan-execute-replan/`；运行：`python3 run.py run D04`。7 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 19 章 · 协调者、工作者与任务交接 {#orchestrator-workers-handoffs}
+### 第 20 章 · 协调者、工作者与任务交接 {#orchestrator-workers-handoffs}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./orchestrator-workers-handoffs.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/orchestrator-workers-handoffs)
 
-目录：`chapters/orchestrator-workers-handoffs/`；运行：`python3 run.py run D05`。7 个固定输入图场景。
+目录：`chapters/orchestrator-workers-handoffs/`；运行：`python3 run.py run D05`。10 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 20 章 · 评估、反思与有界修复 {#evaluator-reflection}
+### 第 21 章 · 评估、反思与有界修复 {#evaluator-reflection}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./evaluator-reflection.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/evaluator-reflection)
 
-目录：`chapters/evaluator-reflection/`；运行：`python3 run.py run D06`。7 个固定输入图场景。
+目录：`chapters/evaluator-reflection/`；运行：`python3 run.py run D06`。8 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 21 章 · 人工介入与审批恢复 {#human-in-the-loop}
+### 第 22 章 · 人工介入与审批恢复 {#human-in-the-loop}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./human-in-the-loop.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/human-in-the-loop)
 
-目录：`chapters/human-in-the-loop/`；运行：`python3 run.py run D07`。7 个固定输入图场景与跨 CLI 编辑后重新批准。
+目录：`chapters/human-in-the-loop/`；运行：`python3 run.py run D07`。8 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 22 章 · 模式组合与选型实战 {#pattern-composition}
+### 第 23 章 · 模式组合与选型实战 {#pattern-composition}
+
+实验基于 ADK-Rust 3.0；运行前先 `python3 run.py fetch-adk`。
 
 [阅读本章](./pattern-composition.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/pattern-composition)
 
-目录：`chapters/pattern-composition/`；运行：`python3 run.py run D08`。9 个固定输入图场景、真实报告文件与 36 项本地 HTTP 模式对照驱动器任务。
+目录：`chapters/pattern-composition/`；运行：`python3 run.py run D08`。7 个场景（ADK-Rust 3.0，规则模型）。
 
-原章节验证器：`scripts/verify-agent-patterns.py`。
+原章节验证器：`scripts/verify-agent-patterns-adk.py`。
 
-### 第 23 章 · 错误分类与恢复 {#error-recovery}
+### 第 24 章 · 错误分类与恢复 {#error-recovery}
 
 [阅读本章](./error-recovery.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/error-recovery)
 
@@ -259,7 +297,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-recovery.py`。
 
-### 第 24 章 · 持久化任务系统 {#task-system}
+### 第 25 章 · 持久化任务系统 {#task-system}
 
 [阅读本章](./task-system.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/task-system)
 
@@ -267,7 +305,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-tasks.py`。
 
-### 第 25 章 · 后台任务 {#background-tasks}
+### 第 26 章 · 后台任务 {#background-tasks}
 
 [阅读本章](./background-tasks.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/background-tasks)
 
@@ -275,7 +313,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-background.py`。
 
-### 第 26 章 · 定时调度 {#scheduling}
+### 第 27 章 · 定时调度 {#scheduling}
 
 [阅读本章](./scheduling.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/scheduling)
 
@@ -283,7 +321,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-scheduling.py`。
 
-### 第 27 章 · Agent 团队 {#agent-teams}
+### 第 28 章 · Agent 团队 {#agent-teams}
 
 [阅读本章](./agent-teams.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/agent-teams)
 
@@ -291,7 +329,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-teams.py`。
 
-### 第 28 章 · 团队协作协议 {#team-protocols}
+### 第 29 章 · 团队协作协议 {#team-protocols}
 
 [阅读本章](./team-protocols.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/team-protocols)
 
@@ -299,7 +337,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-protocols.py`。
 
-### 第 29 章 · 自主任务领取 {#autonomous-workers}
+### 第 30 章 · 自主任务领取 {#autonomous-workers}
 
 [阅读本章](./autonomous-workers.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/autonomous-workers)
 
@@ -307,7 +345,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-workers.py`。
 
-### 第 30 章 · 工作区隔离 {#worktree-isolation}
+### 第 31 章 · 工作区隔离 {#worktree-isolation}
 
 [阅读本章](./worktree-isolation.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/worktree-isolation)
 
@@ -315,7 +353,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-worktrees.py`。
 
-### 第 31 章 · MCP 外部工具 {#mcp-tools}
+### 第 32 章 · MCP 外部工具 {#mcp-tools}
 
 [阅读本章](./mcp-tools.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/mcp-tools)
 
@@ -323,7 +361,7 @@ python3 run.py test --all --offline
 
 原章节验证器：`scripts/verify-agent-mcp.py`。
 
-### 第 32 章 · 完整 Agent 集成 {#integrated-agent}
+### 第 33 章 · 完整 Agent 集成 {#integrated-agent}
 
 [阅读本章](./integrated-agent.md) · [查看实验目录](https://github.com/lewislau86/lewislau86.github.io/tree/master/experiments/learn-agent-rust/chapters/integrated-agent)
 
@@ -383,7 +421,7 @@ python3 run.py test --all --offline
 
 ## 发布前检查记录
 
-逐章原验证器 39/39 通过。<a href="/learn-agent-rust/experiment-audit.json" download>下载全书检查记录</a>，内含检查日期、逐章退出码、工具环境和源码摘要。
+逐章原验证器 40/40 通过。<a href="/learn-agent-rust/experiment-audit.json" download>下载全书检查记录</a>，内含检查日期、逐章退出码、工具环境和源码摘要。
 
 这些原验证器检查各章正常与故障场景、正文引用输出和已有章节包。统一代码库的 `test --all` 另行检查格式、Rust 测试、Clippy 和本页列出的演示；P01、P03、P04、P05 会执行各章 Python 完整本地套件。
 

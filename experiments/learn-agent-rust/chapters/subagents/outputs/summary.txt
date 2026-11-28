@@ -1,0 +1,15 @@
+normal: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=true
+changed-readme: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=true
+missing-file: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=1/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+child-loop-limit: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=1 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+global-model-budget: stop=budget.model_calls answered_by=- parent_model_calls=1 child_model_calls=1 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+global-tool-budget: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=1 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+parent-answer-budget: stop=budget.model_calls answered_by=- parent_model_calls=1 child_model_calls=2 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+cancel: stop=ended answered_by=- parent_model_calls=1 child_model_calls=1 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+cancel-before-start: stop=ended answered_by=- parent_model_calls=0 child_model_calls=0 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+forbidden-path: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=1/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+recursive: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+invalid-task: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=0 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+oversized-result: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=2 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+model-error: stop=final_answer answered_by=coordinator parent_model_calls=2 child_model_calls=1 reads=0/0 parent_saw_child_raw=false child_saw_parent_note=false goal_met=false
+transfer: stop=final_answer answered_by=reader parent_model_calls=1 child_model_calls=2 reads=1/1 parent_saw_child_raw=false child_saw_parent_note=true goal_met=true

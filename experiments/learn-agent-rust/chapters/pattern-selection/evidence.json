@@ -1,125 +1,134 @@
 {
-  "additional": {},
-  "id": "D01",
-  "results": [
+  "scope": "D01 on ADK-Rust 3.0 RC: one LlmAgent call, SequentialAgent of CustomAgent read steps and a writer (state via instruction templates, escalate stops the sequence), LlmAgent tool loop with max_iterations; rule-based model, real temp-dir files, application acceptance check",
+  "adk_rust": {
+    "repository": "https://github.com/zavora-ai/adk-rust",
+    "rev": "98515241133d24f7e41f8fd272649035416a142f",
+    "rev_date": "2026-11-26",
+    "version": "3.0.0",
+    "release_status": "release candidate, not on crates.io"
+  },
+  "adk_dependencies": {
+    "adk-agent": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-core": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-runner": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-session": {
+      "default_features": false,
+      "features": []
+    },
+    "adk-tool": {
+      "default_features": false,
+      "features": []
+    }
+  },
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "source_sha256": {
+    ".cargo/config.toml": "edba27a6f686a1bb770b3affd70cd7bdee95e0079f56faefeebc748a4b1897aa",
+    ".gitignore": "306fd52e74fca6746e12acc750f232de15e71da917756a1270d74c91f5eb7368",
+    "Cargo.lock": "c2a4b87d7b7e66ac41f0f8d7d7167c11f3683f5255d9e13aeb2d5f985f84d9ba",
+    "Cargo.toml": "6e1998c3d7764fc1ef22e25baa1a1b67f6e78e5889aca3358a7313b93cf4f28f",
+    "README.md": "0c226e6605f909762d62cf99b45bf679ba3112a3510f55f8fe2c71c2a47b092d",
+    "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
+    "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
+    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
+    "src/main.rs": "ef4bccae6c4e1c11bbebe21644eb0b3f1de077dbaa61f1c354e6e1e6719faee0",
+    "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
+  },
+  "archive_sha256": "82735c518a666f7ff49240b858f35fd6503f8ff0dea2630833ccc0f02e92f705",
+  "rust_tests_passed": 4,
+  "repeated_identical_runs": 2,
+  "scenarios": [
     {
-      "data": {
-        "evidence": [
-          "root"
-        ],
-        "reads": 0,
-        "report": 1,
-        "strategy": "Single"
-      },
-      "limit": 32,
-      "scenario": "single",
-      "stop": "completed",
-      "trace": [
-        "choose",
-        "generate",
-        "accept"
-      ],
-      "used": 3
+      "name": "single",
+      "structure": "single",
+      "agents": "[writer]",
+      "model_calls": "1",
+      "reads": "[]",
+      "verdict": "accepted"
     },
     {
-      "data": {
-        "evidence": [
-          "root"
-        ],
-        "reads": 1,
-        "report": 1,
-        "strategy": "Workflow"
-      },
-      "limit": 32,
-      "scenario": "workflow",
-      "stop": "completed",
-      "trace": [
-        "choose",
-        "read",
-        "observe",
-        "generate",
-        "accept"
-      ],
-      "used": 5
+      "name": "single-partial",
+      "structure": "single",
+      "agents": "[writer]",
+      "model_calls": "1",
+      "reads": "[]",
+      "verdict": "rejected:missing:member/README.md"
     },
     {
-      "data": {
-        "evidence": [
-          "root",
-          "member"
-        ],
-        "reads": 2,
-        "report": 2,
-        "strategy": "Adaptive"
-      },
-      "limit": 32,
-      "scenario": "adaptive",
-      "stop": "completed",
-      "trace": [
-        "choose",
-        "read",
-        "observe",
-        "read",
-        "observe",
-        "generate",
-        "accept"
-      ],
-      "used": 7
+      "name": "workflow",
+      "structure": "workflow",
+      "agents": "[read_root,read_member,writer]",
+      "model_calls": "1",
+      "reads": "[README.md,member/README.md]",
+      "verdict": "accepted"
     },
     {
-      "data": {
-        "evidence": [],
-        "reads": 0,
-        "strategy": "Workflow"
-      },
-      "limit": 32,
-      "scenario": "missing",
-      "stop": "missing_evidence",
-      "trace": [
-        "choose",
-        "read"
-      ],
-      "used": 2
+      "name": "workflow-new-member",
+      "structure": "workflow",
+      "agents": "[read_root,read_member,writer]",
+      "model_calls": "1",
+      "reads": "[README.md,member/README.md]",
+      "verdict": "rejected:missing:plugin/README.md"
     },
     {
-      "data": {
-        "evidence": [],
-        "reads": 0,
-        "strategy": "Workflow"
-      },
-      "limit": 32,
-      "scenario": "forbidden",
-      "stop": "permission_denied",
-      "trace": [
-        "choose",
-        "read"
-      ],
-      "used": 2
+      "name": "workflow-missing",
+      "structure": "workflow",
+      "agents": "[read_root,read_member]",
+      "model_calls": "0",
+      "reads": "[README.md]",
+      "verdict": "rejected:escalated"
     },
     {
-      "data": {
-        "evidence": [],
-        "reads": 0,
-        "strategy": "Workflow"
-      },
-      "limit": 1,
-      "scenario": "budget",
-      "stop": "budget_exhausted",
-      "trace": [
-        "choose"
-      ],
-      "used": 1
+      "name": "workflow-silent",
+      "structure": "workflow",
+      "agents": "[read_root,read_member,writer]",
+      "model_calls": "1",
+      "reads": "[README.md]",
+      "verdict": "rejected:missing:member/README.md"
+    },
+    {
+      "name": "adaptive",
+      "structure": "adaptive",
+      "agents": "[explorer]",
+      "model_calls": "4",
+      "reads": "[README.md,member/README.md,plugin/README.md]",
+      "verdict": "accepted"
+    },
+    {
+      "name": "forbidden",
+      "structure": "adaptive",
+      "agents": "[explorer]",
+      "model_calls": "3",
+      "reads": "[README.md]",
+      "verdict": "rejected:no_report"
+    },
+    {
+      "name": "budget",
+      "structure": "adaptive",
+      "agents": "[explorer]",
+      "model_calls": "2",
+      "reads": "[README.md,member/README.md]",
+      "verdict": "rejected:max_iterations"
     }
   ],
-  "rust_tests": 4,
-  "scenarios": 6,
-  "scope": "real pinned graph-flow; deterministic scripted decisions; no real model quality claim",
-  "source_sha256": {
-    ".gitignore": "02e7b40893c74a993a139de7b0f85d8cf2eaea57d544effd576920a514872af4",
-    "Cargo.lock": "2713e586bd3d43db882396142e1528faee7beacb286e4db4a831807a1a240950",
-    "Cargo.toml": "463788cf885d3f39bfd7824b8e33db27ed3070f2b93376a3cd920dc1c0da572b",
-    "README.md": "8c445e793d0470cc5a72bd5aaa95306f04216aedade9d41b1e5bb4d0f8dfa7de",
-    "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "e48415fd007d7a589047c72621574c88366479a1939aa189014def02e45e2135"
+  "outputs_sha256": {
+    "d01-adaptive.txt": "362f522c174cd798a365ab1413087036255913804992c9d928e29a22d7c6bc0d",
+    "d01-budget.txt": "170d11388ba380eb44045db1aa54cac7eda9d7bfff3a3a74b933195a62391f7f",
+    "d01-forbidden.txt": "7cc13b24accf5b020becf89feb83b29a18a08f114223af6aa96830efe939f8a8",
+    "d01-single-partial.txt": "9881e305ad5669a76b0cb2acbfc30e0338a261135540444b9bdee0b076a8b40b",
+    "d01-summary.txt": "c733a7d5e78730c19be4bedfe1cbb5070c1d28cd70d6b1a1d229c498cc91b8c8",
+    "d01-workflow-missing.txt": "93644a2b9d4bd0d7df981a2da91277e22364e8ca0280ababdc07ddf8ece7d21c",
+    "d01-workflow-new-member.txt": "456890e97bc0fd0b9bd726997f392e2f584590a9f5ca0b067c2b636e4ab8dbb7",
+    "d01-workflow-silent.txt": "fc0a9add93721fc5a48df0a42b201eb64de82b4972690ddb7e82608d89b663ec",
+    "d01-workflow.txt": "0a99867ebc85811b05996cbf713079c46fb0f98bad4de147a324053d781a0143"
   }
 }

@@ -1,0 +1,30 @@
+--- run: 审查修订 r2 的升级，写一段带来源的升级说明并发布。
+[deps_checker] text    "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[docs_checker] text    "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[deps_checker] state   check_deps = "{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\",\"revision\":\"r2\"}"
+[deps_checker] final
+[docs_checker] state   check_docs = "{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\",\"revision\":\"r2\"}"
+[docs_checker] final
+[merge] text    "merge:ok"
+[merge] state   evidence = "[{\"finding\":\"tokio 需要升到 1.40\",\"member\":\"deps\"},{\"finding\":\"启动命令改成 serve\",\"member\":\"docs\"}]"
+[merge] final
+[writer] text    "{\"sources\":[],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"sources\":[],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "repair:missing_source"
+[evaluator] state   feedback = {"failed":["missing_source"]}
+[evaluator] final
+[writer] text    "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[writer] state   draft = "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[writer] final
+[evaluator] text    "accepted"
+[evaluator] state   feedback = {"failed":[]}
+[evaluator] state   final_draft = "{\"sources\":[\"deps\",\"docs\"],\"text\":\"升级到 3.0：tokio 升到 1.40，启动命令改成 serve。\"}"
+[evaluator] final
+[evaluator] stop    code=budget.model_calls
+[error] agent.resource_exhausted: budget exhausted: 4 of 4 model calls used
+budget: model_calls=4 checkers=2 writer=2 publisher=0 steps=[run] published=no stop=error:budget.model_calls

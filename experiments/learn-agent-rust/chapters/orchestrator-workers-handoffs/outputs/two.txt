@@ -1,0 +1,19 @@
+--- turn: 审查升级 r2。工作区成员：api,cli
+[lead] call    id=check-api member_check {"request":"检查成员 api 修订 r2"}
+[lead] call    id=check-cli member_check {"request":"检查成员 cli 修订 r2"}
+[member_check] text    "{\"finding\":\"接口不变\",\"license\":\"MIT\",\"member\":\"api\"}"
+[member_check] final
+[lead] result  id=check-api member_check status=ok {"response":"{\"finding\":\"接口不变\",\"license\":\"MIT\",\"member\":\"api\"}"}
+[member_check] text    "{\"finding\":\"一个命令行参数改名\",\"license\":\"MIT\",\"member\":\"cli\"}"
+[member_check] final
+[lead] result  id=check-cli member_check status=ok {"response":"{\"finding\":\"一个命令行参数改名\",\"license\":\"MIT\",\"member\":\"cli\"}"}
+[lead] text    "lead 汇总：api：接口不变；cli：一个命令行参数改名"
+[lead] final
+[receipt] lead→member_check delegate completed；lead→member_check delegate completed
+[workers] 每次请求除系统消息外的消息数：[1, 1]
+[workers] 开始时刻（毫秒）：[0, 0]
+--- turn: 好的，接下来呢？
+[lead] text    "lead：审查已经汇总完了，没有别的待办。"
+[lead] final
+[analysis] TeamExecutionAnalysis { declared_relationships: 2, covered_relationships: 1, coverage_basis_points: 5000, delegations: 2, handoffs: 0, failed_edges: 0, max_causal_depth: 1, uncovered: ["lead -Handoff-> license"] }
+two: workers=[api,cli] peak=2 worker_saw=[-,-] edges=[delegate:completed,delegate:completed] turn1=lead turn2=lead coverage=50%

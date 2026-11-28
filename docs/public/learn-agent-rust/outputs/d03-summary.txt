@@ -1,0 +1,7 @@
+normal: started=[config,deps,docs] finished=[config,deps,docs] peak_concurrent=3 outcome=report report_sha=396f74b4
+reverse: started=[config,deps,docs] finished=[docs,deps,config] peak_concurrent=3 outcome=report report_sha=396f74b4
+failure: started=[config,deps,docs] finished=[config,docs] peak_concurrent=3 outcome=error:model.unavailable
+escalate: started=[config,deps,docs] finished=[config] peak_concurrent=3 outcome=escalated_by:config_checker
+stale: started=[config,deps,docs] finished=[config,deps,docs] peak_concurrent=3 outcome=stale_result:deps@r1
+missing: started=[config,deps,docs] finished=[config,deps,docs] peak_concurrent=3 outcome=member_mismatch:missing=docs
+key-collision: started=[config,deps,docs] finished=[config,deps,docs] peak_concurrent=3 outcome=member_mismatch:missing=config+deps

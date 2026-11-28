@@ -94,7 +94,7 @@ next:
 几处值得注意：
 
 - `with_parameters_schema::<PathArgs>()` 用 `schemars` 从 `PathArgs` 生成 JSON Schema。它既是给模型的说明，也是 `FunctionTool` 在执行前做校验的依据。处理函数再把参数解析成 `PathArgs`，用 Rust 类型读取字段。
-- `with_effect(ToolEffect::ReadOnly)` 声明工具只读。默认不重试；配置了重试预算（`RetryBudget`）以后，ADK-Rust 3.0 也只重试声明为只读或幂等、且错误可重试的调用，没有声明的工具按“非幂等”只执行一次。本章不涉及重试，[第 23 章](./error-recovery.md)和[专题 2](./side-effect-reliability.md)会用到这项声明。
+- `with_effect(ToolEffect::ReadOnly)` 声明工具只读。默认不重试；配置了重试预算（`RetryBudget`）以后，ADK-Rust 3.0 也只重试声明为只读或幂等、且错误可重试的调用，没有声明的工具按“非幂等”只执行一次。本章不涉及重试，[第 24 章](./error-recovery.md)和[专题 2](./side-effect-reliability.md)会用到这项声明。
 - 处理函数返回 `adk_core::Result<Value>`。失败时用 `AdkError` 带上错误类别和稳定的错误码（如 `file.missing`），框架把它变成一条失败的工具结果交回模型。
 
 `list_files` 限制条目数并排序，排序使文件系统的枚举顺序不会改变输出。`read_file` 限制返回大小，并用 `canonicalize()` 检查读取目标仍在练习目录中。这个检查面向程序自己创建的可信目录，不覆盖其他进程竞争替换文件的完整沙箱问题。
@@ -198,7 +198,7 @@ request 2: roles=system,user,model,function,model,function tools=[read_file,list
 
 <<< @/public/learn-agent-rust/code/tools-and-graph/src/main.rs#runner
 
-它加载会话、运行 Agent、逐条保存事件，并把预算等运行规则装进这次运行（检查发生在 `LlmAgent` 行动之前）。`without_intra_compaction()` 关掉 3.0 默认开启的自动上下文压缩：压缩会调用模型写摘要，会消耗脚本里的回复、改变请求记录。压缩在[第 12 章](./context-compaction.md)专门讨论。
+它加载会话、运行 Agent、逐条保存事件，并把预算等运行规则装进这次运行（检查发生在 `LlmAgent` 行动之前）。`without_intra_compaction()` 关掉 3.0 默认开启的自动上下文压缩：压缩会调用模型写摘要，会消耗脚本里的回复、改变请求记录。压缩在[第 13 章](./context-compaction.md)专门讨论。
 
 我们没有办法让框架“只走一步”，但可以完整观察它走了哪些步：
 

@@ -1,6 +1,3 @@
-apply session-A expected=0
-{"revision":1,"status":"saved"}
-recall new-process project-a
-{"error":"corrupt_store","status":"error"}
-apply session-A expected=1
-{"error":"corrupt_store","status":"error"}
+--- process 1: chat user=user-1 project=project-a session=session-A recall=tool message="以后请用什么语言回答？" (exit 1)
+outcome: error migration registry creation failed: (code: 26) file is not a database
+corrupt: processes=1 steps=[error migration registry creation failed: (code: 26) file is not a database] bytes_unchanged=yes

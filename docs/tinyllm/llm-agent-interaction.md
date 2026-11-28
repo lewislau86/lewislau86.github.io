@@ -32,14 +32,14 @@ pageClass: tinyllm-course
 
 | 环节 | 由谁完成 | 在 learn-agent-rust 里 | 在本章里 |
 | --- | --- | --- | --- |
-| 组装消息列表、附上工具说明 | Agent | [第 2 章 · 工具定义](/learn-agent-rust/tools-and-graph#_2-一份工具定义-连接描述与执行)、[第 14 章 · 系统提示词组装](/learn-agent-rust/system-prompts#_3-每轮重新组装-保留原始历史) | 第 1 节 |
+| 组装消息列表、附上工具说明 | Agent | [第 2 章 · 工具定义](/learn-agent-rust/tools-and-graph#_2-一份工具定义-连接描述与执行)、[第 15 章 · 系统提示词组装](/learn-agent-rust/system-prompts#_3-每轮重新组装-保留原始历史) | 第 1 节 |
 | 把消息渲染成 token | 推理服务 | 不涉及 | 第 3 节 `render` |
 | 决定调哪个工具、填什么参数 | 模型生成的文字 | 不涉及 | 第 2、4 节的数据和训练 |
 | 把文字解析成 `tool_calls`、配调用 id | 推理服务 | 不涉及 | 第 5 节 `chat_completions` |
 | 检查回复是否合协议 | Agent | [专题 3 · 只支持一小段协议](/learn-agent-rust/model-evaluation#先约定支持哪一小段协议) | 第 6 节 `parse_response` |
 | 校验参数和权限、执行工具、配对结果 | Agent | [第 2 章 · Schema 之外的检查](/learn-agent-rust/tools-and-graph#schema-写了约束-执行时还要做什么)、[第 3 章 · 权限](/learn-agent-rust/permissions#_1-同一份请求-先走权限分支) | 第 6 节 `run_agent` |
 | 决定继续还是停下 | Agent | [第 1 章 · 接成一个循环](/learn-agent-rust/agent-loop#_4-将这些步骤接成一个循环) | 第 6 节 `run_agent` |
-| 挑选放进上下文的历史与记忆 | Agent | [第 12 章 · 上下文压缩](/learn-agent-rust/context-compaction#_2-把压缩放在每次模型调用之前)、[第 13 章 · 跨会话记忆](/learn-agent-rust/memory#_6-召回后-放回-agent-的什么位置) | 第 8、11 节 |
+| 挑选放进上下文的历史与记忆 | Agent | [第 13 章 · 上下文压缩](/learn-agent-rust/context-compaction#_2-把压缩放在每次模型调用之前)、[第 14 章 · 跨会话记忆](/learn-agent-rust/memory#_6-召回后-放回-agent-的什么位置) | 第 8、11 节 |
 
 ::: info 本章代码从哪里来
 本章所有代码都在一个文件里：<a href="/tinyllm/code/llm-agent-interaction.py" download>llm-agent-interaction.py</a>（[在 GitHub 上查看](https://github.com/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/code/llm-agent-interaction.py)）。下面的代码块都是从这个文件里直接截取的片段，所以单独复制一段可能缺少 `import` 或前面定义的变量；想自己运行，请下载完整文件，`python llm-agent-interaction.py` 从头跑到尾即可。notebook 版本也由同一个文件生成，可以[在线查看](/tinyllm/notebooks/llm-agent-interaction)，或[在 Colab 中直接运行](https://colab.research.google.com/github/lewislau86/lewislau86.github.io/blob/master/docs/public/tinyllm/notebooks/llm-agent-interaction.ipynb)。正文引用的输出来自 torch 2.14.1+cpu、tokenizers 0.23.3；以“[计时，本机]”开头的输出和机器有关，正文只引用它们的大致数值。
@@ -180,7 +180,7 @@ answered {'schema_valid': True, 'answer_correct': False, 'read_observed': True, 
 rust 用例两次请求的 usage： {'prompt_tokens': 95, 'completion_tokens': 29, 'total_tokens': 124} {'prompt_tokens': 148, 'completion_tokens': 15, 'total_tokens': 163}
 ```
 
-结果和直接调用一样，每次请求几十毫秒，离 800 毫秒的超时很远。看最后一行：第二次请求的提示词有 148 个 token，比第一次的 95 个多出了调用和工具结果。模型没有“上一轮”的记忆，Agent 每一轮都要把整段对话从头发一遍，轮数一多，提示词就越来越长。这带来两件事：推理服务一侧，相同的前缀可以用第 33 章的前缀缓存复用 KV cache；Agent 一侧，要控制放进上下文的东西，learn-agent-rust 的[第 12 章](/learn-agent-rust/context-compaction)在每次调用模型之前检查预算，超了就把旧的轮次压成摘要，把大段的工具结果移到外面。
+结果和直接调用一样，每次请求几十毫秒，离 800 毫秒的超时很远。看最后一行：第二次请求的提示词有 148 个 token，比第一次的 95 个多出了调用和工具结果。模型没有“上一轮”的记忆，Agent 每一轮都要把整段对话从头发一遍，轮数一多，提示词就越来越长。这带来两件事：推理服务一侧，相同的前缀可以用第 33 章的前缀缓存复用 KV cache；Agent 一侧，要控制放进上下文的东西，learn-agent-rust 的[第 13 章](/learn-agent-rust/context-compaction)在每次调用模型之前检查预算，超了就把旧的轮次压成摘要，把大段的工具结果移到外面。
 
 ## 9. 格式差一点会怎样
 
@@ -206,7 +206,7 @@ rust 用例两次请求的 usage： {'prompt_tokens': 95, 'completion_tokens': 2
 - **系统策略多一句 `Be concise.`，两个种子通过率变成 0。** 种子 0 照样发起调用，但参数写成了 `{"name":"README.md"}`；Agent 的 ExecuteTools 要求参数正好是 `{"path":"README.md"}`，以 `permission_denied` 停下，文件一次也没读。种子 1 根本没调用工具，直接回了一个把调用参数塞进答案的 `{"command":{"path":"README.md"}}`。这正是 learn-agent-rust [第 2 章](/learn-agent-rust/tools-and-graph#schema-写了约束-执行时还要做什么)强调的：模型写出合法的 JSON，不等于参数对，执行之前一定要校验。
 - **备注让抄写变难，但模型没有“听”备注的话。** 有备注的 27 份通过率 0.59～0.70，没备注的 73 份 0.92～0.95；有备注的 27 份在 3 个种子上共跑 81 次，失败 27 次，没有一次是照抄了备注里的命令，全都是把正确的那条抄少、抄多或抄错了。
 
-真实的大模型在训练时见过成千上万种系统提示词、工具和 JSON 写法，不会因为多一句话就不会调工具，但同一类问题以更隐蔽的形式存在：换了模板、换了工具描述、换了结果的格式，效果都可能变。所以推理服务要用模型自己的模板（第 38 章），Agent 一侧的提示词和工具描述要固定版本、改了要重新评测（learn-agent-rust [第 14 章](/learn-agent-rust/system-prompts)、[专题 3](/learn-agent-rust/model-evaluation)），执行之前的校验一项都不能省。
+真实的大模型在训练时见过成千上万种系统提示词、工具和 JSON 写法，不会因为多一句话就不会调工具，但同一类问题以更隐蔽的形式存在：换了模板、换了工具描述、换了结果的格式，效果都可能变。所以推理服务要用模型自己的模板（第 38 章），Agent 一侧的提示词和工具描述要固定版本、改了要重新评测（learn-agent-rust [第 15 章](/learn-agent-rust/system-prompts)、[专题 3](/learn-agent-rust/model-evaluation)），执行之前的校验一项都不能省。
 
 ## 10. 让 learn-agent-rust 的 Rust 程序来调用 {#rust-agent}
 
@@ -238,7 +238,7 @@ cargo run -- fixture http://127.0.0.1:8000/fixture/tinyllm cases.json rust /tmp/
 | KV cache | 当前前缀在各注意力层算出的 K/V | 通常随请求结束；服务可以复用相同前缀（第 33 章） | 避免重算相同前缀，占用推理显存 |
 | Agent 外部记忆 | 历史文本、提取出的事实及来源 | 跨请求保存，直到更新或删除 | 检索相关内容，作为文本放回当前上下文 |
 
-KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使存在向量库里，也要先检索出来、作为文本进入上下文，模型才能在这一轮用上。learn-agent-rust 的[第 13 章](/learn-agent-rust/memory#_6-召回后-放回-agent-的什么位置)按作用域和键保存事实，带来源和版本，讨论了召回以后放回上下文的位置（比如作为一次 `recall_memory` 工具调用的结果；那一章的代码只实现到命令行输出）；[第 11 章](/learn-agent-rust/retrieval-augmented-generation)的 RAG 把检索到的文档片段包成带编号的证据块，可以由 Agent 在调用模型之前直接组装进上下文，也可以做成一个检索工具。不管哪种方式，对模型来说都是上下文里的一段文字，和本章的 README 没有区别。
+KV cache 存的是计算结果，不会自动判断哪些事实值得长期保留；外部记忆即使存在向量库里，也要先检索出来、作为文本进入上下文，模型才能在这一轮用上。learn-agent-rust 的[第 14 章](/learn-agent-rust/memory#_6-召回后-放回-agent-的什么位置)按作用域和键保存事实，带来源和版本，讨论了召回以后放回上下文的位置（比如作为一次 `recall_memory` 工具调用的结果；那一章的代码只实现到命令行输出）；[第 11 章](/learn-agent-rust/retrieval-augmented-generation)的 RAG 把检索到的文档片段包成带编号的证据块，可以由 Agent 在调用模型之前直接组装进上下文，也可以做成一个检索工具。不管哪种方式，对模型来说都是上下文里的一段文字，和本章的 README 没有区别。
 
 一条记忆怎样影响下一次回答：用户说“项目的图表以后统一用 Plotly”，Agent 保存原句、时间、来源和所属项目；下次用户问“画图用什么库”，Agent 先找回这条记录，核对它是否仍然有效，再把证据文本放进提示词。若用户后来改了主意，系统要处理新旧事实的关系：只按相似度找出两条句子，并不能判断哪条生效。[LongMemEval](https://arxiv.org/abs/2410.10813) 因此把信息提取、跨会话推理、时间推理、知识更新和证据不足时拒答分开评测；[MemGPT](https://arxiv.org/abs/2310.08560) 把分层的记忆管理当作 Agent 系统的问题来做。第一版可以只保存原始文本和来源、用关键词检索，先找出最简单方案的失败案例，再决定要不要加向量检索或结构化的事实。
 
@@ -333,11 +333,11 @@ TinyLLM 和 Agent 之间<strong>只通过 Chat Completions 的 JSON 消息交互
 
 ## 参考资料
 
-- learn-agent-rust：[第 1 章 · 最小 Agent 循环](/learn-agent-rust/agent-loop)、[第 2 章 · 工具注册与图调度](/learn-agent-rust/tools-and-graph)、[第 3 章 · 工具权限与审批](/learn-agent-rust/permissions)、[第 12 章 · 上下文压缩](/learn-agent-rust/context-compaction)、[第 13 章 · 跨会话记忆](/learn-agent-rust/memory)、[第 14 章 · 系统提示词组装](/learn-agent-rust/system-prompts)、[专题 3 · 模型协议与质量评估](/learn-agent-rust/model-evaluation)
+- learn-agent-rust：[第 1 章 · 最小 Agent 循环](/learn-agent-rust/agent-loop)、[第 2 章 · 工具注册与图调度](/learn-agent-rust/tools-and-graph)、[第 3 章 · 工具权限与审批](/learn-agent-rust/permissions)、[第 13 章 · 上下文压缩](/learn-agent-rust/context-compaction)、[第 14 章 · 跨会话记忆](/learn-agent-rust/memory)、[第 15 章 · 系统提示词组装](/learn-agent-rust/system-prompts)、[专题 3 · 模型协议与质量评估](/learn-agent-rust/model-evaluation)
 - [Hugging Face：对话模板](https://huggingface.co/docs/transformers/main/en/chat_templating)与[工具调用](https://huggingface.co/docs/transformers/en/chat_extras#passing-tools)
 - [ReAct: Synergizing Reasoning and Acting in Language Models，Yao 等，2022](https://arxiv.org/abs/2210.03629)
 - [Toolformer: Language Models Can Teach Themselves to Use Tools，Schick 等，2023](https://arxiv.org/abs/2302.04761)
-- [Model Context Protocol](https://modelcontextprotocol.io/)（learn-agent-rust [第 31 章](/learn-agent-rust/mcp-tools)把 MCP 工具接进 Agent）
+- [Model Context Protocol](https://modelcontextprotocol.io/)（learn-agent-rust [第 32 章](/learn-agent-rust/mcp-tools)把 MCP 工具接进 Agent）
 - [MemGPT，Packer 等，2023](https://arxiv.org/abs/2310.08560) · [LongMemEval，Wu 等，2024](https://arxiv.org/abs/2410.10813)
 
 TinyLLM 课程到这里结束：从第 1 章的一个能续写的小模型出发，拆开了分词、注意力、训练、推理、中训练和后训练，最后接上了 Agent。模型这一侧始终只做一件事：读 token、写 token；能做多少事，取决于训练教会了它什么格式，以及包在外面的程序怎样用它。想继续往 Agent 一侧走，可以接着读 [learn-agent-rust](/learn-agent-rust/)；回到[课程总览](./index.md)。

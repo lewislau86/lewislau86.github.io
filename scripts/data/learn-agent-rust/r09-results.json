@@ -48,10 +48,10 @@
     "fetch-adk-rust.py": "6db0e5a1a1031c19bf79148eb4169380688ba206d9072afafb7a77a91fcb8743",
     "learn-agent-rust-adk.json": "769ba37827cbc4a4c82041668e4fa682c0a5b844e2936f12b0784f7cb444b61e",
     "rust-toolchain.toml": "d13306be0ecda81ce779baa290ffb417380d525928477f16200884b5169cca33",
-    "src/main.rs": "08ee73cb97a8a394f393a527df4c33c887abf89aaf19ed4e6456a8ccc8589dec",
+    "src/main.rs": "ea01c524d5df78463e48c939c34380d787239cf093f2acceeb3fcfb06ab1b1cd",
     "src/trace.rs": "2e456946e32514c2bb3f95e1fecb5332287ac0611ba601a45ce0e07268483aae"
   },
-  "archive_sha256": "9b3c1c2a70caeaea3d8599e808b96ce7faae0e8b8b3c661affaf023ca067e540",
+  "archive_sha256": "e77eef44c7b06b66032742c6faa852539e9aa182ec861ad49df09045475f88a1",
   "rust_tests_passed": 6,
   "repeated_identical_runs": 2,
   "scenarios": [

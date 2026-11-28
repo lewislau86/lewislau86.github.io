@@ -1,0 +1,15 @@
+--- turn: 先调研，制定升级计划。
+[call]   read_file {"path":"README.md"}
+[result] read_file ok
+[call]   write_file {"path":"UPGRADE.md"}
+[result] write_file refused — Tool 'write_file' denied by policy: 'write_file' is an edit, which plan mode does not allow
+[call]   exit_plan_mode {"steps":2}
+[result] exit_plan_mode refused — Tool 'exit_plan_mode' was not run; the approver declined it: 计划不够细
+[text]   计划没有通过，仍在计划模式。
+[state]  harness:plan 没有写入
+--- turn: 开始执行。
+[call]   write_file {"path":"UPGRADE.md"}
+[result] write_file refused — Tool 'write_file' denied by policy: 'write_file' is an edit, which plan mode does not allow
+[text]   写文件被拒绝：现在还不能改文件。
+person asked: exit_plan_mode@plan:deny
+plan-mode-rejected: tools=[read_file:ok,write_file:refused,exit_plan_mode:refused,write_file:refused] asked=[exit_plan_mode@plan:deny] file_written=no

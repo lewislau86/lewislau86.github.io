@@ -1,763 +1,835 @@
-//! R08: bounded, transactional compaction with actual graph-flow and LLM interfaces.
-mod compact;
-use async_trait::async_trait;
-use compact::{
-    Artifact, Budget, Compactor, Fact, Item, Stage, Store, Summary, bytes, digest, groups, wire,
-};
-use futures::Stream;
-use graph_flow::{Context, ExecutionStatus, GraphBuilder, NextAction, Session, Task, TaskResult};
-use langchain_rust::{
-    language_models::{GenerateResult, LLMError, llm::LLM},
-    schemas::{Message, MessageType, StreamData, ToolCall},
-};
-use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+//! R08（ADK-Rust 3.0）：上下文压缩。
+//!
+//!   cargo run --locked                    全部场景的摘要
+//!   cargo run --locked -- normal          某个场景的完整轨迹（场景名见 CASES）
+//!
+//! 一次代码审查：第一次运行读技能、读目标文件、读三份大资料；第二次运行“继续，给出结论”。
+//! 压缩由框架执行：运行之间用 `EventsCompactionConfig`，运行之内用 `IntraCompactionConfig`；
+//! 摘要器是应用自写的 `FactSummarizer`：让摘要模型写出事实清单，逐项核对后才交给框架。
+//! 两个模型都是按规则回复的替身，只看得到各自的请求；文件工具真实读取临时目录。
+mod trace;
+
 use std::{
-    collections::{BTreeMap, BTreeSet},
     fs,
-    pin::Pin,
-    sync::Arc,
+    path::PathBuf,
+    sync::{Arc, Mutex},
 };
-use tokio::sync::Mutex;
+
+use adk_agent::LlmAgentBuilder;
+use adk_core::{
+    AdkError, BaseEventsSummarizer, Content, DeclarativePolicy, ErrorCategory, ErrorComponent,
+    Event, EventCompaction, EventsCompactionConfig, FinishReason, IntraCompactionConfig, Llm,
+    LlmRequest, LlmResponse, LlmResponseStream, Part, RunConfig, ToolContext, ToolEffect,
+};
+use adk_runner::Runner;
+use adk_session::{CreateRequest, GetRequest, InMemorySessionService, SessionService};
+use adk_tool::FunctionTool;
+use async_trait::async_trait;
+use futures::StreamExt;
+use serde::Deserialize;
+use serde_json::{Value, json};
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
+
+const SKILL: &str = "# Rust 函数审查\n先给结论，再列证据；没有运行测试时写明“未运行测试”。\n";
 const SOURCE: &str = "pub fn first(values: &[u8]) -> u8 { values[0] }\n";
-const SKILL: &str = "先给结论，再引用文件证据；明确说明测试是否运行。建议考虑 Option<u8>。审查中保留原始文件路径，区分实际读取和执行测试；不要把建议写成已完成的修改。";
-const SCENARIOS: &[&str] = &[
+const TASK: &str = "审查 src/first.rs：先读审查规范和 docs 下的三份资料。禁止修改文件；没有运行测试时要说明“未运行测试”。";
+const TASK_AND_CONCLUDE: &str = "审查 src/first.rs：读审查规范和 docs 下的三份资料，然后给出结论。禁止修改文件；没有运行测试时要说明“未运行测试”。";
+const CONTINUE: &str = "继续，给出结论。";
+
+const CASES: &[&str] = &[
     "normal",
     "small",
-    "manual",
-    "micro-only",
+    "intra",
     "naive-trim",
     "omit-fact",
+    "omit-unchecked",
     "invent-fact",
     "bad-json",
     "summary-error",
-    "summary-large",
-    "summary-input-budget",
-    "archive-error",
-    "hard-budget",
-    "orphan",
-    "pending",
-    "retrieve",
-    "artifact-tamper",
+    "not-smaller",
 ];
 
-fn item(key: &str, message: Message) -> Item {
-    Item::new(key, message)
-}
-fn result(key: &str, id: &str, data: Value) -> Item {
-    item(
-        key,
-        Message::new_tool_message(json!({"ok": true, "data": data}), id),
-    )
-}
-fn skill_present(messages: &[Message]) -> bool {
-    messages
-        .iter()
-        .filter_map(|m| serde_json::from_str::<Value>(&m.content).ok())
-        .any(|v| v["data"]["instructions"].as_str() == Some(SKILL))
+// region facts
+/// 应用为这次审查声明的事实清单：值来自真实读到的内容和用户的话。
+/// 摘要必须逐项保留，而且每个值都要能在被压缩的那段历史里找到。
+/// 另外一项 `latest_request` 是被压缩历史里用户最后说的话：用户的请求也会被压进摘要。
+const FACTS: [(&str, &str); 7] = [
+    ("target", "src/first.rs"),
+    ("finding", "values[0]"),
+    ("test_status", "未运行测试"),
+    ("constraint", "禁止修改文件"),
+    ("doc_a", "DOC-A"),
+    ("doc_b", "DOC-B"),
+    ("doc_c", "DOC-C"),
+];
+
+#[derive(Deserialize, PartialEq, Debug)]
+#[serde(deny_unknown_fields)]
+struct Fact {
+    key: String,
+    value: String,
 }
 
-#[derive(Clone)]
-struct ScriptedModel {
-    scenario: String,
-    summarize: bool,
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FactSummary {
+    version: u32,
+    facts: Vec<Fact>,
 }
-// region summary-model
-#[async_trait]
-impl LLM for ScriptedModel {
-    async fn generate(
-        &self,
-        messages: &[Message],
-    ) -> std::result::Result<GenerateResult, LLMError> {
-        // region scripted-summary
-        if self.summarize {
-            let request: Value = serde_json::from_str(&messages[1].content)?;
-            let mut facts: Vec<Fact> = serde_json::from_value(request["facts"].clone())?;
-            let generation = match self.scenario.as_str() {
-                "summary-error" => {
-                    return Err(LLMError::OtherError("injected summary failure".into()));
-                }
-                "bad-json" => "not JSON".into(),
-                "summary-large" => "x".repeat(2049),
-                "omit-fact" => {
-                    facts.remove(0);
-                    serde_json::to_string(&Summary { version: 1, facts })?
-                }
-                "invent-fact" => {
-                    facts
-                        .iter_mut()
-                        .find(|f| f.key == "test_status")
-                        .unwrap()
-                        .value = "tests passed".into();
-                    serde_json::to_string(&Summary { version: 1, facts })?
-                }
-                _ => serde_json::to_string(&Summary { version: 1, facts })?,
-            };
-            return Ok(GenerateResult {
-                generation,
-                ..Default::default()
-            });
+
+/// 核对摘要：格式、版本、事实的键与值都要和清单一致，值还要出现在被压缩的历史里。
+/// 这次要压缩的那段历史里出现过的事实，才要求摘要保留；没压进来的部分原样留在历史里。
+fn checklist(window: &str) -> Vec<(String, String)> {
+    let mut facts: Vec<(String, String)> = FACTS
+        .iter()
+        .filter(|(_, v)| v.split(',').all(|part| window.contains(part)))
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect();
+    if let Some(request) = window
+        .lines()
+        .filter_map(|line| line.strip_prefix("user: "))
+        // 运行之内的摘要以用户角色的“系统通知”出现，它不是用户说的话
+        .rfind(|text| !text.starts_with("[System notice]"))
+    {
+        facts.push(("latest_request".into(), request.to_string()));
+    }
+    facts
+}
+
+fn check_summary(
+    text: &str,
+    window: &str,
+    expected: &[(String, String)],
+) -> std::result::Result<(), &'static str> {
+    let summary: FactSummary =
+        serde_json::from_str(text).map_err(|_| "compaction.summary_schema")?;
+    if summary.version != 1 || summary.facts.len() != expected.len() {
+        return Err("compaction.summary_facts");
+    }
+    for (fact, (key, value)) in summary.facts.iter().zip(expected) {
+        // 来源核对：值（多项时逐项）要出现在被压缩的那段历史里
+        if fact.key != *key || fact.value != *value || !value.split(',').all(|v| window.contains(v))
+        {
+            return Err("compaction.summary_facts");
         }
-        // endregion scripted-summary
-        let mut target = None;
-        let mut output_id = None;
-        let mut fresh = None;
-        let mut retrieved = false;
-        for message in messages {
-            if let Ok(v) = serde_json::from_str::<Value>(&message.content) {
-                if v["kind"] == "history_summary" {
-                    let summary: Summary = serde_json::from_value(v["summary"].clone())?;
-                    target = summary
-                        .facts
-                        .iter()
-                        .find(|f| f.key == "target")
-                        .map(|f| f.value.clone());
-                    output_id = v["outputs"][0]["id"].as_str().map(str::to_owned);
+    }
+    Ok(())
+}
+// endregion facts
+
+// region summarizer
+/// 应用自写的摘要器：把要压缩的事件渲染成文字，交给摘要模型写事实清单，核对通过才返回。
+/// 返回错误时，框架保留原历史继续运行（压缩是可选的优化，不是必须成功的步骤）。
+struct FactSummarizer {
+    model: Arc<dyn Llm>,
+    /// 只用于 omit-unchecked 对照：不核对就接受
+    checked: bool,
+    calls: Mutex<Vec<String>>,
+}
+
+/// 和框架自带的摘要器一样：最近一次的旧摘要代替它覆盖的那些事件，不再重复渲染原文。
+fn render(events: &[Event]) -> String {
+    let earlier = events
+        .iter()
+        .rev()
+        .find_map(|event| event.actions.compaction.as_ref())
+        .map(|compaction| compaction.end_timestamp);
+    let mut lines = Vec::new();
+    for event in events {
+        if event.actions.compaction.is_none() && earlier.is_some_and(|end| event.timestamp <= end) {
+            continue;
+        }
+        if let Some(compaction) = &event.actions.compaction {
+            for text in compaction
+                .compacted_content
+                .parts
+                .iter()
+                .filter_map(Part::text)
+            {
+                lines.push(format!("earlier summary: {text}"));
+            }
+            continue;
+        }
+        for part in event
+            .content()
+            .map(|c| c.parts.as_slice())
+            .unwrap_or_default()
+        {
+            match part {
+                Part::Text { text } => lines.push(format!("{}: {text}", event.author)),
+                Part::FunctionCall { name, args, .. } => {
+                    lines.push(format!("{} called {name} {args}", event.author))
                 }
-                if message.message_type == MessageType::ToolMessage {
-                    if v["ok"] == false {
-                        return Ok(GenerateResult {
-                            generation: "任务未完成：工具错误，未运行测试。".into(),
-                            ..Default::default()
-                        });
-                    }
-                    if v["data"]["kind"] == "source" {
-                        target = v["data"]["path"].as_str().map(str::to_owned);
-                    }
-                    if v["data"]["kind"] == "fresh_source" {
-                        fresh = Some(v["data"].clone());
-                    }
-                    if v["data"]["chunk"].is_string() {
-                        retrieved = true;
-                    }
+                Part::FunctionResponse {
+                    function_response, ..
+                } => lines.push(format!(
+                    "{} result: {}",
+                    function_response.name, function_response.response
+                )),
+                _ => {}
+            }
+        }
+    }
+    lines.join("\n")
+}
+
+impl FactSummarizer {
+    async fn generate(&self, request: LlmRequest) -> adk_core::Result<String> {
+        let mut stream = adk_core::generate_metered(self.model.as_ref(), request, false).await?;
+        let mut text = String::new();
+        while let Some(chunk) = stream.next().await {
+            for part in chunk?.content.iter().flat_map(|c| c.parts.iter()) {
+                if let Some(t) = part.text() {
+                    text.push_str(t);
                 }
             }
         }
-        let Some(target) = target else {
-            return Ok(GenerateResult {
-                generation: "缺少目标文件路径，请重新提供证据。未运行测试。".into(),
-                ..Default::default()
-            });
+        Ok(text)
+    }
+}
+
+#[async_trait]
+impl BaseEventsSummarizer for FactSummarizer {
+    async fn summarize_events(&self, events: &[Event]) -> adk_core::Result<Option<Event>> {
+        let window = render(events);
+        let expected = checklist(&window);
+        let keep: Vec<String> = expected
+            .iter()
+            .map(|(k, v)| format!("keep: {k}={v}"))
+            .collect();
+        let prompt = format!(
+            "把下面的历史压缩成 JSON：{{\"version\":1,\"facts\":[{{\"key\",\"value\"}}]}}，按顺序保留这些事实：\n{}\n历史：\n{window}",
+            keep.join("\n")
+        );
+        let request = LlmRequest::new(
+            self.model.name(),
+            vec![Content::new("user").with_text(prompt)],
+        );
+        // 和框架自带的摘要器一样，经过运行的预算记账
+        let text = match self.generate(request).await {
+            Ok(text) => text,
+            Err(error) => {
+                self.calls
+                    .lock()
+                    .unwrap()
+                    .push(format!("failed {}", error.code));
+                return Err(error);
+            }
         };
-        let next = if !skill_present(messages) {
-            Some(("load_skill", json!({"name": "rust-review"})))
-        } else if matches!(self.scenario.as_str(), "retrieve" | "artifact-tamper") && !retrieved {
-            Some((
-                "read_artifact",
-                json!({"id": output_id.unwrap(), "offset": 0, "limit": 80}),
-            ))
-        } else if fresh.is_none() {
-            Some(("read_file", json!({"path": target})))
+        let verdict = if self.checked {
+            check_summary(&text, &window, &expected).err()
         } else {
             None
         };
-        if let Some((name, args)) = next {
-            let count = messages
-                .iter()
-                .filter(|m| m.message_type == MessageType::ToolMessage)
-                .count();
-            return Ok(
-                GenerateResult::default().with_tool_calls(vec![ToolCall::from_value(
-                    format!("live-{count}"),
-                    name,
-                    &args,
-                )]),
-            );
+        self.calls.lock().unwrap().push(match verdict {
+            Some(code) => format!("rejected {code}"),
+            None => "accepted".into(),
+        });
+        if let Some(code) = verdict {
+            return Err(AdkError::new(
+                ErrorComponent::Agent,
+                ErrorCategory::InvalidInput,
+                code,
+                "摘要没有通过事实核对，保留原历史",
+            ));
         }
-        let source = fresh.unwrap();
-        let generation = if source["text"].as_str().unwrap().contains("values[0]") {
-            format!(
-                "结论：{} 的空输入会触发索引越界；证据 values[0]。建议返回 Option<u8>。未运行测试。",
-                source["path"].as_str().unwrap()
-            )
-        } else {
-            "当前文件不含预期证据，需要重新审查。未运行测试。".into()
+        let (Some(first), Some(last)) = (events.first(), events.last()) else {
+            return Ok(None);
         };
-        Ok(GenerateResult {
-            generation,
-            ..Default::default()
-        })
+        let mut event = Event::new("compaction");
+        event.author = "compaction".into();
+        event.actions.compaction = Some(EventCompaction {
+            start_timestamp: first.timestamp,
+            end_timestamp: last.timestamp,
+            compacted_content: Content::new("model").with_text(text),
+        });
+        Ok(Some(event))
     }
-    async fn stream(
+}
+// endregion summarizer
+
+// region models
+fn reply(part: Part) -> adk_core::Result<LlmResponseStream> {
+    let mut response = LlmResponse::new(Content {
+        role: "model".into(),
+        parts: vec![part],
+    });
+    response.finish_reason = Some(FinishReason::Stop);
+    response.turn_complete = true;
+    Ok(Box::pin(futures::stream::iter([Ok(response)])))
+}
+
+/// 摘要模型：按场景写出事实清单（正常、漏写目标、虚构测试结果、不是 JSON、出错、写得太长）。
+struct SummaryLlm {
+    scenario: String,
+}
+
+#[async_trait]
+impl Llm for SummaryLlm {
+    fn name(&self) -> &str {
+        "summary-llm"
+    }
+
+    async fn generate_content(
         &self,
-        _: &[Message],
-    ) -> std::result::Result<
-        Pin<Box<dyn Stream<Item = std::result::Result<StreamData, LLMError>> + Send>>,
-        LLMError,
-    > {
-        Err(LLMError::OtherError("R08 uses generate only".into()))
-    }
-}
-// endregion summary-model
-
-#[derive(Clone, Serialize, Deserialize)]
-struct State {
-    items: Vec<Item>,
-    pending: Vec<ToolCall>,
-    seen: BTreeSet<String>,
-    resident_skill: bool,
-    model_calls: usize,
-    tool_calls: usize,
-    reloads: usize,
-    reads: usize,
-    retrievals: usize,
-    stop: Option<String>,
-    stages: Vec<Stage>,
-    model_inputs: Vec<usize>,
-}
-struct World {
-    compactor: Compactor,
-    workspace: std::path::PathBuf,
-    scenario: String,
-    // Trusted application policy, independent of summary and skill text.
-    allow_write: bool,
-}
-fn get(context: &Context) -> graph_flow::Result<State> {
-    context
-        .get("agent")
-        .ok_or_else(|| graph_flow::GraphError::TaskExecutionFailed("missing state".into()))
-}
-struct PrepareContext {
-    world: Arc<Mutex<World>>,
-    summarizer: Arc<dyn LLM>,
-}
-struct ModelTurn {
-    model: Arc<dyn LLM>,
-}
-struct ExecuteTools {
-    world: Arc<Mutex<World>>,
-}
-// region prepare-node
-#[async_trait]
-impl Task for PrepareContext {
-    fn id(&self) -> &str {
-        "PrepareContext"
-    }
-    async fn run(&self, context: Context) -> graph_flow::Result<TaskResult> {
-        let mut state = get(&context)?;
-        let mut world = self.world.lock().await;
-        let first = state.stages.is_empty();
-        let force = first && world.scenario == "manual";
-        let naive = first && world.scenario == "naive-trim";
-        match world
-            .compactor
-            .prepare(&state.items, self.summarizer.as_ref(), force, naive)
-            .await
-        {
-            Ok(prepared) => {
-                state.items = prepared.items;
-                // Loaded on disk is different from still resident in model context.
-                state.resident_skill = skill_present(&wire(&state.items));
-                state.stages.push(prepared.stage);
-            }
-            Err(code) => state.stop = Some(code.into()),
-        }
-        let action = if state.stop.is_some() {
-            NextAction::End
-        } else {
-            NextAction::Continue
-        };
-        context.set("agent", state)?;
-        Ok(TaskResult::new(None, action))
-    }
-}
-// endregion prepare-node
-#[async_trait]
-impl Task for ModelTurn {
-    fn id(&self) -> &str {
-        "ModelTurn"
-    }
-    async fn run(&self, context: Context) -> graph_flow::Result<TaskResult> {
-        let mut state = get(&context)?;
-        if state.model_calls >= 5 {
-            state.stop = Some("model_budget".into());
-        } else {
-            state.model_inputs.push(bytes(&state.items));
-            state.model_calls += 1;
-            let reply = self
-                .model
-                .generate(&wire(&state.items))
-                .await
-                .map_err(|e| graph_flow::GraphError::TaskExecutionFailed(e.to_string()))?;
-            if reply.tool_calls.is_empty() {
-                let failed = state
-                    .items
-                    .iter()
-                    .filter(|i| i.message.message_type == MessageType::ToolMessage)
-                    .filter_map(|i| serde_json::from_str::<Value>(&i.message.content).ok())
-                    .any(|v| v["ok"] == false);
-                state.stop = Some(
-                    if failed {
-                        "tool_error"
-                    } else if reply.generation.contains("缺少目标") {
-                        "missing_evidence"
-                    } else {
-                        "completed"
-                    }
-                    .into(),
-                );
-                state.items.push(Item::new(
-                    format!("answer-{}", state.model_calls),
-                    Message::new_ai_message(reply.generation),
+        request: LlmRequest,
+        _stream: bool,
+    ) -> adk_core::Result<LlmResponseStream> {
+        // 按提示里列出的 keep: 行复制事实；故障场景漏写目标或改写测试状态
+        let prompt: String = request
+            .contents
+            .iter()
+            .flat_map(|c| c.parts.iter().filter_map(Part::text))
+            .collect();
+        let facts: Vec<Value> = prompt
+            .lines()
+            .filter_map(|line| line.strip_prefix("keep: ")?.split_once('='))
+            .filter(|(key, _)| {
+                !(*key == "target"
+                    && matches!(self.scenario.as_str(), "omit-fact" | "omit-unchecked"))
+            })
+            .map(|(key, value)| {
+                let value = match self.scenario.as_str() {
+                    "invent-fact" if key == "test_status" => "测试通过".to_string(),
+                    // 漏掉目标：连用户原话里的文件名也没写进摘要
+                    "omit-fact" | "omit-unchecked" => value.replace("src/first.rs", "那个文件"),
+                    _ => value.to_string(),
+                };
+                json!({ "key": key, "value": value })
+            })
+            .collect();
+        let text = match self.scenario.as_str() {
+            "bad-json" => "目标是 src/first.rs，空输入会越界，未运行测试。".to_string(),
+            "summary-error" => {
+                return Err(AdkError::new(
+                    ErrorComponent::Model,
+                    ErrorCategory::Unavailable,
+                    "model.unavailable",
+                    "summary-llm: simulated provider failure",
                 ));
-            } else {
-                let mut seen = state.seen.clone();
-                if reply
-                    .tool_calls
-                    .iter()
-                    .any(|c| c.id.is_empty() || !seen.insert(c.id.clone()))
-                {
-                    state.stop = Some("invalid_call_id".into());
-                } else {
-                    state.seen = seen;
-                    state.items.push(Item::new(
-                        format!("request-{}", state.model_calls),
-                        Message::new_ai_message_with_tool_calls("", &reply.tool_calls),
-                    ));
-                    state.pending = reply.tool_calls;
-                }
             }
-        }
-        let action = if state.stop.is_some() {
-            NextAction::End
-        } else {
-            NextAction::Continue
+            "not-smaller" => format!(
+                "{}{}",
+                json!({ "version": 1, "facts": facts }),
+                " ".repeat(20_000)
+            ),
+            _ => json!({ "version": 1, "facts": facts }).to_string(),
         };
-        context.set("agent", state)?;
-        Ok(TaskResult::new(None, action))
-    }
-}
-impl World {
-    fn dispatch(&mut self, state: &mut State, call: &ToolCall) -> compact::LabResult<Value> {
-        if state.tool_calls >= 4 {
-            return Err("tool_budget");
-        }
-        state.tool_calls += 1;
-        match call.name.as_str() {
-            "load_skill" => {
-                if call.arguments_value() != json!({"name": "rust-review"}) {
-                    return Err("unknown_skill");
-                }
-                if state.resident_skill {
-                    return Ok(json!({"already_loaded": true}));
-                }
-                state.reloads += 1;
-                state.resident_skill = true;
-                Ok(
-                    json!({"name": "rust-review", "version": "1.0.0", "instructions": fs::read_to_string(self.workspace.join("SKILL.md")).map_err(|_| "read_error")?}),
-                )
-            }
-            "read_file" => {
-                if call.arguments_value() != json!({"path": "src/first.rs"}) {
-                    return Err("denied_path");
-                }
-                state.reads += 1;
-                Ok(
-                    json!({"kind": "fresh_source", "path": "src/first.rs", "text": fs::read_to_string(self.workspace.join("src/first.rs")).map_err(|_| "read_error")?}),
-                )
-            }
-            "read_artifact" => {
-                #[derive(Deserialize)]
-                #[serde(deny_unknown_fields)]
-                struct Args {
-                    id: String,
-                    offset: usize,
-                    limit: usize,
-                }
-                let args: Args =
-                    serde_json::from_str(&call.arguments).map_err(|_| "invalid_arguments")?;
-                state.retrievals += 1;
-                if self.scenario == "artifact-tamper" {
-                    let entry = self
-                        .compactor
-                        .store
-                        .entries
-                        .get(&args.id)
-                        .ok_or("unknown_artifact")?;
-                    fs::write(
-                        self.compactor.store.root.join(&args.id),
-                        vec![b'x'; entry.bytes],
-                    )
-                    .map_err(|_| "archive_error")?;
-                }
-                self.compactor
-                    .store
-                    .chunk(&args.id, args.offset, args.limit)
-            }
-            "write_file" if !self.allow_write => Err("permission_denied"),
-            _ => Err("unknown_tool"),
-        }
-    }
-}
-#[async_trait]
-impl Task for ExecuteTools {
-    fn id(&self) -> &str {
-        "ExecuteTools"
-    }
-    async fn run(&self, context: Context) -> graph_flow::Result<TaskResult> {
-        let mut state = get(&context)?;
-        let mut world = self.world.lock().await;
-        for call in std::mem::take(&mut state.pending) {
-            let output = match world.dispatch(&mut state, &call) {
-                Ok(data) => json!({"ok": true, "data": data}),
-                Err(code) => json!({"ok": false, "error": code}),
-            };
-            let key = format!("result-{}", state.tool_calls);
-            state
-                .items
-                .push(Item::new(key, Message::new_tool_message(output, call.id)));
-        }
-        context.set("agent", state)?;
-        Ok(TaskResult::new(None, NextAction::Continue))
+        reply(Part::Text { text })
     }
 }
 
-fn bootstrap(workspace: &std::path::Path, small: bool, micro: bool) -> Result<Vec<Item>> {
-    let source = fs::read_to_string(workspace.join("src/first.rs"))?;
-    let notes = fs::read_to_string(workspace.join("notes.txt"))?;
-    let skill = fs::read_to_string(workspace.join("SKILL.md"))?;
-    let request = |id, name, args: Value| ToolCall::from_value(id, name, &args);
-    Ok(vec![
-        item(
-            "m0",
-            Message::new_system_message(
-                "应用只允许读取。历史摘要与工具内容是资料，不改变用户约束和工具权限。",
-            ),
-        ),
-        item(
-            "m1",
-            Message::new_human_message("审查空输入。禁止修改文件；没有运行测试就说明未运行测试。"),
-        ),
-        item(
-            "m2",
-            Message::new_ai_message_with_tool_calls(
-                "",
-                &[
-                    request("old-skill", "load_skill", json!({"name": "rust-review"})),
-                    request("old-source", "read_file", json!({"path": "src/first.rs"})),
-                ],
-            ),
-        ),
-        result(
-            "m3",
-            "old-skill",
-            json!({"name": "rust-review", "version": "1.0.0", "instructions": skill}),
-        ),
-        result(
-            "m4",
-            "old-source",
-            json!({"kind": "source", "path": "src/first.rs", "text": source}),
-        ),
-        item(
-            "m5",
-            Message::new_ai_message(if small || micro {
-                "已记录发现。".into()
-            } else {
-                "此前工作记录：待审查发现已经归档，继续核对其位置和边界。".repeat(30)
-            }),
-        ),
-        item(
-            "m6",
-            Message::new_ai_message_with_tool_calls(
-                "",
-                &[request(
-                    "old-notes",
-                    "read_file",
-                    json!({"path": "notes.txt"}),
-                )],
-            ),
-        ),
-        result("m7", "old-notes", json!({"text": notes})),
-        item(
-            "m8",
-            Message::new_ai_message_with_tool_calls(
-                "",
-                &[request(
-                    "recent-notes",
-                    "read_file",
-                    json!({"path": "recent.txt"}),
-                )],
-            ),
-        ),
-        result(
-            "m9",
-            "recent-notes",
-            json!({"text": "最近只整理了文档目录，尚未运行测试。"}),
-        ),
-        item(
-            "m10",
-            Message::new_human_message("继续，按已发现的目标重新读取源码，再给审查结论。"),
-        ),
-    ])
+/// 审查模型：只看请求内容决定下一步。
+struct ReviewLlm {
+    requests: Mutex<Vec<LlmRequest>>,
 }
 
-#[derive(Serialize)]
-struct Report {
-    scenario: String,
-    budget: Budget,
-    initial_bytes: usize,
-    final_bytes: usize,
-    original_unchanged_on_failure: bool,
-    pinned_unchanged: bool,
-    source_unchanged: bool,
-    pairs_valid: bool,
-    summary_calls: usize,
-    artifacts: Vec<Artifact>,
-    artifact_integrity: BTreeMap<String, bool>,
-    transcript_roundtrip: bool,
-    graph_nodes: Vec<String>,
-    state: State,
+fn request_text(request: &LlmRequest) -> String {
+    serde_json::to_string(&request.contents).unwrap_or_default()
 }
-async fn experiment(scenario: &str) -> Result<Report> {
-    let temp = tempfile::tempdir()?;
-    let workspace = temp.path().join("workspace");
-    let archive = temp.path().join("archive");
-    fs::create_dir_all(workspace.join("src"))?;
-    fs::create_dir(&archive)?;
-    fs::write(workspace.join("src/first.rs"), SOURCE)?;
-    fs::write(workspace.join("SKILL.md"), SKILL)?;
-    fs::write(
-        workspace.join("notes.txt"),
-        if scenario == "small" {
-            "很短的历史资料。".into()
+
+/// 最后一条用户消息之后，有没有读过目标文件：证据要是这一轮的。
+fn fresh_read(request: &LlmRequest) -> bool {
+    let last_user = request
+        .contents
+        .iter()
+        .rposition(|c| c.role == "user" && c.parts.iter().any(|p| p.text().is_some()));
+    request.contents[last_user.map_or(0, |i| i + 1)..]
+        .iter()
+        .flat_map(|c| &c.parts)
+        .any(|part| {
+            matches!(part, Part::FunctionResponse { function_response, .. }
+                if function_response.name == "read_file")
+        })
+}
+
+fn call(name: &str, args: Value, id: String) -> Part {
+    Part::FunctionCall {
+        name: name.into(),
+        args,
+        id: Some(id),
+        thought_signature: None,
+    }
+}
+
+impl ReviewLlm {
+    fn decide(&self, request: &LlmRequest, turn: usize) -> Vec<Part> {
+        let text = request_text(request);
+        let id = |name: &str| format!("{name}-{turn}");
+        if !text.contains("先给结论") {
+            return vec![call("load_skill", json!({}), id("skill"))];
+        }
+        if !text.contains("src/first.rs") {
+            return vec![Part::Text {
+                text: "任务未完成：历史里找不到要审查的文件（missing_evidence）。".into(),
+            }];
+        }
+        if !fresh_read(request) {
+            return vec![call(
+                "read_file",
+                json!({ "path": "src/first.rs" }),
+                id("read"),
+            )];
+        }
+        // 资料一次读一份：请求里（原文或摘要）还没出现的那份
+        if let Some(doc) = ["a", "b", "c"]
+            .into_iter()
+            .find(|doc| !text.contains(&format!("DOC-{}", doc.to_uppercase())))
+        {
+            return vec![call(
+                "read_doc",
+                json!({ "name": doc }),
+                id(&format!("doc-{doc}")),
+            )];
+        }
+        if !text.contains("给出结论") {
+            return vec![Part::Text {
+                text: "资料已读完，等待下一步。".into(),
+            }];
+        }
+        let tests = if text.contains("未运行测试") {
+            "未运行测试。"
         } else {
-            "说明文档：这些重复资料用于观察上下文增长。\n".repeat(110)
-        },
-    )?;
-    let mut items = bootstrap(&workspace, scenario == "small", scenario == "micro-only")?;
-    if scenario == "orphan" {
-        items[4].message.id = Some("unknown-id".into());
-    }
-    if scenario == "pending" {
-        items.push(item(
-            "pending",
-            Message::new_ai_message_with_tool_calls(
-                "",
-                &[ToolCall::new("unfinished", "read_file", "{}")],
+            ""
+        };
+        vec![Part::Text {
+            text: format!(
+                "结论：空输入会触发索引越界。证据：src/first.rs 直接使用 values[0]。{tests}"
             ),
+        }]
+    }
+}
+
+#[async_trait]
+impl Llm for ReviewLlm {
+    fn name(&self) -> &str {
+        "review-llm"
+    }
+
+    async fn generate_content(
+        &self,
+        request: LlmRequest,
+        _stream: bool,
+    ) -> adk_core::Result<LlmResponseStream> {
+        let turn = {
+            let mut requests = self.requests.lock().unwrap();
+            requests.push(request.clone());
+            requests.len()
+        };
+        // 让每条事件落在不同的毫秒：框架在会话里记录运行之内的压缩时，按毫秒时间戳定位切口，
+        // 同一毫秒里的几条事件会让切口位置随机器快慢变化（见正文第 3 节）
+        tokio::time::sleep(std::time::Duration::from_millis(3)).await;
+        let mut response = LlmResponse::new(Content {
+            role: "model".into(),
+            parts: self.decide(&request, turn),
+        });
+        response.finish_reason = Some(FinishReason::Stop);
+        response.turn_complete = true;
+        Ok(Box::pin(futures::stream::iter([Ok(response)])))
+    }
+}
+// endregion models
+
+// region tools
+fn tools(root: Arc<PathBuf>) -> Vec<FunctionTool> {
+    let skill = FunctionTool::new(
+        "load_skill",
+        "读取 rust-review 审查规范。",
+        |_ctx, _args| async { Ok(json!({ "skill": "rust-review", "body": SKILL })) },
+    )
+    .with_effect(ToolEffect::ReadOnly);
+    let source_root = root.clone();
+    let read = FunctionTool::new(
+        "read_file",
+        "读取 src/first.rs。",
+        move |_ctx: Arc<dyn ToolContext>, args: Value| {
+            let root = source_root.clone();
+            async move {
+                if args["path"] != "src/first.rs" {
+                    return Err(AdkError::tool("只允许读取 src/first.rs"));
+                }
+                let text = fs::read_to_string(root.join("src/first.rs"))
+                    .map_err(|e| AdkError::tool(e.to_string()))?;
+                Ok(json!({ "path": "src/first.rs", "text": text }))
+            }
+        },
+    )
+    .with_effect(ToolEffect::ReadOnly);
+    let doc = FunctionTool::new(
+        "read_doc",
+        "读取 docs 下的一份资料。",
+        move |_ctx: Arc<dyn ToolContext>, args: Value| {
+            let root = root.clone();
+            async move {
+                let name = args["name"].as_str().unwrap_or_default().to_owned();
+                let text = fs::read_to_string(root.join(format!("docs/{name}.md")))
+                    .map_err(|e| AdkError::tool(e.to_string()))?;
+                Ok(json!({ "name": name, "text": text }))
+            }
+        },
+    )
+    .with_effect(ToolEffect::ReadOnly);
+    vec![skill, read, doc]
+}
+// endregion tools
+
+// region wiring
+#[derive(Clone, Copy, PartialEq)]
+enum Compaction {
+    /// 不压缩
+    Off,
+    /// 每次运行结束后，把整段历史压成一份摘要（EventsCompactionConfig）
+    BetweenRuns,
+    /// 运行之中，请求估算超过阈值时压缩（IntraCompactionConfig）
+    WithinRun,
+}
+
+struct Lab {
+    runner: Runner,
+    sessions: Arc<InMemorySessionService>,
+    review: Arc<ReviewLlm>,
+    summarizer: Arc<FactSummarizer>,
+}
+
+async fn lab(scenario: &str, root: Arc<PathBuf>, mode: Compaction) -> Result<Lab> {
+    let review = Arc::new(ReviewLlm {
+        requests: Mutex::new(Vec::new()),
+    });
+    let summarizer = Arc::new(FactSummarizer {
+        model: Arc::new(SummaryLlm {
+            scenario: scenario.into(),
+        }),
+        checked: scenario != "omit-unchecked",
+        calls: Mutex::new(Vec::new()),
+    });
+    let mut agent = LlmAgentBuilder::new("reviewer")
+        .instruction("你是代码审查助手。")
+        .model(review.clone());
+    for tool in tools(root) {
+        agent = agent.tool(Arc::new(tool));
+    }
+    let sessions = Arc::new(InMemorySessionService::new());
+    sessions
+        .create(CreateRequest {
+            app_name: "r08".into(),
+            user_id: "user".into(),
+            session_id: Some("s1".into()),
+            state: Default::default(),
+        })
+        .await?;
+    let policy = DeclarativePolicy::builder()
+        .allow("load_skill")
+        .allow("read_file")
+        .allow("read_doc")
+        .build();
+    let mut runner = Runner::builder()
+        .app_name("r08")
+        .agent(Arc::new(agent.build()?))
+        .session_service(sessions.clone())
+        .tool_policy(Arc::new(policy));
+    runner = match mode {
+        Compaction::Off => runner.without_intra_compaction(),
+        Compaction::BetweenRuns => {
+            runner
+                .without_intra_compaction()
+                .compaction_config(EventsCompactionConfig {
+                    compaction_interval: 1,
+                    overlap_size: 0,
+                    summarizer: summarizer.clone(),
+                })
+        }
+        // 估算约 4 个 UTF-8 字节一个 token；读完第三份资料后的请求超过 1000
+        Compaction::WithinRun => runner
+            .intra_compaction_config(
+                IntraCompactionConfig::at_tokens(1_000).with_overlap_event_count(0),
+            )
+            .intra_compaction_summarizer(summarizer.clone()),
+    };
+    Ok(Lab {
+        runner: runner.build()?,
+        sessions,
+        review,
+        summarizer,
+    })
+}
+// endregion wiring
+
+fn workspace() -> Result<(tempfile::TempDir, Arc<PathBuf>)> {
+    let dir = tempfile::tempdir()?;
+    let root = dir.path();
+    fs::create_dir_all(root.join("src"))?;
+    fs::create_dir_all(root.join("docs"))?;
+    fs::write(root.join("src/first.rs"), SOURCE)?;
+    for name in ["a", "b", "c"] {
+        let marker = format!("DOC-{}", name.to_uppercase());
+        let body = format!("{marker}: release checklist line for reviewers.\n").repeat(32);
+        fs::write(root.join(format!("docs/{name}.md")), body)?;
+    }
+    let root = Arc::new(dir.path().canonicalize()?);
+    Ok((dir, root))
+}
+
+/// 资料正文很长，轨迹里只写长度。
+fn shorten(line: String) -> String {
+    match line.find("read_doc status=ok ") {
+        Some(at) => format!(
+            "{}read_doc status=ok ({} bytes)",
+            &line[..at],
+            line.len() - at - "read_doc status=ok ".len()
+        ),
+        None => line,
+    }
+}
+
+// region run
+async fn run_once(lab: &Lab, text: &str, lines: &mut Vec<String>) -> Result<String> {
+    run_once_with(lab, text, None, lines).await
+}
+
+async fn run_once_with(
+    lab: &Lab,
+    text: &str,
+    config: Option<RunConfig>,
+    lines: &mut Vec<String>,
+) -> Result<String> {
+    lines.push(format!("--- run: {text}"));
+    let mut stream = lab
+        .runner
+        .run_with_config(
+            "user".try_into()?,
+            "s1".try_into()?,
+            Content::new("user").with_text(text),
+            config,
+        )
+        .await?;
+    let mut answer = String::new();
+    while let Some(event) = stream.next().await {
+        let event = event?;
+        lines.extend(trace::event_lines(&event).into_iter().map(shorten));
+        if event.is_final_response() && event.author == "reviewer" {
+            answer = event
+                .content()
+                .map(|c| c.parts.iter().filter_map(Part::text).collect())
+                .unwrap_or_default();
+        }
+    }
+    Ok(answer)
+}
+
+async fn run(scenario: &str) -> Result<(Vec<String>, String)> {
+    let (_dir, root) = workspace()?;
+    let mode = match scenario {
+        "small" | "naive-trim" => Compaction::Off,
+        "intra" => Compaction::WithinRun,
+        _ => Compaction::BetweenRuns,
+    };
+    let lab = lab(scenario, root, mode).await?;
+    let mut lines = Vec::new();
+    let answer = if mode == Compaction::WithinRun {
+        run_once(&lab, TASK_AND_CONCLUDE, &mut lines).await?
+    } else {
+        run_once(&lab, TASK, &mut lines).await?;
+        if scenario == "naive-trim" {
+            // 只装入最近的事件：第二次运行只带最后 2 条事件
+            let config = RunConfig::builder().history_max_events(Some(2)).build();
+            run_once_with(&lab, CONTINUE, Some(config), &mut lines).await?
+        } else {
+            run_once(&lab, CONTINUE, &mut lines).await?
+        }
+    };
+    let session = lab
+        .sessions
+        .get(GetRequest {
+            app_name: "r08".into(),
+            user_id: "user".into(),
+            session_id: "s1".into(),
+            num_recent_events: None,
+            after: None,
+        })
+        .await?;
+    let compactions: Vec<String> = session
+        .events()
+        .all()
+        .iter()
+        .filter_map(|e| e.actions.compaction.as_ref())
+        .flat_map(|c| c.compacted_content.parts.iter().filter_map(Part::text))
+        .map(str::to_owned)
+        .collect();
+    for summary in &compactions {
+        lines.push(format!("[compaction] {summary}"));
+    }
+    let requests = lab.review.requests.lock().unwrap().clone();
+    for (i, request) in requests.iter().enumerate() {
+        let est = adk_core::intra_compaction::estimate_content_tokens(&request.contents, 4);
+        lines.push(format!(
+            "{} est_tokens={est}",
+            trace::request_lines(std::slice::from_ref(request))[0].replacen(
+                "request 0",
+                &format!("request {i}"),
+                1
+            )
         ));
     }
-    if scenario == "hard-budget" {
-        items[1].message.content += &"不能裁剪的用户约束。".repeat(300);
-    }
-    let mut budget = Budget::default();
-    if scenario == "manual" {
-        budget.trigger = 40000;
-    }
-    if scenario == "summary-input-budget" {
-        budget.summary_input = 128;
-    }
-    let initial_bytes = bytes(&items);
-    let original = serde_json::to_value(&items)?;
-    let sources: BTreeMap<String, String> = items
+    let calls = lab.summarizer.calls.lock().unwrap().clone();
+    let reloads = requests
         .iter()
-        .map(|i| (i.key.clone(), digest(i.message.content.as_bytes())))
-        .collect();
-    let source_result: Value = serde_json::from_str(&items[4].message.content)?;
-    let skill_result: Value = serde_json::from_str(&items[3].message.content)?;
-    let target = source_result["data"]["path"]
-        .as_str()
-        .ok_or("missing target")?;
-    let source_text = source_result["data"]["text"]
-        .as_str()
-        .ok_or("missing source")?;
-    if !source_text.contains("values[0]") {
-        return Err("unexpected fixture source".into());
-    }
-    let skill_handle = format!(
-        "{}@{}",
-        skill_result["data"]["name"].as_str().unwrap(),
-        skill_result["data"]["version"].as_str().unwrap()
+        .flat_map(|r| r.contents.last())
+        .filter(|c| {
+            c.parts.iter().any(|p| matches!(p, Part::FunctionResponse { function_response, .. } if function_response.name == "load_skill"))
+        })
+        .count();
+    let summary = format!(
+        "{scenario}: summary_calls=[{}] compactions={} review_calls={} skill_loads={reloads} conclusion={} says_untested={}",
+        calls.join(","),
+        compactions.len(),
+        requests.len(),
+        answer.starts_with("结论："),
+        answer.contains("未运行测试"),
     );
-    let facts = [
-        ("target", target, "m4"),
-        ("finding", "values[0] 在空输入时索引越界", "m4"),
-        ("test_status", "未运行测试", "m9"),
-        ("skill_handle", skill_handle.as_str(), "m3"),
-    ]
-    .into_iter()
-    .map(|(key, value, source)| Fact {
-        key: key.into(),
-        value: value.into(),
-        source: source.into(),
-        sha256: sources[source].clone(),
-    })
-    .collect();
-    let mut store = Store::new(archive);
-    store.fail = scenario == "archive-error";
-    let world = Arc::new(Mutex::new(World {
-        workspace: workspace.clone(),
-        scenario: scenario.into(),
-        allow_write: false,
-        compactor: Compactor {
-            budget: budget.clone(),
-            required: facts,
-            sources,
-            store,
-            summary_calls: 0,
-        },
-    }));
-    let seen = items
-        .iter()
-        .flat_map(|i| i.message.parse_tool_calls())
-        .map(|c| c.id)
-        .collect();
-    let initial = State {
-        items,
-        pending: vec![],
-        seen,
-        resident_skill: true,
-        model_calls: 0,
-        tool_calls: 0,
-        reloads: 0,
-        reads: 0,
-        retrievals: 0,
-        stop: None,
-        stages: vec![],
-        model_inputs: vec![],
-    };
-    // region graph
-    let graph = GraphBuilder::new("r08")
-        .add_task(Arc::new(PrepareContext {
-            world: world.clone(),
-            summarizer: Arc::new(ScriptedModel {
-                scenario: scenario.into(),
-                summarize: true,
-            }),
-        }))
-        .add_task(Arc::new(ModelTurn {
-            model: Arc::new(ScriptedModel {
-                scenario: scenario.into(),
-                summarize: false,
-            }),
-        }))
-        .add_task(Arc::new(ExecuteTools {
-            world: world.clone(),
-        }))
-        .add_edge("PrepareContext", "ModelTurn")
-        .add_edge("ModelTurn", "ExecuteTools")
-        .add_edge("ExecuteTools", "PrepareContext")
-        .set_start_task("PrepareContext")
-        .build()?;
-    let mut session =
-        Session::new_from_task("r08-demo".into(), "PrepareContext").with_graph_id("r08");
-    session.context.set("agent", initial)?;
-    let mut graph_nodes = vec![];
-    loop {
-        graph_nodes.push(session.current_task_id.clone());
-        match graph.execute_session(&mut session).await?.status {
-            ExecutionStatus::Completed => break,
-            ExecutionStatus::Paused { .. } => {}
-            other => return Err(format!("Unexpected graph status {other:?}").into()),
-        }
-    }
-    // endregion graph
-    let state = get(&session.context)?;
-    let world = world.lock().await;
-    let store = &world.compactor.store;
-    let transcript_roundtrip =
-        if let Some(entry) = store.entries.values().find(|e| e.kind == "transcript") {
-            let data = String::from_utf8(store.read(&entry.id).unwrap())?;
-            let restored: Vec<Item> = data
-                .lines()
-                .map(serde_json::from_str)
-                .collect::<std::result::Result<_, _>>()?;
-            serde_json::to_value(restored)? == original
-        } else {
-            true
-        };
-    Ok(Report {
-        scenario: scenario.into(),
-        budget,
-        initial_bytes,
-        final_bytes: bytes(&state.items),
-        original_unchanged_on_failure: state.model_calls > 0
-            || serde_json::to_value(&state.items)? == original,
-        pinned_unchanged: serde_json::to_value(&state.items[..2])?
-            == json!(&original.as_array().unwrap()[..2]),
-        source_unchanged: fs::read_to_string(workspace.join("src/first.rs"))? == SOURCE
-            && !workspace.join("review.txt").exists(),
-        pairs_valid: groups(&state.items).is_ok(),
-        summary_calls: world.compactor.summary_calls,
-        artifacts: store.entries.values().cloned().collect(),
-        artifact_integrity: store
-            .entries
-            .keys()
-            .map(|id| (id.clone(), store.read(id).is_ok()))
-            .collect(),
-        transcript_roundtrip,
-        graph_nodes,
-        state,
-    })
+    lines.push(format!("answer: {answer}"));
+    lines.push(summary.clone());
+    Ok((lines, summary))
 }
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> Result<()> {
-    let args: Vec<String> = std::env::args().skip(1).collect();
-    let (as_json, scenario) = match args.as_slice() {
-        [] => (false, "normal"),
-        [s] => (false, s.as_str()),
-        [flag, s] if flag == "--json" => (true, s.as_str()),
-        _ => return Err("usage: context-compaction [--json] SCENARIO".into()),
-    };
-    if !SCENARIOS.contains(&scenario) {
-        return Err(format!("choose {SCENARIOS:?}").into());
-    }
-    let report = experiment(scenario).await?;
-    if as_json {
-        println!("{}", serde_json::to_string_pretty(&report)?);
-        return Ok(());
-    }
-    println!("R08 | scenario={scenario} | scripted LLM + graph-flow + real temporary files");
-    println!(
-        "measure=serialized Message JSON UTF-8 bytes; reserve={} hard={}",
-        report.budget.reserve, report.budget.hard
-    );
-    for (i, stage) in report.state.stages.iter().enumerate() {
-        println!(
-            "prepare[{}] before={} externalized={} micro={} after={} decision={} summary_input={}",
-            i + 1,
-            stage.before,
-            stage.externalized,
-            stage.micro,
-            stage.after,
-            stage.decision,
-            stage.summary_input_bytes
-        );
-    }
-    for artifact in &report.artifacts {
-        println!(
-            "artifact={} kind={} bytes={} integrity={}",
-            artifact.id, artifact.kind, artifact.bytes, report.artifact_integrity[&artifact.id]
-        );
-    }
-    for entry in &report.state.items {
-        if entry.message.message_type == MessageType::AIMessage
-            && !entry.message.content.is_empty()
-            && entry.key.starts_with("answer")
-        {
-            println!("answer={}", entry.message.content);
+// endregion run
+
+async fn cli(args: &[String]) -> Result<()> {
+    match args {
+        [] => {
+            for name in CASES {
+                println!("{}", run(name).await?.1);
+            }
+            Ok(())
         }
+        [name] if CASES.contains(&name.as_str()) => {
+            for line in run(name).await?.0 {
+                println!("{line}");
+            }
+            Ok(())
+        }
+        _ => Err(format!("usage: context-compaction [{}]", CASES.join("|")).into()),
     }
-    println!(
-        "stats summary_calls={} agent_calls={} reloads={} reads={} retrievals={} stop={}",
-        report.summary_calls,
-        report.state.model_calls,
-        report.state.reloads,
-        report.state.reads,
-        report.state.retrievals,
-        report.state.stop.as_deref().unwrap()
-    );
-    println!(
-        "checks pinned={} pairs={} source_unchanged={} rollback={} transcript_roundtrip={}",
-        report.pinned_unchanged,
-        report.pairs_valid,
-        report.source_unchanged,
-        report.original_unchanged_on_failure,
-        report.transcript_roundtrip
-    );
-    Ok(())
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    if let Err(error) = cli(&args).await {
+        eprintln!("{error}");
+        std::process::exit(2);
+    }
 }
 
 #[cfg(test)]
-mod tests;
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_checker_wants_every_fact_with_its_source() {
+        let window = "user: 审查 src/first.rs，禁止修改文件，未运行测试\nresult: values[0] DOC-A DOC-B DOC-C";
+        let expected = checklist(window);
+        let good: Vec<Value> = expected
+            .iter()
+            .map(|(k, v)| json!({ "key": k, "value": v }))
+            .collect();
+        let text = json!({ "version": 1, "facts": good }).to_string();
+        assert_eq!(check_summary(&text, window, &expected), Ok(()));
+        let short = json!({ "version": 1, "facts": &good[1..] }).to_string();
+        assert_eq!(
+            check_summary(&short, window, &expected),
+            Err("compaction.summary_facts")
+        );
+        assert_eq!(
+            check_summary("不是 JSON", window, &expected),
+            Err("compaction.summary_schema")
+        );
+        let changed = text.replace("values[0]", "values[1]");
+        assert_eq!(
+            check_summary(&changed, window, &expected),
+            Err("compaction.summary_facts")
+        );
+        let wrong_version = text.replace("\"version\":1", "\"version\":2");
+        assert_eq!(
+            check_summary(&wrong_version, window, &expected),
+            Err("compaction.summary_facts")
+        );
+        // 值必须出现在被压缩的历史里
+        assert_eq!(
+            check_summary(&text, "user: 别的内容", &expected),
+            Err("compaction.summary_facts")
+        );
+    }
+
+    fn tokens(lines: &[String], request: usize) -> u64 {
+        let prefix = format!("request {request}:");
+        let line = lines.iter().find(|l| l.starts_with(&prefix)).unwrap();
+        line.rsplit("est_tokens=").next().unwrap().parse().unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_checked_summary_replaces_the_history_between_runs() {
+        let (lines, line) = run("normal").await.unwrap();
+        assert!(
+            line.contains("compactions=2") && line.contains("conclusion=true"),
+            "{line}"
+        );
+        assert!(line.contains("says_untested=true"), "{line}");
+        // 第二次运行的第一次请求：摘要 + 新的用户消息，资料原文不在了
+        let first_of_run_two = lines.iter().find(|l| l.starts_with("request 6:")).unwrap();
+        assert!(
+            first_of_run_two.contains("roles=system,model,user"),
+            "{first_of_run_two}"
+        );
+        assert!(tokens(&lines, 6) * 5 < tokens(&lines, 5));
+    }
+
+    #[tokio::test]
+    async fn a_rejected_summary_leaves_the_history_as_it_is() {
+        for name in [
+            "omit-fact",
+            "invent-fact",
+            "bad-json",
+            "summary-error",
+            "not-smaller",
+        ] {
+            let (lines, line) = run(name).await.unwrap();
+            assert!(
+                !line.contains("summary_calls=[]"),
+                "the summarizer must have run: {line}"
+            );
+            assert!(line.contains("compactions=0"), "{line}");
+            assert!(line.contains("conclusion=true"), "{line}");
+            // 第二次运行的第一次请求带着完整的第一次运行
+            assert!(tokens(&lines, 6) > 1_000, "{name}");
+        }
+    }
+
+    #[tokio::test]
+    async fn losing_the_target_stops_the_review() {
+        for name in ["omit-unchecked", "naive-trim"] {
+            let (lines, line) = run(name).await.unwrap();
+            assert!(line.contains("conclusion=false"), "{line}");
+            assert!(
+                lines.iter().any(|l| l.contains("missing_evidence")),
+                "{name}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn compaction_within_a_run_keeps_calls_and_results_together() {
+        let (lines, line) = run("intra").await.unwrap();
+        assert!(
+            line.contains("summary_calls=[accepted]") && line.contains("compactions=1"),
+            "{line}"
+        );
+        assert!(line.contains("conclusion=true"), "{line}");
+        // 压缩后的第一次请求：摘要通知 + 最后一对调用与结果（没有落单的结果），估算降到阈值以下
+        let after = lines.iter().find(|l| l.starts_with("request 5:")).unwrap();
+        assert!(
+            after.contains("roles=system,user,model,function tools="),
+            "{after}"
+        );
+        assert!(tokens(&lines, 5) < 1_000);
+    }
+}

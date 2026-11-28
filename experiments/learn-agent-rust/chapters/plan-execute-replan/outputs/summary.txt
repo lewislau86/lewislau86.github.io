@@ -1,0 +1,7 @@
+discover: revisions=[1,2,3] rejected=[] executed=[README.md,member/README.md,plugin/README.md] iterations=3 planner_saw=[0,0,1,1,2,2,3] stop=completed
+drops-done: revisions=[1,2,3] rejected=[done_step_removed:s1,done_step_removed:s1] executed=[README.md,member/README.md,plugin/README.md] iterations=3 planner_saw=[0,0,1,1,1,2,2,2,3] stop=completed
+missing-file: revisions=[1,2] rejected=[] executed=[README.md,member/README.md(missing)] iterations=2 planner_saw=[0,0,1,1] stop=step_failed
+stuck: revisions=[1,2,3] rejected=[] executed=[README.md,member/README.md,plugin/README.md] iterations=6 planner_saw=[0,0,1,1,2,2,3,3,3] stop=loop_limit
+plan-mode-approved: tools=[read_file:ok,write_file:refused,exit_plan_mode:ok,write_file:ok] asked=[exit_plan_mode@plan:approve,write_file@ask:approve] file_written=yes
+plan-mode-rejected: tools=[read_file:ok,write_file:refused,exit_plan_mode:refused,write_file:refused] asked=[exit_plan_mode@plan:deny] file_written=no
+plan-mode-invalid: tools=[read_file:ok,write_file:refused,exit_plan_mode:failed(harness.plan.invalid),write_file:refused] asked=[exit_plan_mode@plan:approve] file_written=no

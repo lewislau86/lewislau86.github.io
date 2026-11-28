@@ -15,7 +15,7 @@ next:
 [课程总览](./index.md) · [学习路径](./learning-path.md) · [下一篇：课程架构](./architecture.md)
 
 ::: info 正在迁移到 ADK-Rust 3.0
-全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–14 章与[专题 2](./side-effect-reliability.md)；其余章节仍是旧版实验。已迁移章节的准备步骤见[第 4 节](#install-adk)，尚未迁移章节的两库安装步骤见第 5 节。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
+全书实验正在逐章从 `graph-flow + langchain-rust` 迁移到 [ADK-Rust](https://github.com/zavora-ai/adk-rust) 3.0（发布候选版，固定提交）。已迁移的章节在课程地图和目录里标注“实验基于 ADK-Rust 3.0”，目前是第 0–23 章与[专题 2](./side-effect-reliability.md)；其余章节仍是旧版实验。已迁移章节的准备步骤见[第 4 节](#install-adk)，尚未迁移章节的两库安装步骤见第 5 节。迁移前的完整旧版可从 git 标签 `learn-agent-rust-v1` 取得。
 :::
 
 ::: tip 本章学习目标
@@ -265,11 +265,13 @@ cargo run --locked --offline
 
 第 5–7 章的三个[图编排独立工程](./graph-orchestration.md)已迁移到 ADK-Rust 3.0 的 adk-graph，按[第 4 节](#install-adk)准备源码后运行；其中恢复章编译 SQLite，需要本页的 C 编译工具，不需要数据库服务。
 
-第 8–14 章（会话内清单、子任务、技能加载、RAG、上下文压缩、跨会话记忆、系统提示词组装）的工程都已迁移到 ADK-Rust 3.0，按[第 4 节](#install-adk)准备源码后运行，下载链接和场景见各章。第 13 章编译自带的 SQLite 源码，需要本页的 C 编译工具，不需要数据库服务。
+第 8–15 章（会话内清单、子任务、技能加载、RAG、联网搜索、上下文压缩、跨会话记忆、系统提示词组装）的工程都已迁移到 ADK-Rust 3.0，按[第 4 节](#install-adk)准备源码后运行，下载链接和场景见各章。第 14 章编译自带的 SQLite 源码，需要本页的 C 编译工具，不需要数据库服务。
 
-第 27 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 27 章](./agent-teams.md)。
+第 16–23 章（设计模式）的工程也都已迁移到 ADK-Rust 3.0，同样按[第 4 节](#install-adk)准备源码后运行。第 22 章编译 SQLite（会话与审批记录），需要 C 编译工具；第 23 章另带 Python 标准库写的 `live_fixture.py` 与 `model_compare.py`，接真实服务时才需要配置 OPENAI_BASE_URL、OPENAI_MODEL、OPENAI_API_KEY。
 
-第 28 章提供独立的<a href="/learn-agent-rust/team-protocols.zip" download>团队协作协议工程</a>。进入解压后的 `team-protocols` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`，固定 Rust 1.99.1 与 Tokio 1.54.1，另用 Serde、SHA-256 和 tempfile。它直接验证请求身份、计划审批、期限、关闭握手与队友回收，首次需下载依赖，运行时无需模型密钥、数据库、graph-flow 或 langchain-rust；实验范围见[第 28 章](./team-protocols.md)。
+第 28 章的<a href="/learn-agent-rust/agent-teams.zip" download>Agent 团队工程</a>沿用相同工具链与两库源码版本，启用 Tokio 的 `sync`、`time` 功能以支持有界邮箱、取消和等待。进入 `agent-teams` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`。实验只操作自建临时文件，使用脚本模型；具体场景与并发范围见[第 28 章](./agent-teams.md)。
+
+第 29 章提供独立的<a href="/learn-agent-rust/team-protocols.zip" download>团队协作协议工程</a>。进入解压后的 `team-protocols` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 与 `cargo test --locked`，固定 Rust 1.99.1 与 Tokio 1.54.1，另用 Serde、SHA-256 和 tempfile。它直接验证请求身份、计划审批、期限、关闭握手与队友回收，首次需下载依赖，运行时无需模型密钥、数据库、graph-flow 或 langchain-rust；实验范围见[第 29 章](./team-protocols.md)。
 
 专题 2 提供独立的<a href="/learn-agent-rust/side-effect-reliability.zip" download>外部操作可靠性工程</a>。进入 `side-effect-reliability` 目录，执行 `cargo fetch --locked`、`cargo run --locked` 和 `cargo test --locked`。它固定 Rust 1.99.1，使用随工程编译的 SQLite，需要本机 C 编译工具链；无需安装数据库服务或配置 API Key。默认演示仅操作自建临时目录，独立客户端与 provider 进程通过本机 CLI JSON 通信；详细故障实验见[专题 2](./side-effect-reliability.md)。
 

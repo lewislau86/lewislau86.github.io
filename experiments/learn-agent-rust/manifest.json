@@ -309,8 +309,9 @@
       "part": "planning",
       "domain": "规划与控制",
       "status": "written",
+      "stack": "adk3",
       "question": "长任务怎样记录目标、步骤和当前进度？",
-      "addition": "会话内待办清单与合法状态迁移。",
+      "addition": "会话状态里的待办清单、整批校验与合法状态迁移，before_model 回调让每次请求看到最新清单。",
       "outcome": "展示计划变化，拒绝非法更新，区分个人待办与持久化任务队列。",
       "prerequisites": [
         "R02",
@@ -324,6 +325,10 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ],
       "binary": "learn-agent-r05",
@@ -336,24 +341,29 @@
       "part": "planning",
       "domain": "规划与控制",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样把一次子任务放进独立的消息历史？",
-      "addition": "子会话输入输出契约与父子预算。",
-      "outcome": "验证子任务历史独立、结果回传、预算约束和取消时的资源清理。",
+      "addition": "AgentTool 新会话与结果回传、transfer_to_agent 交接控制权、父子共用预算与宿主委派契约。",
+      "outcome": "验证子任务历史独立、只回传最终回答、共用预算、子工具边界，以及委派中途取消的“结果未知”。",
       "prerequisites": [
         "R02",
         "R03"
       ],
       "chapter": 9,
-      "kind": "rustc",
-      "archive": "subagents-lab.zip",
+      "kind": "cargo",
+      "archive": "subagents.zip",
       "verifier": "scripts/verify-agent-subagents.py",
       "requires_postgres": false,
       "demo": [
+        [
+          "{binary}"
+        ],
         [
           "{binary}",
           "normal"
         ]
       ],
+      "binary": "learn-agent-r06",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -363,9 +373,10 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样只在任务需要时加入专业说明？",
-      "addition": "技能目录、版本与按需内容注入。",
-      "outcome": "观察加载前后的上下文，验证技能内容与执行权限分别受控。",
+      "addition": "adk-skill 技能索引、list/load/load_resource 三层加载、allowed-tools 与自动注入。",
+      "outcome": "观察加载前后的上下文与工具列表，验证技能能让工具可见、执行权限仍由应用策略决定。",
       "prerequisites": [
         "R02",
         "R03"
@@ -378,9 +389,13 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "permission"
         ]
       ],
-      "binary": "learn-agent-r07",
+      "binary": "skill-loading",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -415,20 +430,53 @@
       "run_scope": "16 个检索、证据与 Agent 引用场景"
     },
     {
+      "id": "K02",
+      "slug": "web-search",
+      "title": "联网搜索",
+      "part": "knowledge",
+      "domain": "方法、知识与记忆",
+      "status": "written",
+      "stack": "adk3",
+      "question": "本地资料里没有、需要网上的最新信息时，怎样搜索、引用，并防住搜索结果里的指令？",
+      "addition": "adk-harness 的 web_search 与可替换的搜索后端，把结果当成不可信资料交给模型，带链接引用。",
+      "outcome": "用离线的假搜索后端复现搜索、引用、空结果、出错与结果里的注入，验证引用来自本轮搜索、注入不改变执行权限。",
+      "prerequisites": [
+        "K01",
+        "R03"
+      ],
+      "chapter": 12,
+      "kind": "cargo",
+      "archive": "web-search.zip",
+      "verifier": "scripts/verify-agent-web-search.py",
+      "requires_postgres": false,
+      "demo": [
+        [
+          "{binary}"
+        ],
+        [
+          "{binary}",
+          "screening"
+        ]
+      ],
+      "binary": "web-search",
+      "run_scope": "本章正常路径演示"
+    },
+    {
       "id": "R08",
       "slug": "context-compaction",
       "title": "上下文压缩",
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
+      "stack": "adk3",
       "question": "对话历史太长时，怎样保留继续行动需要的事实？",
-      "addition": "上下文预算、裁剪与历史摘要。",
-      "outcome": "检查压缩前后的事实保留与工具消息配对，记录摘要遗漏的失败用例。",
+      "addition": "运行之间与运行之内的压缩、只装入最近事件，以及应用自写的事实核对摘要器。",
+      "outcome": "检查压缩前后的事实保留与工具消息配对，验证摘要被拒绝时历史保持不变，记录漏写与只保留最近事件的失败用例。",
       "prerequisites": [
         "R01",
         "R07"
       ],
-      "chapter": 12,
+      "chapter": 13,
       "kind": "cargo",
       "archive": "context-compaction.zip",
       "verifier": "scripts/verify-agent-compaction.py",
@@ -436,9 +484,13 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ],
-      "binary": "learn-agent-r08",
+      "binary": "context-compaction",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -448,42 +500,28 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
+      "stack": "adk3",
       "question": "哪些事实应当在新会话中仍然可用？",
-      "addition": "有来源和版本的事实存储、提取与召回。",
-      "outcome": "在新会话中召回指定事实，并验证冲突、更新和损坏记录的处理。",
+      "addition": "adk-memory 的 SQLite 记忆服务、应用核对来源的写入与按键取最新的召回，以及现成的检索与预加载工具。",
+      "outcome": "在独立的新进程中召回指定事实，验证来源核对、版本选择、项目范围、删除与清除，以及损坏文件和更新版本表结构被拒绝。",
       "prerequisites": [
         "R08"
       ],
-      "chapter": 13,
+      "chapter": 14,
       "kind": "cargo",
-      "archive": "memory-lab.zip",
+      "archive": "memory.zip",
       "verifier": "scripts/verify-agent-memory.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "apply",
-          "{run}/store",
-          "project-a",
-          "session-A",
-          "1",
-          "0",
-          "user",
-          "--message",
-          "{run}/message.txt"
+          "{binary}"
         ],
         [
           "{binary}",
-          "recall",
-          "{run}/store",
-          "project-a",
-          "reply_language"
+          "new-process"
         ]
       ],
-      "inputs": {
-        "message.txt": "请记住：reply_language=中文\n"
-      },
-      "binary": "learn-agent-r09",
+      "binary": "memory",
       "run_scope": "跨进程写入与召回演示"
     },
     {
@@ -493,14 +531,15 @@
       "part": "knowledge",
       "domain": "方法、知识与记忆",
       "status": "written",
+      "stack": "adk3",
       "question": "策略、工具、技能和环境怎样组成一次模型请求？",
-      "addition": "运行时提示词组装与各部分的来源和版本。",
-      "outcome": "对照固定输入检查提示词组成，以及知识内容与应用策略的边界。",
+      "addition": "LlmAgent 的组装顺序：static_instruction、instruction 模板、技能注入与工具声明，以及来源 pin、请求前回调和执行策略。",
+      "outcome": "逐次记录模型实际收到的请求，核对各部分的位置、前缀是否稳定、模板何时渲染，以及资料内容与执行权限的边界。",
       "prerequisites": [
         "R07",
         "R09"
       ],
-      "chapter": 14,
+      "chapter": 15,
       "kind": "cargo",
       "archive": "system-prompts.zip",
       "verifier": "scripts/verify-agent-prompts.py",
@@ -508,9 +547,13 @@
       "demo": [
         [
           "{binary}"
+        ],
+        [
+          "{binary}",
+          "normal"
         ]
       ],
-      "binary": "learn-agent-r10",
+      "binary": "system-prompts",
       "run_scope": "本章正常路径演示"
     },
     {
@@ -520,31 +563,35 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "任务需要多少控制结构，什么时候值得让模型决定下一步？",
-      "addition": "比较单次调用、预设工作流和有界工具循环，建立成本与风险基线。",
-      "outcome": "为同一任务选择最小足够结构，说明控制权、停止条件和升级结构的证据。",
+      "addition": "同一任务分别用一次 LlmAgent 调用、SequentialAgent 固定工作流（CustomAgent 读文件、会话状态传值、escalate 停止）与带工具的 LlmAgent 循环完成。",
+      "outcome": "在应用验收下比较三种结构：输入不全、多出成员、文件缺失、越界读取与调用上限各在哪种结构里失败，由谁拦住。",
       "prerequisites": [
         "R01",
         "G01",
         "R10"
       ],
-      "chapter": 15,
+      "chapter": 16,
       "kind": "cargo",
       "archive": "pattern-selection.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "adaptive"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D01"
       ],
-      "binary": "agent-d01-lab",
-      "run_scope": "6 个固定输入图场景"
+      "binary": "pattern-selection",
+      "run_scope": "9 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D02",
@@ -553,30 +600,34 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "已知步骤怎样串联，不同输入怎样进入合适的处理分支？",
-      "addition": "步骤间结构化产物、质量门、类型化路由与兜底分支。",
-      "outcome": "拒绝不合格中间产物与非法路由，验证各分支只消费自己的输入。",
+      "addition": "SequentialAgent 串起“抽取（output_schema）→ 质量门（CustomAgent）→ 写报告”；LlmConditionalAgent、ConditionalAgent 与 DecisionAgent 三种路由。",
+      "outcome": "让每一步只消费检查过的产物：schema 不合格就重试或停止，修订不符的产物被质量门挡住；比较三种路由的出错方式与兜底。",
       "prerequisites": [
         "D01",
         "G01"
       ],
-      "chapter": 16,
+      "chapter": 17,
       "kind": "cargo",
       "archive": "prompt-chaining-routing.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "stale"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D02"
       ],
-      "binary": "agent-d02-lab",
-      "run_scope": "6 个固定输入图场景"
+      "binary": "prompt-chaining-routing",
+      "run_scope": "10 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D03",
@@ -585,30 +636,34 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "独立子问题怎样同时处理，再合成可用结论？",
-      "addition": "固定任务分片、独立状态、有界并发与确定性归并。",
-      "outcome": "验证成员齐全、超时和局部失败策略，比较同任务的串行与并行结果和耗时。",
+      "addition": "ParallelAgent 同时运行三个检查者（各写自己的状态键），SequentialAgent 里紧跟的 CustomAgent 按成员顺序归并。",
+      "outcome": "验证完成顺序不影响报告；分支出错、分支上报、过期结果、缺成员与状态键冲突各自怎样收场，由谁拦下。",
       "prerequisites": [
         "D02",
         "G03"
       ],
-      "chapter": 17,
+      "chapter": 18,
       "kind": "cargo",
       "archive": "parallel-decomposition.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "failure"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D03"
       ],
-      "binary": "agent-d03-lab",
-      "run_scope": "8 个固定输入图场景"
+      "binary": "parallel-decomposition",
+      "run_scope": "7 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D04",
@@ -617,31 +672,35 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "未知步骤怎样先规划，并根据执行证据调整剩余工作？",
-      "addition": "计划版本、步骤依赖、结果账本与有界重规划。",
-      "outcome": "根据新证据废弃过期步骤，保留已确认效果，拒绝循环规划和预算越界。",
+      "addition": "LoopAgent 让规划者（write_plan / exit_loop）与执行者（CustomAgent）轮流工作，计划由应用保管并检查；adk-harness 计划模式用 exit_plan_mode 把“先批准、再动手”交给框架。",
+      "outcome": "说清计划由谁提出、检查、批准、执行；读到新成员时重规划且保住已完成步骤与账本；验证执行失败、轮数用完与计划被拒、计划不合格时的收场。",
       "prerequisites": [
         "D02",
         "R05",
         "R06"
       ],
-      "chapter": 18,
+      "chapter": 19,
       "kind": "cargo",
       "archive": "plan-execute-replan.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "plan-mode-approved"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D04"
       ],
-      "binary": "agent-d04-lab",
-      "run_scope": "6 个固定输入图场景"
+      "binary": "plan-execute-replan",
+      "run_scope": "7 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D05",
@@ -650,31 +709,35 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "何时由中心分派子任务，何时将下一轮控制权交给专门角色？",
-      "addition": "动态分解、独立工作者上下文、汇总契约与显式控制权交接。",
-      "outcome": "区分子调用、协调汇总与交接，验证交接载荷、唯一控制者和委派预算。",
+      "addition": "TeamSpec 把协调者、工作者和专员写成数据：委派（Delegate）降为 AgentTool，结果交回协调者；交接（Handoff）走 transfer_to_agent，控制权留在接手者；执行回执记录每次委派与交接。",
+      "outcome": "区分“结果返回”与“控制权转移”；验证工作者数量随清单变化、并发上限、上下文隔离、交接不带载荷（要靠交接说明）、未声明交接被拒、失败与预算在回执中的样子，以及中断后不重放委派。",
       "prerequisites": [
         "D03",
         "D04",
         "R06"
       ],
-      "chapter": 19,
+      "chapter": 20,
       "kind": "cargo",
       "archive": "orchestrator-workers-handoffs.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "handoff"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D05"
       ],
-      "binary": "agent-d05-lab",
-      "run_scope": "7 个固定输入图场景"
+      "binary": "orchestrator-workers-handoffs",
+      "run_scope": "10 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D06",
@@ -683,30 +746,34 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样依据可检查反馈修复结果，而不是无限自我评价？",
-      "addition": "生成与评估分离、结构化缺陷、修复上限与保留基线。",
-      "outcome": "让错误产物触发修复，在无改进或预算耗尽时停止，并用独立标准比较修复前后。",
+      "addition": "LoopAgent 让写作者（LlmAgent，output_key）与评估者（按固定规则检查的 CustomAgent）轮流工作，反馈与基线写进会话状态；adk-retry-reflect 在工具失败时给模型一段有次数上限的反思提示。",
+      "outcome": "让可检查的反馈驱动修复、每轮重验全部规则；在通过、无进展或轮数用完时停下并保留基线；看清工具失败的反思提示什么时候给、什么时候不再给。",
       "prerequisites": [
         "D02",
         "G01"
       ],
-      "chapter": 20,
+      "chapter": 21,
       "kind": "cargo",
       "archive": "evaluator-reflection.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
+          "{binary}"
+        ],
+        [
           "{binary}",
-          "suite"
+          "new-error"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D06"
       ],
-      "binary": "agent-d06-lab",
-      "run_scope": "7 个固定输入图场景"
+      "binary": "evaluator-reflection",
+      "run_scope": "8 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D07",
@@ -715,72 +782,35 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "哪里需要人的补充、选择或批准，恢复时怎样确认批准仍有效？",
-      "addition": "澄清、编辑与审批三类暂停，动作修订绑定和失效处理。",
-      "outcome": "验证等待、拒绝、编辑后重新审批、重复批准与恢复后动作身份。",
+      "addition": "应用策略把发布调用挂起等人批准；SQLite 会话与审批记录让每一步都可以是独立进程；批准、拒绝、改参数批准、澄清，以及工作流在挂起的那一步恢复。",
+      "outcome": "验证挂起的调用跨进程恢复且不重跑前面的步骤；改过的参数仍受策略约束；澄清让工作流重来；需求变了时，还没用掉的批准要先撤回。",
       "prerequisites": [
         "D02",
         "G02",
         "R03"
       ],
-      "chapter": 21,
+      "chapter": 22,
       "kind": "cargo",
       "archive": "human-in-the-loop.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "suite"
+          "{binary}"
         ],
         [
           "{binary}",
-          "disk",
-          "{run}/request.json",
-          "init"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "approve",
-          "1",
-          "1"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "edit",
-          "edited report"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "approve",
-          "1",
-          "2"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "resume"
-        ],
-        [
-          "{binary}",
-          "disk",
-          "{run}/request.json",
-          "show"
+          "changed-mind"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D07"
       ],
-      "binary": "agent-d07-lab",
-      "run_scope": "7 个固定输入图场景与跨 CLI 编辑后重新批准"
+      "binary": "human-in-the-loop",
+      "run_scope": "8 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "D08",
@@ -789,9 +819,10 @@
       "part": "patterns",
       "domain": "常见 Agent 设计模式",
       "status": "written",
+      "stack": "adk3",
       "question": "怎样将多个模式组合为一条可以解释和验收的任务链？",
-      "addition": "需求到拓扑、最小基线、组合契约与分层验收。",
-      "outcome": "为升级报告选择并验证必要模式，分别记录流程正确性、效果和模型质量。",
+      "addition": "SequentialAgent 串起并行检查、归并、修复循环与需批准的发布，整次运行共用一个 RunBudget；接缝适配器把内层循环的 escalate 收住；同一流程可换成 OpenAI 兼容服务（OpenAIClient::compatible）。",
+      "outcome": "找出组合后才出现的接缝问题（内层“通过”信号让外层整个停下），用接缝合同修好；验证坏分支、没有合格稿、预算用完都停在发布之前；用本地 fixture 验证真实服务的接线。",
       "prerequisites": [
         "D03",
         "D04",
@@ -799,34 +830,26 @@
         "D06",
         "D07"
       ],
-      "chapter": 22,
+      "chapter": 23,
       "kind": "cargo",
       "archive": "pattern-composition.zip",
-      "verifier": "scripts/verify-agent-patterns.py",
+      "verifier": "scripts/verify-agent-patterns-adk.py",
       "requires_postgres": false,
       "demo": [
         [
-          "{binary}",
-          "suite"
+          "{binary}"
         ],
         [
           "{binary}",
-          "discover",
-          "{run}/report.json"
-        ],
-        [
-          "{python}",
-          "model_compare.py",
-          "self-test",
-          "{run}/http"
+          "naive"
         ]
       ],
       "verifier_args": [
         "--lesson",
         "D08"
       ],
-      "binary": "agent-d08-lab",
-      "run_scope": "9 个固定输入图场景、真实报告文件与 36 项本地 HTTP 模式对照驱动器任务"
+      "binary": "pattern-composition",
+      "run_scope": "7 个场景（ADK-Rust 3.0，规则模型）"
     },
     {
       "id": "R11",
@@ -842,7 +865,7 @@
         "R02",
         "R08"
       ],
-      "chapter": 23,
+      "chapter": 24,
       "kind": "rustc",
       "archive": "error-recovery-lab.zip",
       "verifier": "scripts/verify-agent-recovery.py",
@@ -870,7 +893,7 @@
         "R05",
         "R11"
       ],
-      "chapter": 24,
+      "chapter": 25,
       "kind": "cargo",
       "archive": "task-system-lab.zip",
       "verifier": "scripts/verify-agent-tasks.py",
@@ -924,7 +947,7 @@
       "prerequisites": [
         "R12"
       ],
-      "chapter": 25,
+      "chapter": 26,
       "kind": "rustc",
       "archive": "background-tasks-lab.zip",
       "verifier": "scripts/verify-agent-background.py",
@@ -952,7 +975,7 @@
         "R12",
         "R13"
       ],
-      "chapter": 26,
+      "chapter": 27,
       "kind": "cargo",
       "archive": "scheduling-lab.zip",
       "verifier": "scripts/verify-agent-scheduling.py",
@@ -1010,7 +1033,7 @@
         "R12",
         "R13"
       ],
-      "chapter": 27,
+      "chapter": 28,
       "kind": "cargo",
       "archive": "agent-teams.zip",
       "verifier": "scripts/verify-agent-teams.py",
@@ -1036,7 +1059,7 @@
       "prerequisites": [
         "R15"
       ],
-      "chapter": 28,
+      "chapter": 29,
       "kind": "cargo",
       "archive": "team-protocols.zip",
       "verifier": "scripts/verify-agent-protocols.py",
@@ -1063,7 +1086,7 @@
         "R12",
         "R16"
       ],
-      "chapter": 29,
+      "chapter": 30,
       "kind": "cargo",
       "archive": "autonomous-workers-lab.zip",
       "verifier": "scripts/verify-agent-workers.py",
@@ -1112,7 +1135,7 @@
         "R03",
         "R17"
       ],
-      "chapter": 30,
+      "chapter": 31,
       "kind": "rustc",
       "archive": "worktree-isolation-lab.zip",
       "verifier": "scripts/verify-agent-worktrees.py",
@@ -1141,7 +1164,7 @@
         "R03",
         "R11"
       ],
-      "chapter": 31,
+      "chapter": 32,
       "kind": "cargo",
       "archive": "mcp-tools-lab.zip",
       "verifier": "scripts/verify-agent-mcp.py",
@@ -1180,7 +1203,7 @@
         "R18",
         "R19"
       ],
-      "chapter": 32,
+      "chapter": 33,
       "kind": "cargo",
       "archive": "integrated-agent.zip",
       "verifier": "scripts/verify-agent-integration.py",
